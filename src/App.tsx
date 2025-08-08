@@ -20,29 +20,27 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="dark">
-            <Routes>
-              <Route path="/" element={<Navigate to="/auth" replace />} />
-              <Route path="/auth" element={<Login />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <DashboardRouter />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
+          <Routes>
+            <Route path="/" element={<Navigate to="/auth" replace />} />
+            <Route path="/auth" element={<Login />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <DashboardRouter />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
