@@ -75,6 +75,22 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
         <div className="grid gap-3 py-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
+              <Label>First Name</Label>
+              <Input
+                value={form.first_name}
+                onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Last Name</Label>
+              <Input
+                value={form.last_name}
+                onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
@@ -89,22 +105,6 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
                 placeholder="+91 ..."
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>First Name</Label>
-              <Input
-                value={form.first_name}
-                onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Last Name</Label>
-              <Input
-                value={form.last_name}
-                onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
               />
             </div>
           </div>

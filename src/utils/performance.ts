@@ -1,219 +1,114 @@
 /**
- * Performance utilities for enterprise applications
- * Includes debouncing, throttling, and memoization helpers
+ * Performance monitoring utilities
+ * Track and optimize application performance
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-/**
- * Debounce function - delays execution until after wait time
- */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number,
-  immediate = false
-): T {
-  let timeout: NodeJS.Timeout | null = null;
-
-  return ((...args: Parameters<T>) => {
-    const later = () => {
-      timeout = null;
-      if (!immediate) func(...args);
-    };
-
-    const callNow = immediate && !timeout;
-    
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-    
-    if (callNow) func(...args);
-  }) as T;
+export interface PerformanceMetric {
+  name: string;
+  duration: number;
+  timestamp: Date;
+  metadata?: Record<string, any>;
 }
 
-/**
- * Throttle function - limits execution to once per wait time
- */
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): T {
-  let inThrottle: boolean;
-  let lastFunc: NodeJS.Timeout;
-  let lastRan: number;
+class PerformanceMonitor {
+  private metrics: PerformanceMetric[] = [];
+  private observers: Set<(metric: PerformanceMetric) => void> = new Set();
 
-  return ((...args: Parameters<T>) => {
-    if (!inThrottle) {
-      func(...args);
-      lastRan = Date.now();
-      inThrottle = true;
-    } else {
-      clearTimeout(lastFunc);
-      lastFunc = setTimeout(() => {
-        if (Date.now() - lastRan >= wait) {
-          func(...args);
-          lastRan = Date.now();
-        }
-      }, Math.max(wait - (Date.now() - lastRan), 0));
+  /**
+   * Measure execution time of a function
+   */
+  async measure<T>(
+    name: string,
+    fn: () => Promise<T> | T,
+    metadata?: Record<string, any>
+  ): Promise<T> {
+    const start = performance.now();
+    try {
+      const result = await fn();
+      const duration = performance.now() - start;
+      this.recordMetric(name, duration, metadata);
+      return result;
+    } catch (error) {
+      const duration = performance.now() - start;
+      this.recordMetric(`${name}_error`, duration, { ...metadata, error: error.message });
+      throw error;
     }
-  }) as T;
-}
+  }
 
-/**
- * React hook for debounced value
- */
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
+  /**
+   * Record a performance metric
+   */
+  recordMetric(name: string, duration: number, metadata?: Record<string, any>): void {
+    const metric: PerformanceMetric = {
+      name,
+      duration,
+      timestamp: new Date(),
+      metadata,
     };
-  }, [value, delay]);
 
-  return debouncedValue;
-}
+    this.metrics.push(metric);
+    this.notifyObservers(metric);
 
-/**
- * React hook for debounced callback
- */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number,
-  deps: React.DependencyList = []
-): T {
-  return useCallback(debounce(callback, delay), deps);
-}
+    // Log slow operations
+    if (duration > 1000) {
+      console.warn(`Slow operation detected: ${name} took ${duration.toFixed(2)}ms`, metadata);
+    }
+  }
 
-/**
- * React hook for throttled callback
- */
-export function useThrottledCallback<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number,
-  deps: React.DependencyList = []
-): T {
-  return useCallback(throttle(callback, delay), deps);
-}
+  /**
+   * Get metrics for a specific operation
+   */
+  getMetrics(name?: string): PerformanceMetric[] {
+    if (name) {
+      return this.metrics.filter(m => m.name === name);
+    }
+    return [...this.metrics];
+  }
 
-/**
- * React hook for previous value
- */
-export function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * React hook for measuring component performance
- */
-export function usePerformanceMonitor(label: string, enabled = process.env.NODE_ENV === 'development') {
-  const startTime = useRef<number>();
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    startTime.current = performance.now();
+  /**
+   * Get average duration for an operation
+   */
+  getAverageDuration(name: string): number {
+    const metrics = this.getMetrics(name);
+    if (metrics.length === 0) return 0;
     
-    return () => {
-      if (startTime.current) {
-        const duration = performance.now() - startTime.current;
-        console.log(`Performance [${label}]: ${duration.toFixed(2)}ms`);
+    const total = metrics.reduce((sum, m) => sum + m.duration, 0);
+    return total / metrics.length;
+  }
+
+  /**
+   * Clear metrics
+   */
+  clearMetrics(): void {
+    this.metrics = [];
+  }
+
+  /**
+   * Subscribe to performance events
+   */
+  subscribe(callback: (metric: PerformanceMetric) => void): () => void {
+    this.observers.add(callback);
+    return () => this.observers.delete(callback);
+  }
+
+  private notifyObservers(metric: PerformanceMetric): void {
+    this.observers.forEach(callback => {
+      try {
+        callback(metric);
+      } catch (error) {
+        console.error('Error in performance observer:', error);
       }
-    };
-  }, [label, enabled]);
-}
-
-/**
- * Memoization utility with expiration
- */
-export class MemoCache<K, V> {
-  private cache = new Map<K, { value: V; expiry: number }>();
-  private defaultTTL: number;
-
-  constructor(defaultTTL = 5 * 60 * 1000) { // 5 minutes default
-    this.defaultTTL = defaultTTL;
-  }
-
-  get(key: K): V | undefined {
-    const item = this.cache.get(key);
-    
-    if (!item) return undefined;
-    
-    if (Date.now() > item.expiry) {
-      this.cache.delete(key);
-      return undefined;
-    }
-    
-    return item.value;
-  }
-
-  set(key: K, value: V, ttl = this.defaultTTL): void {
-    this.cache.set(key, {
-      value,
-      expiry: Date.now() + ttl,
     });
   }
-
-  has(key: K): boolean {
-    const item = this.cache.get(key);
-    
-    if (!item) return false;
-    
-    if (Date.now() > item.expiry) {
-      this.cache.delete(key);
-      return false;
-    }
-    
-    return true;
-  }
-
-  delete(key: K): boolean {
-    return this.cache.delete(key);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  size(): number {
-    // Clean expired items first
-    const now = Date.now();
-    for (const [key, item] of this.cache.entries()) {
-      if (now > item.expiry) {
-        this.cache.delete(key);
-      }
-    }
-    
-    return this.cache.size;
-  }
 }
 
-/**
- * React hook for expensive computations with caching
- */
-export function useExpensiveComputation<T>(
-  computeFn: () => T,
-  deps: React.DependencyList,
-  ttl = 5 * 60 * 1000
-): T {
-  const cache = useRef(new MemoCache<string, T>(ttl));
-  const key = useMemo(() => JSON.stringify(deps), deps);
+// Export singleton instance
+export const performanceMonitor = new PerformanceMonitor();
 
-  return useMemo(() => {
-    const cached = cache.current.get(key);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const result = computeFn();
-    cache.current.set(key, result);
-    return result;
-  }, [key, computeFn]);
+// React hook for measuring component render time
+export function usePerformanceMeasure(name: string) {
+  return {
+    measure: <T>(fn: () => T | Promise<T>, metadata?: Record<string, any>) => 
+      performanceMonitor.measure(name, fn, metadata),
+  };
 }

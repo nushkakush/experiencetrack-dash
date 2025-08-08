@@ -7,23 +7,28 @@ export function useCohorts() {
   const query = useQuery({
     queryKey: ["cohorts", "withCounts"],
     queryFn: async () => {
-      const { data: cohorts } = await cohortsService.listAll();
-      const list = cohorts || [];
-      const withCounts = await Promise.all(
-        list.map(async (c) => {
-          const students_count = await cohortsService.countStudents(c.id);
-          return { ...c, students_count } as CohortWithCounts;
-        })
-      );
-      return withCounts;
+      const response = await cohortsService.listAllWithCounts();
+      if (!response.success) {
+        throw new Error(response.error || "Failed to fetch cohorts");
+      }
+      return response.data || [];
     },
-    staleTime: 60_000,
+    staleTime: 60_000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      // Don't retry on 4xx errors
+      if (error && 'status' in error && typeof (error as any).status === 'number') {
+        return (error as any).status >= 500 && failureCount < 3;
+      }
+      return failureCount < 3;
+    },
   });
 
   return {
     cohorts: query.data,
     isLoading: query.isLoading,
-    refetch: query.refetch,
+    isError: query.isError,
     error: query.error,
+    refetch: query.refetch,
   };
 }

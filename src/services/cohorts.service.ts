@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { BaseService } from "./base.service";
 import { ApiResponse } from "@/types/common";
-import { Cohort, CohortEpic, NewCohortInput, NewEpicInput } from "@/types/cohort";
+import { Cohort, CohortEpic, NewCohortInput, NewEpicInput, CohortWithCounts } from "@/types/cohort";
 
 class CohortsService extends BaseService<Cohort> {
   constructor() {
@@ -18,8 +18,39 @@ class CohortsService extends BaseService<Cohort> {
     });
   }
 
+  async listAllWithCounts(): Promise<ApiResponse<CohortWithCounts[]>> {
+    return this["executeQuery"](async () => {
+      return await supabase
+        .from("cohorts")
+        .select(`
+          *,
+          students:cohort_students(count)
+        `)
+        .order("created_at", { ascending: false });
+    });
+  }
+
   async getById(id: string): Promise<ApiResponse<Cohort>> {
     return this.findById<Cohort>(id);
+  }
+
+  async getByIdWithCounts(id: string): Promise<ApiResponse<CohortWithCounts>> {
+    const cohortResponse = await this.findById<Cohort>(id);
+    if (!cohortResponse.success || !cohortResponse.data) {
+      return cohortResponse as ApiResponse<CohortWithCounts>;
+    }
+
+    const students_count = await this.countStudents(id);
+    const cohortWithCounts: CohortWithCounts = {
+      ...cohortResponse.data,
+      students_count,
+    };
+
+    return {
+      data: cohortWithCounts,
+      error: null,
+      success: true,
+    };
   }
 
   async isCohortIdUnique(cohort_id: string): Promise<boolean> {
