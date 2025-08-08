@@ -124,7 +124,7 @@ const ProfilePage = () => {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarFallback className="text-lg">
+                <AvatarFallback className="text-lg bg-primary text-primary-foreground">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>

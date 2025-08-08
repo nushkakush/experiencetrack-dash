@@ -161,7 +161,7 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
