@@ -1,3 +1,5 @@
+
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,8 +22,8 @@ const queryClient = new QueryClient({
       gcTime: APP_CONFIG.CACHE.DEFAULT_CACHE_TIME,
       retry: (failureCount, error) => {
         // Don't retry on 4xx errors
-        if (error && 'status' in error && typeof error.status === 'number') {
-          return error.status >= 500 && failureCount < 3;
+        if (error && 'status' in error && typeof (error as any).status === 'number') {
+          return (error as any).status >= 500 && failureCount < 3;
         }
         return failureCount < 3;
       },
