@@ -14,6 +14,142 @@ export type Database = {
   }
   public: {
     Tables: {
+      cohort_epics: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          duration_months: number
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          duration_months: number
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          duration_months?: number
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_epics_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_students: {
+        Row: {
+          accepted_at: string | null
+          avatar_url: string | null
+          cohort_id: string
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          invite_status: Database["public"]["Enums"]["invite_status"]
+          invited_at: string | null
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          avatar_url?: string | null
+          cohort_id: string
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          invite_status?: Database["public"]["Enums"]["invite_status"]
+          invited_at?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          avatar_url?: string | null
+          cohort_id?: string
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          invite_status?: Database["public"]["Enums"]["invite_status"]
+          invited_at?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_students_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohorts: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_months: number
+          end_date: string
+          id: string
+          name: string
+          sessions_per_day: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_months: number
+          end_date: string
+          id?: string
+          name: string
+          sessions_per_day?: number
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_months?: number
+          end_date?: string
+          id?: string
+          name?: string
+          sessions_per_day?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -61,6 +197,7 @@ export type Database = {
       }
     }
     Enums: {
+      invite_status: "pending" | "sent" | "accepted" | "failed"
       user_role:
         | "student"
         | "super_admin"
@@ -195,6 +332,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      invite_status: ["pending", "sent", "accepted", "failed"],
       user_role: [
         "student",
         "super_admin",
