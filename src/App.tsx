@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
 import ProfilePage from "./pages/ProfilePage";
 import DashboardRouter from "./pages/DashboardRouter";
+import CohortsPage from "./pages/CohortsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { APP_CONFIG } from "@/config/constants";
@@ -50,6 +51,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <DashboardRouter />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/cohorts" 
+                element={
+                  <ProtectedRoute>
+                    <CohortsPage />
                   </ProtectedRoute>
                 } 
               />

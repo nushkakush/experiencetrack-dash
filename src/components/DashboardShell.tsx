@@ -38,7 +38,8 @@ import {
   TrendingUp,
   Briefcase,
   Building2,
-  LogOut
+  LogOut,
+  UsersRound
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -54,9 +55,9 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-const getNavigationItems = (role: UserRole): NavigationItem[] => {
+const getNavigationItems = (role: UserRole, navigate: (path: string) => void): NavigationItem[] => {
   const baseItems: NavigationItem[] = [
-    { title: 'Dashboard', url: '#', icon: Home },
+    { title: 'Dashboard', onClick: () => navigate('/dashboard'), icon: Home },
   ];
 
   const roleSpecificItems: Record<UserRole, NavigationItem[]> = {
@@ -66,6 +67,7 @@ const getNavigationItems = (role: UserRole): NavigationItem[] => {
       { title: 'Progress', url: '#', icon: TrendingUp },
     ],
     super_admin: [
+      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
       { title: 'User Management', url: '#', icon: Users },
       { title: 'System Settings', url: '#', icon: Settings },
       { title: 'Analytics', url: '#', icon: BarChart3 },
@@ -109,7 +111,7 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
 
   if (!profile) return null;
 
-  const navigationItems = getNavigationItems(profile.role);
+  const navigationItems = getNavigationItems(profile.role, navigate);
   const userInitials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
 
   const handleProfileClick = () => {
