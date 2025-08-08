@@ -15,7 +15,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<UserRole>('student');
+  
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -62,7 +62,7 @@ const Login = () => {
           data: {
             first_name: firstName,
             last_name: lastName,
-            role: role,
+            role: 'student',
           }
         }
       });
@@ -151,22 +151,6 @@ const Login = () => {
                       required
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="program_manager">Program Manager</SelectItem>
-                      <SelectItem value="fee_collector">Fee Collector</SelectItem>
-                      <SelectItem value="partnerships_head">Partnerships Head</SelectItem>
-                      <SelectItem value="placement_coordinator">Placement Coordinator</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signupEmail">Email</Label>

@@ -1,33 +1,28 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import DashboardShell from '@/components/DashboardShell';
 
 const SuperAdminDashboard = () => {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {profile?.first_name} {profile?.last_name}
-            </p>
-          </div>
-          <Button variant="outline" onClick={signOut}>
-            Sign Out
-          </Button>
+    <DashboardShell>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {profile?.first_name} {profile?.last_name}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>User Management</CardTitle>
-              <CardDescription>Manage all users and roles</CardDescription>
+              <CardDescription>Manage system users</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">Total users: 0</p>
+              <p className="text-sm text-muted-foreground">0 active users</p>
             </CardContent>
           </Card>
 
@@ -47,14 +42,14 @@ const SuperAdminDashboard = () => {
               <CardDescription>View system analytics</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">Data visualization coming soon</p>
+              <p className="text-sm text-muted-foreground">No data available</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Reports</CardTitle>
-              <CardDescription>Generate and view reports</CardDescription>
+              <CardDescription>Generate system reports</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">No reports generated</p>
@@ -62,7 +57,7 @@ const SuperAdminDashboard = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 };
 
