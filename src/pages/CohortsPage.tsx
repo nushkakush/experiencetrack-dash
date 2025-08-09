@@ -4,15 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Calendar, Trophy } from "lucide-react";
 import { useCohorts } from "@/hooks/useCohorts";
 import CohortWizard from "@/components/cohorts/CohortWizard";
 import CohortCard from "@/components/cohorts/CohortCard";
 import DashboardShell from "@/components/DashboardShell";
+import { GlobalHolidayManagementDialog } from "@/components/holidays/GlobalHolidayManagementDialog";
+import { CombinedLeaderboard } from "@/components/attendance";
 
 const CohortsPage = () => {
   const navigate = useNavigate();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
+  const [combinedLeaderboardOpen, setCombinedLeaderboardOpen] = useState(false);
   const { cohorts, isLoading, refetch } = useCohorts();
 
   const handleCohortClick = (cohortId: string) => {
@@ -29,10 +33,29 @@ const CohortsPage = () => {
               Manage your training cohorts and student enrollments
             </p>
           </div>
-          <Button onClick={() => setWizardOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Cohort
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setHolidaysDialogOpen(true)} 
+              className="gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Mark Global Holidays
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setCombinedLeaderboardOpen(true)} 
+              className="gap-2"
+              disabled={!cohorts || cohorts.length === 0}
+            >
+              <Trophy className="h-4 w-4" />
+              Combined Leaderboards
+            </Button>
+            <Button onClick={() => setWizardOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Cohort
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -87,6 +110,29 @@ const CohortsPage = () => {
               }}
               onClose={() => setWizardOpen(false)}
             />
+          </DialogContent>
+        </Dialog>
+
+        <GlobalHolidayManagementDialog
+          open={holidaysDialogOpen}
+          onOpenChange={setHolidaysDialogOpen}
+        />
+
+        <Dialog open={combinedLeaderboardOpen} onOpenChange={setCombinedLeaderboardOpen}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            {cohorts && (
+              <CombinedLeaderboard
+                availableCohorts={cohorts.map(cohort => ({
+                  id: cohort.id,
+                  name: cohort.name,
+                  description: cohort.description,
+                  start_date: cohort.start_date,
+                  end_date: cohort.end_date,
+                  studentCount: cohort.students_count || 0
+                }))}
+                onClose={() => setCombinedLeaderboardOpen(false)}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>

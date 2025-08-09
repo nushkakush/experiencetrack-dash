@@ -15,6 +15,8 @@ import CohortsPage from "./pages/CohortsPage";
 import CohortDetailsPage from "./pages/CohortDetailsPage";
 import CohortAttendancePage from "./pages/CohortAttendancePage";
 import CohortAttendanceDashboard from "./pages/dashboards/CohortAttendanceDashboard";
+import PublicLeaderboard from "./pages/PublicLeaderboard";
+import PublicCombinedLeaderboard from "./pages/PublicCombinedLeaderboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { APP_CONFIG } from "@/config/constants";
@@ -96,6 +98,15 @@ const App = () => (
                     <ProfilePage />
                   </ProtectedRoute>
                 } 
+              />
+              {/* Public routes (no authentication required) */}
+              <Route 
+                path="/public/leaderboard/:cohortId/:epicId" 
+                element={<PublicLeaderboard />} 
+              />
+              <Route 
+                path="/public/combined-leaderboard/:cohortIds" 
+                element={<PublicCombinedLeaderboard />} 
               />
               <Route path="*" element={<NotFound />} />
             </Routes>

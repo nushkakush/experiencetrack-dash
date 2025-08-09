@@ -5,6 +5,7 @@ import {
   CohortStudentTable,
   CohortTable,
   ProfileTable,
+  HolidayTable,
 } from './tables';
 import { AttendanceSummaryView } from './views';
 import {
@@ -42,6 +43,7 @@ export type DatabaseTables = {
   cohort_students: CohortStudentTable
   cohorts: CohortTable
   profiles: ProfileTable
+  holidays: HolidayTable
 }
 
 export type DatabaseViews = {
