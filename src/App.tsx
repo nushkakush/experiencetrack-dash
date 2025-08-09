@@ -13,6 +13,8 @@ import ProfilePage from "./pages/ProfilePage";
 import DashboardRouter from "./pages/DashboardRouter";
 import CohortsPage from "./pages/CohortsPage";
 import CohortDetailsPage from "./pages/CohortDetailsPage";
+import CohortAttendancePage from "./pages/CohortAttendancePage";
+import CohortAttendanceDashboard from "./pages/dashboards/CohortAttendanceDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { APP_CONFIG } from "@/config/constants";
@@ -68,6 +70,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <CohortDetailsPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/cohorts/:cohortId/attendance" 
+                element={
+                  <ProtectedRoute>
+                    <CohortAttendancePage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/program-manager/cohorts/:cohortId/attendance" 
+                element={
+                  <ProtectedRoute>
+                    <CohortAttendanceDashboard />
                   </ProtectedRoute>
                 } 
               />

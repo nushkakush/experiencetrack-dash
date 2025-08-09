@@ -1,8 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, Users, Clock } from "lucide-react";
 import { CohortWithCounts } from "@/types/cohort";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface CohortCardProps {
   cohort: CohortWithCounts;
@@ -10,6 +12,13 @@ interface CohortCardProps {
 }
 
 export default function CohortCard({ cohort, onClick }: CohortCardProps) {
+  const navigate = useNavigate();
+
+  const handleAttendanceClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/cohorts/${cohort.id}/attendance`);
+  };
+
   return (
     <Card
       onClick={onClick}
@@ -24,15 +33,26 @@ export default function CohortCard({ cohort, onClick }: CohortCardProps) {
         </CardTitle>
         <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
       </CardHeader>
-      <CardContent className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" />
-          <span>{cohort.start_date} → {cohort.end_date}</span>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            <span>{cohort.start_date} → {cohort.end_date}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span>{cohort.students_count} students</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          <span>{cohort.students_count} students</span>
-        </div>
+        <Button
+          onClick={handleAttendanceClick}
+          variant="outline"
+          size="sm"
+          className="w-full flex items-center gap-2"
+        >
+          <Clock className="h-4 w-4" />
+          Attendance
+        </Button>
       </CardContent>
     </Card>
   );

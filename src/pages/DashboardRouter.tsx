@@ -8,7 +8,7 @@ import PartnershipsHeadDashboard from './dashboards/PartnershipsHeadDashboard';
 import PlacementCoordinatorDashboard from './dashboards/PlacementCoordinatorDashboard';
 
 const DashboardRouter = () => {
-  const { profile, loading } = useAuth();
+  const { user, profile, loading, profileLoading } = useAuth();
 
   if (loading) {
     return (
@@ -21,8 +21,21 @@ const DashboardRouter = () => {
     );
   }
 
-  if (!profile) {
+  // Check if user is authenticated first, then check profile
+  if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // If user is authenticated but profile is still loading, show loading
+  if (profileLoading || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
   }
 
   switch (profile.role) {

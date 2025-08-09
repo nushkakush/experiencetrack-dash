@@ -24,7 +24,7 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-} from "./sidebar";
+} from "./sidebar/index";
 
 // Re-export types
-export type { SidebarContextType } from "./sidebar";
+export type { SidebarContextType } from "./sidebar/index";

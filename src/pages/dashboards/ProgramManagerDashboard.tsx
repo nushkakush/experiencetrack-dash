@@ -1,9 +1,13 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardShell from '@/components/DashboardShell';
 
 const ProgramManagerDashboard = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <DashboardShell>
@@ -18,11 +22,24 @@ const ProgramManagerDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Program Overview</CardTitle>
-              <CardDescription>Manage your programs</CardDescription>
+              <CardTitle>Cohort Management</CardTitle>
+              <CardDescription>Manage and monitor all cohorts</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No programs available</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">View all cohorts</span>
+                </div>
+                <Button
+                  onClick={() => navigate('/program-manager/cohorts')}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  View Cohorts
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

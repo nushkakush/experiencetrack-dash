@@ -74,6 +74,7 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
       { title: 'Reports', url: '#', icon: FileText },
     ],
     program_manager: [
+      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
       { title: 'Programs', url: '#', icon: BookOpen },
       { title: 'Students', url: '#', icon: GraduationCap },
       { title: 'Schedule', url: '#', icon: FileText },
