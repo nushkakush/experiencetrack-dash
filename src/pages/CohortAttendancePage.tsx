@@ -398,14 +398,17 @@ const CohortAttendancePage = () => {
 
                 {/* Session Control Button */}
                 <Button
-                  variant="destructive"
+                  variant={isSessionCancelled ? "default" : "destructive"}
                   size="sm"
                   onClick={() => {
-                    console.log('Cancel session button clicked');
-                    handleCancelSession();
+                    if (isSessionCancelled) {
+                      handleReactivateSession();
+                    } else {
+                      handleCancelSession();
+                    }
                   }}
                 >
-                  Cancel Session
+                  {isSessionCancelled ? "Reactivate Session" : "Cancel Session"}
                 </Button>
               </div>
             </div>
@@ -440,6 +443,7 @@ const CohortAttendancePage = () => {
                   <TableRow>
                     <TableHead>Student Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead className="text-center">Attendance</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -452,16 +456,14 @@ const CohortAttendancePage = () => {
                           {student.first_name} {student.last_name}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{student.email}</TableCell>
+                        <TableCell className="text-muted-foreground">{student.phone || 'N/A'}</TableCell>
                         <TableCell>
                                                            <div className="flex gap-1 justify-center">
                                    <Button
                                      size="sm"
                                      variant={getButtonVariant(student.id, 'present')}
                                      className={getButtonClassName(student.id, 'present')}
-                                     onClick={() => {
-                                       console.log('Present button clicked for student:', student.id);
-                                       handleMarkAttendance(student.id, 'present');
-                                     }}
+                                     onClick={() => handleMarkAttendance(student.id, 'present')}
                                      disabled={isSessionCancelled || isFutureDate}
                                    >
                                      Present
@@ -470,10 +472,7 @@ const CohortAttendancePage = () => {
                                      size="sm"
                                      variant={getButtonVariant(student.id, 'absent')}
                                      className={getButtonClassName(student.id, 'absent')}
-                                     onClick={() => {
-                                       console.log('Absent button clicked for student:', student.id);
-                                       handleMarkAttendance(student.id, 'absent');
-                                     }}
+                                     onClick={() => handleMarkAttendance(student.id, 'absent')}
                                      disabled={isSessionCancelled || isFutureDate}
                                    >
                                      Absent
@@ -482,10 +481,7 @@ const CohortAttendancePage = () => {
                                      size="sm"
                                      variant={getButtonVariant(student.id, 'late')}
                                      className={getButtonClassName(student.id, 'late')}
-                                     onClick={() => {
-                                       console.log('Late button clicked for student:', student.id);
-                                       handleMarkAttendance(student.id, 'late');
-                                     }}
+                                     onClick={() => handleMarkAttendance(student.id, 'late')}
                                      disabled={isSessionCancelled || isFutureDate}
                                    >
                                      Late
