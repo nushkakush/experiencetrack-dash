@@ -425,52 +425,7 @@ const CohortAttendancePage = () => {
 
 
 
-        {/* Debug Info */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-muted-foreground mb-4">
-              <p>Debug Info:</p>
-              <p>Selected Session: {selectedSession || 'None'}</p>
-              <p>Selected Epic: {selectedEpic || 'None'}</p>
-              <p>Students Count: {students.length}</p>
-              <p>Sessions Count: {sessions.length}</p>
-              <p>Attendance Records Count: {attendanceRecords.length}</p>
-              <p>Session Cancelled: {isSessionCancelled ? 'Yes' : 'No'}</p>
-              <p>Future Date: {isFutureDate ? 'Yes' : 'No'}</p>
-              <div className="space-y-2">
-                <Button 
-                  onClick={() => {
-                    console.log('Test button clicked!');
-                    alert('Test button works!');
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                >
-                  Test Button (Should Work)
-                </Button>
-                
-                <Button 
-                  onClick={() => {
-                    console.log('Current sessions:', sessions);
-                    if (sessions.length > 0) {
-                      console.log('Setting selected session to:', sessions[0].sessionNumber);
-                      setSelectedSession(sessions[0].sessionNumber);
-                      alert(`Set selected session to: ${sessions[0].sessionNumber}`);
-                    } else {
-                      alert('No sessions available');
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                >
-                  Force Set First Session
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Attendance Table */}
         <Card>
