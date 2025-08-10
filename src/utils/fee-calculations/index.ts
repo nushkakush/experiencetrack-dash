@@ -105,11 +105,11 @@ export const generateFeeStructureReview = (
   const admissionFeeBase = extractBaseAmountFromTotal(feeStructure.admission_fee);
   const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
   
-  // Calculate GST on program fee after scholarship
+  // Calculate GST on program fee after scholarship (GST exclusive amount)
   const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
   const programFeeGST = calculateGST(programFeeAfterScholarship);
   
-  const totalProgramFee = programFeeOnly;
+  const totalProgramFee = programFeeOnly; // GST exclusive
   const totalGST = programFeeGST + admissionFeeGST;
   
   // Calculate total discount (one-shot discount)

@@ -82,25 +82,25 @@ export const calculateOneShotPayment = (
   scholarshipAmount: number = 0,
   cohortStartDate: string
 ): PaymentBreakdown => {
-  // Calculate admission fee breakdown
+  // Admission fee is GST inclusive, so extract base and GST
   const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
   const admissionFeeGST = extractGSTFromTotal(admissionFee);
   
-  // Program fee (excluding admission fee)
+  // Program fee (excluding admission fee) - this is GST exclusive
   const programFeeOnly = totalProgramFee - admissionFee;
   
-  // Apply scholarship to program fee first
+  // Apply scholarship to program fee first (GST exclusive amount)
   const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
   
-  // Calculate GST on the final payable amount (after scholarship)
+  // Calculate GST on the program fee (GST exclusive amount)
   const programFeeGST = calculateGST(programFeeAfterScholarship);
   
-  // Total base amount and GST
+  // Total base amount (GST exclusive) and GST
   const totalBaseAmount = programFeeAfterScholarship + admissionFeeBase;
   const totalGSTAmount = programFeeGST + admissionFeeGST;
   const totalWithGST = totalBaseAmount + totalGSTAmount;
   
-  // Calculate one-shot discount on base amount
+  // Calculate one-shot discount on base amount (GST exclusive)
   const oneShotDiscount = calculateOneShotDiscount(totalBaseAmount, discountPercentage);
   
   // Calculate final payable amount
@@ -129,14 +129,14 @@ export const calculateSemesterPayment = (
   scholarshipAmount: number = 0,
   oneShotDiscount: number = 0
 ): PaymentBreakdown[] => {
-  // Calculate semester fee
+  // Program fee (excluding admission fee) - this is GST exclusive
   const programFeeOnly = totalProgramFee - admissionFee;
   const semesterFee = programFeeOnly / numberOfSemesters;
   
   // Get installment distribution (40-40-20 rule for 3 installments)
   const installmentPercentages = getInstalmentDistribution(instalmentsPerSemester);
   
-  // Calculate installment amounts
+  // Calculate installment amounts (GST exclusive)
   const installmentAmounts = installmentPercentages.map(percentage => 
     Math.round(semesterFee * (percentage / 100) * 100) / 100
   );
@@ -175,7 +175,7 @@ export const calculateSemesterPayment = (
     const installmentScholarship = scholarshipDistribution[i];
     const installmentDiscount = discountPerInstallment;
     
-    // Calculate GST on the final payable amount (after scholarship)
+    // Calculate GST on the installment amount (GST exclusive)
     const installmentAfterScholarship = installmentAmount - installmentScholarship;
     const installmentGST = calculateGST(installmentAfterScholarship);
     
