@@ -42,17 +42,17 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer transition-transform hover:scale-[1.01] hover:shadow-md bg-card border",
+        "cursor-pointer transition-transform hover:scale-[1.01] hover:shadow-md bg-card border flex flex-col h-full",
       )}
     >
-      <CardHeader>
+      <CardHeader className="flex-1">
         <CardTitle className="flex items-center justify-between">
           <span>{cohort.name}</span>
           <span className="text-xs font-normal text-muted-foreground">ID: {cohort.cohort_id}</span>
         </CardTitle>
         <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="mt-auto space-y-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
