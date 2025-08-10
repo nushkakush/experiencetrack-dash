@@ -20,7 +20,7 @@ export function CohortHolidayManagementDialog({
       scope="cohort"
       cohortId={cohortId}
       title={`${cohortName} Holiday Management`}
-      description={`Manage holidays specific to the ${cohortName} cohort.`}
+      description={`Manage holidays for the ${cohortName} cohort. This includes both global holidays (applying to all cohorts) and cohort-specific holidays.`}
     />
   );
 }

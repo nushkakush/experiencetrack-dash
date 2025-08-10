@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { Trash2, Edit2 } from 'lucide-react';
+import { Trash2, Edit2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ interface HolidayListProps {
   holidays: (Holiday | SelectedHoliday)[];
   onEdit?: (holiday: Holiday | SelectedHoliday) => void;
   onDelete: (id: string) => void;
+  onPublish?: (id: string) => void;
   isLoading?: boolean;
   isDraft?: boolean;
 }
@@ -19,6 +20,7 @@ export const HolidayList = ({
   holidays, 
   onEdit, 
   onDelete, 
+  onPublish,
   isLoading = false,
   isDraft = false 
 }: HolidayListProps) => {
@@ -82,6 +84,12 @@ export const HolidayList = ({
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-medium">{holiday.title}</h4>
                   {isDraft && <Badge variant="outline">Draft</Badge>}
+                  {'holiday_type' in holiday && holiday.holiday_type === 'global' && (
+                    <Badge variant="secondary">Global</Badge>
+                  )}
+                  {'holiday_type' in holiday && holiday.holiday_type === 'cohort_specific' && (
+                    <Badge variant="outline">Cohort</Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {format(parseISO(holiday.date), 'EEEE, MMMM d, yyyy')}
@@ -101,6 +109,16 @@ export const HolidayList = ({
                     onClick={() => onEdit(holiday)}
                   >
                     <Edit2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {onPublish && 'status' in holiday && holiday.status === 'draft' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPublish(holiday.id)}
+                    className="text-green-600 hover:text-green-700"
+                  >
+                    <Send className="h-4 w-4" />
                   </Button>
                 )}
                 <Button

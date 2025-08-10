@@ -138,6 +138,8 @@ const CohortAttendancePage = () => {
                   sessions={attendanceData.sessions}
                   selectedSession={selectedSession}
                   onSessionChange={handleSessionChange}
+                  students={attendanceData.students}
+                  attendanceRecords={attendanceData.attendanceRecords}
                 />
 
                 <AttendanceTable

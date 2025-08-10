@@ -1,17 +1,22 @@
 import React from 'react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { SessionInfo } from '@/types/attendance';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { SessionStatistics } from './SessionStatistics';
+import type { SessionInfo, CohortStudent, AttendanceRecord } from '@/types/attendance';
 
 interface SessionTabsProps {
   sessions: SessionInfo[];
   selectedSession: number;
   onSessionChange: (session: number) => void;
+  students: CohortStudent[];
+  attendanceRecords: AttendanceRecord[];
 }
 
 export const SessionTabs: React.FC<SessionTabsProps> = ({
   sessions,
   selectedSession,
   onSessionChange,
+  students,
+  attendanceRecords,
 }) => {
   if (sessions.length === 0) {
     return (
@@ -36,6 +41,19 @@ export const SessionTabs: React.FC<SessionTabsProps> = ({
           </TabsTrigger>
         ))}
       </TabsList>
+      
+      {sessions.map(session => (
+        <TabsContent key={session.sessionNumber} value={session.sessionNumber.toString()}>
+          <div className="space-y-4">
+            <SessionStatistics
+              students={students}
+              attendanceRecords={attendanceRecords}
+              sessionNumber={session.sessionNumber}
+              isSessionCancelled={session.isCancelled}
+            />
+          </div>
+        </TabsContent>
+      ))}
     </Tabs>
   );
 };

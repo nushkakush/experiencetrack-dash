@@ -21,7 +21,7 @@ import { HolidayList } from './HolidayList';
 import { HolidayEditDialog } from './HolidayEditDialog';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
-import type { Holiday } from '@/types/holiday';
+import type { Holiday, SelectedHoliday } from '@/types/holiday';
 
 interface HolidayDialogProps {
   open: boolean;
@@ -43,6 +43,7 @@ export const HolidayDialog = ({
   const { state, actions } = useHolidayManagement(scope, cohortId);
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addHolidayModalOpen, setAddHolidayModalOpen] = useState(false);
 
   const handleClose = () => {
     actions.clearDrafts();
@@ -60,24 +61,62 @@ export const HolidayDialog = ({
     setEditingHoliday(null);
   };
 
-  // Convert published holidays to Date objects for calendar highlighting
-  const publishedHolidayDates = state.publishedHolidays.map(holiday => 
-    parseISO(holiday.date)
-  );
+  const handleAddHoliday = (holiday: SelectedHoliday) => {
+    actions.addHoliday(holiday);
+    setAddHolidayModalOpen(false);
+    actions.setSelectedDates([]);
+  };
 
-  // Calendar modifiers for highlighting published holidays
+  // Convert all holidays to Date objects for calendar highlighting
+  const globalPublishedHolidayDates = state.publishedHolidays
+    .filter(holiday => holiday.holiday_type === 'global')
+    .map(holiday => parseISO(holiday.date));
+  const cohortPublishedHolidayDates = state.publishedHolidays
+    .filter(holiday => holiday.holiday_type === 'cohort_specific')
+    .map(holiday => parseISO(holiday.date));
+  const draftHolidayDates = [
+    ...state.existingDraftHolidays.map(holiday => parseISO(holiday.date)),
+    ...state.draftHolidays.map(holiday => parseISO(holiday.date))
+  ];
+
+  // Calendar modifiers for highlighting different types of holidays
   const calendarModifiers = {
-    published: publishedHolidayDates,
+    globalPublished: globalPublishedHolidayDates,
+    cohortPublished: cohortPublishedHolidayDates,
+    draft: draftHolidayDates,
   };
 
   // Calendar modifier styles
   const calendarModifierStyles = {
-    published: {
+    globalPublished: {
       backgroundColor: 'hsl(var(--primary))',
       color: 'hsl(var(--primary-foreground))',
       fontWeight: 'bold',
     },
+    cohortPublished: {
+      backgroundColor: 'hsl(var(--secondary))',
+      color: 'hsl(var(--secondary-foreground))',
+      fontWeight: 'bold',
+    },
+    draft: {
+      backgroundColor: 'hsl(var(--muted-foreground))',
+      color: 'hsl(var(--background))',
+      fontWeight: 'bold',
+    },
   };
+
+  // Check if selected date already has any holiday
+  const selectedDateHasHoliday = state.selectedDates.length === 1 && 
+    (globalPublishedHolidayDates.some(date => 
+      format(date, 'yyyy-MM-dd') === format(state.selectedDates[0], 'yyyy-MM-dd')
+    ) || cohortPublishedHolidayDates.some(date => 
+      format(date, 'yyyy-MM-dd') === format(state.selectedDates[0], 'yyyy-MM-dd')
+    ) || draftHolidayDates.some(date => 
+      format(date, 'yyyy-MM-dd') === format(state.selectedDates[0], 'yyyy-MM-dd')
+    ));
+
+  // Get all draft holidays (existing + new)
+  const allDraftHolidays = [...state.existingDraftHolidays, ...state.draftHolidays];
 
   return (
     <>
@@ -93,86 +132,104 @@ export const HolidayDialog = ({
 
           <Tabs defaultValue="draft" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="draft">Add Holidays</TabsTrigger>
-              <TabsTrigger value="live">Manage Existing</TabsTrigger>
+              <TabsTrigger value="draft">Draft holidays</TabsTrigger>
+              <TabsTrigger value="published">Published holidays</TabsTrigger>
             </TabsList>
 
             <TabsContent value="draft" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Calendar */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Select Dates</h3>
+                  <h3 className="text-lg font-semibold">Select Date</h3>
                   <div className="space-y-2">
                     <CalendarComponent
-                      mode="multiple"
-                      selected={state.selectedDates}
-                      onSelect={(dates) => actions.setSelectedDates(dates || [])}
+                      mode="single"
+                      selected={state.selectedDates[0] || undefined}
+                      onSelect={(date) => actions.setSelectedDates(date ? [date] : [])}
                       className="rounded-md border"
                       modifiers={calendarModifiers}
                       modifiersStyles={calendarModifierStyles}
                     />
-                    {publishedHolidayDates.length > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        <span className="inline-block w-3 h-3 bg-primary rounded mr-1"></span>
-                        Published holidays are highlighted
-                      </div>
-                    )}
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      {globalPublishedHolidayDates.length > 0 && (
+                        <div>
+                          <span className="inline-block w-3 h-3 bg-primary rounded mr-1"></span>
+                          Global Published Holidays
+                        </div>
+                      )}
+                      {cohortPublishedHolidayDates.length > 0 && (
+                        <div>
+                          <span className="inline-block w-3 h-3 bg-secondary rounded mr-1"></span>
+                          Cohort Specific Published Holidays
+                        </div>
+                      )}
+                      {draftHolidayDates.length > 0 && (
+                        <div>
+                          <span className="inline-block w-3 h-3 bg-muted-foreground rounded mr-1"></span>
+                          Draft holidays
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Form */}
+                {/* Draft Holidays List */}
                 <div className="space-y-4">
-                  <HolidayForm
-                    selectedDates={state.selectedDates}
-                    publishedHolidays={state.publishedHolidays}
-                    onAddHoliday={actions.addHoliday}
-                    onClearDates={() => actions.setSelectedDates([])}
-                    onEditHoliday={handleEditHoliday}
-                  />
+                  {allDraftHolidays.length > 0 && (
+                    <HolidayList
+                      title="Draft Holidays"
+                      holidays={allDraftHolidays}
+                      onDelete={actions.deletePublishedHoliday}
+                      onPublish={actions.publishExistingDraft}
+                      isDraft={true}
+                    />
+                  )}
 
-                  {/* Draft List */}
-                  {state.draftHolidays.length > 0 && (
-                    <>
-                      <Separator />
-                      <HolidayList
-                        title="Draft Holidays"
-                        holidays={state.draftHolidays}
-                        onDelete={actions.removeHoliday}
-                        isDraft={true}
-                      />
-                    </>
+                  {/* Add Holiday Button */}
+                  {state.selectedDates.length === 1 && !selectedDateHasHoliday && (
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Selected date: {format(state.selectedDates[0], 'EEEE, MMMM d, yyyy')}
+                      </p>
+                      <Button 
+                        onClick={() => setAddHolidayModalOpen(true)}
+                        className="w-full"
+                      >
+                        Add Holiday
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Actions */}
-              {state.draftHolidays.length > 0 && (
+              {allDraftHolidays.length > 0 && (
                 <div className="flex gap-2 pt-4 border-t">
                   <Button
                     onClick={actions.publishHolidays}
                     disabled={state.publishing || state.saving}
                   >
-                    {state.publishing ? 'Publishing...' : 'Publish All'}
+                    {state.publishing ? 'Publishing...' : 'Publish All Holidays'}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={actions.saveDrafts}
                     disabled={state.publishing || state.saving}
                   >
-                    {state.saving ? 'Saving...' : 'Save as Draft'}
+                    {state.saving ? 'Saving...' : 'Save New Drafts'}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={actions.clearDrafts}
                     disabled={state.publishing || state.saving}
                   >
-                    Clear All
+                    Clear New Drafts
                   </Button>
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="live" className="space-y-6">
+            <TabsContent value="published" className="space-y-6">
               <HolidayList
                 title="Published Holidays"
                 holidays={state.publishedHolidays}
@@ -192,6 +249,29 @@ export const HolidayDialog = ({
         onSave={handleSaveEdit}
         isLoading={state.editing}
       />
+
+      {/* Add Holiday Modal */}
+      <Dialog open={addHolidayModalOpen} onOpenChange={setAddHolidayModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Holiday</DialogTitle>
+            <DialogDescription>
+              Add a new holiday for {state.selectedDates[0] ? format(state.selectedDates[0], 'EEEE, MMMM d, yyyy') : 'selected date'}
+            </DialogDescription>
+          </DialogHeader>
+          <HolidayForm
+            selectedDates={state.selectedDates}
+            publishedHolidays={state.publishedHolidays}
+            existingDraftHolidays={state.existingDraftHolidays}
+            onAddHoliday={handleAddHoliday}
+            onClearDates={() => {
+              setAddHolidayModalOpen(false);
+              actions.setSelectedDates([]);
+            }}
+            onEditHoliday={handleEditHoliday}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

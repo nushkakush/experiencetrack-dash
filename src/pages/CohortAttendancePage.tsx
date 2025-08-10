@@ -139,6 +139,7 @@ const CohortAttendancePage = () => {
           currentEpic={attendanceData.currentEpic}
           selectedDate={selectedDate}
           isSessionCancelled={isSessionCancelled}
+          mode="epic"
         />
 
         {/* Session Management Header */}
@@ -244,6 +245,8 @@ const CohortAttendancePage = () => {
                   sessions={attendanceData.sessions}
                   selectedSession={selectedSession}
                   onSessionChange={handleSessionChange}
+                  students={attendanceData.students}
+                  attendanceRecords={attendanceData.attendanceRecords}
                 />
 
                 <AttendanceTable

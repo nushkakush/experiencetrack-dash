@@ -4,6 +4,7 @@ export { SessionTabs } from './SessionTabs';
 export { AttendanceTable } from './AttendanceTable';
 export { AttendanceReasonDialog } from './AttendanceReasonDialog';
 export { AttendanceStatistics } from './AttendanceStatistics';
+export { SessionStatistics } from './SessionStatistics';
 export { AttendanceLeaderboard } from './AttendanceLeaderboard';
 export { CopyLeaderboardButton } from './CopyLeaderboardButton';
 export { CombinedLeaderboard } from './CombinedLeaderboard';
