@@ -72,7 +72,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
           due_date: feeStructure.start_date,
           amount_payable: feeStructure.admission_fee || 0,
           isFirstPayment: true
-        };
+        } as any; // Type assertion to handle the additional property
       }
       return null;
     }
@@ -85,6 +85,16 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
     if (!pendingPayments || pendingPayments.length === 0) return null;
     
     return pendingPayments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+  };
+
+  const getStudentStatus = (student: StudentPaymentSummary) => {
+    // If student has no payments, they are pending setup
+    if (!student.payments || student.payments.length === 0) {
+      return 'pending';
+    }
+    
+    // For now, return pending for all payments as requested
+    return 'pending';
   };
 
   const formatCurrency = (amount: number) => {
@@ -288,16 +298,22 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                   
                   <TableCell>
                     <div className="space-y-1">
-                      {student.payments?.map((payment) => (
-                        <div key={payment.id} className="flex items-center gap-2">
+                      {student.payments && student.payments.length > 0 ? (
+                        student.payments.map((payment) => (
+                          <div key={payment.id} className="flex items-center gap-2">
+                            <PaymentStatusBadge status="pending" />
+                            <span className="text-xs text-muted-foreground">
+                              {getPaymentTypeDisplay(payment.payment_type)}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center gap-2">
                           <PaymentStatusBadge status="pending" />
                           <span className="text-xs text-muted-foreground">
-                            {getPaymentTypeDisplay(payment.payment_type)}
+                            Payment Setup Required
                           </span>
                         </div>
-                      ))}
-                      {(!student.payments || student.payments.length === 0) && (
-                        <PaymentStatusBadge status="pending" />
                       )}
                     </div>
                   </TableCell>

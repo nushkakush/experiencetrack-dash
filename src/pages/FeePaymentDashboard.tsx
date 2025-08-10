@@ -55,8 +55,11 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      console.log('Loading data for cohort:', cohortId);
+      
       // Load cohort data
       const cohortResult = await cohortsService.getByIdWithCounts(cohortId!);
+      console.log('Cohort result:', cohortResult);
       if (cohortResult.success && cohortResult.data) {
         setCohortData(cohortResult.data);
       }
@@ -64,14 +67,20 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
       // Load fee structure
       const { feeStructure: feeData, scholarships: scholarshipData } = 
         await FeeStructureService.getCompleteFeeStructure(cohortId!);
+      console.log('Fee structure result:', { feeData, scholarshipData });
       
       setFeeStructure(feeData);
       setScholarships(scholarshipData);
 
       // Load student payment summaries
       const studentsResult = await studentPaymentsService.getStudentPaymentSummary(cohortId!);
+      console.log('Students result:', studentsResult);
       if (studentsResult.success && studentsResult.data) {
+        console.log('Setting students:', studentsResult.data);
         setStudents(studentsResult.data);
+      } else {
+        console.log('No students data or error:', studentsResult.error);
+        setStudents([]);
       }
     } catch (error) {
       console.error('Error loading data:', error);

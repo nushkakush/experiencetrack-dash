@@ -62,12 +62,18 @@ class StudentPaymentsService {
         const payments = student.payments || [];
         const scholarship = student.scholarship?.[0];
         
+        // Calculate payment totals
         const totalAmount = payments.reduce((sum: number, p: any) => sum + p.amount_payable, 0);
         const paidAmount = payments.reduce((sum: number, p: any) => sum + p.amount_paid, 0);
         const pendingAmount = totalAmount - paidAmount;
         const overdueAmount = payments
           .filter((p: any) => p.status === 'overdue' || p.status === 'partially_paid_overdue')
           .reduce((sum: number, p: any) => sum + (p.amount_payable - p.amount_paid), 0);
+
+        // Determine payment plan - if no payments exist, student hasn't selected a plan
+        const paymentPlan = payments.length > 0 ? 
+          (payments[0]?.payment_plan || 'not_selected') : 
+          'not_selected';
 
         return {
           student_id: student.id,
@@ -78,7 +84,7 @@ class StudentPaymentsService {
           scholarship_name: scholarship?.scholarship?.name,
           scholarship_percentage: scholarship?.scholarship?.amount_percentage,
           token_fee_paid: payments.some((p: any) => p.payment_type === 'admission_fee' && p.status === 'paid'),
-          payment_plan: payments[0]?.payment_plan || 'instalment_wise',
+          payment_plan: paymentPlan,
           student: student,
           payments: payments,
         };
