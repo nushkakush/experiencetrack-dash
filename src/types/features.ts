@@ -1,73 +1,27 @@
 import { UserRole } from './auth';
 
 // Define all available features in the application
-export type FeatureKey = 
-  // Cohort Management
+export type FeatureKey =
+  | 'attendance.view'
+  | 'attendance.manage'
   | 'cohorts.view'
-  | 'cohorts.create'
-  | 'cohorts.edit'
-  | 'cohorts.delete'
+  | 'cohorts.manage'
   | 'cohorts.manage_students'
   | 'cohorts.edit_students'
-  | 'cohorts.bulk_upload'
-  
-  // Attendance Management
-  | 'attendance.view'
-  | 'attendance.mark'
-  | 'attendance.edit'
-  | 'attendance.delete'
-  | 'attendance.export'
-  | 'attendance.leaderboard'
-  | 'attendance.statistics'
-  
-  // Fee Management
+  | 'cohorts.assign_scholarships'
   | 'fees.view'
-  | 'fees.collect'
-  | 'fees.waive'
-  | 'fees.refund'
-  | 'fees.reports'
-  | 'fees.setup_structure'
-  | 'fees.manage_scholarships'
-  
-  // User Management
-  | 'users.view'
-  | 'users.create'
-  | 'users.edit'
-  | 'users.delete'
-  | 'users.assign_roles'
-  
-  // System Administration
-  | 'system.settings'
-  | 'system.analytics'
-  | 'system.reports'
-  | 'system.logs'
-  
-  // Partnerships
-  | 'partnerships.view'
-  | 'partnerships.create'
-  | 'partnerships.edit'
-  | 'partnerships.delete'
-  | 'partnerships.analytics'
-  
-  // Placements
-  | 'placements.view'
-  | 'placements.create'
-  | 'placements.edit'
-  | 'placements.delete'
-  | 'placements.analytics'
-  
-  // Holidays
+  | 'fees.manage'
   | 'holidays.view'
-  | 'holidays.create'
-  | 'holidays.edit'
-  | 'holidays.delete'
-  | 'holidays.global_manage'
-  
-  // Student Features
-  | 'student.progress'
-  | 'student.assignments'
-  | 'student.programs'
-  | 'student.attendance_view';
+  | 'holidays.manage'
+  | 'partnerships.view'
+  | 'partnerships.manage'
+  | 'placements.view'
+  | 'placements.manage'
+  | 'students.view'
+  | 'students.manage'
+  | 'system.admin'
+  | 'users.view'
+  | 'users.manage';
 
 // Feature metadata for better organization and documentation
 export interface FeatureMetadata {

@@ -1,3 +1,5 @@
+import { CohortStudent } from './cohort';
+
 export interface FeeStructure {
   id: string;
   cohort_id: string;
@@ -71,6 +73,7 @@ export interface SemesterBreakdown {
 export interface FeeStructureReview {
   admissionFee: FeeCalculation;
   semesters: SemesterBreakdown[];
+  oneShotPayment?: PaymentBreakdown | null;
   overallSummary: {
     totalProgramFee: number;
     admissionFee: number;
@@ -78,4 +81,29 @@ export interface FeeStructureReview {
     totalDiscount: number;
     totalAmountPayable: number;
   };
+}
+
+export interface StudentScholarship {
+  id: string;
+  student_id: string;
+  scholarship_id: string;
+  additional_discount_percentage: number;
+  assigned_by?: string | null;
+  assigned_at: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  scholarship?: Scholarship;
+  student?: CohortStudent;
+}
+
+export interface NewStudentScholarshipInput {
+  student_id: string;
+  scholarship_id: string;
+  additional_discount_percentage?: number;
+}
+
+export interface StudentScholarshipWithDetails extends StudentScholarship {
+  scholarship: Scholarship;
+  student: CohortStudent;
 }

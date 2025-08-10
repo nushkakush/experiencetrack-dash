@@ -1,6 +1,13 @@
-import { FeatureKey, FeatureMetadata } from '@/types/features';
+import { FeatureMetadata } from '@/types/features';
 
-export const COHORT_FEATURES: Record<FeatureKey, FeatureMetadata> = {
+type CohortFeatureKey = 
+  | 'cohorts.view'
+  | 'cohorts.manage'
+  | 'cohorts.manage_students'
+  | 'cohorts.edit_students'
+  | 'cohorts.assign_scholarships';
+
+export const COHORT_FEATURES: Record<CohortFeatureKey, FeatureMetadata> = {
   'cohorts.view': {
     key: 'cohorts.view',
     name: 'View Cohorts',
@@ -8,24 +15,10 @@ export const COHORT_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'cohorts',
     requiresAuthentication: true,
   },
-  'cohorts.create': {
-    key: 'cohorts.create',
-    name: 'Create Cohorts',
-    description: 'Create new cohorts',
-    category: 'cohorts',
-    requiresAuthentication: true,
-  },
-  'cohorts.edit': {
-    key: 'cohorts.edit',
-    name: 'Edit Cohorts',
-    description: 'Modify existing cohort information',
-    category: 'cohorts',
-    requiresAuthentication: true,
-  },
-  'cohorts.delete': {
-    key: 'cohorts.delete',
-    name: 'Delete Cohorts',
-    description: 'Delete cohorts',
+  'cohorts.manage': {
+    key: 'cohorts.manage',
+    name: 'Manage Cohorts',
+    description: 'Create, edit, and delete cohorts',
     category: 'cohorts',
     requiresAuthentication: true,
   },
@@ -43,13 +36,13 @@ export const COHORT_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'cohorts',
     requiresAuthentication: true,
   },
-  'cohorts.bulk_upload': {
-    key: 'cohorts.bulk_upload',
-    name: 'Bulk Upload Students',
-    description: 'Upload multiple students via CSV',
+  'cohorts.assign_scholarships': {
+    key: 'cohorts.assign_scholarships',
+    name: 'Assign Scholarships',
+    description: 'Assign scholarships to individual students',
     category: 'cohorts',
     requiresAuthentication: true,
   },
 } as const;
 
-export const COHORT_FEATURE_KEYS = Object.keys(COHORT_FEATURES) as FeatureKey[];
+export const COHORT_FEATURE_KEYS = Object.keys(COHORT_FEATURES) as CohortFeatureKey[];

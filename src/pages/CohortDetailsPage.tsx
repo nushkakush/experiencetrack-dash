@@ -7,9 +7,13 @@ import CohortStudentsTable from "@/components/cohorts/CohortStudentsTable";
 import { useCohortDetails } from "@/hooks/useCohortDetails";
 import { BulkUploadConfig } from "@/components/common/BulkUploadDialog";
 import { CohortStudent } from "@/types/cohort";
+import { Scholarship } from "@/types/fee";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CohortDetailsPage() {
   const { cohortId } = useParams<{ cohortId: string }>();
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   
   const {
     loading,
@@ -23,6 +27,25 @@ export default function CohortDetailsPage() {
     processValidStudents,
     checkDuplicateStudents,
   } = useCohortDetails(cohortId);
+
+  // Load scholarships for the cohort
+  useEffect(() => {
+    const loadScholarships = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('scholarships')
+          .select('*')
+          .order('amount_percentage', { ascending: true });
+
+        if (error) throw error;
+        setScholarships(data || []);
+      } catch (error) {
+        console.error('Error loading scholarships:', error);
+      }
+    };
+
+    loadScholarships();
+  }, []);
 
   const handleStudentUpdated = (studentId: string, updates: Partial<CohortStudent>) => {
     // Update the student locally without reloading from server
@@ -44,33 +67,16 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
     fileExtension: ".csv"
   };
 
-  if (!cohortId) {
-    return (
-      <DashboardShell>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Invalid Cohort</h1>
-            <p className="text-muted-foreground mb-4">Cohort ID is missing.</p>
-          </div>
-        </div>
-      </DashboardShell>
-    );
-  }
-
   if (loading) {
     return (
       <DashboardShell>
-        <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-64" />
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-64" />
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </div>
-          <Skeleton className="h-96" />
         </div>
       </DashboardShell>
     );
@@ -79,11 +85,9 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
   if (!cohort) {
     return (
       <DashboardShell>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Cohort Not Found</h1>
-            <p className="text-muted-foreground mb-4">The requested cohort could not be found.</p>
-          </div>
+        <div className="text-center py-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Cohort Not Found</h2>
+          <p className="text-gray-600">The cohort you're looking for doesn't exist or you don't have permission to view it.</p>
         </div>
       </DashboardShell>
     );
@@ -91,19 +95,19 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
 
   return (
     <DashboardShell>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <CohortHeader 
-          cohort={cohort}
-          onStudentAdded={loadData}
-          onRefresh={loadData}
+          cohort={cohort} 
+          onStudentDeleted={loadData}
           bulkUploadConfig={bulkUploadConfig}
         />
-
+        
         <CohortStudentsTable
           students={students}
+          scholarships={scholarships}
           onStudentDeleted={loadData}
-          loading={loading}
           onStudentUpdated={handleStudentUpdated}
+          loading={loading}
         />
       </div>
     </DashboardShell>
