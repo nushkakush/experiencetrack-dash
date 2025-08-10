@@ -54,6 +54,9 @@ export interface CohortStudent {
   invite_status: 'pending' | 'sent' | 'accepted' | 'failed';
   invited_at?: string | null;
   accepted_at?: string | null;
+  invitation_token?: string | null;
+  invitation_expires_at?: string | null;
+  invited_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -64,4 +67,5 @@ export interface NewStudentInput {
   last_name?: string;
   phone?: string;
   avatar_url?: string;
+  send_invite?: boolean;
 }

@@ -53,12 +53,17 @@ class CohortsService extends BaseService<Cohort> {
     };
   }
 
-  async isCohortIdUnique(cohort_id: string): Promise<boolean> {
-    const { data, error } = await supabase
+  async isCohortIdUnique(cohort_id: string, excludeId?: string): Promise<boolean> {
+    let query = supabase
       .from("cohorts")
       .select("id")
-      .eq("cohort_id", cohort_id)
-      .maybeSingle();
+      .eq("cohort_id", cohort_id);
+    
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+    
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error("isCohortIdUnique error:", error);

@@ -81,6 +81,7 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
       { title: 'Analytics', url: '#', icon: BarChart3 },
     ],
     fee_collector: [
+      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
       { title: 'Payments', url: '#', icon: DollarSign },
       { title: 'Outstanding Fees', url: '#', icon: Receipt },
       { title: 'Reports', url: '#', icon: FileText },

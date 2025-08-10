@@ -6,21 +6,120 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Plus, Calendar, Trophy } from "lucide-react";
 import { useCohorts } from "@/hooks/useCohorts";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
 import CohortWizard from "@/components/cohorts/CohortWizard";
+import CohortEditWizard from "@/components/cohorts/CohortEditWizard";
 import CohortCard from "@/components/cohorts/CohortCard";
 import DashboardShell from "@/components/DashboardShell";
 import { GlobalHolidayManagementDialog } from "@/components/holidays/GlobalHolidayManagementDialog";
 import { CombinedLeaderboard } from "@/components/attendance";
+import { FeeCollectionSetupModal } from "@/components/fee-collection";
+import { FeeStructureService } from "@/services/feeStructure.service";
+import { CohortWithCounts } from "@/types/cohort";
+import { CohortFeatureGate, HolidayFeatureGate, FeeFeatureGate } from "@/components/common";
+import { toast } from "sonner";
 
 const CohortsPage = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [editWizardOpen, setEditWizardOpen] = useState(false);
+  const [selectedCohortForEdit, setSelectedCohortForEdit] = useState<CohortWithCounts | null>(null);
   const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
   const [combinedLeaderboardOpen, setCombinedLeaderboardOpen] = useState(false);
+  const [feeCollectionModalOpen, setFeeCollectionModalOpen] = useState(false);
+  const [selectedCohortForFee, setSelectedCohortForFee] = useState<CohortWithCounts | null>(null);
   const { cohorts, isLoading, refetch } = useCohorts();
+  const { canManageCohorts, canCreateCohorts, canViewCohorts, canSetupFeeStructure } = useFeaturePermissions();
+
+  // Redirect if user can't view cohorts
+  if (!canViewCohorts) {
+    return (
+      <DashboardShell>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+            <p className="text-muted-foreground mb-4">You don't have permission to view cohorts.</p>
+          </div>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   const handleCohortClick = (cohortId: string) => {
     navigate(`/cohorts/${cohortId}`);
+  };
+
+  const handleFeeCollectionClick = async (cohort: CohortWithCounts) => {
+    try {
+      // Check if fee structure is already set up
+      const feeStructure = await FeeStructureService.getFeeStructure(cohort.id);
+      
+      console.log('Fee structure check:', {
+        cohortId: cohort.id,
+        cohortName: cohort.name,
+        feeStructureExists: !!feeStructure,
+        feeStructure,
+        isSetupComplete: feeStructure?.is_setup_complete,
+        canSetupFeeStructure,
+        userRole: profile?.role
+      });
+      
+      // Check if fee structure exists AND is marked as complete
+      const isFeeStructureComplete = feeStructure && feeStructure.is_setup_complete === true;
+      
+      if (isFeeStructureComplete) {
+        // Fee structure is set up and complete - navigate to dashboard
+        console.log('Fee structure is complete, navigating to dashboard');
+        navigate(`/cohorts/${cohort.id}/fee-collection`);
+      } else {
+        // Fee structure is not set up or not complete
+        console.log('Fee structure not complete, checking permissions for setup');
+        
+        if (canSetupFeeStructure) {
+          // Super admin can set up fee structure
+          console.log('User can setup fee structure, opening modal');
+          setSelectedCohortForFee(cohort);
+          setFeeCollectionModalOpen(true);
+        } else {
+          // Non-admin users get error message
+          console.log('User cannot setup fee structure, showing error');
+          toast.error("Fee Structure Not Set Up", {
+            description: "Please contact your administrator to set up the fee structure for this cohort.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error checking fee structure:', error);
+      
+      // On error, default to setup modal for super admin
+      if (canSetupFeeStructure) {
+        console.log('Error occurred, but user can setup - opening modal');
+        setSelectedCohortForFee(cohort);
+        setFeeCollectionModalOpen(true);
+      } else {
+        console.log('Error occurred, user cannot setup - showing error');
+        toast.error("Fee Structure Not Set Up", {
+          description: "Please contact your administrator to set up the fee structure for this cohort.",
+        });
+      }
+    }
+  };
+
+  const handleFeeSetupComplete = () => {
+    refetch(); // Refresh cohorts list
+  };
+
+  const handleEditClick = (cohort: CohortWithCounts) => {
+    setSelectedCohortForEdit(cohort);
+    setEditWizardOpen(true);
+  };
+
+  const handleEditComplete = () => {
+    refetch(); // Refresh cohorts list
+    setEditWizardOpen(false);
+    setSelectedCohortForEdit(null);
   };
 
   return (
@@ -30,18 +129,23 @@ const CohortsPage = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Cohorts</h1>
             <p className="text-muted-foreground">
-              Manage your training cohorts and student enrollments
+              {canManageCohorts 
+                ? "Manage your training cohorts and student enrollments"
+                : "View training cohorts and student information"
+              }
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setHolidaysDialogOpen(true)} 
-              className="gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Mark Global Holidays
-            </Button>
+            <HolidayFeatureGate action="global_manage">
+              <Button 
+                variant="outline" 
+                onClick={() => setHolidaysDialogOpen(true)} 
+                className="gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Mark Global Holidays
+              </Button>
+            </HolidayFeatureGate>
             <Button 
               variant="outline" 
               onClick={() => setCombinedLeaderboardOpen(true)} 
@@ -51,10 +155,12 @@ const CohortsPage = () => {
               <Trophy className="h-4 w-4" />
               Combined Leaderboards
             </Button>
-            <Button onClick={() => setWizardOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Cohort
-            </Button>
+            <CohortFeatureGate action="create">
+              <Button onClick={() => setWizardOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Cohort
+              </Button>
+            </CohortFeatureGate>
           </div>
         </div>
 
@@ -79,6 +185,8 @@ const CohortsPage = () => {
                 key={cohort.id}
                 cohort={cohort}
                 onClick={() => handleCohortClick(cohort.id)}
+                onFeeCollectionClick={() => handleFeeCollectionClick(cohort)}
+                onEditClick={() => handleEditClick(cohort)}
               />
             ))}
           </div>
@@ -88,35 +196,61 @@ const CohortsPage = () => {
               <CardHeader className="text-center">
                 <CardTitle>No cohorts found</CardTitle>
                 <CardDescription>
-                  Get started by creating your first cohort.
+                  {canManageCohorts 
+                    ? "Get started by creating your first cohort."
+                    : "No cohorts are available to view at this time."
+                  }
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center">
-                <Button onClick={() => setWizardOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Your First Cohort
-                </Button>
-              </CardContent>
+              <CohortFeatureGate action="create">
+                <CardContent className="text-center">
+                  <Button onClick={() => setWizardOpen(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Your First Cohort
+                  </Button>
+                </CardContent>
+              </CohortFeatureGate>
             </Card>
           </div>
         )}
 
-        <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
-          <DialogContent className="max-w-4xl">
-            <CohortWizard
-              onCreated={() => {
-                refetch();
-                setWizardOpen(false);
-              }}
-              onClose={() => setWizardOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        <CohortFeatureGate action="create">
+          <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+            <DialogContent className="max-w-4xl">
+              <CohortWizard
+                onCreated={() => {
+                  refetch();
+                  setWizardOpen(false);
+                }}
+                onClose={() => setWizardOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </CohortFeatureGate>
 
-        <GlobalHolidayManagementDialog
-          open={holidaysDialogOpen}
-          onOpenChange={setHolidaysDialogOpen}
-        />
+        {selectedCohortForEdit && (
+          <CohortFeatureGate action="edit">
+            <Dialog open={editWizardOpen} onOpenChange={setEditWizardOpen}>
+              <DialogContent className="max-w-4xl">
+                <CohortEditWizard
+                  cohort={selectedCohortForEdit}
+                  onUpdated={handleEditComplete}
+                  onClose={() => {
+                    setEditWizardOpen(false);
+                    setSelectedCohortForEdit(null);
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          </CohortFeatureGate>
+        )}
+
+        <HolidayFeatureGate action="global_manage">
+          <GlobalHolidayManagementDialog
+            open={holidaysDialogOpen}
+            onOpenChange={setHolidaysDialogOpen}
+          />
+        </HolidayFeatureGate>
 
         <Dialog open={combinedLeaderboardOpen} onOpenChange={setCombinedLeaderboardOpen}>
           <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
@@ -135,6 +269,19 @@ const CohortsPage = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Fee Collection Setup Modal */}
+        {selectedCohortForFee && (
+          <FeeFeatureGate action="setup_structure">
+            <FeeCollectionSetupModal
+              open={feeCollectionModalOpen}
+              onOpenChange={setFeeCollectionModalOpen}
+              cohortId={selectedCohortForFee.id}
+              cohortStartDate={selectedCohortForFee.start_date}
+              onSetupComplete={handleFeeSetupComplete}
+            />
+          </FeeFeatureGate>
+        )}
       </div>
     </DashboardShell>
   );

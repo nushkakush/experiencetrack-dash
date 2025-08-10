@@ -4,10 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cohortStudentsService } from "@/services/cohortStudents.service";
 import { NewStudentInput } from "@/types/cohort";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddStudentDialogProps {
   cohortId: string;
@@ -17,7 +18,14 @@ interface AddStudentDialogProps {
 export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<NewStudentInput>({ email: "", first_name: "", last_name: "", phone: "" });
+  const { profile } = useAuth();
+  const [form, setForm] = useState<NewStudentInput>({ 
+    email: "", 
+    first_name: "", 
+    last_name: "", 
+    phone: "",
+    send_invite: true // Default to sending invitation
+  });
 
   const handleSubmit = async () => {
     if (!form.email.trim()) {
@@ -33,26 +41,40 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
         return;
       }
 
-      // Send magic link invite using OTP (no secrets required)
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: form.email.trim(),
-        options: {
-          data: {
-            role: "student",
-            first_name: form.first_name,
-            last_name: form.last_name,
-          },
-          shouldCreateUser: true,
-          emailRedirectTo: window.location.origin, // redirect to app root after sign-in
-        },
-      });
-
-      if (otpError) {
-        console.error("OTP invite error:", otpError);
-        toast.error("Student added, but failed to send invite.");
+      // Only send invitation if send_invite is true
+      if (form.send_invite) {
+        try {
+          const invitationResult = await cohortStudentsService.sendCustomInvitation(
+            added.data.id, 
+            profile?.user_id || ''
+          );
+          
+          if (invitationResult.success) {
+            // Send email via Edge Function
+            const emailResult = await cohortStudentsService.sendInvitationEmail(
+              added.data.id,
+              form.email,
+              form.first_name || '',
+              form.last_name || '',
+              'Your Cohort' // TODO: Get cohort name
+            );
+            
+            if (emailResult.success && emailResult.data?.emailSent) {
+              toast.success("Student added and invitation email sent!");
+            } else {
+              toast.success("Student added and invitation prepared!");
+              console.log("Invitation URL:", invitationResult.data?.invitationUrl);
+            }
+          } else {
+            toast.error("Student added, but failed to prepare invitation.");
+          }
+        } catch (inviteError) {
+          console.error("Invitation error:", inviteError);
+          toast.error("Student added, but failed to prepare invitation.");
+        }
       } else {
-        await cohortStudentsService.markInvited(added.data.id);
-        toast.success("Student added and invite sent!");
+        // Don't send invitation, keep status as "pending"
+        toast.success("Student added successfully!");
       }
 
       onAdded?.();
@@ -62,15 +84,31 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!loading) {
+      setOpen(newOpen);
+      if (!newOpen) {
+        // Reset form when dialog closes
+        setForm({ 
+          email: "", 
+          first_name: "", 
+          last_name: "", 
+          phone: "",
+          send_invite: true 
+        });
+      }
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !loading && setOpen(o)}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm">Add student</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add student</DialogTitle>
-          <DialogDescription>They will receive a magic link to sign in.</DialogDescription>
+          <DialogDescription>Add a new student to this cohort. You can choose whether to send them an invitation link.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -108,10 +146,24 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
               />
             </div>
           </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="send-invite"
+              checked={form.send_invite}
+              onCheckedChange={(checked) => 
+                setForm((f) => ({ ...f, send_invite: checked as boolean }))
+              }
+            />
+            <Label htmlFor="send-invite" className="text-sm font-normal">
+              Send invitation email to student
+            </Label>
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>{loading ? "Adding..." : "Add & invite"}</Button>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)} disabled={loading}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? "Adding..." : form.send_invite ? "Add & invite" : "Add student"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -6,6 +6,7 @@ import CohortHeader from "@/components/cohorts/CohortHeader";
 import CohortStudentsTable from "@/components/cohorts/CohortStudentsTable";
 import { useCohortDetails } from "@/hooks/useCohortDetails";
 import { BulkUploadConfig } from "@/components/common/BulkUploadDialog";
+import { CohortStudent } from "@/types/cohort";
 
 export default function CohortDetailsPage() {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -17,22 +18,28 @@ export default function CohortDetailsPage() {
     deletingStudentId,
     loadData,
     handleDeleteStudent,
+    updateStudent,
     validateStudentRow,
     processValidStudents,
     checkDuplicateStudents,
   } = useCohortDetails(cohortId);
 
+  const handleStudentUpdated = (studentId: string, updates: Partial<CohortStudent>) => {
+    // Update the student locally without reloading from server
+    updateStudent(studentId, updates);
+  };
+
   const bulkUploadConfig: BulkUploadConfig<NewStudentInput> = {
     requiredHeaders: ['first_name', 'last_name', 'email'],
-    optionalHeaders: ['phone'],
+    optionalHeaders: ['phone', 'invite'],
     validateRow: validateStudentRow,
     processValidData: processValidStudents,
     checkDuplicates: checkDuplicateStudents,
-    templateData: `first_name,last_name,email,phone
-John,Doe,john.doe@example.com,+1234567890
-Jane,Smith,jane.smith@example.com,+1234567891`,
+    templateData: `first_name,last_name,email,phone,invite
+John,Doe,john.doe@example.com,+1234567890,YES
+Jane,Smith,jane.smith@example.com,+1234567891,NO`,
     dialogTitle: "Bulk Import Students",
-    dialogDescription: "Upload a CSV file to import multiple students at once. Download the template below for the correct format.",
+    dialogDescription: "Upload a CSV file to import multiple students at once. The 'invite' column should contain 'YES' to send invitation emails or 'NO'/'blank' to skip invitations. Download the template below for the correct format.",
     fileType: "CSV",
     fileExtension: ".csv"
   };
@@ -88,6 +95,7 @@ Jane,Smith,jane.smith@example.com,+1234567891`,
         <CohortHeader 
           cohort={cohort}
           onStudentAdded={loadData}
+          onRefresh={loadData}
           bulkUploadConfig={bulkUploadConfig}
         />
 
@@ -95,6 +103,7 @@ Jane,Smith,jane.smith@example.com,+1234567891`,
           students={students}
           onStudentDeleted={loadData}
           loading={loading}
+          onStudentUpdated={handleStudentUpdated}
         />
       </div>
     </DashboardShell>

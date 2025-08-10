@@ -17,6 +17,7 @@ import CohortAttendancePage from "./pages/CohortAttendancePage";
 import CohortAttendanceDashboard from "./pages/dashboards/CohortAttendanceDashboard";
 import PublicLeaderboard from "./pages/PublicLeaderboard";
 import PublicCombinedLeaderboard from "./pages/PublicCombinedLeaderboard";
+import InvitationPage from "./pages/InvitationPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { APP_CONFIG } from "@/config/constants";
@@ -107,6 +108,11 @@ const App = () => (
               <Route 
                 path="/public/combined-leaderboard/:cohortIds" 
                 element={<PublicCombinedLeaderboard />} 
+              />
+              {/* Invitation route (no authentication required) */}
+              <Route 
+                path="/invite/:token" 
+                element={<InvitationPage />} 
               />
               <Route path="*" element={<NotFound />} />
             </Routes>

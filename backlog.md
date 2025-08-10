@@ -2,13 +2,14 @@
 
 ## 🚀 High Priority
 
-- Set up complete student registration system with self-registration form, email verification, and cohort joining
-- Make GitHub repository private and handle Personal Access Token security
-- Create role-specific feature flags system for controlling access to different features
+
 
 ## 📋 Medium Priority
 
-
+- Exempt exemptions from the leaderboard (attendance exemptions should not count against attendance scores)
+- Session wise data should not reset
+- Holidays not getting saved
+- 
 
 ## 🔧 Low Priority
 

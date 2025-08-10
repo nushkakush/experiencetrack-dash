@@ -51,10 +51,11 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
     }
   }, [name]); // eslint-disable-line
 
-  useMemo(() => {
-    const newEnd = addMonths(new Date(startDate), Number(duration) || 1);
-    setEndDate(toISODate(newEnd));
-  }, [startDate, duration]);
+  // Remove auto-calculation of end date to make it editable
+  // useMemo(() => {
+  //   const newEnd = addMonths(new Date(startDate), Number(duration) || 1);
+  //   setEndDate(toISODate(newEnd));
+  // }, [startDate, duration]);
 
   const validateStep1 = async () => {
     if (!name.trim()) {
