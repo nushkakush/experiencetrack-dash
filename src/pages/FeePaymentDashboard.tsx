@@ -14,7 +14,8 @@ import {
   Calendar, 
   Clock,
   Send,
-  Download
+  Download,
+  Mail
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
@@ -152,6 +153,19 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   return (
     <DashboardShell>
       <div className="space-y-6">
+        {/* Back Button */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBackClick}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Cohorts
+          </Button>
+        </div>
+
         {/* Cohort Header */}
         <div className="bg-card border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
@@ -215,10 +229,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="litmus">LITMUS Test</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="communication">Communication</TabsTrigger>
           </TabsList>
@@ -248,6 +259,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
                   students={students}
                   onStudentSelect={handleStudentSelect}
                   selectedStudent={selectedStudent}
+                  feeStructure={feeStructure}
                 />
               </div>
 
@@ -261,31 +273,68 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="overview" className="mt-6">
-            <div className="text-center py-8">
-              <h3 className="text-lg font-semibold mb-2">Overview</h3>
-              <p className="text-muted-foreground">Overview content will be implemented here</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="applications" className="mt-6">
-            <div className="text-center py-8">
-              <h3 className="text-lg font-semibold mb-2">Applications</h3>
-              <p className="text-muted-foreground">Applications content will be implemented here</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="litmus" className="mt-6">
-            <div className="text-center py-8">
-              <h3 className="text-lg font-semibold mb-2">LITMUS Test</h3>
-              <p className="text-muted-foreground">LITMUS Test content will be implemented here</p>
-            </div>
-          </TabsContent>
-
           <TabsContent value="communication" className="mt-6">
-            <div className="text-center py-8">
-              <h3 className="text-lg font-semibold mb-2">Communication</h3>
-              <p className="text-muted-foreground">Communication content will be implemented here</p>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Communication</h2>
+                <Button className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  Send Email
+                </Button>
+              </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Send Manual Email</CardTitle>
+                  <CardDescription>
+                    Compose and send emails to specific students in this cohort
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Select Students</label>
+                      <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                        {students.map((student) => (
+                          <div key={student.student_id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={student.student_id}
+                              className="rounded"
+                            />
+                            <label htmlFor={student.student_id} className="text-sm">
+                              {student.student?.first_name} {student.student?.last_name} ({student.student?.email})
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">Subject</label>
+                      <input
+                        type="text"
+                        placeholder="Enter email subject..."
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">Message</label>
+                      <textarea
+                        placeholder="Enter your email message..."
+                        rows={6}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline">Cancel</Button>
+                      <Button>Send Email</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>

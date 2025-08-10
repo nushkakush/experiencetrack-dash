@@ -11,12 +11,14 @@ interface PaymentsTableProps {
   students: StudentPaymentSummary[];
   onStudentSelect: (student: StudentPaymentSummary) => void;
   selectedStudent?: StudentPaymentSummary;
+  feeStructure?: any;
 }
 
 export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   students,
   onStudentSelect,
-  selectedStudent
+  selectedStudent,
+  feeStructure
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -43,11 +45,39 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   }, [students, searchTerm, statusFilter, planFilter, scholarshipFilter]);
 
   const getPaymentProgress = (student: StudentPaymentSummary) => {
-    if (student.total_amount === 0) return 0;
-    return Math.round((student.paid_amount / student.total_amount) * 100);
+    // If student hasn't selected a payment plan, show --
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
+      return null;
+    }
+
+    // Count paid installments
+    const paidInstallments = student.payments?.filter(p => 
+      p.status === 'paid' || p.status === 'complete'
+    ).length || 0;
+
+    const totalInstallments = student.payments?.length || 0;
+
+    if (totalInstallments === 0) return null;
+
+    const progress = Math.round((paidInstallments / totalInstallments) * 100);
+    return { progress, paidInstallments, totalInstallments };
   };
 
   const getNextDuePayment = (student: StudentPaymentSummary) => {
+    // If student hasn't selected a payment plan, show the first payment date from fee structure
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
+      if (feeStructure && feeStructure.start_date) {
+        return {
+          payment_type: 'admission_fee' as PaymentType,
+          due_date: feeStructure.start_date,
+          amount_payable: feeStructure.admission_fee || 0,
+          isFirstPayment: true
+        };
+      }
+      return null;
+    }
+
+    // Find the next pending payment
     const pendingPayments = student.payments?.filter(p => 
       p.status === 'pending' || p.status === 'overdue' || p.status === 'partially_paid_overdue'
     );
@@ -90,6 +120,10 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   };
 
   const getPlanDisplay = (plan: PaymentPlan) => {
+    if (!plan || plan === 'not_selected') {
+      return '--';
+    }
+    
     switch (plan) {
       case 'one_shot':
         return 'One-Shot';
@@ -148,6 +182,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
             <SelectItem value="one_shot">One-Shot</SelectItem>
             <SelectItem value="sem_wise">Semester-wise</SelectItem>
             <SelectItem value="instalment_wise">Installment-wise</SelectItem>
+            <SelectItem value="not_selected">Not Selected</SelectItem>
           </SelectContent>
         </Select>
 
@@ -179,7 +214,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
           <TableBody>
             {filteredStudents.map((student) => {
               const nextDue = getNextDuePayment(student);
-              const progress = getPaymentProgress(student);
+              const progressData = getPaymentProgress(student);
               
               return (
                 <TableRow 
@@ -214,18 +249,22 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                   </TableCell>
                   
                   <TableCell>
-                    <div className="w-32">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{progress}%</span>
-                        <span>{formatCurrency(student.paid_amount)}</span>
+                    {progressData ? (
+                      <div className="w-32">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>{progressData.progress}%</span>
+                          <span>{progressData.paidInstallments}/{progressData.totalInstallments}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${progressData.progress}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
                   </TableCell>
                   
                   <TableCell>
@@ -233,6 +272,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                       <div>
                         <div className="font-medium">
                           {getPaymentTypeDisplay(nextDue.payment_type)}
+                          {nextDue.isFirstPayment && <span className="text-xs text-muted-foreground ml-1">(First Payment)</span>}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {formatDate(nextDue.due_date)}
@@ -250,12 +290,15 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                     <div className="space-y-1">
                       {student.payments?.map((payment) => (
                         <div key={payment.id} className="flex items-center gap-2">
-                          <PaymentStatusBadge status={payment.status} />
+                          <PaymentStatusBadge status="pending" />
                           <span className="text-xs text-muted-foreground">
                             {getPaymentTypeDisplay(payment.payment_type)}
                           </span>
                         </div>
                       ))}
+                      {(!student.payments || student.payments.length === 0) && (
+                        <PaymentStatusBadge status="pending" />
+                      )}
                     </div>
                   </TableCell>
                   

@@ -81,6 +81,39 @@ export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({
     return Math.round((student.paid_amount / student.total_amount) * 100);
   };
 
+  const getPaymentPlanDisplay = () => {
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
+      return 'Not Selected';
+    }
+    
+    switch (student.payment_plan) {
+      case 'one_shot':
+        return 'One-Shot Payment';
+      case 'sem_wise':
+        return 'Semester-wise Payment';
+      case 'instalment_wise':
+        return 'Installment-wise Payment';
+      default:
+        return student.payment_plan;
+    }
+  };
+
+  const getPaymentProgress = () => {
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
+      return null;
+    }
+
+    const paidInstallments = student.payments?.filter(p => 
+      p.status === 'paid' || p.status === 'complete'
+    ).length || 0;
+
+    const totalInstallments = student.payments?.length || 0;
+
+    if (totalInstallments === 0) return null;
+
+    return { paidInstallments, totalInstallments, percentage: Math.round((paidInstallments / totalInstallments) * 100) };
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -184,6 +217,10 @@ export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({
               <span className="text-sm text-muted-foreground">Paid Amount:</span>
               <span className="font-semibold text-green-600">{formatCurrency(student.paid_amount)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Payment Plan:</span>
+              <span className="font-semibold text-blue-600">{getPaymentPlanDisplay()}</span>
+            </div>
             {student.scholarship_name && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Scholarship:</span>
@@ -207,11 +244,23 @@ export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({
 
           {/* Progress Bar */}
           <div className="mt-4">
-            <div className="flex justify-between text-sm mb-2">
-              <span>{formatCurrency(student.paid_amount)} / {formatCurrency(student.total_amount)}</span>
-              <span>{getProgressPercentage()}%</span>
-            </div>
-            <Progress value={getProgressPercentage()} className="h-2" />
+            {getPaymentProgress() ? (
+              <>
+                <div className="flex justify-between text-sm mb-2">
+                  <span>{formatCurrency(student.paid_amount)} / {formatCurrency(student.total_amount)}</span>
+                  <span>{getPaymentProgress()?.percentage}%</span>
+                </div>
+                <Progress value={getPaymentProgress()?.percentage || 0} className="h-2" />
+                <div className="text-xs text-muted-foreground mt-1">
+                  {getPaymentProgress()?.paidInstallments} of {getPaymentProgress()?.totalInstallments} installments paid
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">Payment plan not selected</p>
+                <p className="text-xs">Student needs to choose a payment plan</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -245,58 +294,65 @@ export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({
         {/* Payment Schedule */}
         <div>
           <h4 className="font-semibold mb-3">Payment Schedule</h4>
-          <div className="space-y-3">
-            {student.payments?.map((payment) => (
-              <div key={payment.id} className="border rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm">
-                    {payment.payment_type === 'admission_fee' ? 'Admission Fee' :
-                     payment.payment_type === 'instalments' ? `Instalment ${payment.installment_number}` :
-                     payment.payment_type === 'sem_plan' ? `Semester ${payment.semester_number}` :
-                     'One-Shot Payment'}
-                  </span>
-                  <PaymentStatusBadge status={payment.status} />
-                </div>
-                
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Amount Payable:</span>
-                    <span>{formatCurrency(payment.amount_payable)}</span>
+          {student.payments && student.payments.length > 0 ? (
+            <div className="space-y-3">
+              {student.payments?.map((payment) => (
+                <div key={payment.id} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm">
+                      {payment.payment_type === 'admission_fee' ? 'Admission Fee' :
+                       payment.payment_type === 'instalments' ? `Instalment ${payment.installment_number}` :
+                       payment.payment_type === 'sem_plan' ? `Semester ${payment.semester_number}` :
+                       'One-Shot Payment'}
+                    </span>
+                    <PaymentStatusBadge status={payment.status} />
                   </div>
-                  {payment.scholarship_amount > 0 && (
+                  
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     <div className="flex justify-between">
-                      <span>Scholarship Waiver:</span>
-                      <span className="text-blue-600">-{formatCurrency(payment.scholarship_amount)}</span>
+                      <span>Amount Payable:</span>
+                      <span>{formatCurrency(payment.amount_payable)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>Due:</span>
-                    <span>{formatDate(payment.due_date)}</span>
+                    {payment.scholarship_amount > 0 && (
+                      <div className="flex justify-between">
+                        <span>Scholarship Waiver:</span>
+                        <span className="text-blue-600">-{formatCurrency(payment.scholarship_amount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Due:</span>
+                      <span>{formatDate(payment.due_date)}</span>
+                    </div>
+                    {payment.payment_date && (
+                      <div className="flex justify-between">
+                        <span>Paid:</span>
+                        <span>{formatDate(payment.payment_date)}</span>
+                      </div>
+                    )}
                   </div>
-                  {payment.payment_date && (
-                    <div className="flex justify-between">
-                      <span>Paid:</span>
-                      <span>{formatDate(payment.payment_date)}</span>
-                    </div>
-                  )}
-                </div>
 
-                <div className="flex gap-2 mt-2">
-                  {payment.status === 'paid' ? (
-                    <Button variant="outline" size="sm" className="text-xs">
-                      <Download className="h-3 w-3 mr-1" />
-                      Download Receipt
-                    </Button>
-                  ) : (
-                    <Button variant="outline" size="sm" className="text-xs">
-                      <Eye className="h-3 w-3 mr-1" />
-                      Upload Receipt
-                    </Button>
-                  )}
+                  <div className="flex gap-2 mt-2">
+                    {payment.status === 'paid' ? (
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <Download className="h-3 w-3 mr-1" />
+                        Download Receipt
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <Eye className="h-3 w-3 mr-1" />
+                        Upload Receipt
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <p className="text-sm">No payment schedule available</p>
+              <p className="text-xs">Student needs to select a payment plan first</p>
+            </div>
+          )}
         </div>
 
         <Separator />

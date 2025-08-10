@@ -45,7 +45,7 @@ export interface NewScholarshipInput {
   amount_percentage: number;
 }
 
-export type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise';
+export type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise' | 'not_selected';
 
 export interface FeeCalculation {
   baseAmount: number;
