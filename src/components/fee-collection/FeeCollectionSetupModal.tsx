@@ -47,6 +47,7 @@ export default function FeeCollectionSetupModal({
 
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isFeeStructureComplete, setIsFeeStructureComplete] = useState(false);
 
   // Load existing data if available
   useEffect(() => {
@@ -70,6 +71,14 @@ export default function FeeCollectionSetupModal({
           instalments_per_semester: feeStructure.instalments_per_semester,
           one_shot_discount_percentage: feeStructure.one_shot_discount_percentage
         });
+        
+        // If fee structure is complete, go directly to Step 3 (Review)
+        if (feeStructure.is_setup_complete) {
+          setIsFeeStructureComplete(true);
+          setCurrentStep(3);
+        } else {
+          setIsFeeStructureComplete(false);
+        }
       }
       
       setScholarships(existingScholarships);
@@ -289,7 +298,9 @@ export default function FeeCollectionSetupModal({
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Configure Fee Structure - Step {currentStep} of 3</DialogTitle>
+            <DialogTitle>
+              {isFeeStructureComplete ? 'Review Fee Structure' : `Configure Fee Structure - Step ${currentStep} of 3`}
+            </DialogTitle>
             <Button
               variant="ghost"
               size="sm"
@@ -336,6 +347,10 @@ export default function FeeCollectionSetupModal({
               <Button onClick={handleNext}>
                 Next
                 <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : isFeeStructureComplete ? (
+              <Button onClick={() => onOpenChange(false)}>
+                Close
               </Button>
             ) : (
               <Button onClick={handleSave} disabled={saving}>

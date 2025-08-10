@@ -70,9 +70,10 @@ const CohortsPage = () => {
       const isFeeStructureComplete = feeStructure && feeStructure.is_setup_complete === true;
       
       if (isFeeStructureComplete) {
-        // Fee structure is set up and complete - navigate to dashboard
-        console.log('Fee structure is complete, navigating to dashboard');
-        navigate(`/cohorts/${cohort.id}/fee-collection`);
+        // Fee structure is set up and complete - open modal to show review
+        console.log('Fee structure is complete, opening modal for review');
+        setSelectedCohortForFee(cohort);
+        setFeeCollectionModalOpen(true);
       } else {
         // Fee structure is not set up or not complete
         console.log('Fee structure not complete, checking permissions for setup');
