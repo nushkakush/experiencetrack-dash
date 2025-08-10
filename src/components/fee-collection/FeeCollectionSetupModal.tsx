@@ -349,9 +349,20 @@ export default function FeeCollectionSetupModal({
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             ) : isFeeStructureComplete ? (
-              <Button onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsFeeStructureComplete(false);
+                    setCurrentStep(1);
+                  }}
+                >
+                  Edit Configuration
+                </Button>
+                <Button onClick={() => onOpenChange(false)}>
+                  Close
+                </Button>
+              </>
             ) : (
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Configuration'}

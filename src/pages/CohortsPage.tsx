@@ -52,60 +52,8 @@ const CohortsPage = () => {
   };
 
   const handleFeeCollectionClick = async (cohort: CohortWithCounts) => {
-    try {
-      // Check if fee structure is already set up
-      const feeStructure = await FeeStructureService.getFeeStructure(cohort.id);
-      
-      console.log('Fee structure check:', {
-        cohortId: cohort.id,
-        cohortName: cohort.name,
-        feeStructureExists: !!feeStructure,
-        feeStructure,
-        isSetupComplete: feeStructure?.is_setup_complete,
-        canSetupFeeStructure,
-        userRole: profile?.role
-      });
-      
-      // Check if fee structure exists AND is marked as complete
-      const isFeeStructureComplete = feeStructure && feeStructure.is_setup_complete === true;
-      
-      if (isFeeStructureComplete) {
-        // Fee structure is set up and complete - open modal to show review
-        console.log('Fee structure is complete, opening modal for review');
-        setSelectedCohortForFee(cohort);
-        setFeeCollectionModalOpen(true);
-      } else {
-        // Fee structure is not set up or not complete
-        console.log('Fee structure not complete, checking permissions for setup');
-        
-        if (canSetupFeeStructure) {
-          // Super admin can set up fee structure
-          console.log('User can setup fee structure, opening modal');
-          setSelectedCohortForFee(cohort);
-          setFeeCollectionModalOpen(true);
-        } else {
-          // Non-admin users get error message
-          console.log('User cannot setup fee structure, showing error');
-          toast.error("Fee Structure Not Set Up", {
-            description: "Please contact your administrator to set up the fee structure for this cohort.",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error checking fee structure:', error);
-      
-      // On error, default to setup modal for super admin
-      if (canSetupFeeStructure) {
-        console.log('Error occurred, but user can setup - opening modal');
-        setSelectedCohortForFee(cohort);
-        setFeeCollectionModalOpen(true);
-      } else {
-        console.log('Error occurred, user cannot setup - showing error');
-        toast.error("Fee Structure Not Set Up", {
-          description: "Please contact your administrator to set up the fee structure for this cohort.",
-        });
-      }
-    }
+    // Navigate to the fee payment dashboard
+    navigate(`/cohorts/${cohort.id}/fee-payment`);
   };
 
   const handleFeeSetupComplete = () => {

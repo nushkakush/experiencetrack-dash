@@ -16,6 +16,7 @@ import CohortsPage from "./pages/CohortsPage";
 import CohortDetailsPage from "./pages/CohortDetailsPage";
 import CohortAttendancePage from "./pages/CohortAttendancePage";
 import CohortAttendanceDashboard from "./pages/dashboards/CohortAttendanceDashboard";
+import FeePaymentDashboard from "./pages/FeePaymentDashboard";
 import PublicLeaderboard from "./pages/PublicLeaderboard";
 import PublicCombinedLeaderboard from "./pages/PublicCombinedLeaderboard";
 import InvitationPage from "./pages/InvitationPage";
@@ -88,6 +89,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <CohortAttendancePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cohorts/:cohortId/fee-payment" 
+                  element={
+                    <ProtectedRoute>
+                      <FeePaymentDashboard />
                     </ProtectedRoute>
                   } 
                 />
