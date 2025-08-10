@@ -3,13 +3,30 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, ArrowLeft, DollarSign, Users, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Settings, 
+  ArrowLeft, 
+  DollarSign, 
+  Users, 
+  Calendar, 
+  Clock,
+  Send,
+  Download
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
 import DashboardShell from "@/components/DashboardShell";
 import { FeeCollectionSetupModal } from "@/components/fee-collection";
 import { FeeStructureService } from "@/services/feeStructure.service";
+import { studentPaymentsService } from "@/services/studentPayments.service";
+import { cohortsService } from "@/services/cohorts.service";
 import { FeeFeatureGate } from "@/components/common";
+import { PaymentsTable } from "@/components/fee-collection/PaymentsTable";
+import { StudentPaymentDetails } from "@/components/fee-collection/StudentPaymentDetails";
+import { StudentPaymentSummary, CohortWithCounts } from "@/types/fee";
 import { toast } from "sonner";
 
 interface FeePaymentDashboardProps {}
@@ -22,46 +39,77 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   const [feeStructure, setFeeStructure] = useState<any>(null);
   const [scholarships, setScholarships] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [cohortData, setCohortData] = useState<any>(null);
+  const [cohortData, setCohortData] = useState<CohortWithCounts | null>(null);
+  const [students, setStudents] = useState<StudentPaymentSummary[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentPaymentSummary | null>(null);
+  const [activeTab, setActiveTab] = useState('payments');
   const { canSetupFeeStructure } = useFeaturePermissions();
 
   useEffect(() => {
     if (cohortId) {
-      loadFeeData();
+      loadData();
     }
   }, [cohortId]);
 
-  const loadFeeData = async () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
+      // Load cohort data
+      const cohortResult = await cohortsService.getByIdWithCounts(cohortId!);
+      if (cohortResult.success && cohortResult.data) {
+        setCohortData(cohortResult.data);
+      }
+
+      // Load fee structure
       const { feeStructure: feeData, scholarships: scholarshipData } = 
         await FeeStructureService.getCompleteFeeStructure(cohortId!);
       
       setFeeStructure(feeData);
       setScholarships(scholarshipData);
-      
-      // Load cohort data (you might need to create a service for this)
-      // For now, we'll use placeholder data
-      setCohortData({
-        id: cohortId,
-        name: "Cohort Name", // This should come from cohort service
-        start_date: "2025-01-01", // This should come from cohort service
-        description: "Cohort Description" // This should come from cohort service
-      });
+
+      // Load student payment summaries
+      const studentsResult = await studentPaymentsService.getStudentPaymentSummary(cohortId!);
+      if (studentsResult.success && studentsResult.data) {
+        setStudents(studentsResult.data);
+      }
     } catch (error) {
-      console.error('Error loading fee data:', error);
-      toast.error('Failed to load fee structure');
+      console.error('Error loading data:', error);
+      toast.error('Failed to load dashboard data');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSettingsComplete = () => {
-    loadFeeData(); // Refresh data after settings are updated
+    loadData(); // Refresh data after settings are updated
   };
 
   const handleBackClick = () => {
     navigate('/cohorts');
+  };
+
+  const handleStudentSelect = (student: StudentPaymentSummary) => {
+    setSelectedStudent(student);
+  };
+
+  const handleCloseStudentDetails = () => {
+    setSelectedStudent(null);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const getSeatsProgress = () => {
+    if (!cohortData) return 0;
+    // For now, using students_count as filled seats
+    // You might want to add a total_seats field to the cohort
+    const totalSeats = 50; // This should come from cohort data
+    return Math.round((cohortData.students_count / totalSeats) * 100);
   };
 
   if (isLoading) {
@@ -90,161 +138,157 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     );
   }
 
+  if (!cohortData) {
+    return (
+      <DashboardShell>
+        <div className="text-center py-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Cohort Not Found</h2>
+          <p className="text-gray-600">The cohort you're looking for doesn't exist or you don't have permission to view it.</p>
+        </div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackClick}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Cohorts
-            </Button>
+      <div className="space-y-6">
+        {/* Cohort Header */}
+        <div className="bg-card border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Fee Payment Dashboard</h1>
-              <p className="text-muted-foreground">
-                Manage fee structure and payment plans for {cohortData?.name || 'this cohort'}
-              </p>
+              <h1 className="text-3xl font-bold">{cohortData.name}</h1>
+              <div className="flex items-center gap-4 mt-2">
+                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                  Open
+                </Badge>
+                <span className="text-muted-foreground">Cohort ID: {cohortData.cohort_id}</span>
+                <span className="text-muted-foreground">{cohortData.description}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                Schedule
+              </Button>
+              <FeeFeatureGate action="setup_structure">
+                <Button
+                  onClick={() => setSettingsModalOpen(true)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Button>
+              </FeeFeatureGate>
             </div>
           </div>
-          <FeeFeatureGate action="setup_structure">
-            <Button
-              onClick={() => setSettingsModalOpen(true)}
-              className="gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </Button>
-          </FeeFeatureGate>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Batch Details</p>
+              <p className="font-medium">Morning Batch (M-W-F)</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Duration</p>
+              <p className="font-medium">
+                {formatDate(cohortData.start_date)} - {formatDate(cohortData.end_date)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Seats</p>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Filled {cohortData.students_count}/50</span>
+                <Progress value={getSeatsProgress()} className="w-20 h-2" />
+              </div>
+            </div>
+          </div>
+
+          {/* Date Range Selector */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {formatDate(cohortData.start_date)} - {formatDate(cohortData.end_date)}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Fee Structure Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Fee Structure Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {feeStructure ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      ₹{feeStructure.total_program_fee?.toLocaleString('en-IN') || '0'}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Total Program Fee</div>
-                  </div>
-                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      ₹{feeStructure.admission_fee?.toLocaleString('en-IN') || '0'}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Admission Fee</div>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      {scholarships.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Scholarships</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${feeStructure.is_setup_complete ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                    <span className="font-medium">
-                      {feeStructure.is_setup_complete ? 'Fee Structure Complete' : 'Fee Structure Incomplete'}
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSettingsModalOpen(true)}
-                  >
-                    {feeStructure.is_setup_complete ? 'Edit Settings' : 'Complete Setup'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Fee Structure Found</h3>
-                <p className="text-muted-foreground mb-4">
-                  Set up the fee structure for this cohort to start managing payments.
-                </p>
-                <FeeFeatureGate action="setup_structure">
-                  <Button onClick={() => setSettingsModalOpen(true)}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Set Up Fee Structure
-                  </Button>
-                </FeeFeatureGate>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Navigation Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="applications">Applications</TabsTrigger>
+            <TabsTrigger value="litmus">LITMUS Test</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="communication">Communication</TabsTrigger>
+          </TabsList>
 
-        {/* Payment Plans Preview */}
-        {feeStructure && feeStructure.is_setup_complete && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Plans</CardTitle>
-              <CardDescription>
-                Preview of available payment plans for students
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-2 border-blue-200 dark:border-blue-800">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">One-Shot Payment</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      ₹{(feeStructure.total_program_fee * (1 + 0.18) * (1 - feeStructure.one_shot_discount_percentage / 100)).toLocaleString('en-IN')}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {feeStructure.one_shot_discount_percentage}% discount applied
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-2 border-green-200 dark:border-green-800">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Semester-wise</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {feeStructure.number_of_semesters} Semesters
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {feeStructure.instalments_per_semester} installments per semester
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-2 border-purple-200 dark:border-purple-800">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Installment-wise</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      {feeStructure.number_of_semesters * feeStructure.instalments_per_semester} Installments
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Flexible payment schedule
-                    </div>
-                  </CardContent>
-                </Card>
+          <TabsContent value="payments" className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold">Payments</h2>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm">
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Reminders
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Selected
+                  </Button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex gap-6">
+              {/* Payments Table */}
+              <div className="flex-1">
+                <PaymentsTable
+                  students={students}
+                  onStudentSelect={handleStudentSelect}
+                  selectedStudent={selectedStudent}
+                />
+              </div>
+
+              {/* Student Details Sidebar */}
+              {selectedStudent && (
+                <StudentPaymentDetails
+                  student={selectedStudent}
+                  onClose={handleCloseStudentDetails}
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overview" className="mt-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">Overview</h3>
+              <p className="text-muted-foreground">Overview content will be implemented here</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="applications" className="mt-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">Applications</h3>
+              <p className="text-muted-foreground">Applications content will be implemented here</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="litmus" className="mt-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">LITMUS Test</h3>
+              <p className="text-muted-foreground">LITMUS Test content will be implemented here</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="communication" className="mt-6">
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">Communication</h3>
+              <p className="text-muted-foreground">Communication content will be implemented here</p>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Settings Modal */}
         {cohortData && (

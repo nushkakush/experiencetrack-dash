@@ -107,3 +107,92 @@ export interface StudentScholarshipWithDetails extends StudentScholarship {
   scholarship: Scholarship;
   student: CohortStudent;
 }
+
+// New types for payment tracking
+export type PaymentStatus = 
+  | 'pending' 
+  | 'pending_10_plus_days' 
+  | 'verification_pending' 
+  | 'paid' 
+  | 'overdue' 
+  | 'not_setup' 
+  | 'awaiting_bank_approval_e_nach' 
+  | 'awaiting_bank_approval_physical_mandate' 
+  | 'setup_request_failed_e_nach' 
+  | 'setup_request_failed_physical_mandate' 
+  | 'on_time' 
+  | 'failed_5_days_left' 
+  | 'complete' 
+  | 'dropped' 
+  | 'upcoming' 
+  | 'partially_paid_verification_pending' 
+  | 'partially_paid_days_left' 
+  | 'partially_paid_overdue';
+
+export type PaymentType = 'admission_fee' | 'instalments' | 'one_shot' | 'sem_plan';
+
+export interface StudentPayment {
+  id: string;
+  student_id: string;
+  cohort_id: string;
+  payment_type: PaymentType;
+  payment_plan: PaymentPlan;
+  installment_number?: number;
+  semester_number?: number;
+  base_amount: number;
+  scholarship_amount: number;
+  discount_amount: number;
+  gst_amount: number;
+  amount_payable: number;
+  amount_paid: number;
+  due_date: string;
+  payment_date?: string;
+  status: PaymentStatus;
+  receipt_url?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  student?: CohortStudent;
+  scholarship?: StudentScholarship;
+}
+
+export interface StudentPaymentSummary {
+  student_id: string;
+  total_amount: number;
+  paid_amount: number;
+  pending_amount: number;
+  overdue_amount: number;
+  scholarship_name?: string;
+  scholarship_percentage?: number;
+  token_fee_paid: boolean;
+  payment_plan: PaymentPlan;
+  // Joined fields
+  student?: CohortStudent;
+  payments?: StudentPayment[];
+}
+
+export interface PaymentTransaction {
+  id: string;
+  payment_id: string;
+  transaction_type: 'payment' | 'refund' | 'adjustment';
+  amount: number;
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
+  reference_number?: string;
+  status: 'success' | 'failed' | 'pending';
+  notes?: string;
+  created_at: string;
+  created_by?: string;
+}
+
+export interface CommunicationHistory {
+  id: string;
+  student_id: string;
+  type: 'reminder' | 'receipt' | 'notification';
+  channel: 'email' | 'whatsapp' | 'sms';
+  subject: string;
+  message: string;
+  sent_at: string;
+  status: 'sent' | 'delivered' | 'failed';
+  created_by?: string;
+}
