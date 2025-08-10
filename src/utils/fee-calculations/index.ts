@@ -104,17 +104,14 @@ export const generateFeeStructureReview = (
   const admissionFeeBase = extractBaseAmountFromTotal(feeStructure.admission_fee);
   const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
   
-  // Calculate remaining base fee: total program fee minus admission fee base (not admission fee total)
-  const remainingBaseFee = feeStructure.total_program_fee - admissionFeeBase;
+  // For overall summary: show the total program fee as the base amount (GST exclusive)
+  const totalBaseAmount = feeStructure.total_program_fee;
   
-  // For overall summary: show the remaining base fee as the base amount (GST exclusive)
-  const totalBaseAmount = remainingBaseFee;
-  
-  // Calculate GST on the remaining base fee (GST exclusive amount)
+  // Calculate GST on the total program fee (GST exclusive amount)
   const totalBaseGST = calculateGST(totalBaseAmount);
   
-  const totalProgramFee = totalBaseAmount; // GST exclusive (remaining base fee)
-  const totalGST = totalBaseGST; // GST on remaining base fee
+  const totalProgramFee = totalBaseAmount; // GST exclusive (total program fee)
+  const totalGST = totalBaseGST; // GST on total program fee
   
   // Calculate total discount (one-shot discount)
   const totalDiscount = paymentPlan === 'one_shot' 
