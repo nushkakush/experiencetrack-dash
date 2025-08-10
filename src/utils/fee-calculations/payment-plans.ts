@@ -141,9 +141,22 @@ export const calculateSemesterPayment = (
     Math.round(semesterFee * (percentage / 100) * 100) / 100
   );
   
-  // Distribute scholarship backwards from last installments
-  const semesterScholarship = scholarshipAmount / numberOfSemesters;
-  const scholarshipDistribution = distributeScholarshipBackwards(installmentAmounts, semesterScholarship);
+  // Scholarship should only be applied to the LAST semester
+  const isLastSemester = semesterNumber === numberOfSemesters;
+  const semesterScholarship = isLastSemester ? scholarshipAmount : 0;
+  const scholarshipDistribution = isLastSemester 
+    ? distributeScholarshipBackwards(installmentAmounts, semesterScholarship)
+    : new Array(installmentAmounts.length).fill(0);
+
+  console.log('calculateSemesterPayment - Scholarship distribution:', {
+    semesterNumber,
+    numberOfSemesters,
+    isLastSemester,
+    scholarshipAmount,
+    semesterScholarship,
+    installmentAmounts,
+    scholarshipDistribution
+  });
   
   // Distribute one-shot discount proportionally (if applicable)
   const semesterDiscount = oneShotDiscount / numberOfSemesters;

@@ -23,6 +23,13 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
   // Generate fee structure review based on current selections
   const feeReview = React.useMemo(() => {
     try {
+      console.log('Step3Review - Generating fee review with:', {
+        selectedScholarshipId,
+        scholarships: scholarships.map(s => ({ id: s.id, name: s.name, amount_percentage: s.amount_percentage, start_percentage: s.start_percentage, end_percentage: s.end_percentage })),
+        testScore: 85,
+        selectedScholarship: selectedScholarshipId === 'no_scholarship' ? undefined : scholarships.find(s => s.id === selectedScholarshipId)
+      });
+
       return generateFeeStructureReview(
         feeStructure,
         scholarships,

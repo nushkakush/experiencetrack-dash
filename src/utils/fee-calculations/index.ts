@@ -39,9 +39,19 @@ export const generateFeeStructureReview = (
     ? scholarships.find(s => s.id === selectedScholarshipId)
     : null;
   
+  // Calculate scholarship amount directly from selected scholarship, not based on test score
   const scholarshipAmount = selectedScholarship 
-    ? calculateScholarshipAmount(feeStructure.total_program_fee, testScore, [selectedScholarship])
+    ? Math.round(feeStructure.total_program_fee * (selectedScholarship.amount_percentage / 100) * 100) / 100
     : 0;
+
+  console.log('generateFeeStructureReview - Scholarship calculation:', {
+    selectedScholarshipId,
+    selectedScholarship,
+    testScore,
+    totalProgramFee: feeStructure.total_program_fee,
+    scholarshipAmount,
+    numberOfSemesters: feeStructure.number_of_semesters
+  });
   
   // Calculate admission fee
   const admissionFee = calculateAdmissionFee(feeStructure.admission_fee);
@@ -58,7 +68,7 @@ export const generateFeeStructureReview = (
         feeStructure.instalments_per_semester,
         cohortStartDate,
         scholarshipAmount,
-        paymentPlan === 'one_shot' ? feeStructure.one_shot_discount_percentage : 0
+        0 // No one-shot discount for semester payments
       );
       
       // Calculate semester totals
