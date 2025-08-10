@@ -20,21 +20,45 @@ class CohortsService extends BaseService<Cohort> {
 
   async listAllWithCounts(): Promise<ApiResponse<CohortWithCounts[]>> {
     return this["executeQuery"](async () => {
-      const { data, error } = await supabase
+      // First get all cohorts
+      const { data: cohorts, error: cohortsError } = await supabase
         .from("cohorts")
-        .select(`
-          *,
-          students:cohort_students(count)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (cohortsError) throw cohortsError;
+
+      console.log('Raw cohorts data:', cohorts);
+
+      // Then get student counts for all cohorts
+      const { data: studentCounts, error: countsError } = await supabase
+        .from("cohort_students")
+        .select("cohort_id")
+        .in("cohort_id", cohorts?.map(c => c.id) || []);
+
+      if (countsError) throw countsError;
+
+      console.log('Student counts data:', studentCounts);
+
+      // Count students per cohort
+      const countMap = new Map<string, number>();
+      studentCounts?.forEach(student => {
+        countMap.set(student.cohort_id, (countMap.get(student.cohort_id) || 0) + 1);
+      });
+
+      console.log('Count map:', countMap);
 
       // Transform the data to include students_count
-      const cohortsWithCounts: CohortWithCounts[] = (data || []).map((cohort: any) => ({
-        ...cohort,
-        students_count: cohort.students?.[0]?.count || 0
-      }));
+      const cohortsWithCounts: CohortWithCounts[] = (cohorts || []).map((cohort) => {
+        const students_count = countMap.get(cohort.id) || 0;
+        console.log(`Cohort ${cohort.name}: students_count = ${students_count}`);
+        return {
+          ...cohort,
+          students_count
+        };
+      });
+
+      console.log('Final transformed cohorts:', cohortsWithCounts);
 
       return cohortsWithCounts;
     });

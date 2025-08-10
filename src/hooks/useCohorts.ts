@@ -7,10 +7,14 @@ export function useCohorts() {
   const query = useQuery({
     queryKey: ["cohorts", "withCounts"],
     queryFn: async () => {
+      console.log('useCohorts: Fetching cohorts...');
       const response = await cohortsService.listAllWithCounts();
+      console.log('useCohorts: Service response:', response);
       if (!response.success) {
+        console.error('useCohorts: Service failed:', response.error);
         throw new Error(response.error || "Failed to fetch cohorts");
       }
+      console.log('useCohorts: Returning data:', response.data);
       return response.data || [];
     },
     staleTime: 60_000, // 1 minute
@@ -22,6 +26,13 @@ export function useCohorts() {
       }
       return failureCount < 3;
     },
+  });
+
+  console.log('useCohorts: Query state:', {
+    data: query.data,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error
   });
 
   return {
