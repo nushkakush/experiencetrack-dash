@@ -49,7 +49,7 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="mb-1">{cohort.name}</CardTitle>
-            <div className="text-xs font-normal text-muted-foreground mb-2">ID: {cohort.cohort_id}</div>
+            <div className="text-xs font-normal text-blue-600 dark:text-blue-400 mb-2">ID: {cohort.cohort_id}</div>
             <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
           </div>
           <CohortFeatureGate action="edit">
