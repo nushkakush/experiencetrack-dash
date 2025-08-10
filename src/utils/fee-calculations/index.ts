@@ -105,6 +105,9 @@ export const generateFeeStructureReview = (
   const admissionFeeBase = extractBaseAmountFromTotal(feeStructure.admission_fee);
   const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
   
+  // Base amount should always be program fee + admission fee base (GST exclusive)
+  const totalBaseAmount = programFeeOnly + admissionFeeBase;
+  
   // Calculate GST on program fee after scholarship (GST exclusive amount)
   const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
   const programFeeGST = calculateGST(programFeeAfterScholarship);
@@ -114,10 +117,10 @@ export const generateFeeStructureReview = (
   
   // Calculate total discount (one-shot discount)
   const totalDiscount = paymentPlan === 'one_shot' 
-    ? calculateOneShotDiscount(programFeeAfterScholarship + admissionFeeBase, feeStructure.one_shot_discount_percentage)
+    ? calculateOneShotDiscount(totalBaseAmount, feeStructure.one_shot_discount_percentage)
     : 0;
   
-  const totalAmountPayable = programFeeAfterScholarship + admissionFeeBase + totalGST - totalDiscount;
+  const totalAmountPayable = totalBaseAmount + totalGST - totalDiscount;
   
   return {
     admissionFee: {
