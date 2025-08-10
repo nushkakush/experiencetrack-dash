@@ -46,11 +46,23 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
       )}
     >
       <CardHeader className="flex-1">
-        <CardTitle className="flex items-center justify-between">
-          <span>{cohort.name}</span>
-          <span className="text-xs font-normal text-muted-foreground">ID: {cohort.cohort_id}</span>
-        </CardTitle>
-        <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="mb-1">{cohort.name}</CardTitle>
+            <div className="text-xs font-normal text-muted-foreground mb-2">ID: {cohort.cohort_id}</div>
+            <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
+          </div>
+          <CohortFeatureGate action="edit">
+            <Button
+              onClick={handleEditClick}
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1 h-8 w-8 p-0 ml-2"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </CohortFeatureGate>
+        </div>
       </CardHeader>
       <CardContent className="mt-auto space-y-4">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -87,18 +99,6 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
               Fee Collection
             </Button>
           </FeeFeatureGate>
-          
-          <CohortFeatureGate action="edit">
-            <Button
-              onClick={handleEditClick}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
-          </CohortFeatureGate>
         </div>
       </CardContent>
     </Card>
