@@ -1,39 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { SelectedHoliday } from '@/types/holiday';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
+import type { SelectedHoliday, Holiday } from '@/types/holiday';
 
 interface HolidayFormProps {
   selectedDates: Date[];
+  publishedHolidays: Holiday[];
   onAddHoliday: (holiday: SelectedHoliday) => void;
   onClearDates: () => void;
+  onEditHoliday?: (holiday: Holiday) => void;
 }
 
-export const HolidayForm = ({ selectedDates, onAddHoliday, onClearDates }: HolidayFormProps) => {
-  const [name, setName] = useState('');
+export const HolidayForm = ({ 
+  selectedDates, 
+  publishedHolidays, 
+  onAddHoliday, 
+  onClearDates,
+  onEditHoliday
+}: HolidayFormProps) => {
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [existingHoliday, setExistingHoliday] = useState<Holiday | null>(null);
+
+  // Check if any selected date has an existing published holiday
+  useEffect(() => {
+    if (selectedDates.length === 1) {
+      const selectedDate = format(selectedDates[0], 'yyyy-MM-dd');
+      const existing = publishedHolidays.find(holiday => holiday.date === selectedDate);
+      setExistingHoliday(existing || null);
+      
+      if (existing) {
+        setTitle(existing.title);
+        setDescription(existing.description || '');
+      } else {
+        setTitle('');
+        setDescription('');
+      }
+    } else if (selectedDates.length > 1) {
+      // Check if any of the selected dates have existing holidays
+      const existingDates = selectedDates.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return publishedHolidays.find(holiday => holiday.date === dateStr);
+      }).filter(Boolean);
+      
+      if (existingDates.length > 0) {
+        setExistingHoliday(existingDates[0] as Holiday);
+        setTitle('');
+        setDescription('');
+      } else {
+        setExistingHoliday(null);
+        setTitle('');
+        setDescription('');
+      }
+    } else {
+      setExistingHoliday(null);
+      setTitle('');
+      setDescription('');
+    }
+  }, [selectedDates, publishedHolidays]);
 
   const handleAddToList = () => {
-    if (!name.trim()) {
+    if (!title.trim()) {
       return;
     }
 
     selectedDates.forEach(date => {
       const holiday: SelectedHoliday = {
         id: `${date.getTime()}-${Math.random()}`,
-        name: name.trim(),
+        title: title.trim(),
         description: description.trim(),
         date: format(date, 'yyyy-MM-dd'),
-        isRecurring: false,
       };
       onAddHoliday(holiday);
     });
 
     // Reset form
-    setName('');
+    setTitle('');
     setDescription('');
     onClearDates();
   };
@@ -54,13 +102,38 @@ export const HolidayForm = ({ selectedDates, onAddHoliday, onClearDates }: Holid
           </p>
         </div>
 
+        {existingHoliday && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              {selectedDates.length === 1 ? (
+                <>
+                  This date already has a published holiday: <strong>{existingHoliday.title}</strong>
+                  <Badge variant="secondary" className="ml-2">Published</Badge>
+                </>
+              ) : (
+                <>
+                  One or more selected dates have existing holidays. You cannot add new holidays to dates that already have published holidays.
+                  <Badge variant="secondary" className="ml-2">Published</Badge>
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-2">
           <label className="text-sm font-medium">Holiday Name *</label>
           <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., Independence Day"
+            disabled={existingHoliday !== null}
           />
+          {existingHoliday && (
+            <p className="text-xs text-muted-foreground">
+              This field is disabled because a holiday already exists for this date
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -70,13 +143,32 @@ export const HolidayForm = ({ selectedDates, onAddHoliday, onClearDates }: Holid
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Additional details about this holiday..."
             rows={3}
+            disabled={existingHoliday !== null}
           />
+          {existingHoliday && (
+            <p className="text-xs text-muted-foreground">
+              This field is disabled because a holiday already exists for this date
+            </p>
+          )}
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleAddToList} disabled={!name.trim()}>
-            Add to List
-          </Button>
+          {!existingHoliday && (
+            <Button 
+              onClick={handleAddToList} 
+              disabled={!title.trim()}
+            >
+              Add to List
+            </Button>
+          )}
+          {existingHoliday && onEditHoliday && (
+            <Button 
+              variant="outline"
+              onClick={() => onEditHoliday(existingHoliday)}
+            >
+              Edit Holiday
+            </Button>
+          )}
           <Button variant="outline" onClick={onClearDates}>
             Clear Selection
           </Button>

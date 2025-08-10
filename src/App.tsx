@@ -3,6 +3,7 @@ import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -44,81 +45,78 @@ const queryClient = new QueryClient({
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/auth" replace />} />
-              <Route path="/auth" element={<Login />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <DashboardRouter />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/cohorts" 
-                element={
-                  <ProtectedRoute>
-                    <CohortsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/cohorts/:cohortId" 
-                element={
-                  <ProtectedRoute>
-                    <CohortDetailsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/cohorts/:cohortId/attendance" 
-                element={
-                  <ProtectedRoute>
-                    <CohortAttendancePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/program-manager/cohorts/:cohortId/attendance" 
-                element={
-                  <ProtectedRoute>
-                    <CohortAttendanceDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-              {/* Public routes (no authentication required) */}
-              <Route 
-                path="/public/leaderboard/:cohortId/:epicId" 
-                element={<PublicLeaderboard />} 
-              />
-              <Route 
-                path="/public/combined-leaderboard/:cohortIds" 
-                element={<PublicCombinedLeaderboard />} 
-              />
-              {/* Invitation route (no authentication required) */}
-              <Route 
-                path="/invite/:token" 
-                element={<InvitationPage />} 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Navigate to="/auth" replace />} />
+                <Route path="/auth" element={<Login />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <DashboardRouter />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cohorts" 
+                  element={
+                    <ProtectedRoute>
+                      <CohortsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cohorts/:cohortId" 
+                  element={
+                    <ProtectedRoute>
+                      <CohortDetailsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cohorts/:cohortId/attendance" 
+                  element={
+                    <ProtectedRoute>
+                      <CohortAttendancePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/program-manager/cohorts/:cohortId/attendance" 
+                  element={
+                    <ProtectedRoute>
+                      <CohortAttendanceDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                {/* Public routes (no authentication required) */}
+                <Route path="/invite/:token" element={<InvitationPage />} />
+                <Route path="/leaderboard/:cohortId" element={<PublicLeaderboard />} />
+                <Route path="/leaderboard/:cohortId/combined" element={<PublicCombinedLeaderboard />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

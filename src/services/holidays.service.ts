@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Holiday, CreateHolidayRequest, UpdateHolidayRequest, HolidayType, HolidayStatus } from '@/types/holiday';
+import type { Holiday, CreateHolidayRequest, UpdateHolidayRequest, HolidayType, HolidayStatus, SelectedHoliday } from '@/types/holiday';
 
 export class HolidaysService {
   /**
@@ -85,6 +85,37 @@ export class HolidaysService {
     }
 
     return data;
+  }
+
+  /**
+   * Create a global holiday
+   */
+  static async createGlobalHoliday(holiday: SelectedHoliday & { isPublished?: boolean }): Promise<Holiday> {
+    const createRequest: CreateHolidayRequest = {
+      date: holiday.date,
+      title: holiday.title,
+      description: holiday.description,
+      holiday_type: 'global',
+      status: holiday.isPublished ? 'published' : 'draft'
+    };
+
+    return this.createHoliday(createRequest);
+  }
+
+  /**
+   * Create a cohort-specific holiday
+   */
+  static async createCohortHoliday(cohortId: string, holiday: SelectedHoliday & { isPublished?: boolean }): Promise<Holiday> {
+    const createRequest: CreateHolidayRequest = {
+      date: holiday.date,
+      title: holiday.title,
+      description: holiday.description,
+      holiday_type: 'cohort_specific',
+      cohort_id: cohortId,
+      status: holiday.isPublished ? 'published' : 'draft'
+    };
+
+    return this.createHoliday(createRequest);
   }
 
   /**

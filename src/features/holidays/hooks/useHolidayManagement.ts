@@ -10,6 +10,7 @@ export interface HolidayManagementState {
   loading: boolean;
   saving: boolean;
   publishing: boolean;
+  editing: boolean;
 }
 
 export interface HolidayManagementActions {
@@ -20,6 +21,7 @@ export interface HolidayManagementActions {
   saveDrafts: () => Promise<void>;
   publishHolidays: () => Promise<void>;
   deletePublishedHoliday: (id: string) => Promise<void>;
+  editPublishedHoliday: (id: string, updates: Partial<Holiday>) => Promise<void>;
   loadHolidays: () => Promise<void>;
   clearDrafts: () => void;
 }
@@ -35,6 +37,7 @@ export const useHolidayManagement = (
     loading: false,
     saving: false,
     publishing: false,
+    editing: false,
   });
 
   const updateState = useCallback((updates: Partial<HolidayManagementState>) => {
@@ -148,6 +151,20 @@ export const useHolidayManagement = (
     }
   }, [loadHolidays, updateState]);
 
+  const editPublishedHoliday = useCallback(async (id: string, updates: Partial<Holiday>) => {
+    updateState({ editing: true });
+    try {
+      await HolidaysService.updateHoliday({ id, ...updates });
+      toast.success('Holiday updated successfully');
+      await loadHolidays();
+    } catch (error) {
+      console.error('Error updating holiday:', error);
+      toast.error('Failed to update holiday');
+    } finally {
+      updateState({ editing: false });
+    }
+  }, [loadHolidays, updateState]);
+
   const clearDrafts = useCallback(() => {
     setState(prev => ({ ...prev, draftHolidays: [], selectedDates: [] }));
   }, []);
@@ -170,6 +187,7 @@ export const useHolidayManagement = (
     saveDrafts,
     publishHolidays,
     deletePublishedHoliday,
+    editPublishedHoliday,
     loadHolidays,
     clearDrafts,
   };

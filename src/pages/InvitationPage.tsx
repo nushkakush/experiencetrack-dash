@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { toast } from "sonner";
 import { cohortStudentsService } from "@/services/cohortStudents.service";
 import { CohortStudent } from "@/types/cohort";
@@ -206,21 +207,33 @@ export default function InvitationPage() {
 
       // Accept the invitation using Supabase client (authenticated)
       try {
-        const { error: acceptError } = await supabase
+        console.log('Attempting to accept invitation with token:', token);
+        console.log('User ID to link:', userId);
+        
+        // Direct Supabase client call
+        const { data: updateData, error: acceptError } = await supabase
           .from('cohort_students')
           .update({
             invite_status: "accepted",
             accepted_at: new Date().toISOString(),
             user_id: userId
           })
-          .eq('invitation_token', token);
+          .eq('invitation_token', token)
+          .select();
 
         if (acceptError) {
           console.error("Failed to accept invitation:", acceptError);
+          console.error("Error details:", {
+            code: acceptError.code,
+            message: acceptError.message,
+            details: acceptError.details,
+            hint: acceptError.hint
+          });
           toast.error("Failed to join cohort. Please try again.");
           return;
         }
 
+        console.log('Successfully accepted invitation:', updateData);
         toast.success(`Welcome to ExperienceTrack! You have successfully joined ${cohortName || "the cohort"}.`);
         navigate("/dashboard");
       } catch (error) {
@@ -237,7 +250,12 @@ export default function InvitationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+        {/* Theme Toggle in top-right corner */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        
         <Card className="w-full max-w-md">
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -255,7 +273,12 @@ export default function InvitationPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+        {/* Theme Toggle in top-right corner */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
@@ -287,11 +310,16 @@ export default function InvitationPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      {/* Theme Toggle in top-right corner */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <UserPlus className="h-6 w-6 text-blue-600" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+            <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <CardTitle>Welcome to ExperienceTrack!</CardTitle>
           <CardDescription>
@@ -299,8 +327,8 @@ export default function InvitationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg bg-blue-50 p-4">
-            <div className="text-sm text-blue-800">
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4">
+            <div className="text-sm text-blue-800 dark:text-blue-200">
               <p><strong>Name:</strong> {student.first_name} {student.last_name}</p>
               <p><strong>Email:</strong> {student.email}</p>
               {cohortName && <p><strong>Cohort:</strong> {cohortName}</p>}

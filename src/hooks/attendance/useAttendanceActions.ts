@@ -18,7 +18,15 @@ export const useAttendanceActions = ({
   selectedSession,
   selectedDate,
   onAttendanceMarked,
-}: UseAttendanceActionsProps) => {
+  onSessionsRefetch,
+}: {
+  cohortId: string;
+  selectedEpic: string;
+  selectedSession: number;
+  selectedDate: Date;
+  onAttendanceMarked?: () => Promise<void>;
+  onSessionsRefetch?: () => Promise<void>;
+}) => {
   const [showReasonDialog, setShowReasonDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<CohortStudent | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<'absent' | 'late'>('absent');
@@ -94,7 +102,14 @@ export const useAttendanceActions = ({
       );
 
       toast.success('Session cancelled successfully');
-      onAttendanceMarked?.();
+      
+      // Manually trigger a refresh of sessions data to ensure UI updates
+      if (onSessionsRefetch) {
+        await onSessionsRefetch();
+      }
+      if (onAttendanceMarked) {
+        await onAttendanceMarked();
+      }
     } catch (error) {
       console.error('Error cancelling session:', error);
       toast.error('Failed to cancel session');
@@ -117,7 +132,14 @@ export const useAttendanceActions = ({
       );
 
       toast.success('Session reactivated successfully');
-      onAttendanceMarked?.();
+      
+      // Manually trigger a refresh of sessions data to ensure UI updates
+      if (onSessionsRefetch) {
+        await onSessionsRefetch();
+      }
+      if (onAttendanceMarked) {
+        await onAttendanceMarked();
+      }
     } catch (error) {
       console.error('Error reactivating session:', error);
       toast.error('Failed to reactivate session');

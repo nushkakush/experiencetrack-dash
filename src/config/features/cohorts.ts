@@ -36,6 +36,13 @@ export const COHORT_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'cohorts',
     requiresAuthentication: true,
   },
+  'cohorts.edit_students': {
+    key: 'cohorts.edit_students',
+    name: 'Edit Student Data',
+    description: 'Edit student information (name, email, phone)',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
   'cohorts.bulk_upload': {
     key: 'cohorts.bulk_upload',
     name: 'Bulk Upload Students',

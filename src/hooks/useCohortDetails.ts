@@ -238,28 +238,77 @@ export function useCohortDetails(cohortId: string | undefined) {
     };
   }, [loadData]);
 
+  // Auto-refresh every 30 seconds as fallback for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing cohort data...');
+      loadData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loadData]);
+
   // Set up real-time subscription for cohort_students changes
   useEffect(() => {
     if (!cohortId) return;
+
+    console.log('Setting up real-time subscription for cohort:', cohortId);
 
     const subscription = supabase
       .channel(`cohort_students_${cohortId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'cohort_students',
           filter: `cohort_id=eq.${cohortId}`
         },
-        () => {
+        (payload) => {
+          console.log('Real-time UPDATE received for cohort_students:', payload);
+          // Check if the change is related to invitation status
+          if (payload.new && payload.old && 
+              (payload.new.invite_status !== payload.old.invite_status ||
+               payload.new.accepted_at !== payload.old.accepted_at ||
+               payload.new.user_id !== payload.old.user_id)) {
+            console.log('Invitation status change detected, refreshing data...');
+          }
           // Refresh data when any change occurs
           loadData();
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'cohort_students',
+          filter: `cohort_id=eq.${cohortId}`
+        },
+        (payload) => {
+          console.log('Real-time INSERT received for cohort_students:', payload);
+          loadData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'cohort_students',
+          filter: `cohort_id=eq.${cohortId}`
+        },
+        (payload) => {
+          console.log('Real-time DELETE received for cohort_students:', payload);
+          loadData();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscription for cohort:', cohortId);
       subscription.unsubscribe();
     };
   }, [cohortId, loadData]);

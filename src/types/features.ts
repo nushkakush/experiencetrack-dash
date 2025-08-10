@@ -8,6 +8,7 @@ export type FeatureKey =
   | 'cohorts.edit'
   | 'cohorts.delete'
   | 'cohorts.manage_students'
+  | 'cohorts.edit_students'
   | 'cohorts.bulk_upload'
   
   // Attendance Management

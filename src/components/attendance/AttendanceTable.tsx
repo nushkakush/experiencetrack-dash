@@ -50,6 +50,14 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
     return `${baseClasses} hover:bg-gray-50`;
   };
 
+  const getRowClasses = (isCancelled: boolean) => {
+    const baseClasses = "transition-colors";
+    if (isCancelled) {
+      return `${baseClasses} opacity-50`;
+    }
+    return `${baseClasses} hover:bg-muted/50`;
+  };
+
   if (students.length === 0) {
     return (
       <div className="text-center py-8">
@@ -73,7 +81,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           {students.map(student => {
             const attendanceStatus = getAttendanceStatus(student.id);
             return (
-              <TableRow key={`${student.id}-${attendanceStatus}`}>
+              <TableRow key={`${student.id}-${attendanceStatus}`} className={getRowClasses(isSessionCancelled)}>
                 <TableCell className="font-medium">
                   {student.first_name} {student.last_name}
                 </TableCell>

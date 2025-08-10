@@ -41,6 +41,34 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
     loadEpicAttendanceData();
   }, [cohortId, epicId]);
 
+  // Set up real-time subscription for epic attendance changes
+  useEffect(() => {
+    if (!cohortId || !epicId) return;
+
+    // Set up real-time subscription for attendance records
+    const channel = supabase
+      .channel('epic-attendance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance_records',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          // Reload epic attendance data when attendance records change
+          loadEpicAttendanceData();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount or when dependencies change
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [cohortId, epicId]);
+
   return {
     epicAttendanceRecords,
     loading,

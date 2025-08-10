@@ -58,6 +58,7 @@ const CohortAttendancePage = () => {
     selectedSession,
     selectedDate,
     onAttendanceMarked: handleAttendanceMarked,
+    onSessionsRefetch: attendanceData.refetchSessions,
   });
 
   // Event handlers

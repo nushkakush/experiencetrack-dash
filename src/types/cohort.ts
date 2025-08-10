@@ -68,4 +68,5 @@ export interface NewStudentInput {
   phone?: string;
   avatar_url?: string;
   send_invite?: boolean;
+  invite?: string; // For bulk upload - 'YES' or 'NO'
 }

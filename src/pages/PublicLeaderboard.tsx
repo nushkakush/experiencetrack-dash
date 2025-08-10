@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Trophy, Medal, Crown, Users, Calendar, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Trophy, RefreshCw, Calendar, Users } from 'lucide-react';
 import { AttendanceLeaderboard } from '@/components/attendance';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import type { CohortStudent, AttendanceRecord, CohortEpic, Cohort } from '@/types/attendance';
 
 const PublicLeaderboard = () => {
@@ -12,7 +15,7 @@ const PublicLeaderboard = () => {
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [currentEpic, setCurrentEpic] = useState<CohortEpic | null>(null);
   const [students, setStudents] = useState<CohortStudent[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -64,7 +67,7 @@ const PublicLeaderboard = () => {
       setCohort(cohortData);
       setCurrentEpic(epicData);
       setStudents(studentsData || []);
-      setAttendanceRecords(recordsData || []);
+      setAttendanceData(recordsData || []);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Error loading public leaderboard data:', err);
@@ -117,13 +120,20 @@ const PublicLeaderboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-6">
-            <Skeleton className="h-8 w-[300px]" />
-            <Skeleton className="h-6 w-[200px]" />
-            <div className="bg-white rounded-lg border p-6">
-              <Skeleton className="h-64 w-full" />
+      <div className="min-h-screen bg-background py-8 relative">
+        {/* Theme Toggle in top-right corner */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <Skeleton className="h-8 w-64 mb-4" />
+            <Skeleton className="h-4 w-96 mb-8" />
+            <div className="grid gap-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
           </div>
         </div>
@@ -131,18 +141,21 @@ const PublicLeaderboard = () => {
     );
   }
 
-  if (error || !cohort || !currentEpic) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-gray-900">Leaderboard Not Found</h2>
-              <p className="text-gray-600">
-                {error || 'The leaderboard you\'re looking for doesn\'t exist or is no longer available.'}
-              </p>
-            </div>
+      <div className="min-h-screen bg-background py-8 relative">
+        {/* Theme Toggle in top-right corner */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        
+        <div className="container mx-auto px-4">
+          <div className="max-w-md mx-auto text-center">
+            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground">Leaderboard Not Found</h2>
+            <p className="text-muted-foreground">
+              {error}
+            </p>
           </div>
         </div>
       </div>
@@ -150,52 +163,43 @@ const PublicLeaderboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Trophy className="h-8 w-8 text-yellow-500" />
-              <h1 className="text-3xl font-bold text-gray-900">
-                {cohort.name} Leaderboard
-              </h1>
-            </div>
-            <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span>{currentEpic.name}</span>
-              </div>
+    <div className="min-h-screen bg-background py-8 relative">
+      {/* Theme Toggle in top-right corner */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-foreground">
+              {cohort?.name} Leaderboard
+            </h1>
+            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2">
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
                 <span>{students.length} Students</span>
               </div>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                Live Updates
-              </Badge>
+              {currentEpic && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>{currentEpic.name}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Last Updated Info */}
-          <div className="text-center text-xs text-gray-500">
-            Last updated: {lastUpdated.toLocaleString()}
-          </div>
+          <AttendanceLeaderboard 
+            students={students}
+            attendanceRecords={attendanceData}
+            currentEpic={currentEpic}
+            layout="grid"
+            hideFields={['email', 'late', 'absent']}
+          />
 
-          {/* Leaderboard */}
-          <div className="bg-white rounded-lg border shadow-sm p-6">
-            <AttendanceLeaderboard
-              students={students}
-              attendanceRecords={attendanceRecords}
-              currentEpic={currentEpic}
-              layout="grid"
-              hideFields={['email', 'late', 'absent']}
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-500">
-            <p>This leaderboard updates automatically in real-time</p>
+          <div className="text-center text-xs text-muted-foreground mt-8">
+            <p>This leaderboard updates in real-time</p>
+            <p>Last updated: {new Date().toLocaleString()}</p>
           </div>
         </div>
       </div>

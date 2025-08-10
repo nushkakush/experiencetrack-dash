@@ -6,6 +6,7 @@ import { CohortStudent } from "@/types/cohort";
 import { cohortStudentsService } from "@/services/cohortStudents.service";
 import { toast } from "sonner";
 import AvatarUpload from "./AvatarUpload";
+import EditStudentDialog from "./EditStudentDialog";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -19,6 +20,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Edit2 } from "lucide-react";
 
 interface CohortStudentsTableProps {
   students: CohortStudent[];
@@ -40,6 +43,7 @@ export default function CohortStudentsTable({
   
   // Check if user can manage students (super admin only)
   const canManageStudents = hasPermission('cohorts.manage_students');
+  const canEditStudents = hasPermission('cohorts.edit_students');
 
   const handleAvatarUpdated = (studentId: string, avatarUrl: string | null) => {
     if (onStudentUpdated) {
@@ -189,24 +193,32 @@ export default function CohortStudentsTable({
                   <td className="p-4">{student.email}</td>
                   <td className="p-4">{student.phone || "-"}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      student.invite_status === 'accepted' 
-                        ? 'bg-green-100 text-green-800' 
-                        : student.invite_status === 'sent'
-                        ? 'bg-blue-100 text-blue-800'
-                        : student.invite_status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <Badge 
+                      variant={student.invite_status === 'accepted' ? 'default' : 'secondary'}
+                      className={
+                        student.invite_status === 'accepted' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : student.invite_status === 'sent'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                      }
+                    >
                       {student.invite_status}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="p-4 text-muted-foreground">
                     {student.invited_at ? new Date(student.invited_at).toLocaleString() : "-"}
                   </td>
                   {canManageStudents && (
                     <td className="p-4">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        {canEditStudents && (
+                          <EditStudentDialog
+                            student={student}
+                            onUpdated={onStudentUpdated ? () => onStudentUpdated(student.id, {}) : onStudentDeleted}
+                          />
+                        )}
+                        
                         {/* Send/Resend Invitation Button */}
                         <Button
                           variant="ghost"
