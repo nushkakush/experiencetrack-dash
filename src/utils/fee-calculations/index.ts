@@ -108,9 +108,8 @@ export const generateFeeStructureReview = (
   // Base amount should be just the program fee (excluding admission fee)
   const baseAmount = programFeeOnly;
   
-  // Calculate GST on program fee after scholarship (GST exclusive amount)
-  const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
-  const programFeeGST = calculateGST(programFeeAfterScholarship);
+  // Calculate GST on the full base amount (GST exclusive amount)
+  const programFeeGST = calculateGST(baseAmount);
   
   const totalProgramFee = programFeeOnly; // GST exclusive
   const totalGST = programFeeGST; // Only program fee GST, admission fee GST is separate

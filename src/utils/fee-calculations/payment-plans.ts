@@ -95,8 +95,8 @@ export const calculateOneShotPayment = (
   // Apply scholarship to program fee only (GST exclusive amount)
   const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
   
-  // Calculate GST on the program fee after scholarship (GST exclusive amount)
-  const programFeeGST = calculateGST(programFeeAfterScholarship);
+  // Calculate GST on the full base amount (GST exclusive amount)
+  const programFeeGST = calculateGST(baseAmount);
   
   // Total GST amount (program fee GST only, admission fee GST is separate)
   const totalGSTAmount = programFeeGST;
