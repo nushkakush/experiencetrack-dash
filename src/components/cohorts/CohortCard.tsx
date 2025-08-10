@@ -42,7 +42,7 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer transition-transform hover:scale-[1.01] hover:shadow-md bg-card border flex flex-col h-full",
+        "cursor-pointer transition-transform hover:scale-[1.01] hover:shadow-md bg-card border flex flex-col h-full min-h-[280px]",
       )}
     >
       <CardHeader className="flex-1">
