@@ -20,13 +20,23 @@ class CohortsService extends BaseService<Cohort> {
 
   async listAllWithCounts(): Promise<ApiResponse<CohortWithCounts[]>> {
     return this["executeQuery"](async () => {
-      return await supabase
+      const { data, error } = await supabase
         .from("cohorts")
         .select(`
           *,
           students:cohort_students(count)
         `)
         .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Transform the data to include students_count
+      const cohortsWithCounts: CohortWithCounts[] = (data || []).map((cohort: any) => ({
+        ...cohort,
+        students_count: cohort.students?.[0]?.count || 0
+      }));
+
+      return cohortsWithCounts;
     });
   }
 
