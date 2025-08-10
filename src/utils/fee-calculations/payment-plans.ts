@@ -86,20 +86,20 @@ export const calculateOneShotPayment = (
   const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
   const admissionFeeGST = extractGSTFromTotal(admissionFee);
   
-  // Program fee (excluding admission fee) - this is GST exclusive
-  const programFeeOnly = totalProgramFee - admissionFee;
+  // Calculate remaining base fee: total program fee minus admission fee base (not admission fee total)
+  const remainingBaseFee = totalProgramFee - admissionFeeBase;
   
-  // Base amount should be just the program fee (excluding admission fee)
-  const baseAmount = programFeeOnly;
+  // Base amount is the remaining base fee (GST exclusive)
+  const baseAmount = remainingBaseFee;
   
-  // Apply scholarship to program fee only (GST exclusive amount)
-  const programFeeAfterScholarship = programFeeOnly - scholarshipAmount;
+  // Apply scholarship to base fee (GST exclusive amount)
+  const baseFeeAfterScholarship = remainingBaseFee - scholarshipAmount;
   
-  // Calculate GST on the full base amount (GST exclusive amount)
-  const programFeeGST = calculateGST(baseAmount);
+  // Calculate GST on the base amount (GST exclusive amount)
+  const baseFeeGST = calculateGST(baseAmount);
   
-  // Total GST amount (program fee GST only, admission fee GST is separate)
-  const totalGSTAmount = programFeeGST;
+  // Total GST amount (base fee GST only, admission fee GST is separate)
+  const totalGSTAmount = baseFeeGST;
   const totalWithGST = baseAmount + totalGSTAmount;
   
   // Calculate one-shot discount on base amount (GST exclusive)
@@ -131,9 +131,12 @@ export const calculateSemesterPayment = (
   scholarshipAmount: number = 0,
   oneShotDiscount: number = 0
 ): PaymentBreakdown[] => {
-  // Program fee (excluding admission fee) - this is GST exclusive
-  const programFeeOnly = totalProgramFee - admissionFee;
-  const semesterFee = programFeeOnly / numberOfSemesters;
+  // Admission fee is GST inclusive, so extract base and GST
+  const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
+  
+  // Calculate remaining base fee: total program fee minus admission fee base (not admission fee total)
+  const remainingBaseFee = totalProgramFee - admissionFeeBase;
+  const semesterFee = remainingBaseFee / numberOfSemesters;
   
   // Get installment distribution (40-40-20 rule for 3 installments)
   const installmentPercentages = getInstalmentDistribution(instalmentsPerSemester);
