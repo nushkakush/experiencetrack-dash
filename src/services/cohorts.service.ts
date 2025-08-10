@@ -64,11 +64,18 @@ class CohortsService extends BaseService<Cohort> {
 
       // Count students per cohort
       const countMap = new Map<string, number>();
-      studentCounts?.forEach(student => {
-        countMap.set(student.cohort_id, (countMap.get(student.cohort_id) || 0) + 1);
+      console.log('listAllWithCounts: Raw studentCounts array:', studentCounts);
+      
+      studentCounts?.forEach((student, index) => {
+        console.log(`listAllWithCounts: Processing student ${index}:`, student);
+        const currentCount = countMap.get(student.cohort_id) || 0;
+        const newCount = currentCount + 1;
+        countMap.set(student.cohort_id, newCount);
+        console.log(`listAllWithCounts: Updated count for ${student.cohort_id}: ${currentCount} -> ${newCount}`);
       });
 
       console.log('listAllWithCounts: Count map:', countMap);
+      console.log('listAllWithCounts: Count map entries:', Array.from(countMap.entries()));
 
       // Transform the data to include students_count
       const cohortsWithCounts: CohortWithCounts[] = cohorts.map((cohort) => {
