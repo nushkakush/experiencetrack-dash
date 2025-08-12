@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Logger } from '@/lib/logging/Logger';
 
 export interface AvatarUploadResult {
   success: boolean;
@@ -48,7 +49,7 @@ export class AvatarService {
         });
 
       if (error) {
-        console.error('Avatar upload error:', error);
+        Logger.getInstance().error('Avatar upload error', { error, studentId, fileName });
         return {
           success: false,
           error: 'Failed to upload avatar. Please try again.',
@@ -65,7 +66,7 @@ export class AvatarService {
         url: urlData.publicUrl,
       };
     } catch (error) {
-      console.error('Avatar upload error:', error);
+      Logger.getInstance().error('Avatar upload error', { error, studentId, fileName });
       return {
         success: false,
         error: 'An unexpected error occurred. Please try again.',
@@ -84,7 +85,7 @@ export class AvatarService {
         .remove([fileName]);
 
       if (error) {
-        console.error('Avatar deletion error:', error);
+        Logger.getInstance().error('Avatar deletion error', { error, fileName });
         return {
           success: false,
           error: 'Failed to delete avatar. Please try again.',
@@ -95,7 +96,7 @@ export class AvatarService {
         success: true,
       };
     } catch (error) {
-      console.error('Avatar deletion error:', error);
+      Logger.getInstance().error('Avatar deletion error', { error, fileName });
       return {
         success: false,
         error: 'An unexpected error occurred. Please try again.',

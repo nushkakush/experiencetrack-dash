@@ -1,0 +1,56 @@
+import { studentPaymentsService } from '@/services/studentPayments.service';
+import { CohortStudent } from '@/types/cohort';
+import { logger } from '@/lib/logging/Logger';
+
+interface UsePaymentPlanManagementProps {
+  studentData: CohortStudent;
+  selectedPaymentPlan: string;
+  setSelectedPaymentPlan: (plan: string) => void;
+  reloadStudentPayments: () => Promise<void>;
+}
+
+export const usePaymentPlanManagement = ({
+  studentData,
+  selectedPaymentPlan,
+  setSelectedPaymentPlan,
+  reloadStudentPayments
+}: UsePaymentPlanManagementProps) => {
+  
+  const handlePaymentPlanSelection = async (plan: string) => {
+    if (!studentData?.cohort_id) return;
+
+    try {
+      logger.info('Updating payment plan:', { studentId: studentData.id, plan });
+      
+      const result = await studentPaymentsService.updateStudentPaymentPlan(
+        studentData.id,
+        studentData.cohort_id,
+        plan as any
+      );
+
+      if (result.success) {
+        setSelectedPaymentPlan(plan);
+        logger.info('Payment plan updated successfully');
+        
+        // Reload student payments
+        await reloadStudentPayments();
+      } else {
+        logger.error('Failed to update payment plan:', result);
+      }
+    } catch (error) {
+      logger.error('Error updating payment plan:', error);
+    }
+  };
+
+  const getPaymentMethods = (): string[] => {
+    if (selectedPaymentPlan === 'one_shot') {
+      return ['cash', 'bank_transfer', 'cheque', 'razorpay'];
+    }
+    return ['cash', 'bank_transfer', 'cheque'];
+  };
+
+  return {
+    handlePaymentPlanSelection,
+    getPaymentMethods
+  };
+};

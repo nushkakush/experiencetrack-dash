@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Logger } from "@/lib/logging/Logger";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,13 +64,13 @@ export default function AddStudentDialog({ cohortId, onAdded }: AddStudentDialog
               toast.success("Student added and invitation email sent!");
             } else {
               toast.success("Student added and invitation prepared!");
-              console.log("Invitation URL:", invitationResult.data?.invitationUrl);
+              Logger.getInstance().info("Invitation URL generated", { url: invitationResult.data?.invitationUrl });
             }
           } else {
             toast.error("Student added, but failed to prepare invitation.");
           }
         } catch (inviteError) {
-          console.error("Invitation error:", inviteError);
+          Logger.getInstance().error("Invitation error", { error: inviteError });
           toast.error("Student added, but failed to prepare invitation.");
         }
       } else {

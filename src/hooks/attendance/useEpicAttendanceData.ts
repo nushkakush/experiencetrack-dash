@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, connectionManager } from '@/integrations/supabase/client';
 import type { AttendanceRecord } from '@/types/attendance';
 
 export const useEpicAttendanceData = (cohortId: string | undefined, epicId: string | undefined) => {
@@ -45,16 +45,17 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
   useEffect(() => {
     if (!cohortId || !epicId) return;
 
-    // Set up real-time subscription for attendance records
-    const channel = supabase
-      .channel('epic-attendance-changes')
+    const channelName = `epic-attendance-${cohortId}-${epicId}`;
+
+    // Set up real-time subscription for attendance records with unique channel name
+    const channel = connectionManager.createChannel(channelName)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'attendance_records',
-          filter: `cohort_id=eq.${cohortId}`,
+          filter: `cohort_id=eq.${cohortId} and epic_id=eq.${epicId}`,
         },
         (payload) => {
           // Reload epic attendance data when attendance records change
@@ -65,7 +66,7 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
 
     // Cleanup subscription on unmount or when dependencies change
     return () => {
-      supabase.removeChannel(channel);
+      connectionManager.removeChannel(channelName);
     };
   }, [cohortId, epicId]);
 

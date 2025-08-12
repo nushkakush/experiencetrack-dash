@@ -17,7 +17,7 @@ class StudentScholarshipsService extends BaseService<StudentScholarship> {
         .from('student_scholarships')
         .select(`
           *,
-          scholarship:scholarships(*),
+          scholarship:cohort_scholarships(*),
           student:cohort_students(*)
         `)
         .eq('student.cohort_id', cohortId);
@@ -36,7 +36,7 @@ class StudentScholarshipsService extends BaseService<StudentScholarship> {
         .from('student_scholarships')
         .select(`
           *,
-          scholarship:scholarships(*),
+          scholarship:cohort_scholarships(*),
           student:cohort_students(*)
         `)
         .eq('student_id', studentId)

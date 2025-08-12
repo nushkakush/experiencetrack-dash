@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Logger } from '@/lib/logging/Logger';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Trophy, Medal, Crown, Users, Calendar, Clock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, connectionManager } from '@/integrations/supabase/client';
 import { AttendanceLeaderboard } from '@/components/attendance';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CohortStudent, AttendanceRecord, CohortEpic, Cohort } from '@/types/attendance';
@@ -70,7 +71,7 @@ const PublicLeaderboard = () => {
       setAttendanceData(recordsData || []);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error('Error loading public leaderboard data:', err);
+      Logger.getInstance().error('Error loading public leaderboard data', { error: err });
       setError('Failed to load leaderboard data');
     } finally {
       setLoading(false);
@@ -84,9 +85,10 @@ const PublicLeaderboard = () => {
     // Load initial data
     loadData();
 
-    // Set up real-time subscription for attendance records
-    const channel = supabase
-      .channel('public-leaderboard-changes')
+    const channelName = `public-leaderboard-${cohortId}-${epicId}`;
+
+    // Set up real-time subscription for attendance records with unique channel name
+    const channel = connectionManager.createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -96,7 +98,7 @@ const PublicLeaderboard = () => {
           filter: `cohort_id=eq.${cohortId}`,
         },
         (payload) => {
-          console.log('Real-time update received:', payload);
+          Logger.getInstance().debug('Real-time update received', { payload });
           // Reload data when attendance records change
           loadData();
         }
@@ -105,7 +107,7 @@ const PublicLeaderboard = () => {
 
     // Cleanup subscription on unmount
     return () => {
-      supabase.removeChannel(channel);
+      connectionManager.removeChannel(channelName);
     };
   }, [cohortId, epicId]);
 

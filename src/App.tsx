@@ -10,6 +10,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
+import ResetPassword from "./pages/auth/ResetPassword";
 import ProfilePage from "./pages/ProfilePage";
 import DashboardRouter from "./pages/DashboardRouter";
 import CohortsPage from "./pages/CohortsPage";
@@ -23,25 +24,9 @@ import InvitationPage from "./pages/InvitationPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { APP_CONFIG } from "@/config/constants";
+import './App.css';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: APP_CONFIG.CACHE.DEFAULT_STALE_TIME,
-      gcTime: APP_CONFIG.CACHE.DEFAULT_CACHE_TIME,
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors
-        if (error && 'status' in error && typeof (error as any).status === 'number') {
-          return (error as any).status >= 500 && failureCount < 3;
-        }
-        return failureCount < 3;
-      },
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
+import { queryClient } from '@/lib/query/queryClient';
 
 const App = () => (
   <ErrorBoundary>
@@ -56,12 +41,27 @@ const App = () => (
           <AuthProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true
+              }}
+              basename="/"
+            >
               <Routes>
                 <Route path="/" element={<Navigate to="/auth" replace />} />
                 <Route path="/auth" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route 
                   path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <DashboardRouter />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/dashboard/fee-payment" 
                   element={
                     <ProtectedRoute>
                       <DashboardRouter />

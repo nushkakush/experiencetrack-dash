@@ -6,6 +6,11 @@ import {
   CohortTable,
   ProfileTable,
   HolidayTable,
+  FeeStructureTable,
+  CohortScholarshipTable,
+  StudentPaymentTable,
+  PaymentTransactionTable,
+  CommunicationHistoryTable,
 } from './tables';
 import { AttendanceSummaryView } from './views';
 import {
@@ -44,6 +49,11 @@ export type DatabaseTables = {
   cohorts: CohortTable
   profiles: ProfileTable
   holidays: HolidayTable
+  fee_structures: FeeStructureTable
+  cohort_scholarships: CohortScholarshipTable
+  student_payments: StudentPaymentTable
+  payment_transactions: PaymentTransactionTable
+  communication_history: CommunicationHistoryTable
 }
 
 export type DatabaseViews = {

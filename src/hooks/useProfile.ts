@@ -10,6 +10,7 @@ import { UserProfile } from '@/types/auth';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { SUCCESS_MESSAGES } from '@/config/constants';
+import { Logger } from '@/lib/logging/Logger';
 
 const QUERY_KEYS = {
   profile: (userId: string) => ['profile', userId] as const,
@@ -55,7 +56,7 @@ export function useProfile() {
       toast.success(SUCCESS_MESSAGES.PROFILE_UPDATED);
     },
     onError: (error) => {
-      console.error('Profile update error:', error);
+      Logger.getInstance().error('Profile update error', { error, userId: user?.id });
       toast.error(error instanceof Error ? error.message : 'Failed to update profile');
     },
   });

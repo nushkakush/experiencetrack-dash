@@ -107,7 +107,7 @@ class Logger {
     // e.g., Sentry, LogRocket, DataDog, etc.
     if (process.env.NODE_ENV === 'production') {
       // Implementation would go here
-      console.log('Would send to external service:', entry);
+      Logger.getInstance().debug('Would send to external service', { entry });
     }
   }
 

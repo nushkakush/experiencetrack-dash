@@ -79,6 +79,7 @@ export interface FeeStructureReview {
     admissionFee: number;
     totalGST: number;
     totalDiscount: number;
+    totalScholarship: number;
     totalAmountPayable: number;
   };
 }

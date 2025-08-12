@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/auth';
+import { Logger } from '@/lib/logging/Logger';
 
 interface AuthContextType {
   user: User | null;
@@ -31,13 +32,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .maybeSingle(); // Use maybeSingle instead of single to handle missing profiles
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        Logger.getInstance().error('Error fetching profile', { error, userId });
         setProfile(null);
       } else {
         setProfile(data);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      Logger.getInstance().error('Error fetching profile', { error, userId });
       setProfile(null);
     } finally {
       setProfileLoading(false);
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(null);
       setProfile(null);
     } catch (error) {
-      console.error('Error signing out:', error);
+      Logger.getInstance().error('Error signing out', { error, userId: user?.id });
     }
   };
 

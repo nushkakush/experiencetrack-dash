@@ -7,15 +7,15 @@ import { useState, useCallback } from 'react';
 import { AsyncState, AsyncStatus, AppError } from '@/types/common';
 import { ERROR_MESSAGES } from '@/config/constants';
 import { toast } from 'sonner';
+import { 
+  UseAsyncStateOptions, 
+  AsyncFunction, 
+  UseAsyncStateReturn 
+} from '@/types/common/AsyncStateTypes';
 
-interface UseAsyncStateOptions {
-  initialData?: any;
-  showErrorToast?: boolean;
-  showSuccessToast?: boolean;
-  successMessage?: string;
-}
+// Using imported UseAsyncStateOptions interface from AsyncStateTypes
 
-export function useAsyncState<T = any>(options: UseAsyncStateOptions = {}) {
+export function useAsyncState<T = unknown>(options: UseAsyncStateOptions<T> = {}): UseAsyncStateReturn<T> {
   const {
     initialData = null,
     showErrorToast = true,
@@ -30,7 +30,7 @@ export function useAsyncState<T = any>(options: UseAsyncStateOptions = {}) {
   });
 
   const execute = useCallback(
-    async (asyncFunction: () => Promise<T>) => {
+    async (asyncFunction: AsyncFunction<T>) => {
       setState(prev => ({
         ...prev,
         status: 'loading',
@@ -98,15 +98,23 @@ export function useAsyncState<T = any>(options: UseAsyncStateOptions = {}) {
     }));
   }, []);
 
+  const setStatus = useCallback((status: AsyncStatus) => {
+    setState(prev => ({
+      ...prev,
+      status,
+    }));
+  }, []);
+
   return {
-    ...state,
-    isLoading: state.status === 'loading',
-    isError: state.status === 'error',
-    isSuccess: state.status === 'success',
-    isIdle: state.status === 'idle',
+    state,
     execute,
     reset,
     setData,
     setError,
+    setStatus,
+    isLoading: state.status === 'loading',
+    isError: state.status === 'error',
+    isSuccess: state.status === 'success',
+    isIdle: state.status === 'idle',
   };
 }

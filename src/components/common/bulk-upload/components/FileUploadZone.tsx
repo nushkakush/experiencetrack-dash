@@ -55,18 +55,18 @@ export const FileUploadZone = ({
     <div
       className={cn(
         "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-        isDragOver ? "border-primary bg-primary/5" : "border-gray-300",
+        isDragOver ? "border-primary bg-primary/5" : "border-border",
         isProcessing && "pointer-events-none opacity-50"
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
-      <div className="mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-full bg-gray-100">
+      <div className="mx-auto w-12 h-12 mb-4 flex items-center justify-center rounded-full bg-muted">
         {isProcessing ? (
           <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
         ) : (
-          <FileSpreadsheet className="w-6 h-6 text-gray-600" />
+          <FileSpreadsheet className="w-6 h-6 text-muted-foreground" />
         )}
       </div>
       
@@ -74,7 +74,7 @@ export const FileUploadZone = ({
         <p className="text-sm font-medium">
           {isProcessing ? 'Processing file...' : `Drop your ${fileType} file here`}
         </p>
-        <p className="text-xs text-gray-500">or</p>
+        <p className="text-xs text-muted-foreground">or</p>
         
         <div className="flex items-center justify-center">
           <Label htmlFor="file-upload" className="cursor-pointer">
@@ -101,7 +101,7 @@ export const FileUploadZone = ({
           />
         </div>
         
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Supports {fileType} files ({fileExtension})
         </p>
       </div>

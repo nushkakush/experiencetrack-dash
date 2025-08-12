@@ -9,7 +9,44 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { vi } from 'vitest';
+
+// Test-specific types
+interface TestUser {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
+
+interface TestSession {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+}
+
+interface TestProfile {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+}
+
+interface TestAuthState {
+  user?: TestUser;
+  session?: TestSession;
+  profile?: TestProfile;
+  loading?: boolean;
+}
+
+interface TestApiResponse<T = unknown> {
+  data: T;
+  success: boolean;
+  error?: string;
+}
 
 // Mock Supabase client
 vi.mock('@/integrations/supabase/client', () => ({
@@ -20,12 +57,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   route?: string;
   queryClient?: QueryClient;
-  authState?: {
-    user?: any;
-    session?: any;
-    profile?: any;
-    loading?: boolean;
-  };
+  authState?: TestAuthState;
 }
 
 function createTestQueryClient() {
@@ -54,16 +86,18 @@ function TestWrapper({
 }: { 
   children: React.ReactNode;
   queryClient?: QueryClient;
-  authState?: any;
+  authState?: TestAuthState;
 }) {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   );
@@ -116,7 +150,7 @@ export const waitForLoadingToFinish = async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
 };
 
-export const mockApiResponse = (data: any, success = true) => ({
+export const mockApiResponse = <T = unknown>(data: T, success = true): TestApiResponse<T> => ({
   data,
   error: success ? null : 'Test error',
   success,

@@ -2,16 +2,41 @@ import { FeatureMetadata } from '@/types/features';
 
 type CohortFeatureKey = 
   | 'cohorts.view'
+  | 'cohorts.create'
+  | 'cohorts.edit'
+  | 'cohorts.delete'
   | 'cohorts.manage'
   | 'cohorts.manage_students'
   | 'cohorts.edit_students'
-  | 'cohorts.assign_scholarships';
+  | 'cohorts.assign_scholarships'
+  | 'cohorts.bulk_upload';
 
 export const COHORT_FEATURES: Record<CohortFeatureKey, FeatureMetadata> = {
   'cohorts.view': {
     key: 'cohorts.view',
     name: 'View Cohorts',
     description: 'View cohort information and details',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
+  'cohorts.create': {
+    key: 'cohorts.create',
+    name: 'Create Cohorts',
+    description: 'Create new cohorts',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
+  'cohorts.edit': {
+    key: 'cohorts.edit',
+    name: 'Edit Cohorts',
+    description: 'Edit existing cohorts',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
+  'cohorts.delete': {
+    key: 'cohorts.delete',
+    name: 'Delete Cohorts',
+    description: 'Delete cohorts',
     category: 'cohorts',
     requiresAuthentication: true,
   },
@@ -40,6 +65,13 @@ export const COHORT_FEATURES: Record<CohortFeatureKey, FeatureMetadata> = {
     key: 'cohorts.assign_scholarships',
     name: 'Assign Scholarships',
     description: 'Assign scholarships to individual students',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
+  'cohorts.bulk_upload': {
+    key: 'cohorts.bulk_upload',
+    name: 'Bulk Upload Students',
+    description: 'Upload multiple students via CSV file',
     category: 'cohorts',
     requiresAuthentication: true,
   },

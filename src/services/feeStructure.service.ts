@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FeeStructure, Scholarship, NewFeeStructureInput, NewScholarshipInput } from '@/types/fee';
+import { Logger } from '@/lib/logging/Logger';
 
 export class FeeStructureService {
   /**
@@ -7,13 +8,13 @@ export class FeeStructureService {
    */
   static async getFeeStructure(cohortId: string): Promise<FeeStructure | null> {
     const { data, error } = await supabase
-      .from('cohort_fee_structures')
+      .from('fee_structures')
       .select('*')
       .eq('cohort_id', cohortId)
       .single();
 
     if (error) {
-      console.error('Error fetching fee structure:', error);
+      Logger.getInstance().error('Error fetching fee structure', { error, cohortId });
       return null;
     }
 
@@ -25,16 +26,18 @@ export class FeeStructureService {
    */
   static async upsertFeeStructure(input: NewFeeStructureInput): Promise<FeeStructure | null> {
     const { data, error } = await supabase
-      .from('cohort_fee_structures')
+      .from('fee_structures')
       .upsert({
         ...input,
         created_by: (await supabase.auth.getUser()).data.user?.id
+      }, {
+        onConflict: 'cohort_id'
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Error upserting fee structure:', error);
+      Logger.getInstance().error('Error upserting fee structure', { error, input });
       return null;
     }
 
@@ -46,12 +49,12 @@ export class FeeStructureService {
    */
   static async markFeeStructureComplete(cohortId: string): Promise<boolean> {
     const { error } = await supabase
-      .from('cohort_fee_structures')
+      .from('fee_structures')
       .update({ is_setup_complete: true })
       .eq('cohort_id', cohortId);
 
     if (error) {
-      console.error('Error marking fee structure complete:', error);
+      Logger.getInstance().error('Error marking fee structure complete', { error, cohortId });
       return false;
     }
 
@@ -69,7 +72,7 @@ export class FeeStructureService {
       .order('start_percentage', { ascending: true });
 
     if (error) {
-      console.error('Error fetching scholarships:', error);
+      Logger.getInstance().error('Error fetching scholarships', { error, cohortId });
       return [];
     }
 
@@ -90,7 +93,7 @@ export class FeeStructureService {
       .single();
 
     if (error) {
-      console.error('Error creating scholarship:', error);
+      Logger.getInstance().error('Error creating scholarship', { error, input });
       return null;
     }
 
@@ -109,7 +112,7 @@ export class FeeStructureService {
       .single();
 
     if (error) {
-      console.error('Error updating scholarship:', error);
+      Logger.getInstance().error('Error updating scholarship', { error, id, input });
       return null;
     }
 
@@ -126,7 +129,7 @@ export class FeeStructureService {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting scholarship:', error);
+      Logger.getInstance().error('Error deleting scholarship', { error, id });
       return false;
     }
 

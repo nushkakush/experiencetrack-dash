@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Logger } from '@/lib/logging/Logger';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import EditStudentDialog from './EditStudentDialog';
 import StudentScholarshipDialog from './StudentScholarshipDialog';
+import AvatarUpload from './AvatarUpload';
 import { CohortStudent } from '@/types/cohort';
 import { Scholarship } from '@/types/fee';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
@@ -50,7 +52,7 @@ export default function CohortStudentsTable({
         // TODO: Send email via Edge Function or SendGrid
         // For now, just show success message
         toast.success("Invitation prepared successfully!");
-        console.log("Invitation URL:", invitationResult.data?.invitationUrl);
+                    Logger.getInstance().info("Invitation URL generated", { url: invitationResult.data?.invitationUrl });
         
         // Update the student's status locally
         if (onStudentUpdated) {
@@ -141,11 +143,19 @@ export default function CohortStudentsTable({
             <TableRow key={student.id}>
               <TableCell>
                 <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                      {`${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <AvatarUpload
+                    studentId={student.id}
+                    currentAvatarUrl={student.avatar_url}
+                    studentName={`${student.first_name} ${student.last_name}`}
+                    onAvatarUpdated={(newAvatarUrl) => {
+                      if (onStudentUpdated) {
+                        onStudentUpdated(student.id, { avatar_url: newAvatarUrl });
+                      } else {
+                        onStudentDeleted(); // Fallback to full reload
+                      }
+                    }}
+                    disabled={!canManageStudents}
+                  />
                   <div>
                     <p className="font-medium">
                       {student.first_name} {student.last_name}

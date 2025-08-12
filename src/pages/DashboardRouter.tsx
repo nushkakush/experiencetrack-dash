@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import StudentDashboard from './dashboards/StudentDashboard';
 import SuperAdminDashboard from './dashboards/SuperAdminDashboard';
 import ProgramManagerDashboard from './dashboards/ProgramManagerDashboard';
@@ -9,6 +9,7 @@ import PlacementCoordinatorDashboard from './dashboards/PlacementCoordinatorDash
 
 const DashboardRouter = () => {
   const { user, profile, loading, profileLoading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -40,7 +41,7 @@ const DashboardRouter = () => {
 
   switch (profile.role) {
     case 'student':
-      return <StudentDashboard />;
+      return <StudentDashboard currentRoute={location.pathname} />;
     case 'super_admin':
       return <SuperAdminDashboard />;
     case 'program_manager':

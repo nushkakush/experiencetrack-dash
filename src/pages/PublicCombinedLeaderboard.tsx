@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, connectionManager } from '@/integrations/supabase/client';
+import { Logger } from '@/lib/logging/Logger';
 import { AttendanceLeaderboard } from '@/components/attendance';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -58,7 +59,7 @@ const PublicCombinedLeaderboard = () => {
           .single();
 
         if (cohortError) {
-          console.error(`Error loading cohort ${cohortId}:`, cohortError);
+          Logger.getInstance().error(`Error loading cohort ${cohortId}`, { error: cohortError });
           continue;
         }
 
@@ -70,7 +71,7 @@ const PublicCombinedLeaderboard = () => {
           .order('position', { ascending: true });
 
         if (epicsError) {
-          console.error(`Error loading epics for cohort ${cohortId}:`, epicsError);
+          Logger.getInstance().error(`Error loading epics for cohort ${cohortId}`, { error: epicsError });
           continue;
         }
 
@@ -78,7 +79,7 @@ const PublicCombinedLeaderboard = () => {
         const primaryEpic = epics?.find(epic => epic.is_active) || epics?.[0] || null;
 
         if (!primaryEpic) {
-          console.warn(`No primary epic found for cohort ${cohortId}`);
+          Logger.getInstance().warn(`No primary epic found for cohort ${cohortId}`);
           continue;
         }
 
@@ -89,7 +90,7 @@ const PublicCombinedLeaderboard = () => {
           .eq('cohort_id', cohortId);
 
         if (studentsError) {
-          console.error(`Error loading students for cohort ${cohortId}:`, studentsError);
+          Logger.getInstance().error(`Error loading students for cohort ${cohortId}`, { error: studentsError });
           continue;
         }
 
@@ -102,7 +103,7 @@ const PublicCombinedLeaderboard = () => {
           .order('session_date', { ascending: true });
 
         if (recordsError) {
-          console.error(`Error loading attendance records for cohort ${cohortId}:`, recordsError);
+          Logger.getInstance().error(`Error loading attendance records for cohort ${cohortId}`, { error: recordsError });
           continue;
         }
 
@@ -135,9 +136,10 @@ const PublicCombinedLeaderboard = () => {
     // Load initial data
     loadLeaderboardData();
 
-    // Set up real-time subscription for attendance records
-    const channel = supabase
-      .channel('public-combined-leaderboard-changes')
+    const channelName = `public-combined-leaderboard-${selectedCohortIds.join('-')}`;
+
+    // Set up real-time subscription for attendance records with unique channel name
+    const channel = connectionManager.createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -146,9 +148,10 @@ const PublicCombinedLeaderboard = () => {
           table: 'attendance_records',
         },
         (payload) => {
-          console.log('Real-time update received:', payload);
+          Logger.getInstance().debug('Real-time update received', { payload });
           // Only reload if the change affects our cohorts
-          if (selectedCohortIds.includes(payload.new?.cohort_id || payload.old?.cohort_id)) {
+          const changedCohortId = (payload.new as any)?.cohort_id || (payload.old as any)?.cohort_id;
+          if (changedCohortId && selectedCohortIds.includes(changedCohortId)) {
             loadLeaderboardData();
           }
         }
@@ -157,7 +160,7 @@ const PublicCombinedLeaderboard = () => {
 
     // Cleanup subscription on unmount
     return () => {
-      supabase.removeChannel(channel);
+      connectionManager.removeChannel(channelName);
     };
   }, [cohortIds]);
 

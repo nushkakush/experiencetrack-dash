@@ -22,7 +22,7 @@ async function globalSetup(config: FullConfig) {
     // Save authentication state if needed
     // await page.context().storageState({ path: 'playwright/.auth/user.json' });
     
-    console.log('✅ Global setup completed successfully');
+    Logger.getInstance().info('✅ Global setup completed successfully');
   } catch (error) {
     console.error('❌ Global setup failed:', error);
     throw error;

@@ -7,6 +7,7 @@ import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { toast } from 'sonner';
 import { useAvatarPermissions } from '@/hooks/useAvatarPermissions';
 import AvatarDisplay from './AvatarDisplay';
+import ImageCropperDialog from './ImageCropperDialog';
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +43,8 @@ export default function AvatarUpload({
 }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { canUpload, canView, isSuperAdmin } = useAvatarPermissions();
 
@@ -62,9 +65,23 @@ export default function AvatarUpload({
       return;
     }
 
+    // Set the selected file and show cropper
+    setSelectedFile(file);
+    setShowCropper(true);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
     setIsUploading(true);
     try {
-      const result = await AvatarService.uploadAvatar(studentId, file);
+      // Convert blob to file
+      const croppedFile = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
+      
+      const result = await AvatarService.uploadAvatar(studentId, croppedFile);
       
       if (result.success && result.url) {
         // Update the student's avatar_url in the database
@@ -86,10 +103,8 @@ export default function AvatarUpload({
       toast.error('An error occurred while uploading the avatar');
     } finally {
       setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setSelectedFile(null);
+      setShowCropper(false);
     }
   };
 
@@ -245,6 +260,17 @@ export default function AvatarUpload({
           size="md"
         />
       )}
+
+      {/* Image Cropper Dialog */}
+      <ImageCropperDialog
+        isOpen={showCropper}
+        onClose={() => {
+          setShowCropper(false);
+          setSelectedFile(null);
+        }}
+        imageFile={selectedFile}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

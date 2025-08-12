@@ -6,6 +6,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse, PaginatedResponse, FilterParams, AppError } from '@/types/common';
 import { APP_CONFIG, ERROR_MESSAGES } from '@/config/constants';
+import { Logger } from '@/lib/logging/Logger';
 
 export abstract class BaseService<T = any> {
   protected tableName: string;
@@ -24,7 +25,7 @@ export abstract class BaseService<T = any> {
       const { data, error } = await queryFn();
       
       if (error) {
-        console.error(`Database error in ${this.tableName}:`, error);
+        Logger.getInstance().error(`Database error in ${this.tableName}`, { error, tableName: this.tableName });
         throw new AppError(
           error.message || ERROR_MESSAGES.GENERIC_ERROR,
           error.code,
@@ -38,7 +39,7 @@ export abstract class BaseService<T = any> {
         success: true,
       };
     } catch (error) {
-      console.error(`Service error in ${this.tableName}:`, error);
+      Logger.getInstance().error(`Service error in ${this.tableName}`, { error, tableName: this.tableName });
       
       if (error instanceof AppError) {
         throw error;

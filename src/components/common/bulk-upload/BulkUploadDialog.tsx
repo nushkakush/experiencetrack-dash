@@ -43,7 +43,7 @@ export default function BulkUploadDialog<T>({
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-background border-border">
         <DialogHeader>
           <DialogTitle>{config.dialogTitle}</DialogTitle>
           <DialogDescription>{config.dialogDescription}</DialogDescription>

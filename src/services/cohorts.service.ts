@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BaseService } from "./base.service";
 import { ApiResponse } from "@/types/common";
 import { Cohort, CohortEpic, NewCohortInput, NewEpicInput, CohortWithCounts } from "@/types/cohort";
+import { Logger } from "@/lib/logging/Logger";
 
 class CohortsService extends BaseService<Cohort> {
   constructor() {
@@ -20,23 +21,18 @@ class CohortsService extends BaseService<Cohort> {
 
   async listAllWithCounts(): Promise<ApiResponse<CohortWithCounts[]>> {
     try {
-      console.log('listAllWithCounts: Starting...');
-      
       // First get all cohorts
       const { data: cohorts, error: cohortsError } = await supabase
         .from("cohorts")
         .select("*")
         .order("created_at", { ascending: false });
 
-      console.log('listAllWithCounts: Cohorts query result:', { cohorts, cohortsError });
-
       if (cohortsError) {
-        console.error('listAllWithCounts: Cohorts query error:', cohortsError);
+        Logger.getInstance().error('listAllWithCounts: Cohorts query error', { error: cohortsError });
         throw cohortsError;
       }
 
       if (!cohorts || cohorts.length === 0) {
-        console.log('listAllWithCounts: No cohorts found, returning empty array');
         return {
           data: [],
           error: null,
@@ -44,50 +40,36 @@ class CohortsService extends BaseService<Cohort> {
         };
       }
 
-      console.log('listAllWithCounts: Found cohorts:', cohorts.length);
-
       // Then get student counts for all cohorts
       const cohortIds = cohorts.map(c => c.id);
-      console.log('listAllWithCounts: Cohort IDs for student count query:', cohortIds);
 
       const { data: studentCounts, error: countsError } = await supabase
         .from("cohort_students")
         .select("cohort_id")
         .in("cohort_id", cohortIds);
 
-      console.log('listAllWithCounts: Student counts query result:', { studentCounts, countsError });
-
       if (countsError) {
-        console.error('listAllWithCounts: Student counts query error:', countsError);
+        Logger.getInstance().error('listAllWithCounts: Student counts query error', { error: countsError });
         throw countsError;
       }
 
       // Count students per cohort
       const countMap = new Map<string, number>();
-      console.log('listAllWithCounts: Raw studentCounts array:', studentCounts);
       
-      studentCounts?.forEach((student, index) => {
-        console.log(`listAllWithCounts: Processing student ${index}:`, student);
+      studentCounts?.forEach((student) => {
         const currentCount = countMap.get(student.cohort_id) || 0;
         const newCount = currentCount + 1;
         countMap.set(student.cohort_id, newCount);
-        console.log(`listAllWithCounts: Updated count for ${student.cohort_id}: ${currentCount} -> ${newCount}`);
       });
-
-      console.log('listAllWithCounts: Count map:', countMap);
-      console.log('listAllWithCounts: Count map entries:', Array.from(countMap.entries()));
 
       // Transform the data to include students_count
       const cohortsWithCounts: CohortWithCounts[] = cohorts.map((cohort) => {
         const students_count = countMap.get(cohort.id) || 0;
-        console.log(`listAllWithCounts: Cohort ${cohort.name}: students_count = ${students_count}`);
         return {
           ...cohort,
           students_count
         };
       });
-
-      console.log('listAllWithCounts: Final result:', cohortsWithCounts);
 
       return {
         data: cohortsWithCounts,
@@ -95,84 +77,115 @@ class CohortsService extends BaseService<Cohort> {
         success: true,
       };
     } catch (error) {
-      console.error('listAllWithCounts: Caught error:', error);
+      Logger.getInstance().error('listAllWithCounts: Caught error', { error });
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Failed to fetch cohorts with counts',
         success: false,
       };
     }
   }
 
   async getById(id: string): Promise<ApiResponse<Cohort>> {
-    return this.findById<Cohort>(id);
+    return this["executeQuery"](async () => {
+      return await supabase
+        .from("cohorts")
+        .select("*")
+        .eq("id", id)
+        .single();
+    });
   }
 
   async getByIdWithCounts(id: string): Promise<ApiResponse<CohortWithCounts>> {
-    const cohortResponse = await this.findById<Cohort>(id);
-    if (!cohortResponse.success || !cohortResponse.data) {
-      return cohortResponse as ApiResponse<CohortWithCounts>;
+    try {
+      const { data: cohort, error: cohortError } = await supabase
+        .from("cohorts")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (cohortError) throw cohortError;
+
+      const { data: students, error: studentsError } = await supabase
+        .from("cohort_students")
+        .select("id")
+        .eq("cohort_id", id);
+
+      if (studentsError) throw studentsError;
+
+      const cohortWithCounts: CohortWithCounts = {
+        ...cohort,
+        students_count: students?.length || 0,
+      };
+
+      return {
+        data: cohortWithCounts,
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Failed to fetch cohort with counts',
+        success: false,
+      };
     }
-
-    const students_count = await this.countStudents(id);
-    const cohortWithCounts: CohortWithCounts = {
-      ...cohortResponse.data,
-      students_count,
-    };
-
-    return {
-      data: cohortWithCounts,
-      error: null,
-      success: true,
-    };
   }
 
   async isCohortIdUnique(cohort_id: string, excludeId?: string): Promise<boolean> {
-    let query = supabase
-      .from("cohorts")
-      .select("id")
-      .eq("cohort_id", cohort_id);
-    
-    if (excludeId) {
-      query = query.neq("id", excludeId);
-    }
-    
-    const { data, error } = await query.maybeSingle();
+    try {
+      let query = supabase
+        .from("cohorts")
+        .select("id")
+        .eq("cohort_id", cohort_id);
 
-    if (error) {
-      console.error("isCohortIdUnique error:", error);
+      if (excludeId) {
+        query = query.neq("id", excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return !data || data.length === 0;
+    } catch (error) {
+      Logger.getInstance().error('Error checking cohort ID uniqueness', { error, cohort_id, excludeId });
       return false;
     }
-    return !data;
   }
 
   async createWithEpics(input: NewCohortInput, epics: NewEpicInput[]): Promise<ApiResponse<{ cohort: Cohort; epics: CohortEpic[] }>> {
-    const created = await this.create<Cohort>(input);
-    const cohort = created.data as Cohort;
+    return this["executeQuery"](async () => {
+      // Create cohort first
+      const { data: cohort, error: cohortError } = await supabase
+        .from("cohorts")
+        .insert(input)
+        .select()
+        .single();
 
-    let createdEpics: CohortEpic[] = [];
-    if (epics && epics.length > 0) {
-      const items = epics.map((e, idx) => ({
-        cohort_id: cohort.id,
-        name: e.name,
-        duration_months: e.duration_months,
-        position: idx + 1,
+      if (cohortError) throw cohortError;
+
+      // Create epics
+      const epicsWithCohortId = epics.map(epic => ({
+        ...epic,
+        cohort_id: cohort.id
       }));
-      const { data: epicsData, error } = await supabase
-        .from("cohort_epics")
-        .insert(items)
-        .select("*");
-      if (error) {
-        throw error;
-      }
-      createdEpics = epicsData as CohortEpic[];
-    }
 
-    return {
-      data: { cohort, epics: createdEpics },
-      error: null,
-      success: true,
-    };
+      const { data: createdEpics, error: epicsError } = await supabase
+        .from("cohort_epics")
+        .insert(epicsWithCohortId)
+        .select();
+
+      if (epicsError) throw epicsError;
+
+      return {
+        data: {
+          cohort,
+          epics: createdEpics || []
+        },
+        error: null
+      };
+    });
   }
 
   async getEpics(cohortId: string): Promise<ApiResponse<CohortEpic[]>> {
@@ -181,20 +194,23 @@ class CohortsService extends BaseService<Cohort> {
         .from("cohort_epics")
         .select("*")
         .eq("cohort_id", cohortId)
-        .order("position", { ascending: true });
+        .order("created_at", { ascending: true });
     });
   }
 
   async countStudents(cohortId: string): Promise<number> {
-    const { count, error } = await supabase
-      .from("cohort_students")
-      .select("*", { count: "exact", head: true })
-      .eq("cohort_id", cohortId);
-    if (error) {
-      console.error("countStudents error:", error);
+    try {
+      const { count, error } = await supabase
+        .from("cohort_students")
+        .select("*", { count: "exact", head: true })
+        .eq("cohort_id", cohortId);
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      Logger.getInstance().error('Error counting students', { error, cohortId });
       return 0;
     }
-    return count ?? 0;
   }
 }
 

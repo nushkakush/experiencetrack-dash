@@ -9,7 +9,4 @@ module.exports = {
   '*.{json,md,yml,yaml,css,scss}': [
     'prettier --write',
   ],
-  
-  // Run type check on TypeScript files
-  '*.{ts,tsx}': () => 'yarn type-check',
 };

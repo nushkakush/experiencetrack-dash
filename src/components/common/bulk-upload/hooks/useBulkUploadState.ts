@@ -1,5 +1,5 @@
 import { useReducer } from 'react';
-import { BulkUploadState, BulkUploadAction } from '../types';
+import { BulkUploadState, BulkUploadAction, ValidationResult } from '../types';
 
 const initialState: BulkUploadState = {
   isOpen: false,
@@ -47,7 +47,7 @@ export const useBulkUploadState = () => {
     setOpen: (isOpen: boolean) => dispatch({ type: 'SET_OPEN', payload: isOpen }),
     setDragOver: (isDragOver: boolean) => dispatch({ type: 'SET_DRAG_OVER', payload: isDragOver }),
     setFile: (file: File | null) => dispatch({ type: 'SET_FILE', payload: file }),
-    setValidationResult: (result: any) => dispatch({ type: 'SET_VALIDATION_RESULT', payload: result }),
+    setValidationResult: (result: ValidationResult<unknown> | null) => dispatch({ type: 'SET_VALIDATION_RESULT', payload: result }),
     setProcessing: (processing: boolean) => dispatch({ type: 'SET_PROCESSING', payload: processing }),
     setUploading: (uploading: boolean) => dispatch({ type: 'SET_UPLOADING', payload: uploading }),
     setDuplicateHandling: (handling: 'ignore' | 'overwrite') => 

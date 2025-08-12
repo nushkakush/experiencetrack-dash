@@ -92,18 +92,19 @@ export const calculateOneShotPayment = (
   // Base amount is the remaining base fee (GST exclusive)
   const baseAmount = remainingBaseFee;
   
-  // Apply scholarship to base fee (GST exclusive amount)
-  const baseFeeAfterScholarship = remainingBaseFee - scholarshipAmount;
+  // Calculate one-shot discount on base amount (GST exclusive)
+  const oneShotDiscount = calculateOneShotDiscount(baseAmount, discountPercentage);
   
-  // Calculate GST on the base amount (GST exclusive amount)
-  const baseFeeGST = calculateGST(baseAmount);
+  // Apply scholarship to base fee (GST exclusive amount)
+  const baseFeeAfterScholarship = baseAmount - scholarshipAmount;
+  
+  // Calculate GST on the amount after scholarship and discount
+  const amountForGSTCalculation = baseFeeAfterScholarship - oneShotDiscount;
+  const baseFeeGST = calculateGST(amountForGSTCalculation);
   
   // Total GST amount (base fee GST only, admission fee GST is separate)
   const totalGSTAmount = baseFeeGST;
   const totalWithGST = baseAmount + totalGSTAmount;
-  
-  // Calculate one-shot discount on base amount (GST exclusive)
-  const oneShotDiscount = calculateOneShotDiscount(baseAmount, discountPercentage);
   
   // Calculate final payable amount
   const finalAmount = totalWithGST - oneShotDiscount;
@@ -153,15 +154,16 @@ export const calculateSemesterPayment = (
     ? distributeScholarshipBackwards(installmentAmounts, semesterScholarship)
     : new Array(installmentAmounts.length).fill(0);
 
-  console.log('calculateSemesterPayment - Scholarship distribution:', {
-    semesterNumber,
-    numberOfSemesters,
-    isLastSemester,
-    scholarshipAmount,
-    semesterScholarship,
-    installmentAmounts,
-    scholarshipDistribution
-  });
+  // Remove debug log to clean up console
+  // console.log('calculateSemesterPayment - Scholarship distribution:', {
+  //   semesterNumber,
+  //   numberOfSemesters,
+  //   isLastSemester,
+  //   scholarshipAmount,
+  //   semesterScholarship,
+  //   installmentAmounts,
+  //   scholarshipDistribution
+  // });
   
   // Distribute one-shot discount proportionally (if applicable)
   const semesterDiscount = oneShotDiscount / numberOfSemesters;

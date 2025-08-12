@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, connectionManager } from '@/integrations/supabase/client';
 import { AttendanceService } from '@/services/attendance.service';
 import { toast } from 'sonner';
 import type { 
@@ -12,6 +12,7 @@ import type {
   AttendanceRecord,
   Cohort
 } from '@/types/attendance';
+import { Logger } from '@/lib/logging/Logger';
 
 export const useAttendanceData = (cohortId: string | undefined, context: Partial<AttendanceContext>) => {
   const [data, setData] = useState<AttendanceData>({
@@ -70,7 +71,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
         }));
 
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        Logger.getInstance().error('Error loading initial data', { error, cohortId });
         setData(prev => ({
           ...prev,
           error: 'Failed to load attendance data',
@@ -88,8 +89,8 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     if (!selectedEpic || !cohortId || !context.selectedDate) return;
     
     const loadSessions = async () => {
+      const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       try {
-        const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
         const sessionInfos = await AttendanceService.getSessionsForDate(cohortId, selectedEpic, sessionDate);
         
         setData(prev => ({
@@ -97,7 +98,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           sessions: sessionInfos,
         }));
       } catch (error) {
-        console.error('Error loading sessions:', error);
+        Logger.getInstance().error('Error loading sessions', { error, cohortId, selectedEpic, sessionDate });
         toast.error('Failed to load session data');
       }
     };
@@ -112,8 +113,8 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     }
     
     const loadAttendance = async () => {
+      const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       try {
-        const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
         const attendanceData = await AttendanceService.getSessionAttendance(
           cohortId, 
           selectedEpic, 
@@ -126,7 +127,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           attendanceRecords: attendanceData,
         }));
       } catch (error) {
-        console.error('Error loading attendance:', error);
+        Logger.getInstance().error('Error loading attendance', { error, cohortId, selectedEpic, sessionDate });
         toast.error('Failed to load attendance records');
       }
     };
@@ -139,10 +140,10 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     if (!cohortId || !selectedEpic || !context.selectedDate) return;
 
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
+    const channelName = `attendance-${cohortId}-${selectedEpic}-${sessionDate}`;
     
-    // Set up real-time subscription for cancelled sessions
-    const cancelledSessionsChannel = supabase
-      .channel('cancelled-sessions-changes')
+    // Create a single channel for all attendance-related changes with unique name
+    const attendanceChannel = connectionManager.createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -161,24 +162,19 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
                 sessions: sessionInfos,
               }));
             } catch (error) {
-              console.error('Error reloading sessions:', error);
+              Logger.getInstance().error('Error reloading sessions', { error, cohortId, selectedEpic, sessionDate });
             }
           };
           loadSessions();
         }
       )
-      .subscribe();
-
-    // Set up real-time subscription for attendance records
-    const attendanceRecordsChannel = supabase
-      .channel('attendance-records-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'attendance_records',
-          filter: `cohort_id=eq.${cohortId}`,
+          filter: `cohort_id=eq.${cohortId} and epic_id=eq.${selectedEpic}`,
         },
         (payload) => {
           // Reload attendance records when they change
@@ -196,7 +192,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
                   attendanceRecords: attendanceData,
                 }));
               } catch (error) {
-                console.error('Error reloading attendance:', error);
+                Logger.getInstance().error('Error reloading attendance', { error, cohortId, selectedEpic, sessionDate });
               }
             };
             loadAttendance();
@@ -205,10 +201,9 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
       )
       .subscribe();
 
-    // Cleanup subscriptions on unmount or when dependencies change
+    // Cleanup subscription on unmount or when dependencies change
     return () => {
-      supabase.removeChannel(cancelledSessionsChannel);
-      supabase.removeChannel(attendanceRecordsChannel);
+      connectionManager.removeChannel(channelName);
     };
   }, [cohortId, selectedEpic, context.selectedDate, context.selectedSession]);
 
@@ -217,8 +212,8 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
       return;
     }
     
+    const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
     try {
-      const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       const attendanceData = await AttendanceService.getSessionAttendance(
         cohortId, 
         selectedEpic, 
@@ -231,7 +226,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
         attendanceRecords: attendanceData,
       }));
     } catch (error) {
-      console.error('Error refetching attendance:', error);
+      Logger.getInstance().error('Error refetching attendance', { error, cohortId, selectedEpic, sessionDate });
     }
   };
 
@@ -240,8 +235,8 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
       return;
     }
     
+    const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
     try {
-      const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       const sessionInfos = await AttendanceService.getSessionsForDate(cohortId, selectedEpic, sessionDate);
       
       setData(prev => ({
@@ -249,7 +244,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
         sessions: sessionInfos,
       }));
     } catch (error) {
-      console.error('Error refetching sessions:', error);
+      Logger.getInstance().error('Error refetching sessions', { error, cohortId, selectedEpic, sessionDate });
     }
   };
 

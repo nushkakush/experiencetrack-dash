@@ -61,7 +61,7 @@ export class ValidationUtils {
   /**
    * Validate required fields
    */
-  static validateRequired(value: any, fieldName: string): ValidationError | null {
+  static validateRequired(value: unknown, fieldName: string): ValidationError | null {
     if (value === null || value === undefined || value === '') {
       return {
         field: fieldName,

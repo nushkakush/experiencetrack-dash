@@ -52,12 +52,34 @@ const CohortsPage = () => {
   };
 
   const handleFeeCollectionClick = async (cohort: CohortWithCounts) => {
-    // Navigate to the fee payment dashboard
-    navigate(`/cohorts/${cohort.id}/fee-payment`);
+    try {
+      // Check if fee structure is already configured
+      const { feeStructure } = await FeeStructureService.getCompleteFeeStructure(cohort.id);
+      
+      if (feeStructure && feeStructure.is_setup_complete) {
+        // Fee configuration is complete, navigate directly to dashboard
+        navigate(`/cohorts/${cohort.id}/fee-payment`);
+      } else {
+        // Fee configuration is not complete, open the setup modal
+        setSelectedCohortForFee(cohort);
+        setFeeCollectionModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error checking fee structure:', error);
+      // If there's an error, default to opening the setup modal
+      setSelectedCohortForFee(cohort);
+      setFeeCollectionModalOpen(true);
+    }
   };
 
   const handleFeeSetupComplete = () => {
     refetch(); // Refresh cohorts list
+    setFeeCollectionModalOpen(false);
+    // Navigate to the fee payment dashboard after setup is complete
+    if (selectedCohortForFee) {
+      navigate(`/cohorts/${selectedCohortForFee.id}/fee-payment`);
+    }
+    setSelectedCohortForFee(null);
   };
 
   const handleEditClick = (cohort: CohortWithCounts) => {

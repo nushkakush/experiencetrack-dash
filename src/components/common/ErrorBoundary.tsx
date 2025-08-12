@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
   private logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
     // This would integrate with your error tracking service
     // e.g., Sentry, LogRocket, etc.
-    console.log('Would log to external service:', { error, errorInfo });
+    Logger.getInstance().error('Error boundary caught error', { error, errorInfo });
   };
 
   private handleRetry = () => {

@@ -3,9 +3,12 @@ import { cohortStudentsService } from "@/services/cohortStudents.service";
 import { cohortsService } from "@/services/cohorts.service";
 import { CohortStudent, CohortWithCounts, NewStudentInput } from "@/types/cohort";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, connectionManager } from '@/integrations/supabase/client';
+import { Logger } from "@/lib/logging/Logger";
+import { useAuth } from "@/hooks/useAuth";
 
 export function useCohortDetails(cohortId: string | undefined) {
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<CohortStudent[]>([]);
   const [cohort, setCohort] = useState<CohortWithCounts | null>(null);
@@ -26,7 +29,7 @@ export function useCohortDetails(cohortId: string | undefined) {
       const studentsRes = await cohortStudentsService.listByCohort(cohortId);
       setStudents(studentsRes.data || []);
     } catch (error) {
-      console.error("Error loading cohort details:", error);
+      Logger.getInstance().error("Error loading cohort details", { error, cohortId });
       toast.error("Failed to load cohort details");
     } finally {
       setLoading(false);
@@ -44,7 +47,7 @@ export function useCohortDetails(cohortId: string | undefined) {
         toast.error("Failed to remove student from cohort");
       }
     } catch (error) {
-      console.error("Error deleting student:", error);
+      Logger.getInstance().error("Error deleting student", { error, studentId, cohortId });
       toast.error("An error occurred while removing the student");
     } finally {
       setDeletingStudentId(null);
@@ -126,7 +129,7 @@ export function useCohortDetails(cohortId: string | undefined) {
                 await handleStudentInvitation(result.data, processedData);
                 inviteCount++;
               } catch (inviteError) {
-                console.error(`Failed to send invitation to ${processedData.email}:`, inviteError);
+                Logger.getInstance().error(`Failed to send invitation to ${processedData.email}`, { error: inviteError, email: processedData.email, cohortId, mode: 'overwrite' });
               }
             }
           } else {
@@ -143,7 +146,7 @@ export function useCohortDetails(cohortId: string | undefined) {
                 await handleStudentInvitation(result.data, processedData);
                 inviteCount++;
               } catch (inviteError) {
-                console.error(`Failed to send invitation to ${processedData.email}:`, inviteError);
+                Logger.getInstance().error(`Failed to send invitation to ${processedData.email}`, { error: inviteError, email: processedData.email, cohortId, mode: 'ignore' });
               }
             }
           } else {
@@ -152,7 +155,7 @@ export function useCohortDetails(cohortId: string | undefined) {
         }
       } catch (error) {
         errorCount++;
-        console.error(`Error adding student ${studentData.email}:`, error);
+        Logger.getInstance().error(`Error adding student ${studentData.email}`, { error, email: studentData.email, cohortId });
       }
     }
 
@@ -171,23 +174,48 @@ export function useCohortDetails(cohortId: string | undefined) {
 
   // Helper function to handle student invitation
   const handleStudentInvitation = async (student: CohortStudent, studentData: NewStudentInput) => {
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: studentData.email.trim(),
-      options: {
-        data: {
-          role: "student",
-          first_name: studentData.first_name,
-          last_name: studentData.last_name,
-        },
-        shouldCreateUser: true,
-        emailRedirectTo: window.location.origin,
-      },
-    });
-
-    if (otpError) {
-      throw otpError;
-    } else {
-      await cohortStudentsService.markInvited(student.id);
+    try {
+      // Use the new SendGrid-based invitation system
+      const invitationResult = await cohortStudentsService.sendCustomInvitation(
+        student.id, 
+        profile?.user_id || ''
+      );
+      
+      if (invitationResult.success) {
+        // Send email via Edge Function
+        const emailResult = await cohortStudentsService.sendInvitationEmail(
+          student.id,
+          studentData.email,
+          studentData.first_name || '',
+          studentData.last_name || '',
+          cohort?.name || 'Your Cohort'
+        );
+        
+        if (emailResult.success && emailResult.data?.emailSent) {
+          Logger.getInstance().info(`Invitation email sent to ${studentData.email}`, { 
+            email: studentData.email, 
+            studentId: student.id,
+            cohortId 
+          });
+        } else {
+          Logger.getInstance().warn(`Invitation prepared but email may not have been sent to ${studentData.email}`, { 
+            email: studentData.email, 
+            studentId: student.id,
+            cohortId,
+            emailResult 
+          });
+        }
+      } else {
+        throw new Error('Failed to prepare invitation');
+      }
+    } catch (error) {
+      Logger.getInstance().error(`Failed to send invitation to ${studentData.email}`, { 
+        error, 
+        email: studentData.email, 
+        studentId: student.id,
+        cohortId 
+      });
+      throw error;
     }
   };
 
@@ -241,7 +269,6 @@ export function useCohortDetails(cohortId: string | undefined) {
   // Auto-refresh every 30 seconds as fallback for real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('Auto-refreshing cohort data...');
       loadData();
     }, 30000); // 30 seconds
 
@@ -252,10 +279,9 @@ export function useCohortDetails(cohortId: string | undefined) {
   useEffect(() => {
     if (!cohortId) return;
 
-    console.log('Setting up real-time subscription for cohort:', cohortId);
+    const channelName = `cohort_students_${cohortId}`;
 
-    const subscription = supabase
-      .channel(`cohort_students_${cohortId}`)
+    const subscription = connectionManager.createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -265,13 +291,12 @@ export function useCohortDetails(cohortId: string | undefined) {
           filter: `cohort_id=eq.${cohortId}`
         },
         (payload) => {
-          console.log('Real-time UPDATE received for cohort_students:', payload);
           // Check if the change is related to invitation status
           if (payload.new && payload.old && 
               (payload.new.invite_status !== payload.old.invite_status ||
                payload.new.accepted_at !== payload.old.accepted_at ||
                payload.new.user_id !== payload.old.user_id)) {
-            console.log('Invitation status change detected, refreshing data...');
+            // Refresh data when invitation status changes
           }
           // Refresh data when any change occurs
           loadData();
@@ -286,7 +311,6 @@ export function useCohortDetails(cohortId: string | undefined) {
           filter: `cohort_id=eq.${cohortId}`
         },
         (payload) => {
-          console.log('Real-time INSERT received for cohort_students:', payload);
           loadData();
         }
       )
@@ -299,17 +323,13 @@ export function useCohortDetails(cohortId: string | undefined) {
           filter: `cohort_id=eq.${cohortId}`
         },
         (payload) => {
-          console.log('Real-time DELETE received for cohort_students:', payload);
           loadData();
         }
       )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up real-time subscription for cohort:', cohortId);
-      subscription.unsubscribe();
+      connectionManager.removeChannel(channelName);
     };
   }, [cohortId, loadData]);
 

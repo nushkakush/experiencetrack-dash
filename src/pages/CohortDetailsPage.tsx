@@ -33,7 +33,7 @@ export default function CohortDetailsPage() {
     const loadScholarships = async () => {
       try {
         const { data, error } = await supabase
-          .from('scholarships')
+          .from('cohort_scholarships')
           .select('*')
           .order('amount_percentage', { ascending: true });
 
@@ -98,7 +98,8 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
       <div className="space-y-6">
         <CohortHeader 
           cohort={cohort} 
-          onStudentDeleted={loadData}
+          onStudentAdded={loadData}
+          onRefresh={loadData}
           bulkUploadConfig={bulkUploadConfig}
         />
         

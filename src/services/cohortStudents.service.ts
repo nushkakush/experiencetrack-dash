@@ -126,6 +126,50 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
+  async getByUserId(userId: string): Promise<ApiResponse<CohortStudent>> {
+    return this["executeQuery"](async () => {
+      const { data, error } = await supabase
+        .from("cohort_students")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        // Handle specific error cases
+        if (error.code === 'PGRST116') {
+          // No rows returned - student not found
+          throw new Error(`No student record found for user ID: ${userId}. Please ensure you have accepted your invitation.`);
+        }
+        throw error;
+      }
+      return { data, error: null };
+    });
+  }
+
+  async getCohortByStudentId(studentId: string): Promise<ApiResponse<any>> {
+    return this["executeQuery"](async () => {
+      // First get the student to get the cohort_id
+      const { data: studentData, error: studentError } = await supabase
+        .from("cohort_students")
+        .select("cohort_id")
+        .eq("id", studentId)
+        .single();
+
+      if (studentError) throw studentError;
+
+      // Then get the cohort data
+      const { data: cohortData, error: cohortError } = await supabase
+        .from("cohorts")
+        .select("*")
+        .eq("id", studentData.cohort_id)
+        .single();
+
+      if (cohortError) throw cohortError;
+
+      return { data: cohortData, error: null };
+    });
+  }
+
   async acceptInvitation(token: string, userId: string): Promise<ApiResponse<CohortStudent>> {
     return this["executeQuery"](async () => {
       const { data, error } = await supabase

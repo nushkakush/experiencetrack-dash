@@ -114,9 +114,9 @@ global.testUtils = {
   // Mock Supabase client
   mockSupabase: {
     auth: {
-      getSession: vi.fn(),
+      getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
-      signOut: vi.fn(),
+      signOut: vi.fn(() => Promise.resolve({ error: null })),
     },
     from: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
@@ -124,7 +124,8 @@ global.testUtils = {
       update: vi.fn().mockReturnThis(),
       delete: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      single: vi.fn(),
+      single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
     })),
@@ -195,10 +196,63 @@ declare global {
   }
   
   var testUtils: {
-    mockSupabase: any;
-    mockQueryClient: any;
-    createMockUser: (overrides?: any) => any;
-    createMockCohort: (overrides?: any) => any;
-    createMockStudent: (overrides?: any) => any;
+    mockSupabase: {
+      auth: {
+        getSession: () => Promise<{ data: { session: any }; error: any }>;
+        onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } };
+        signOut: () => Promise<{ error: any }>;
+      };
+      from: () => {
+        select: () => any;
+        insert: () => any;
+        update: () => any;
+        delete: () => any;
+        eq: () => any;
+        single: () => Promise<{ data: any; error: any }>;
+        maybeSingle: () => Promise<{ data: any; error: any }>;
+        order: () => any;
+        range: () => any;
+      };
+    };
+    mockQueryClient: {
+      invalidateQueries: () => void;
+      setQueryData: () => void;
+      getQueryData: () => any;
+    };
+    createMockUser: (overrides?: Record<string, any>) => {
+      id: string;
+      email: string;
+      role: string;
+      first_name: string;
+      last_name: string;
+      created_at: string;
+      updated_at: string;
+      [key: string]: any;
+    };
+    createMockCohort: (overrides?: Record<string, any>) => {
+      id: string;
+      cohort_id: string;
+      name: string;
+      start_date: string;
+      end_date: string;
+      duration_months: number;
+      description: string;
+      sessions_per_day: number;
+      created_at: string;
+      updated_at: string;
+      [key: string]: any;
+    };
+    createMockStudent: (overrides?: Record<string, any>) => {
+      id: string;
+      cohort_id: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+      phone: string;
+      invite_status: string;
+      created_at: string;
+      updated_at: string;
+      [key: string]: any;
+    };
   };
 }

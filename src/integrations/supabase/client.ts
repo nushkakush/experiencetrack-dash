@@ -5,13 +5,83 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://ghmpaghyasyllfvamfna.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Create Supabase client with connection management
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10, // Limit real-time events to prevent resource exhaustion
+    },
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'experiencetrack-dash',
+    },
+  },
 });
+
+// Connection management utility
+class SupabaseConnectionManager {
+  private static instance: SupabaseConnectionManager;
+  private activeChannels = new Set<string>();
+  private connectionCount = 0;
+  private maxConnections = 50; // Limit maximum concurrent connections
+
+  private constructor() {}
+
+  static getInstance(): SupabaseConnectionManager {
+    if (!SupabaseConnectionManager.instance) {
+      SupabaseConnectionManager.instance = new SupabaseConnectionManager();
+    }
+    return SupabaseConnectionManager.instance;
+  }
+
+  createChannel(channelName: string) {
+    // Check if we're approaching connection limits
+    if (this.connectionCount >= this.maxConnections) {
+      console.warn('Approaching maximum Supabase connections, cleaning up old channels');
+      this.cleanupOldChannels();
+    }
+
+    if (this.activeChannels.has(channelName)) {
+      console.warn(`Channel ${channelName} already exists, removing old one`);
+      this.removeChannel(channelName);
+    }
+
+    this.activeChannels.add(channelName);
+    this.connectionCount++;
+    
+    return supabase.channel(channelName);
+  }
+
+  removeChannel(channelName: string) {
+    if (this.activeChannels.has(channelName)) {
+      supabase.removeChannel(channelName);
+      this.activeChannels.delete(channelName);
+      this.connectionCount = Math.max(0, this.connectionCount - 1);
+    }
+  }
+
+  private cleanupOldChannels() {
+    // Remove oldest channels if we're at the limit
+    const channelsToRemove = Array.from(this.activeChannels).slice(0, 10);
+    channelsToRemove.forEach(channel => this.removeChannel(channel));
+  }
+
+  getConnectionCount() {
+    return this.connectionCount;
+  }
+
+  getActiveChannels() {
+    return Array.from(this.activeChannels);
+  }
+}
+
+export const connectionManager = SupabaseConnectionManager.getInstance();
+
+// Export the original createClient for backward compatibility
+export const createBrowserClient = createClient;

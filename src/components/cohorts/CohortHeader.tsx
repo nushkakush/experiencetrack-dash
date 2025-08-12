@@ -26,6 +26,9 @@ export default function CohortHeader({
   // Check if user can manage students (super admin only)
   const canManageStudents = hasPermission('cohorts.manage_students');
   const canBulkUpload = hasPermission('cohorts.bulk_upload');
+  
+  // Debug logging
+
 
   return (
     <>
@@ -68,7 +71,7 @@ export default function CohortHeader({
                   trigger={
                     <Button variant="outline" size="sm" className="gap-2">
                       <Upload className="h-4 w-4" />
-                      Bulk Import
+                      Bulk Upload Students
                     </Button>
                   }
                   onSuccess={onStudentAdded}
