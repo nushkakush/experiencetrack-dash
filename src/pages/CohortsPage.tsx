@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Calendar, Trophy } from "lucide-react";
 import { useCohorts } from "@/hooks/useCohorts";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +16,7 @@ import { GlobalHolidayManagementDialog } from "@/components/holidays/GlobalHolid
 import { CombinedLeaderboard } from "@/components/attendance";
 import { FeeCollectionSetupModal } from "@/components/fee-collection";
 import { FeeStructureService } from "@/services/feeStructure.service";
+import { cohortsService } from "@/services/cohorts.service";
 import { CohortWithCounts } from "@/types/cohort";
 import { CohortFeatureGate, HolidayFeatureGate, FeeFeatureGate } from "@/components/common";
 import { toast } from "sonner";
@@ -30,6 +31,8 @@ const CohortsPage = () => {
   const [combinedLeaderboardOpen, setCombinedLeaderboardOpen] = useState(false);
   const [feeCollectionModalOpen, setFeeCollectionModalOpen] = useState(false);
   const [selectedCohortForFee, setSelectedCohortForFee] = useState<CohortWithCounts | null>(null);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [selectedCohortForDelete, setSelectedCohortForDelete] = useState<CohortWithCounts | null>(null);
   const { cohorts, isLoading, refetch } = useCohorts();
   const { canManageCohorts, canCreateCohorts, canViewCohorts, canSetupFeeStructure } = useFeaturePermissions();
 
@@ -91,6 +94,32 @@ const CohortsPage = () => {
     refetch(); // Refresh cohorts list
     setEditWizardOpen(false);
     setSelectedCohortForEdit(null);
+  };
+
+  const handleDeleteClick = (cohort: CohortWithCounts) => {
+    setSelectedCohortForDelete(cohort);
+    setDeleteConfirmationOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedCohortForDelete) return;
+
+    try {
+      await cohortsService.deleteCohort(selectedCohortForDelete.id);
+      toast.success(`Cohort "${selectedCohortForDelete.name}" deleted successfully.`);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting cohort:', error);
+      toast.error(`Failed to delete cohort "${selectedCohortForDelete.name}".`);
+    } finally {
+      setDeleteConfirmationOpen(false);
+      setSelectedCohortForDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmationOpen(false);
+    setSelectedCohortForDelete(null);
   };
 
   return (
@@ -158,6 +187,7 @@ const CohortsPage = () => {
                 onClick={() => handleCohortClick(cohort.id)}
                 onFeeCollectionClick={() => handleFeeCollectionClick(cohort)}
                 onEditClick={() => handleEditClick(cohort)}
+                onDeleteClick={() => handleDeleteClick(cohort)}
               />
             ))}
           </div>
@@ -253,6 +283,21 @@ const CohortsPage = () => {
             />
           </FeeFeatureGate>
         )}
+
+        <Dialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete cohort "{selectedCohortForDelete?.name}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelDelete}>Cancel</Button>
+              <Button variant="destructive" onClick={handleConfirmDelete}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardShell>
   );

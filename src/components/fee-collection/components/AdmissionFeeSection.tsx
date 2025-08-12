@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '../utils/currencyUtils';
+import { format } from 'date-fns';
 
 interface AdmissionFeeData {
   baseAmount: number;
@@ -15,14 +16,18 @@ interface AdmissionFeeSectionProps {
   cohortStartDate: string;
   editablePaymentDates: Record<string, string>;
   onPaymentDateChange: (key: string, value: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const AdmissionFeeSection: React.FC<AdmissionFeeSectionProps> = ({
   admissionFee,
   cohortStartDate,
   editablePaymentDates,
-  onPaymentDateChange
+  onPaymentDateChange,
+  isReadOnly = false
 }) => {
+  const admissionDate = editablePaymentDates['admission'] || cohortStartDate;
+
   return (
     <Card>
       <CardHeader>
@@ -41,12 +46,18 @@ export const AdmissionFeeSection: React.FC<AdmissionFeeSectionProps> = ({
           <TableBody>
             <TableRow>
               <TableCell>
-                <Input
-                  type="date"
-                  value={editablePaymentDates['admission'] || cohortStartDate}
-                  onChange={(e) => onPaymentDateChange('admission', e.target.value)}
-                  className="w-40"
-                />
+                {isReadOnly ? (
+                  <span className="text-sm font-medium">
+                    {format(new Date(admissionDate), 'MMM dd, yyyy')}
+                  </span>
+                ) : (
+                  <Input
+                    type="date"
+                    value={admissionDate}
+                    onChange={(e) => onPaymentDateChange('admission', e.target.value)}
+                    className="w-40"
+                  />
+                )}
               </TableCell>
               <TableCell>{formatCurrency(admissionFee.baseAmount)}</TableCell>
               <TableCell>{formatCurrency(admissionFee.gstAmount)}</TableCell>

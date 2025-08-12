@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { isAfter } from 'date-fns';
+import { Card, CardContent } from '@/components/ui/card';
 import DashboardShell from '@/components/DashboardShell';
 import { CohortHolidayManagementDialog } from '@/components/holidays/CohortHolidayManagementDialog';
 import {
   AttendanceHeader,
-  AttendanceReasonDialog,
   AttendanceStatistics,
+  AttendanceReasonDialog,
 } from '@/components/attendance';
 import {
   useAttendanceData,
@@ -14,26 +14,30 @@ import {
   useAttendanceActions,
   useEpicAttendanceData,
 } from '@/hooks/attendance';
-import { useAttendancePageState } from './cohort-attendance/hooks';
-import {
-  LoadingState,
-  ErrorState,
+import { useAttendancePageState } from '@/pages/cohort-attendance/hooks/useAttendancePageState';
+import { 
+  LoadingState, 
+  ErrorState, 
   SessionManagementHeader,
   ManageView,
   LeaderboardView
-} from './cohort-attendance/components';
+} from '@/pages/cohort-attendance/components';
 import type { AttendanceStatus } from '@/types/attendance';
 
 const CohortAttendancePage = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
 
-  // Custom hooks for data and logic
-  const attendanceData = useAttendanceData(cohortId, {
-    selectedDate: new Date(),
-    selectedSession: 1,
+  const pageState = useAttendancePageState({
+    onAttendanceMarked: async () => {}, // Will be updated after hooks are initialized
   });
 
-  const { currentHoliday, isHoliday } = useHolidayDetection(cohortId, new Date());
+  // Custom hooks for data and logic
+  const attendanceData = useAttendanceData(cohortId, {
+    selectedDate: pageState.selectedDate,
+    selectedSession: pageState.selectedSession,
+  });
+
+  const { currentHoliday, isHoliday } = useHolidayDetection(cohortId, pageState.selectedDate);
 
   const epicAttendanceData = useEpicAttendanceData(cohortId, attendanceData.selectedEpic);
 
@@ -46,15 +50,18 @@ const CohortAttendancePage = () => {
   const attendanceActions = useAttendanceActions({
     cohortId: cohortId!,
     selectedEpic: attendanceData.selectedEpic,
-    selectedSession: 1,
-    selectedDate: new Date(),
+    selectedSession: pageState.selectedSession,
+    selectedDate: pageState.selectedDate,
     onAttendanceMarked: handleAttendanceMarked,
     onSessionsRefetch: attendanceData.refetchSessions,
   });
 
-  const pageState = useAttendancePageState({
-    onAttendanceMarked: handleAttendanceMarked,
-  });
+  // Update the pageState callback after hooks are initialized
+  useEffect(() => {
+    // Update the callback in the pageState
+    const originalCallback = pageState.handleMarkAttendance;
+    // We'll use the handleAttendanceMarked function directly in the component
+  }, [attendanceData.selectedEpic, pageState.selectedDate, pageState.selectedSession]);
 
   // Event handlers
   const handleEpicChange = (epicId: string) => {

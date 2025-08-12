@@ -7,16 +7,20 @@ interface ScholarshipSelectionProps {
   scholarships: Scholarship[];
   selectedScholarshipId: string;
   onScholarshipSelect: (scholarshipId: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const ScholarshipSelection: React.FC<ScholarshipSelectionProps> = ({
   scholarships,
   selectedScholarshipId,
-  onScholarshipSelect
+  onScholarshipSelect,
+  isReadOnly = false
 }) => {
   return (
     <div className="space-y-4">
-      <p className="text-sm font-medium">Select Scholarship:</p>
+      <p className="text-sm font-medium">
+        {isReadOnly ? 'Select Scholarship to Preview:' : 'Select Scholarship:'}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button
           variant={selectedScholarshipId === 'no_scholarship' ? 'default' : 'outline'}

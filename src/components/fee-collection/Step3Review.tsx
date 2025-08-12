@@ -12,9 +12,10 @@ interface Step3ReviewProps {
   feeStructure: FeeStructure;
   scholarships: Scholarship[];
   cohortStartDate: string;
+  isReadOnly?: boolean;
 }
 
-export default function Step3Review({ feeStructure, scholarships, cohortStartDate }: Step3ReviewProps) {
+export default function Step3Review({ feeStructure, scholarships, cohortStartDate, isReadOnly = false }: Step3ReviewProps) {
   const {
     selectedPaymentPlan,
     selectedScholarshipId,
@@ -28,9 +29,14 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Fee Preview</h2>
+        <h2 className="text-2xl font-bold">
+          {isReadOnly ? 'Fee Structure Preview' : 'Fee Preview'}
+        </h2>
         <p className="text-muted-foreground">
-          Review the fee structure across different payment plans and scholarship options
+          {isReadOnly 
+            ? 'Review the current fee structure across different payment plans and scholarship options'
+            : 'Review the fee structure across different payment plans and scholarship options'
+          }
         </p>
       </div>
 
@@ -39,6 +45,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
         scholarships={scholarships}
         selectedScholarshipId={selectedScholarshipId}
         onScholarshipSelect={handleScholarshipSelect}
+        isReadOnly={isReadOnly}
       />
 
       {/* Payment Plan Tabs */}
@@ -56,6 +63,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
             cohortStartDate={cohortStartDate}
             editablePaymentDates={editablePaymentDates}
             onPaymentDateChange={handlePaymentDateChange}
+            isReadOnly={isReadOnly}
           />
           <OneShotPaymentSection
             oneShotPayment={feeReview.oneShotPayment}
@@ -64,6 +72,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
             cohortStartDate={cohortStartDate}
             editablePaymentDates={editablePaymentDates}
             onPaymentDateChange={handlePaymentDateChange}
+            isReadOnly={isReadOnly}
           />
           <OverallSummary
             overallSummary={feeReview.overallSummary}
@@ -80,6 +89,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
             cohortStartDate={cohortStartDate}
             editablePaymentDates={editablePaymentDates}
             onPaymentDateChange={handlePaymentDateChange}
+            isReadOnly={isReadOnly}
           />
           {feeReview.semesters.map((semester) => (
             <SemesterSection
@@ -89,6 +99,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
               selectedScholarshipId={selectedScholarshipId}
               editablePaymentDates={editablePaymentDates}
               onPaymentDateChange={handlePaymentDateChange}
+              isReadOnly={isReadOnly}
             />
           ))}
           <OverallSummary
@@ -106,6 +117,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
             cohortStartDate={cohortStartDate}
             editablePaymentDates={editablePaymentDates}
             onPaymentDateChange={handlePaymentDateChange}
+            isReadOnly={isReadOnly}
           />
           {feeReview.semesters.map((semester) => (
             <SemesterSection
@@ -115,6 +127,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
               selectedScholarshipId={selectedScholarshipId}
               editablePaymentDates={editablePaymentDates}
               onPaymentDateChange={handlePaymentDateChange}
+              isReadOnly={isReadOnly}
             />
           ))}
           <OverallSummary

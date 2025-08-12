@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Scholarship } from '@/types/fee';
 import { formatCurrency } from '../utils/currencyUtils';
+import { format } from 'date-fns';
 
 interface SemesterInstalment {
   paymentDate: string;
@@ -32,6 +33,7 @@ interface SemesterSectionProps {
   selectedScholarshipId: string;
   editablePaymentDates: Record<string, string>;
   onPaymentDateChange: (key: string, value: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const SemesterSection: React.FC<SemesterSectionProps> = ({
@@ -39,7 +41,8 @@ export const SemesterSection: React.FC<SemesterSectionProps> = ({
   scholarships,
   selectedScholarshipId,
   editablePaymentDates,
-  onPaymentDateChange
+  onPaymentDateChange,
+  isReadOnly = false
 }) => {
   return (
     <Card key={semester.semesterNumber}>
@@ -70,12 +73,18 @@ export const SemesterSection: React.FC<SemesterSectionProps> = ({
               return (
                 <TableRow key={index}>
                   <TableCell>
-                    <Input
-                      type="date"
-                      value={currentDate}
-                      onChange={(e) => onPaymentDateChange(dateKey, e.target.value)}
-                      className="w-40"
-                    />
+                    {isReadOnly ? (
+                      <span className="text-sm font-medium">
+                        {format(new Date(currentDate), 'MMM dd, yyyy')}
+                      </span>
+                    ) : (
+                      <Input
+                        type="date"
+                        value={currentDate}
+                        onChange={(e) => onPaymentDateChange(dateKey, e.target.value)}
+                        className="w-40"
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     {instalment.scholarshipAmount > 0 ? formatCurrency(instalment.scholarshipAmount) : '--'}

@@ -16,8 +16,10 @@ interface StepNavigationProps {
   onPrevious: () => void;
   onSave?: () => void;
   onEdit?: () => void;
+  onCancelEdit?: () => void;
   onClose?: () => void;
   isComplete?: boolean;
+  isEditMode?: boolean;
   saving?: boolean;
   canProceed?: boolean;
   nextButtonText?: string;
@@ -33,8 +35,10 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
   onPrevious,
   onSave,
   onEdit,
+  onCancelEdit,
   onClose,
   isComplete = false,
+  isEditMode = false,
   saving = false,
   canProceed = true,
   nextButtonText = 'Next',
@@ -78,7 +82,7 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
           </Button>
 
           <div className="flex gap-2">
-            {isComplete ? (
+            {isComplete && !isEditMode ? (
               <>
                 {onEdit && (
                   <Button variant="outline" onClick={onEdit}>
@@ -88,6 +92,26 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                 {onClose && (
                   <Button onClick={onClose}>
                     Close
+                  </Button>
+                )}
+              </>
+            ) : isEditMode ? (
+              <>
+                {onCancelEdit && (
+                  <Button variant="outline" onClick={onCancelEdit}>
+                    Cancel Edit
+                  </Button>
+                )}
+                {isLastStep ? (
+                  onSave && (
+                    <Button onClick={onSave} disabled={saving || !canProceed}>
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  )
+                ) : (
+                  <Button onClick={onNext} disabled={!canProceed}>
+                    {nextButtonText}
+                    <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 )}
               </>

@@ -10,7 +10,8 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
 
-  if (loading) {
+  // During development, if we're in a hot reload state, show loading
+  if (loading || (process.env.NODE_ENV === 'development' && !user && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Scholarship } from '@/types/fee';
 import { formatCurrency } from '../utils/currencyUtils';
+import { format } from 'date-fns';
 
 interface OneShotPaymentData {
   baseAmount: number;
@@ -20,6 +21,7 @@ interface OneShotPaymentSectionProps {
   cohortStartDate: string;
   editablePaymentDates: Record<string, string>;
   onPaymentDateChange: (key: string, value: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const OneShotPaymentSection: React.FC<OneShotPaymentSectionProps> = ({
@@ -28,13 +30,16 @@ export const OneShotPaymentSection: React.FC<OneShotPaymentSectionProps> = ({
   selectedScholarshipId,
   cohortStartDate,
   editablePaymentDates,
-  onPaymentDateChange
+  onPaymentDateChange,
+  isReadOnly = false
 }) => {
   if (!oneShotPayment) return null;
   
   const selectedScholarship = selectedScholarshipId === 'no_scholarship' 
     ? null 
     : scholarships.find(s => s.id === selectedScholarshipId);
+
+  const oneShotDate = editablePaymentDates['one-shot'] || cohortStartDate;
   
   return (
     <Card>
@@ -56,12 +61,18 @@ export const OneShotPaymentSection: React.FC<OneShotPaymentSectionProps> = ({
           <TableBody>
             <TableRow>
               <TableCell>
-                <Input
-                  type="date"
-                  value={editablePaymentDates['one-shot'] || cohortStartDate}
-                  onChange={(e) => onPaymentDateChange('one-shot', e.target.value)}
-                  className="w-40"
-                />
+                {isReadOnly ? (
+                  <span className="text-sm font-medium">
+                    {format(new Date(oneShotDate), 'MMM dd, yyyy')}
+                  </span>
+                ) : (
+                  <Input
+                    type="date"
+                    value={oneShotDate}
+                    onChange={(e) => onPaymentDateChange('one-shot', e.target.value)}
+                    className="w-40"
+                  />
+                )}
               </TableCell>
               <TableCell>{formatCurrency(oneShotPayment.baseAmount)}</TableCell>
               <TableCell>{formatCurrency(oneShotPayment.gstAmount)}</TableCell>

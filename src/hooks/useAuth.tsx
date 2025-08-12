@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/types/auth';
 import { Logger } from '@/lib/logging/Logger';
+import type { UserProfile } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -46,16 +46,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           // Defer profile fetching to avoid deadlocks
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            if (mounted) {
+              fetchProfile(session.user.id);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -66,6 +72,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -75,7 +83,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
@@ -89,8 +100,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const contextValue: AuthContextType = {
+    user,
+    session,
+    profile,
+    loading,
+    profileLoading,
+    signOut,
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, profileLoading, signOut }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -99,6 +119,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
+    // During development, provide a fallback to prevent crashes during hot reloads
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('useAuth called outside AuthProvider - this may be due to hot reload');
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        loading: true,
+        profileLoading: false,
+        signOut: async () => {},
+      };
+    }
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

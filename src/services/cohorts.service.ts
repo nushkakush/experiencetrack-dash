@@ -212,6 +212,43 @@ class CohortsService extends BaseService<Cohort> {
       return 0;
     }
   }
+
+  async deleteCohort(id: string): Promise<ApiResponse<null>> {
+    return this["executeQuery"](async () => {
+      // Delete related data first (cohort_epics, cohort_students, etc.)
+      // Note: This should be handled by database cascade deletes, but we'll be explicit here
+      
+      // Delete cohort epics
+      await supabase
+        .from("cohort_epics")
+        .delete()
+        .eq("cohort_id", id);
+
+      // Delete cohort students
+      await supabase
+        .from("cohort_students")
+        .delete()
+        .eq("cohort_id", id);
+
+      // Delete attendance records
+      await supabase
+        .from("attendance_records")
+        .delete()
+        .eq("cohort_id", id);
+
+      // Delete cancelled sessions
+      await supabase
+        .from("cancelled_sessions")
+        .delete()
+        .eq("cohort_id", id);
+
+      // Finally delete the cohort
+      return await supabase
+        .from("cohorts")
+        .delete()
+        .eq("id", id);
+    });
+  }
 }
 
 export const cohortsService = new CohortsService();

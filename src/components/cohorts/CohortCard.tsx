@@ -1,23 +1,31 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Users, Clock, DollarSign, Edit } from "lucide-react";
+import { CalendarDays, Users, Clock, DollarSign, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { CohortWithCounts } from "@/types/cohort";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
 import { AttendanceFeatureGate, FeeFeatureGate, CohortFeatureGate } from "@/components/common";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CohortCardProps {
   cohort: CohortWithCounts;
   onClick?: () => void;
   onFeeCollectionClick?: () => void;
   onEditClick?: () => void;
+  onDeleteClick?: () => void;
 }
 
-export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEditClick }: CohortCardProps) {
+export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEditClick, onDeleteClick }: CohortCardProps) {
   const navigate = useNavigate();
-  const { canViewAttendance, canViewFees, canSetupFeeStructure } = useFeaturePermissions();
+  const { canViewAttendance, canViewFees, canSetupFeeStructure, canEditCohorts, canDeleteCohorts } = useFeaturePermissions();
 
   const handleAttendanceClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,6 +46,13 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
     }
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteClick) {
+      onDeleteClick();
+    }
+  };
+
   return (
     <Card
       onClick={onClick}
@@ -52,16 +67,35 @@ export default function CohortCard({ cohort, onClick, onFeeCollectionClick, onEd
             <div className="text-xs font-normal text-blue-600 dark:text-blue-400 mb-2">ID: {cohort.cohort_id}</div>
             <CardDescription className="line-clamp-2">{cohort.description || "No description"}</CardDescription>
           </div>
-          <CohortFeatureGate action="edit">
-            <Button
-              onClick={handleEditClick}
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1 h-8 w-8 p-0 ml-2"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </CohortFeatureGate>
+          {(canEditCohorts || canDeleteCohorts) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-1 h-8 w-8 p-0 ml-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEditCohorts && (
+                  <DropdownMenuItem onClick={handleEditClick}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Cohort
+                  </DropdownMenuItem>
+                )}
+                {canEditCohorts && canDeleteCohorts && <DropdownMenuSeparator />}
+                {canDeleteCohorts && (
+                  <DropdownMenuItem onClick={handleDeleteClick} className="text-destructive focus:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Cohort
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
       <CardContent className="mt-auto space-y-4">

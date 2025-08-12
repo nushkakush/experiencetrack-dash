@@ -194,7 +194,8 @@ export const useHolidayManagement = (
       await loadHolidays();
     } catch (error) {
       console.error('Error deleting holiday:', error);
-      toast.error('Failed to delete holiday');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to delete holiday: ${errorMessage}`);
     } finally {
       updateState({ loading: false });
     }

@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Tabs,
@@ -44,6 +45,8 @@ export const HolidayDialog = ({
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addHolidayModalOpen, setAddHolidayModalOpen] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [holidayToDelete, setHolidayToDelete] = useState<Holiday | SelectedHoliday | null>(null);
 
   const handleClose = () => {
     actions.clearDrafts();
@@ -65,6 +68,30 @@ export const HolidayDialog = ({
     actions.addHoliday(holiday);
     setAddHolidayModalOpen(false);
     actions.setSelectedDates([]);
+  };
+
+  const handleDeleteHoliday = (id: string) => {
+    // Find the holiday by ID from both published and draft lists
+    const holiday = [...state.publishedHolidays, ...state.existingDraftHolidays, ...state.draftHolidays]
+      .find(h => h.id === id);
+    
+    if (holiday) {
+      setHolidayToDelete(holiday);
+      setDeleteConfirmationOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (holidayToDelete) {
+      await actions.deletePublishedHoliday(holidayToDelete.id);
+      setDeleteConfirmationOpen(false);
+      setHolidayToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmationOpen(false);
+    setHolidayToDelete(null);
   };
 
   // Convert all holidays to Date objects for calendar highlighting
@@ -179,7 +206,7 @@ export const HolidayDialog = ({
                     <HolidayList
                       title="Draft Holidays"
                       holidays={allDraftHolidays}
-                      onDelete={actions.deletePublishedHoliday}
+                      onDelete={handleDeleteHoliday}
                       onPublish={actions.publishExistingDraft}
                       isDraft={true}
                     />
@@ -233,7 +260,7 @@ export const HolidayDialog = ({
               <HolidayList
                 title="Published Holidays"
                 holidays={state.publishedHolidays}
-                onDelete={actions.deletePublishedHoliday}
+                onDelete={handleDeleteHoliday}
                 onEdit={handleEditHoliday}
                 isLoading={state.loading}
               />
@@ -270,6 +297,26 @@ export const HolidayDialog = ({
             }}
             onEditHoliday={handleEditHoliday}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the holiday "{holidayToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

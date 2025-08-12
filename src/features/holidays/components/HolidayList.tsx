@@ -3,6 +3,7 @@ import { Trash2, Edit2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import type { Holiday, SelectedHoliday } from '@/types/holiday';
 
 interface HolidayListProps {
@@ -24,6 +25,16 @@ export const HolidayList = ({
   isLoading = false,
   isDraft = false 
 }: HolidayListProps) => {
+  const { canDeleteHolidays, canEditHolidays } = useFeaturePermissions();
+
+  const handleDelete = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (canDeleteHolidays) {
+      onDelete(id);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -102,7 +113,7 @@ export const HolidayList = ({
               </div>
               
               <div className="flex gap-2">
-                {onEdit && (
+                {onEdit && canEditHolidays && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -121,14 +132,16 @@ export const HolidayList = ({
                     <Send className="h-4 w-4" />
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onDelete(holiday.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canDeleteHolidays && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleDelete(holiday.id, e)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}

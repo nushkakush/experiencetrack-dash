@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { NewFeeStructureInput, Scholarship } from '@/types/fee';
 import Step1FeeStructure from './Step1FeeStructure';
@@ -29,6 +29,8 @@ export default function FeeCollectionSetupModal({
   cohortStartDate,
   onSetupComplete
 }: FeeCollectionSetupModalProps) {
+  const [isEditMode, setIsEditMode] = useState(false);
+  
   const {
     currentStep,
     loading,
@@ -48,15 +50,25 @@ export default function FeeCollectionSetupModal({
   useEffect(() => {
     if (open && cohortId) {
       loadExistingData();
+      setIsEditMode(false); // Reset edit mode when modal opens
     }
   }, [open, cohortId, loadExistingData]);
 
   const handleEditConfiguration = () => {
+    setIsEditMode(true);
     updateState({
       isFeeStructureComplete: false,
       currentStep: 1
     });
   };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    loadExistingData(); // Reload original data
+  };
+
+  // Determine if we should show read-only view
+  const isReadOnly = isFeeStructureComplete && !isEditMode;
 
   const renderCurrentStep = () => {
     if (loading) {
@@ -70,6 +82,7 @@ export default function FeeCollectionSetupModal({
             data={feeStructureData}
             onChange={(data: NewFeeStructureInput) => updateState({ feeStructureData: data })}
             errors={errors}
+            isReadOnly={isReadOnly}
           />
         );
       case 2:
@@ -78,6 +91,7 @@ export default function FeeCollectionSetupModal({
             scholarships={scholarships}
             onScholarshipsChange={(scholarships: Scholarship[]) => updateState({ scholarships })}
             errors={errors}
+            isReadOnly={isReadOnly}
           />
         );
       case 3:
@@ -97,6 +111,7 @@ export default function FeeCollectionSetupModal({
             }}
             scholarships={scholarships}
             cohortStartDate={cohortStartDate}
+            isReadOnly={isReadOnly}
           />
         );
       default:
@@ -109,8 +124,10 @@ export default function FeeCollectionSetupModal({
       <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {isFeeStructureComplete 
-              ? 'Review Fee Structure' 
+            {isReadOnly 
+              ? 'Fee Structure Settings' 
+              : isEditMode
+              ? `Edit Fee Structure - Step ${currentStep} of 3`
               : `Configure Fee Structure - Step ${currentStep} of 3`
             }
           </DialogTitle>
@@ -141,8 +158,10 @@ export default function FeeCollectionSetupModal({
             onPrevious={handlePrevious}
             onSave={handleSave}
             onEdit={handleEditConfiguration}
+            onCancelEdit={handleCancelEdit}
             onClose={() => onOpenChange(false)}
             isComplete={isFeeStructureComplete}
+            isEditMode={isEditMode}
             saving={saving}
             canProceed={!loading}
             showProgressBar={false}

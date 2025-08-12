@@ -30,30 +30,21 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
   // Load initial data (cohort, students, epics)
   useEffect(() => {
     if (!cohortId) return;
-    
+
     const loadInitialData = async () => {
       try {
-        setData(prev => ({ ...prev, loading: true, error: null }));
-        
-        // Load cohort details
+        // Load cohort data directly from database
         const { data: cohortData, error: cohortError } = await supabase
           .from('cohorts')
           .select('*')
           .eq('id', cohortId)
           .single();
-        
+
         if (cohortError) throw cohortError;
 
         // Load epics
         const epicsData = await AttendanceService.getCohortEpics(cohortId);
         
-        // Set active epic as default
-        const activeEpic = epicsData.find(epic => epic.is_active);
-        const defaultEpic = activeEpic || epicsData[0];
-        if (defaultEpic) {
-          setSelectedEpic(defaultEpic.id);
-        }
-
         // Load students
         const { data: studentsData, error: studentsError } = await supabase
           .from('cohort_students')
@@ -65,19 +56,22 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
         setData(prev => ({
           ...prev,
           cohort: cohortData,
-          epics: epicsData,
           students: studentsData || [],
+          epics: epicsData,
           loading: false,
         }));
 
+        // Set the first epic as selected if available
+        if (epicsData.length > 0 && !selectedEpic) {
+          setSelectedEpic(epicsData[0].id);
+        }
       } catch (error) {
         Logger.getInstance().error('Error loading initial data', { error, cohortId });
         setData(prev => ({
           ...prev,
-          error: 'Failed to load attendance data',
+          error: 'Failed to load cohort data',
           loading: false,
         }));
-        toast.error('Failed to load attendance data');
       }
     };
 

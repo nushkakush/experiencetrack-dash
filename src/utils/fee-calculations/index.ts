@@ -112,25 +112,22 @@ export const generateFeeStructureReview = (
   // For overall summary: show the total program fee as the base amount (GST exclusive)
   const totalBaseAmount = feeStructure.total_program_fee;
   
-  // Calculate one-shot discount on base amount (GST exclusive)
+  // Step 1: Calculate one-shot discount on base amount (GST exclusive)
   const totalDiscount = paymentPlan === 'one_shot' 
     ? calculateOneShotDiscount(totalBaseAmount, feeStructure.one_shot_discount_percentage)
     : 0;
   
-  // Apply scholarship to base fee (GST exclusive amount)
-  const baseFeeAfterScholarship = totalBaseAmount - scholarshipAmount;
+  // Step 2: Calculate amount after one-shot discount
+  const amountAfterDiscount = totalBaseAmount - totalDiscount;
   
-  // Calculate GST on the amount after scholarship and discount
-  const amountForGSTCalculation = paymentPlan === 'one_shot' 
-    ? baseFeeAfterScholarship - totalDiscount
-    : baseFeeAfterScholarship;
+  // Step 3: Apply scholarship to the amount after discount
+  const amountAfterScholarship = amountAfterDiscount - scholarshipAmount;
   
-  const totalBaseGST = calculateGST(amountForGSTCalculation);
+  // Step 4: Calculate GST on the amount after scholarship and discount
+  const totalBaseGST = calculateGST(amountAfterScholarship);
   
-  const totalProgramFee = totalBaseAmount; // GST exclusive (total program fee)
-  const totalGST = totalBaseGST; // GST on amount after scholarship and discount
-  
-  const totalAmountPayable = totalBaseAmount + totalGST - totalDiscount - scholarshipAmount;
+  // Step 5: Calculate final payable amount
+  const totalAmountPayable = amountAfterScholarship + totalBaseGST;
   
   return {
     admissionFee: {
@@ -143,9 +140,9 @@ export const generateFeeStructureReview = (
     semesters,
     oneShotPayment,
     overallSummary: {
-      totalProgramFee,
+      totalProgramFee: totalBaseAmount,
       admissionFee: feeStructure.admission_fee,
-      totalGST,
+      totalGST: totalBaseGST,
       totalDiscount,
       totalScholarship: scholarshipAmount,
       totalAmountPayable: Math.max(0, totalAmountPayable)

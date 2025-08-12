@@ -118,8 +118,8 @@ const App = () => (
                 />
                 {/* Public routes (no authentication required) */}
                 <Route path="/invite/:token" element={<InvitationPage />} />
-                <Route path="/leaderboard/:cohortId" element={<PublicLeaderboard />} />
-                <Route path="/leaderboard/:cohortId/combined" element={<PublicCombinedLeaderboard />} />
+                <Route path="/public/leaderboard/:cohortId/:epicId" element={<PublicLeaderboard />} />
+                <Route path="/public/combined-leaderboard/:cohortIds" element={<PublicCombinedLeaderboard />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

@@ -92,27 +92,25 @@ export const calculateOneShotPayment = (
   // Base amount is the remaining base fee (GST exclusive)
   const baseAmount = remainingBaseFee;
   
-  // Calculate one-shot discount on base amount (GST exclusive)
+  // Step 1: Calculate one-shot discount on base amount (GST exclusive)
   const oneShotDiscount = calculateOneShotDiscount(baseAmount, discountPercentage);
   
-  // Apply scholarship to base fee (GST exclusive amount)
-  const baseFeeAfterScholarship = baseAmount - scholarshipAmount;
+  // Step 2: Calculate amount after one-shot discount
+  const amountAfterDiscount = baseAmount - oneShotDiscount;
   
-  // Calculate GST on the amount after scholarship and discount
-  const amountForGSTCalculation = baseFeeAfterScholarship - oneShotDiscount;
-  const baseFeeGST = calculateGST(amountForGSTCalculation);
+  // Step 3: Apply scholarship to the amount after discount
+  const amountAfterScholarship = amountAfterDiscount - scholarshipAmount;
   
-  // Total GST amount (base fee GST only, admission fee GST is separate)
-  const totalGSTAmount = baseFeeGST;
-  const totalWithGST = baseAmount + totalGSTAmount;
+  // Step 4: Calculate GST on the amount after scholarship and discount
+  const baseFeeGST = calculateGST(amountAfterScholarship);
   
-  // Calculate final payable amount
-  const finalAmount = totalWithGST - oneShotDiscount;
+  // Step 5: Calculate final payable amount
+  const finalAmount = amountAfterScholarship + baseFeeGST;
   
   return {
     paymentDate: cohortStartDate,
     baseAmount: baseAmount,
-    gstAmount: totalGSTAmount,
+    gstAmount: baseFeeGST,
     scholarshipAmount,
     discountAmount: oneShotDiscount,
     amountPayable: Math.max(0, finalAmount),
@@ -182,12 +180,17 @@ export const calculateSemesterPayment = (
     const installmentScholarship = scholarshipDistribution[i];
     const installmentDiscount = discountPerInstallment;
     
-    // Calculate GST on the installment amount (GST exclusive)
-    const installmentAfterScholarship = installmentAmount - installmentScholarship;
+    // Step 1: Calculate amount after discount
+    const installmentAfterDiscount = installmentAmount - installmentDiscount;
+    
+    // Step 2: Apply scholarship to the amount after discount
+    const installmentAfterScholarship = installmentAfterDiscount - installmentScholarship;
+    
+    // Step 3: Calculate GST on the amount after scholarship and discount
     const installmentGST = calculateGST(installmentAfterScholarship);
     
-    // Calculate final payable amount
-    const finalAmount = installmentAfterScholarship + installmentGST - installmentDiscount;
+    // Step 4: Calculate final payable amount
+    const finalAmount = installmentAfterScholarship + installmentGST;
     
     installments.push({
       paymentDate: semesterStartDate.toISOString().split('T')[0],
