@@ -1,5 +1,6 @@
 import { PaymentPlan, PaymentBreakdown } from '@/types/fee';
 import { calculateGST, extractGSTFromTotal, extractBaseAmountFromTotal } from './gst';
+import { generateSemesterPaymentDates } from './semesters';
 
 /**
  * Payment plan calculation utilities
@@ -167,10 +168,8 @@ export const calculateSemesterPayment = (
   const semesterDiscount = oneShotDiscount / numberOfSemesters;
   const discountPerInstallment = semesterDiscount / instalmentsPerSemester;
   
-  // Calculate semester payment date
-  const startDate = new Date(cohortStartDate);
-  const semesterStartDate = new Date(startDate);
-  semesterStartDate.setMonth(startDate.getMonth() + (semesterNumber - 1) * 6);
+  // Generate proper payment dates for each installment in this semester
+  const paymentDates = generateSemesterPaymentDates(semesterNumber, instalmentsPerSemester, cohortStartDate);
   
   // Generate installments
   const installments: PaymentBreakdown[] = [];
@@ -193,7 +192,7 @@ export const calculateSemesterPayment = (
     const finalAmount = installmentAfterScholarship + installmentGST;
     
     installments.push({
-      paymentDate: semesterStartDate.toISOString().split('T')[0],
+      paymentDate: paymentDates[i], // Use the properly calculated date for this installment
       baseAmount: installmentAmount,
       gstAmount: installmentGST,
       scholarshipAmount: installmentScholarship,
