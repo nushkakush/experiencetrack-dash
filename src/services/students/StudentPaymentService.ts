@@ -130,7 +130,7 @@ class StudentPaymentService {
         .from('student_scholarships')
         .select(`
           *,
-          scholarship:scholarships(*)
+          scholarship:cohort_scholarships(*)
         `)
         .in('student_id', studentIds);
 
@@ -168,7 +168,7 @@ class StudentPaymentService {
           pending_amount: pendingAmount,
           overdue_amount: overdueAmount,
           scholarship_name: studentScholarship?.scholarship?.name,
-          scholarship_percentage: studentScholarship?.scholarship?.amount_percentage,
+          scholarship_id: studentScholarship?.scholarship?.id,
           token_fee_paid: tokenFeePaid,
           payment_plan: studentPayments[0]?.payment_plan || 'not_selected',
           student: student,
@@ -271,7 +271,8 @@ class StudentPaymentService {
             student_id: studentId,
             scholarship_id: scholarshipId,
             additional_discount_percentage: 0,
-            assigned_at: new Date().toISOString()
+            assigned_at: new Date().toISOString(),
+            assigned_by: null // This will be set by the calling function if needed
           });
 
         if (scholarshipError) throw scholarshipError;

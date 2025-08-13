@@ -4,7 +4,8 @@ import { PaymentStatusBadge } from '../../PaymentStatusBadge';
 import { Eye, Download } from 'lucide-react';
 
 interface PaymentData {
-  payment_type: 'admission_fee' | 'instalments' | 'sem_plan' | 'one_shot';
+  payment_type: 'admission_fee' | 'program_fee' | 'scholarship';
+  payment_plan?: string;
   installment_number?: number;
   semester_number?: number;
   status: string;
@@ -29,12 +30,21 @@ export const PaymentItem: React.FC<PaymentItemProps> = ({
     switch (payment.payment_type) {
       case 'admission_fee':
         return 'Admission Fee';
-      case 'instalments':
-        return `Instalment ${payment.installment_number}`;
-      case 'sem_plan':
-        return `Semester ${payment.semester_number}`;
+      case 'program_fee':
+        // Use payment_plan to determine the display text
+        if (payment.payment_plan === 'one_shot') {
+          return 'Program Fee (One-Shot)';
+        } else if (payment.payment_plan === 'sem_wise') {
+          return `Program Fee (Semester ${payment.semester_number || 1})`;
+        } else if (payment.payment_plan === 'instalment_wise') {
+          return `Program Fee (Instalment ${payment.installment_number || 1})`;
+        } else {
+          return 'Program Fee';
+        }
+      case 'scholarship':
+        return 'Scholarship';
       default:
-        return 'One-Shot Payment';
+        return 'Payment';
     }
   };
 

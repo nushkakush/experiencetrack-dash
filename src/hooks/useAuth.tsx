@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Logger } from '@/lib/logging/Logger';
 import type { UserProfile } from '@/types/auth';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -95,8 +96,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setSession(null);
       setProfile(null);
+      toast.success('You have been signed out successfully.');
+      // Redirect to auth page after successful logout
+      window.location.href = '/auth';
     } catch (error) {
       Logger.getInstance().error('Error signing out', { error, userId: user?.id });
+      toast.error('Failed to sign out. Please try again.');
     }
   };
 

@@ -1,12 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TableCell } from '@/components/ui/table';
 import { StudentPaymentSummary, PaymentPlan } from '@/types/fee';
+import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
 
 interface PaymentPlanCellProps {
   student: StudentPaymentSummary;
 }
 
 export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({ student }) => {
+  const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchScholarshipPercentage = async () => {
+      if (student.scholarship_id) {
+        const percentage = await getScholarshipPercentageForDisplay(student.scholarship_id);
+        setScholarshipPercentage(percentage);
+      }
+    };
+
+    fetchScholarshipPercentage();
+  }, [student.scholarship_id]);
+
   const getPlanDisplay = (plan: PaymentPlan) => {
     if (!plan || plan === 'not_selected') {
       return '--';
@@ -30,9 +44,9 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({ student }) => 
         <div className="font-medium">
           {getPlanDisplay(student.payment_plan)}
         </div>
-        {student.scholarship_name && (
+        {student.scholarship_name && scholarshipPercentage > 0 && (
           <div className="text-sm text-blue-600">
-            {student.scholarship_name} ({student.scholarship_percentage}%)
+            {student.scholarship_name} ({scholarshipPercentage}%)
           </div>
         )}
       </div>

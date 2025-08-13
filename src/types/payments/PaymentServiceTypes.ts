@@ -33,7 +33,7 @@ export interface PaymentSummary {
   pending_amount: number;
   overdue_amount: number;
   scholarship_name?: string | null;
-  scholarship_percentage?: number | null;
+  scholarship_id?: string | null;
   token_fee_paid: boolean;
   payment_plan: string;
   student: Student;

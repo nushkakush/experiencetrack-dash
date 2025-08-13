@@ -5,12 +5,15 @@ export interface StudentPaymentRow {
   id: string;
   student_id: string;
   cohort_id: string;
-  payment_type: string;
   payment_plan: string;
-  amount_payable: number;
-  amount_paid: number;
-  due_date: string;
-  status: string;
+  payment_schedule: any; // JSON object containing payment schedule
+  total_amount_payable: number;
+  total_amount_paid: number;
+  total_amount_pending: number;
+  scholarship_id?: string;
+  payment_status: string;
+  next_due_date?: string;
+  last_payment_date?: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -88,7 +91,7 @@ export interface StudentPaymentSummaryRow {
   pending_amount: number;
   overdue_amount: number;
   scholarship_name?: string | null;
-  scholarship_percentage?: number | null;
+  scholarship_id?: string | null;
   token_fee_paid: boolean;
   payment_plan: string;
   student: CohortStudentRow;

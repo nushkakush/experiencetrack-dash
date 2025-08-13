@@ -16,8 +16,6 @@ interface FeePaymentSectionProps {
 }
 
 export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentData, cohortData }) => {
-  Logger.getInstance().debug('FeePaymentSection render', { studentData, cohortData });
-  
   const { paymentSubmissions, submittingPayments, handlePaymentSubmission } = usePaymentSubmissions();
   const { 
     paymentBreakdown, 
@@ -25,10 +23,9 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
     handlePaymentPlanSelection,
     getPaymentMethods,
     loading,
-    studentPayments 
+    studentPayments,
+    hasPaymentSchedule
   } = usePaymentCalculations({ studentData });
-
-  Logger.getInstance().debug('FeePaymentSection state', { loading, selectedPaymentPlan, studentPayments });
 
   const [isSelectingPlan, setIsSelectingPlan] = React.useState(false);
 
@@ -36,7 +33,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
     setIsSelectingPlan(true);
     try {
       await handlePaymentPlanSelection(plan);
-      toast.success(`Payment plan "${plan}" selected successfully!`);
+      toast.success(`Payment plan "${plan}" selected successfully! Your payment schedule is now available.`);
     } catch (error) {
       console.error('Error selecting payment plan:', error);
       toast.error('Failed to select payment plan. Please try again.');
@@ -46,7 +43,6 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
   };
 
   if (loading) {
-    Logger.getInstance().debug('FeePaymentSection - showing loading skeleton');
     return (
       <div className="space-y-6">
         <Card>
@@ -77,7 +73,6 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
 
   // Show payment plan selection if no plan is selected or if there are any issues
   if (selectedPaymentPlan === 'not_selected' || !studentPayments || studentPayments.length === 0 || !paymentBreakdown) {
-    Logger.getInstance().debug('FeePaymentSection - showing payment plan selection');
     return (
       <div className="space-y-6">
         <Card>
@@ -91,7 +86,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
             <PaymentPlanSelection 
               onPlanSelected={handlePlanSelection}
               isSubmitting={isSelectingPlan}
-              feeStructure={paymentBreakdown?.overallSummary}
+              feeStructure={(paymentBreakdown as any)?.overallSummary}
             />
           </CardContent>
         </Card>
@@ -99,24 +94,25 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
     );
   }
 
-  // Show the payment dashboard once a plan is selected
-  Logger.getInstance().debug('FeePaymentSection - showing payment dashboard');
+  // Show payment dashboard if plan is selected and payment breakdown is available
   return (
-    <div className="space-y-6">
-      {/* Payment Dashboard */}
-      <PaymentDashboard
-        paymentBreakdown={paymentBreakdown}
-        selectedPaymentPlan={selectedPaymentPlan}
-        onPaymentPlanSelection={handlePaymentPlanSelection}
-        studentPayments={studentPayments}
-        cohortData={cohortData}
-        studentData={studentData}
-        paymentSubmissions={paymentSubmissions}
-        submittingPayments={submittingPayments}
-        onPaymentSubmission={handlePaymentSubmission}
-      />
-
-      {/* Payment Submission Form - Now integrated into PaymentDashboard */}
-    </div>
+    <PaymentDashboard
+      paymentBreakdown={paymentBreakdown as any}
+      selectedPaymentPlan={selectedPaymentPlan as any}
+      onPaymentPlanSelection={handlePaymentPlanSelection}
+      studentPayments={studentPayments as any}
+      cohortData={cohortData ? {
+        id: cohortData.id,
+        name: cohortData.name,
+        startDate: cohortData.start_date,
+        endDate: cohortData.end_date,
+        durationMonths: cohortData.duration_months,
+        sessionsPerDay: cohortData.sessions_per_day
+      } : undefined}
+      studentData={studentData as any}
+      paymentSubmissions={paymentSubmissions}
+      submittingPayments={submittingPayments}
+      onPaymentSubmission={handlePaymentSubmission as any}
+    />
   );
 });

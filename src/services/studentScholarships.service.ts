@@ -2,6 +2,7 @@ import { BaseService } from './base.service';
 import { StudentScholarship, NewStudentScholarshipInput, StudentScholarshipWithDetails } from '@/types/fee';
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
+import { Logger } from '@/lib/logging/Logger';
 
 class StudentScholarshipsService extends BaseService<StudentScholarship> {
   constructor() {
@@ -57,6 +58,7 @@ class StudentScholarshipsService extends BaseService<StudentScholarship> {
     assignedBy: string
   ): Promise<ApiResponse<StudentScholarship>> {
     return this["executeQuery"](async () => {
+      // First, assign the scholarship to student_scholarships table
       const { data, error } = await supabase
         .from('student_scholarships')
         .upsert({
@@ -72,6 +74,25 @@ class StudentScholarshipsService extends BaseService<StudentScholarship> {
         .single();
 
       if (error) throw error;
+
+      // Then, update the student_payments table to reflect the scholarship assignment
+      const { error: paymentError } = await supabase
+        .from('student_payments')
+        .update({
+          scholarship_id: scholarshipId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', studentId);
+
+      if (paymentError) {
+        Logger.getInstance().error('Error updating student payment with scholarship', { 
+          error: paymentError, 
+          studentId, 
+          scholarshipId 
+        });
+        // Don't throw here as the main scholarship assignment was successful
+      }
+
       return { data, error: null };
     });
   }
@@ -86,6 +107,28 @@ class StudentScholarshipsService extends BaseService<StudentScholarship> {
         .delete()
         .eq('student_id', studentId)
         .eq('scholarship_id', scholarshipId);
+
+      if (error) throw error;
+      return { data: undefined, error: null };
+    });
+  }
+
+  /**
+   * Update student payment record with scholarship assignment
+   * This method ensures scholarship_id is updated in student_payments when a scholarship is assigned
+   */
+  async updateStudentPaymentWithScholarship(
+    studentId: string, 
+    scholarshipId: string | null
+  ): Promise<ApiResponse<void>> {
+    return this["executeQuery"](async () => {
+      const { error } = await supabase
+        .from('student_payments')
+        .update({
+          scholarship_id: scholarshipId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', studentId);
 
       if (error) throw error;
       return { data: undefined, error: null };

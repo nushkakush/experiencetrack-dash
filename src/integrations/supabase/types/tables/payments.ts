@@ -102,12 +102,15 @@ export type StudentPaymentTable = {
     id: string
     student_id: string
     cohort_id: string
-    payment_type: string
     payment_plan: string
-    amount_payable: number
-    amount_paid: number
-    due_date: string
-    status: string
+    payment_schedule: any
+    total_amount_payable: number
+    total_amount_paid: number
+    total_amount_pending: number
+    scholarship_id: string | null
+    payment_status: string
+    next_due_date: string | null
+    last_payment_date: string | null
     notes: string | null
     created_at: string
     updated_at: string
@@ -116,12 +119,15 @@ export type StudentPaymentTable = {
     id?: string
     student_id: string
     cohort_id: string
-    payment_type: string
     payment_plan: string
-    amount_payable: number
-    amount_paid?: number
-    due_date: string
-    status?: string
+    payment_schedule?: any
+    total_amount_payable?: number
+    total_amount_paid?: number
+    total_amount_pending?: number
+    scholarship_id?: string | null
+    payment_status?: string
+    next_due_date?: string | null
+    last_payment_date?: string | null
     notes?: string | null
     created_at?: string
     updated_at?: string
@@ -130,12 +136,15 @@ export type StudentPaymentTable = {
     id?: string
     student_id?: string
     cohort_id?: string
-    payment_type?: string
     payment_plan?: string
-    amount_payable?: number
-    amount_paid?: number
-    due_date?: string
-    status?: string
+    payment_schedule?: any
+    total_amount_payable?: number
+    total_amount_paid?: number
+    total_amount_pending?: number
+    scholarship_id?: string | null
+    payment_status?: string
+    next_due_date?: string | null
+    last_payment_date?: string | null
     notes?: string | null
     created_at?: string
     updated_at?: string
@@ -155,7 +164,44 @@ export type StudentPaymentTable = {
       referencedRelation: "cohorts"
       referencedColumns: ["id"]
     },
+    {
+      foreignKeyName: "student_payments_scholarship_id_fkey"
+      columns: ["scholarship_id"]
+      isOneToOne: false
+      referencedRelation: "cohort_scholarships"
+      referencedColumns: ["id"]
+    }
   ]
+}
+
+export type StudentPaymentSummaryView = {
+  Row: {
+    id: string
+    student_id: string
+    cohort_id: string
+    payment_plan: string
+    total_amount_payable: number
+    total_amount_paid: number
+    total_amount_pending: number
+    scholarship_id: string | null
+    payment_status: string
+    next_due_date: string | null
+    last_payment_date: string | null
+    notes: string | null
+    created_at: string
+    updated_at: string
+    scholarship_name: string | null
+    scholarship_id: string | null
+    scholarship_description: string | null
+    additional_discount_percentage: number | null
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    phone: string | null
+  }
+  Insert: never
+  Update: never
+  Relationships: []
 }
 
 export type PaymentTransactionTable = {

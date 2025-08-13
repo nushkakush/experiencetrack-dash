@@ -1,14 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { StudentPaymentSummary } from '@/types/fee';
+import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
 }
 
 export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) => {
+  const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchScholarshipPercentage = async () => {
+      if (student.scholarship_id) {
+        const percentage = await getScholarshipPercentageForDisplay(student.scholarship_id);
+        setScholarshipPercentage(percentage);
+      }
+    };
+
+    fetchScholarshipPercentage();
+  }, [student.scholarship_id]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -72,11 +86,11 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) =
             <span className="text-sm text-muted-foreground">Payment Plan:</span>
             <span className="font-medium text-blue-400">{getPaymentPlanDisplay()}</span>
           </div>
-          {student.scholarship_name && (
+          {student.scholarship_name && scholarshipPercentage > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Scholarship:</span>
               <span className="font-medium text-blue-400">
-                {student.scholarship_name} ({student.scholarship_percentage}%)
+                {student.scholarship_name} ({scholarshipPercentage}%)
               </span>
             </div>
           )}

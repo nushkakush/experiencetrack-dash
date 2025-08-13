@@ -32,6 +32,9 @@ export const usePaymentPlanManagement = ({
         setSelectedPaymentPlan(plan);
         logger.info('Payment plan updated successfully');
         
+        // Add a small delay to ensure database changes are processed
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Reload student payments
         await reloadStudentPayments();
       } else {

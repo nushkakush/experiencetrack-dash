@@ -14,7 +14,8 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     feeStructure,
     scholarships,
     loading,
-    error
+    error,
+    refetch
   } = useStudentData();
 
   // Get selected payment plan using focused hook
@@ -27,8 +28,11 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
   } = usePaymentPlanManagement({
     studentData,
     selectedPaymentPlan,
-    setSelectedPaymentPlan: () => {}, // We'll handle this differently
-    reloadStudentPayments: () => {} // We'll handle this differently
+    setSelectedPaymentPlan: () => {
+      // Trigger a refetch to update the UI
+      refetch();
+    },
+    reloadStudentPayments: refetch // Pass the actual refetch function
   });
 
   // Generate payment breakdown using focused hook

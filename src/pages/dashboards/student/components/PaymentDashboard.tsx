@@ -8,12 +8,13 @@ import {
   usePaymentDashboard
 } from './index';
 import { 
-  PaymentBreakdown, 
   StudentPaymentData, 
   CohortData, 
   StudentData, 
   PaymentSubmissionData 
 } from '@/types/payments';
+import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
+import { Logger } from '@/lib/logging/Logger';
 
 interface PaymentDashboardProps {
   paymentBreakdown: PaymentBreakdown;
@@ -51,9 +52,16 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(({
     onPaymentSubmission
   });
 
-
+  Logger.getInstance().debug('PaymentDashboard render', {
+    hasPaymentBreakdown: !!paymentBreakdown,
+    selectedPaymentPlan,
+    semestersCount: paymentBreakdown?.semesters?.length || 0,
+    expandedSemestersCount: expandedSemesters.size,
+    hasStudentPayments: !!studentPayments && studentPayments.length > 0
+  });
 
   if (!paymentBreakdown) {
+    Logger.getInstance().debug('PaymentDashboard - no payment breakdown available');
     return <div>Loading payment dashboard...</div>;
   }
 

@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { CohortStudent } from '@/types/cohort';
 import { extractBaseAmountFromTotal, extractGSTFromTotal } from '@/utils/fee-calculations/gst';
 import { useStudentData } from './useStudentData';
 import { usePaymentPlanManagement } from './usePaymentPlanManagement';
+import { usePaymentScheduleFromDatabase } from './usePaymentScheduleFromDatabase';
 import { PaymentBreakdown } from '@/types/payments';
 import {
   calculateScholarshipAmount,
@@ -22,8 +23,35 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     feeStructure,
     scholarships,
     loading,
-    error
+    error,
+    refetch
   } = useStudentData();
+
+  const [scholarshipAmount, setScholarshipAmount] = useState(0);
+  const [loadingScholarship, setLoadingScholarship] = useState(false);
+
+  // Calculate scholarship amount
+  useEffect(() => {
+    const calculateScholarship = async () => {
+      if (!studentData?.id || !feeStructure?.total_program_fee) {
+        setScholarshipAmount(0);
+        return;
+      }
+
+      setLoadingScholarship(true);
+      try {
+        const amount = await calculateScholarshipAmount(studentData.id, Number(feeStructure.total_program_fee));
+        setScholarshipAmount(amount);
+      } catch (error) {
+        console.error('Error calculating scholarship amount:', error);
+        setScholarshipAmount(0);
+      } finally {
+        setLoadingScholarship(false);
+      }
+    };
+
+    calculateScholarship();
+  }, [studentData?.id, feeStructure?.total_program_fee]);
 
   // Get selected payment plan from student payments
   const selectedPaymentPlan = useMemo(() => {
@@ -41,20 +69,25 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
   } = usePaymentPlanManagement({
     studentData,
     selectedPaymentPlan,
-    setSelectedPaymentPlan: () => {}, // We'll handle this differently
-    reloadStudentPayments: () => {} // We'll handle this differently
+    setSelectedPaymentPlan: () => {
+      // Trigger a refetch to update the UI
+      refetch();
+    },
+    reloadStudentPayments: refetch // Pass the actual refetch function
   });
 
-  // Generate payment breakdown using the exact logic from fee-calculations
-  const paymentBreakdown = useMemo(() => {
+  // Try to get payment schedule from database first
+  const { paymentBreakdown: dbPaymentBreakdown, hasPaymentSchedule } = usePaymentScheduleFromDatabase(studentPayments);
+
+  // Generate payment breakdown using the exact logic from fee-calculations (fallback)
+  const calculatedPaymentBreakdown = useMemo(() => {
     // If we don't have fee structure, return default breakdown
     if (!feeStructure) {
       return generateDefaultPaymentBreakdown();
     }
 
-    // Calculate scholarship amount from admin dashboard data
+    // Use the calculated scholarship amount
     const totalProgramFee = Number(feeStructure.total_program_fee);
-    const scholarshipAmount = calculateScholarshipAmount(scholarships, totalProgramFee);
 
     // If we have fee structure but no student payments, still generate breakdown for plan selection
     if (!studentPayments || studentPayments.length === 0) {
@@ -129,15 +162,19 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     }
 
     return breakdown;
-  }, [studentPayments, feeStructure, selectedPaymentPlan, scholarships]);
+  }, [studentPayments, feeStructure, selectedPaymentPlan, scholarshipAmount]);
+
+  // Use database payment schedule if available, otherwise use calculated breakdown
+  const paymentBreakdown = hasPaymentSchedule ? dbPaymentBreakdown : calculatedPaymentBreakdown;
 
   return {
     paymentBreakdown,
     selectedPaymentPlan,
     handlePaymentPlanSelection,
     getPaymentMethods,
-    loading,
+    loading: loading || loadingScholarship,
     studentPayments,
-    scholarships
+    scholarships,
+    hasPaymentSchedule
   };
 };

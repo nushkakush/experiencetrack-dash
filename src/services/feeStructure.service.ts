@@ -83,21 +83,33 @@ export class FeeStructureService {
    * Create scholarship
    */
   static async createScholarship(input: NewScholarshipInput): Promise<Scholarship | null> {
-    const { data, error } = await supabase
-      .from('cohort_scholarships')
-      .insert({
-        ...input,
-        created_by: (await supabase.auth.getUser()).data.user?.id
-      })
-      .select()
-      .single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        Logger.getInstance().error('No authenticated user found when creating scholarship');
+        return null;
+      }
 
-    if (error) {
-      Logger.getInstance().error('Error creating scholarship', { error, input });
+      const { data, error } = await supabase
+        .from('cohort_scholarships')
+        .insert({
+          ...input,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        Logger.getInstance().error('Error creating scholarship', { error, input });
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      Logger.getInstance().error('Error in createScholarship', { error, input });
       return null;
     }
-
-    return data;
   }
 
   /**

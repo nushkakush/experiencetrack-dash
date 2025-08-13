@@ -23,8 +23,7 @@ export class PaymentQueryService {
           *,
           student:cohort_students(*)
         `)
-        .eq('cohort_id', cohortId)
-        .order('due_date', { ascending: true });
+        .eq('cohort_id', cohortId);
 
       if (error) throw error;
 
@@ -47,13 +46,9 @@ export class PaymentQueryService {
     try {
       const { data, error } = await supabase
         .from('student_payments')
-        .select(`
-          *,
-          student:cohort_students(*)
-        `)
+        .select('*')
         .eq('student_id', studentId)
-        .eq('cohort_id', cohortId)
-        .order('due_date', { ascending: true });
+        .eq('cohort_id', cohortId);
 
       if (error) throw error;
 
@@ -106,29 +101,36 @@ export class PaymentQueryService {
 
       // Create summary for each student
       const summary: StudentPaymentSummary[] = students.map((student) => {
-        const studentPayments = payments?.filter(p => p.student_id === student.id) || [];
+        const studentPayment = payments?.find(p => p.student_id === student.id);
         
-        const totalPayable = studentPayments.reduce((sum, payment) => sum + payment.amount_payable, 0);
-        const totalPaid = studentPayments.reduce((sum, payment) => sum + payment.amount_paid, 0);
-        const totalPending = totalPayable - totalPaid;
-        
-        const pendingPayments = studentPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
-        const nextDuePayment = pendingPayments.length > 0 
-          ? pendingPayments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0]
-          : null;
+        if (!studentPayment) {
+          return {
+            student_id: student.id,
+            student_name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
+            student_email: student.email,
+            total_payable: 0,
+            total_paid: 0,
+            total_pending: 0,
+            payment_count: 0,
+            next_due_date: null,
+            next_due_amount: 0,
+            payment_status: 'no_plan',
+            payment_plan: 'not_selected'
+          };
+        }
 
         return {
           student_id: student.id,
           student_name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
           student_email: student.email,
-          total_payable: totalPayable,
-          total_paid: totalPaid,
-          total_pending: totalPending,
-          payment_count: studentPayments.length,
-          next_due_date: nextDuePayment?.due_date || null,
-          next_due_amount: nextDuePayment?.amount_payable || 0,
-          payment_status: this.calculateOverallStatus(studentPayments),
-          payment_plan: studentPayments[0]?.payment_plan || 'unknown'
+          total_payable: studentPayment.total_amount_payable || 0,
+          total_paid: studentPayment.total_amount_paid || 0,
+          total_pending: studentPayment.total_amount_pending || 0,
+          payment_count: 1, // Single record per student
+          next_due_date: studentPayment.next_due_date || null,
+          next_due_amount: studentPayment.total_amount_pending || 0,
+          payment_status: studentPayment.payment_status || 'pending',
+          payment_plan: studentPayment.payment_plan || 'unknown'
         };
       });
 
@@ -200,14 +202,10 @@ export class PaymentQueryService {
   private calculateOverallStatus(payments: StudentPayment[]): string {
     if (payments.length === 0) return 'no_payments';
     
-    const hasOverdue = payments.some(p => p.status === 'overdue');
-    const hasPending = payments.some(p => p.status === 'pending');
-    const allPaid = payments.every(p => p.status === 'paid' || p.status === 'complete');
+    // With single record approach, we only have one payment record per student
+    const payment = payments[0];
+    if (!payment) return 'unknown';
     
-    if (hasOverdue) return 'overdue';
-    if (allPaid) return 'paid';
-    if (hasPending) return 'pending';
-    
-    return 'unknown';
+    return payment.payment_status || 'unknown';
   }
 }

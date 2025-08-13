@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Logger } from '@/lib/logging/Logger';
@@ -11,10 +11,11 @@ import AvatarUpload from './AvatarUpload';
 import { CohortStudent } from '@/types/cohort';
 import { Scholarship } from '@/types/fee';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
+import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { toast } from 'sonner';
-import { Edit2, Award, Mail, Trash2, UserPlus } from 'lucide-react';
+import { Edit2, Award, Mail, Trash2, UserPlus, CheckCircle } from 'lucide-react';
 
 interface CohortStudentsTableProps {
   students: CohortStudent[];
@@ -35,6 +36,8 @@ export default function CohortStudentsTable({
   const { hasPermission } = useFeaturePermissions();
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [invitingStudentId, setInvitingStudentId] = useState<string | null>(null);
+  const [scholarshipAssignments, setScholarshipAssignments] = useState<Record<string, boolean>>({});
+  const [loadingScholarships, setLoadingScholarships] = useState(false);
 
   const canManageStudents = hasPermission('cohorts.manage_students');
   const canEditStudents = hasPermission('cohorts.edit_students');
@@ -92,10 +95,47 @@ export default function CohortStudentsTable({
     }
   };
 
+  const loadScholarshipAssignments = async () => {
+    if (!students.length || !canAssignScholarships) return;
+    
+    setLoadingScholarships(true);
+    try {
+      const studentIds = students.map(s => s.id);
+      const assignments: Record<string, boolean> = {};
+      
+      // Use Promise.all for parallel requests to improve performance
+      const results = await Promise.all(
+        studentIds.map(studentId => 
+          studentScholarshipsService.getByStudent(studentId)
+            .then(result => ({ studentId, hasScholarship: result.success && !!result.data }))
+            .catch(() => ({ studentId, hasScholarship: false }))
+        )
+      );
+      
+      // Convert results to assignments object
+      results.forEach(({ studentId, hasScholarship }) => {
+        assignments[studentId] = hasScholarship;
+      });
+      
+      setScholarshipAssignments(assignments);
+    } catch (error) {
+      console.error('Error loading scholarship assignments:', error);
+    } finally {
+      setLoadingScholarships(false);
+    }
+  };
+
   const handleScholarshipAssigned = () => {
-    // Refresh the table to show updated scholarship information
+    // Refresh scholarship assignments
+    loadScholarshipAssignments();
+    // Also refresh the table to show updated scholarship information
     onStudentDeleted(); // This will trigger a reload
   };
+
+  // Load scholarship assignments when students change
+  useEffect(() => {
+    loadScholarshipAssignments();
+  }, [students, canAssignScholarships]);
 
   if (loading) {
     return (
@@ -189,10 +229,19 @@ export default function CohortStudentsTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
-                      title="Assign scholarship"
+                      className={`h-8 w-8 p-0 hover:bg-primary/10 ${
+                        scholarshipAssignments[student.id] 
+                          ? 'text-green-600 hover:text-green-700' 
+                          : 'text-primary hover:text-primary/80'
+                      }`}
+                      title={scholarshipAssignments[student.id] ? 'View assigned scholarship' : 'Assign scholarship'}
+                      disabled={loadingScholarships}
                     >
-                      <Award className="h-4 w-4" />
+                      {scholarshipAssignments[student.id] ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <Award className="h-4 w-4" />
+                      )}
                     </Button>
                   </StudentScholarshipDialog>
                 </TableCell>

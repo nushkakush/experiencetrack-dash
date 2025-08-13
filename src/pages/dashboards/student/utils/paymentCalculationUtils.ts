@@ -33,7 +33,19 @@ export const distributeScholarshipBackwards = (installments: Installment[], tota
 };
 
 // Calculate scholarship amount from admin dashboard data
-export const calculateScholarshipAmount = (studentScholarship: ScholarshipData, totalProgramFee: number) => {
+export const calculateScholarshipAmount = async (studentId: string, totalProgramFee: number) => {
+  try {
+    const { calculateTotalScholarshipAmount } = await import('@/utils/scholarshipUtils');
+    const scholarshipInfo = await calculateTotalScholarshipAmount(studentId, totalProgramFee);
+    return scholarshipInfo.totalScholarshipAmount;
+  } catch (error) {
+    console.error('Error calculating scholarship amount:', error);
+    return 0;
+  }
+};
+
+// Legacy function for backward compatibility
+export const calculateScholarshipAmountLegacy = (studentScholarship: ScholarshipData, totalProgramFee: number) => {
   if (!studentScholarship || !studentScholarship.scholarship) {
     return 0;
   }

@@ -9,9 +9,9 @@ export const usePaymentPlanSelection = ({ studentPayments }: UsePaymentPlanSelec
   // Get selected payment plan from student payments
   const selectedPaymentPlan = useMemo((): PaymentPlan => {
     if (studentPayments && studentPayments.length > 0) {
-      // Find the first payment with a payment plan
-      const paymentWithPlan = studentPayments.find(payment => payment.payment_plan);
-      return (paymentWithPlan?.payment_plan as PaymentPlan) || 'not_selected';
+      // With single record approach, we only have one payment record per student
+      const payment = studentPayments[0];
+      return (payment?.payment_plan as PaymentPlan) || 'not_selected';
     }
     return 'not_selected';
   }, [studentPayments]);

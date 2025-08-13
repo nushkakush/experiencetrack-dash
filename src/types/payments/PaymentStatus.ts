@@ -23,7 +23,7 @@ export type PaymentStatus =
   | 'partially_paid_days_left' 
   | 'partially_paid_overdue';
 
-export type PaymentType = 'admission_fee' | 'instalments' | 'one_shot' | 'sem_plan';
+export type PaymentType = 'admission_fee' | 'program_fee' | 'scholarship';
 
 export type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise' | 'not_selected';
 

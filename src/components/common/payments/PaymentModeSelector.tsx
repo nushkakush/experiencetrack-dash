@@ -1,29 +1,18 @@
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { 
-  DollarSign, 
-  CreditCard, 
-  Building2, 
-  FileText
-} from 'lucide-react';
-import { PaymentModeFields } from './PaymentModeFields';
-import { 
-  PaymentDetails,
-  FormErrors
-} from '@/types/components/PaymentFormTypes';
+import { Building2, DollarSign, FileText, CreditCard, QrCode } from 'lucide-react';
 
 export interface PaymentModeSelectorProps {
   selectedPaymentMode: string;
   onPaymentModeChange: (mode: string) => void;
-  paymentDetails: PaymentDetails;
-  onPaymentDetailsChange: (details: PaymentDetails) => void;
+  paymentDetails: Record<string, any>;
+  onPaymentDetailsChange: (details: Record<string, any>) => void;
   uploadedFiles: Record<string, File>;
-  onFileUpload: (fieldName: string, file: File) => void;
+  onFileUpload: (fieldName: string, file: File | null) => void;
   onRemoveFile: (fieldName: string) => void;
-  errors: FormErrors;
+  errors: Record<string, string>;
 }
 
 export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
@@ -69,7 +58,7 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
             </SelectItem>
             <SelectItem value="scan_to_pay">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
+                <QrCode className="h-4 w-4" />
                 Scan to Pay (UPI)
               </div>
             </SelectItem>
@@ -82,25 +71,11 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
           </SelectContent>
         </Select>
         {errors.paymentMode && (
-          <p className="text-sm text-red-500 mt-1">{errors.paymentMode}</p>
+          <p className="text-sm text-red-500 mt-1">
+            {errors.paymentMode}
+          </p>
         )}
       </div>
-
-      {/* Payment Mode Specific Fields */}
-      {selectedPaymentMode && (
-        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-          <h4 className="font-medium">Payment Details</h4>
-          <PaymentModeFields
-            paymentMode={selectedPaymentMode}
-            paymentDetails={paymentDetails}
-            onPaymentDetailsChange={onPaymentDetailsChange}
-            uploadedFiles={uploadedFiles}
-            onFileUpload={onFileUpload}
-            onRemoveFile={onRemoveFile}
-            errors={errors}
-          />
-        </div>
-      )}
     </div>
   );
 };

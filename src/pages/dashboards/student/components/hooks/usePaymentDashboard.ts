@@ -1,31 +1,21 @@
 import { useState, useEffect } from 'react';
+import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
+import { PaymentSubmissionData } from '@/types/payments';
 
-interface Installment {
-  paymentDate: string;
-  baseAmount: number;
-  gstAmount: number;
-  amountPayable: number;
-}
-
-interface Semester {
-  semesterNumber: number;
-  instalments: Installment[];
-}
-
-interface PaymentBreakdown {
-  semesters: Semester[];
-}
-
-interface PaymentData {
-  paymentMethod: string;
+// Define the installment type that matches what we get from the database
+interface DatabaseInstallment {
+  installmentNumber: number;
+  dueDate: string;
   amount: number;
-  details: Record<string, any>;
-  files: Record<string, File>;
+  status: string;
+  amountPaid: number;
+  amountPending: number;
+  semesterNumber?: number;
 }
 
 export interface UsePaymentDashboardProps {
   paymentBreakdown: PaymentBreakdown;
-  onPaymentSubmission?: (paymentData: PaymentData) => void;
+  onPaymentSubmission?: (paymentData: PaymentSubmissionData) => void;
 }
 
 export const usePaymentDashboard = ({
@@ -33,7 +23,7 @@ export const usePaymentDashboard = ({
   onPaymentSubmission
 }: UsePaymentDashboardProps) => {
   const [expandedSemesters, setExpandedSemesters] = useState<Set<number>>(new Set());
-  const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
+  const [selectedInstallment, setSelectedInstallment] = useState<DatabaseInstallment | null>(null);
   const [selectedInstallmentKey, setSelectedInstallmentKey] = useState<string>('');
   const [showPaymentForm, setShowPaymentForm] = useState<boolean>(false);
 
@@ -55,11 +45,36 @@ export const usePaymentDashboard = ({
     }
   }, [selectedInstallmentKey]);
 
-  // Expand all semesters by default for better UX
+  // Find semester with immediate payment due and expand only that one
   useEffect(() => {
     if (paymentBreakdown?.semesters) {
-      const allSemesterNumbers = paymentBreakdown.semesters.map((semester: Semester) => semester.semesterNumber);
-      setExpandedSemesters(new Set(allSemesterNumbers));
+      const today = new Date();
+      let semesterWithImmediateDue: number | null = null;
+      
+      // Find the semester with the earliest pending/overdue payment
+      for (const semester of paymentBreakdown.semesters) {
+        const hasImmediateDue = semester.instalments?.some(installment => {
+          const dueDate = new Date(installment.paymentDate);
+          const isPending = installment.status === 'pending' || installment.status === 'overdue';
+          const isDueSoon = dueDate <= today || dueDate.getTime() - today.getTime() <= 30 * 24 * 60 * 60 * 1000; // Within 30 days
+          return isPending && isDueSoon;
+        });
+        
+        if (hasImmediateDue) {
+          semesterWithImmediateDue = semester.semesterNumber;
+          break;
+        }
+      }
+      
+      // If no immediate due found, expand the first semester
+      if (semesterWithImmediateDue === null && paymentBreakdown.semesters.length > 0) {
+        semesterWithImmediateDue = paymentBreakdown.semesters[0].semesterNumber;
+      }
+      
+      // Set only the semester with immediate payment due as expanded
+      if (semesterWithImmediateDue !== null) {
+        setExpandedSemesters(new Set([semesterWithImmediateDue]));
+      }
     }
   }, [paymentBreakdown]);
 
@@ -75,7 +90,7 @@ export const usePaymentDashboard = ({
     });
   };
 
-  const handleInstallmentClick = (installment: Installment, semesterNumber: number, installmentIndex: number) => {
+  const handleInstallmentClick = (installment: DatabaseInstallment, semesterNumber: number, installmentIndex: number) => {
     const key = `${semesterNumber}-${installmentIndex}`;
     
     // If clicking the same installment, toggle the form
@@ -94,7 +109,7 @@ export const usePaymentDashboard = ({
     }
   };
 
-  const handlePaymentSubmit = (paymentData: PaymentData) => {
+  const handlePaymentSubmit = (paymentData: PaymentSubmissionData) => {
     if (onPaymentSubmission) {
       onPaymentSubmission(paymentData);
     }

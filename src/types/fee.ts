@@ -130,7 +130,7 @@ export type PaymentStatus =
   | 'partially_paid_days_left' 
   | 'partially_paid_overdue';
 
-export type PaymentType = 'admission_fee' | 'instalments' | 'one_shot' | 'sem_plan';
+export type PaymentType = 'admission_fee' | 'program_fee' | 'scholarship';
 
 export interface StudentPayment {
   id: string;
@@ -165,7 +165,7 @@ export interface StudentPaymentSummary {
   pending_amount: number;
   overdue_amount: number;
   scholarship_name?: string;
-  scholarship_percentage?: number;
+  scholarship_id?: string;
   token_fee_paid: boolean;
   payment_plan: PaymentPlan;
   // Joined fields

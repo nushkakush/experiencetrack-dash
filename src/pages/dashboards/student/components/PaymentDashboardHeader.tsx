@@ -13,21 +13,19 @@ export const PaymentDashboardHeader: React.FC<PaymentDashboardHeaderProps> = ({
   const getCohortStartDate = () => {
     if (cohortStartDate) {
       const date = new Date(cohortStartDate);
-      return date.toLocaleDateString('en-IN', {
-        month: 'long',
-        year: 'numeric'
-      });
+      // Check if the date is valid
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-IN', {
+          month: 'long',
+          year: 'numeric'
+        });
+      }
     }
-    return 'Not set';
+    return 'Start date to be announced';
   };
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3">
-        <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
-          Fee Payment
-        </Badge>
-      </div>
       <h1 className="text-3xl font-bold">{cohortName || 'Cohort'}</h1>
       <p className="text-muted-foreground">{getCohortStartDate()}</p>
       

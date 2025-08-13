@@ -87,4 +87,8 @@ export class StudentPaymentsService {
   ): Promise<ApiResponse<{ success: boolean; message: string }>> {
     return this.paymentCalculationService.calculatePaymentPlan(studentId, cohortId, paymentPlan, scholarshipId, forceUpdate);
   }
+
+  async recalculatePaymentSchedules(cohortId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.paymentCalculationService.recalculateExistingPaymentSchedules(cohortId);
+  }
 }

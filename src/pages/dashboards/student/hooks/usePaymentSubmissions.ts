@@ -125,7 +125,7 @@ export const usePaymentSubmissions = () => {
       const paymentRecord = {
         student_id: paymentData.studentId,
         cohort_id: paymentData.cohortId,
-        payment_type: 'fee_payment',
+        payment_type: 'program_fee',
         payment_method: paymentData.paymentMethod,
         amount_paid: paymentData.amountPaid,
         receipt_url: receiptUrl,
