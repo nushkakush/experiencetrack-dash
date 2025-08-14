@@ -90,6 +90,11 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
     ],
   };
 
+  // For students, don't include the base Dashboard item
+  if (role === 'student') {
+    return roleSpecificItems[role];
+  }
+  
   return [
     ...baseItems,
     ...roleSpecificItems[role],

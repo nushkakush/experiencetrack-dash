@@ -97,7 +97,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
 
 // Specialized FeatureGate components for common use cases
 export const CohortFeatureGate: React.FC<{
-  action: 'view' | 'create' | 'edit' | 'delete' | 'manage_students' | 'bulk_upload';
+  action: 'view' | 'create' | 'edit' | 'delete' | 'manage_students' | 'bulk_upload' | 'set_active_epic';
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }> = ({ action, children, fallback }) => (

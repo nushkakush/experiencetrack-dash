@@ -6,6 +6,7 @@ export { PaymentFieldRenderer } from './PaymentFieldRenderer';
 export { PaymentAmountInput } from './PaymentAmountInput';
 export { AmountInput } from './AmountInput';
 export { FileUploadField } from './FileUploadField';
+export { BankSelect } from './BankSelect';
 
 // Payment Hooks
 export { usePaymentSubmission } from './hooks/usePaymentSubmission';

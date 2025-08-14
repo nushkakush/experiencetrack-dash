@@ -3,16 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { 
   CreditCard, 
   Building2, 
   FileText, 
@@ -24,36 +14,41 @@ import {
 } from 'lucide-react';
 import { PaymentPlan } from '@/types/fee';
 import { toast } from 'sonner';
+import { PaymentPlanPreviewModal } from './PaymentPlanPreviewModal';
 
 interface PaymentPlanSelectionProps {
   onPlanSelected: (plan: PaymentPlan) => void;
   isSubmitting?: boolean;
   feeStructure?: any;
+  studentData?: any;
+  cohortData?: any;
 }
 
 const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
   onPlanSelected,
   isSubmitting = false,
-  feeStructure
+  feeStructure,
+  studentData,
+  cohortData
 }) => {
   const [selectedPlan, setSelectedPlan] = React.useState<PaymentPlan | null>(null);
-  const [showConfirmation, setShowConfirmation] = React.useState(false);
+  const [showPreview, setShowPreview] = React.useState(false);
 
   const handlePlanSelection = (plan: PaymentPlan) => {
     setSelectedPlan(plan);
-    setShowConfirmation(true);
+    setShowPreview(true);
   };
 
   const confirmPlanSelection = () => {
     if (selectedPlan) {
       onPlanSelected(selectedPlan);
-      setShowConfirmation(false);
+      setShowPreview(false);
       setSelectedPlan(null);
     }
   };
 
   const cancelPlanSelection = () => {
-    setShowConfirmation(false);
+    setShowPreview(false);
     setSelectedPlan(null);
   };
 
@@ -137,14 +132,14 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
           const discount = getPlanDiscount(plan);
 
           return (
-            <Card key={plan} className="relative hover:shadow-lg transition-shadow">
+            <Card key={plan} className="relative hover:shadow-lg transition-shadow flex flex-col h-[600px]">
               {discount && (
                 <Badge className="absolute -top-2 -right-2 bg-green-600 text-white">
                   {discount}
                 </Badge>
               )}
               
-              <CardHeader className="text-center pb-4">
+              <CardHeader className="text-center pb-4 flex-shrink-0">
                 <div className="flex justify-center mb-2">
                   {getPlanIcon(plan)}
                 </div>
@@ -154,96 +149,94 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-4">
-                {/* Payment Methods */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Available Payment Methods:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {paymentMethods.map((method) => (
-                      <Badge key={method.value} variant="outline" className="text-xs">
-                        <span className="mr-1">{method.icon}</span>
-                        {method.label}
-                      </Badge>
-                    ))}
+              <CardContent className="flex flex-col h-full">
+                <div className="flex-grow space-y-4">
+                  {/* Payment Methods */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Available Payment Methods:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {paymentMethods.map((method) => (
+                        <Badge key={method.value} variant="outline" className="text-xs">
+                          <span className="mr-1">{method.icon}</span>
+                          {method.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Features:</h4>
+                    <ul className="text-sm space-y-1">
+                      {plan === 'one_shot' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Maximum discount available</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>No recurring payments</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Online payment option</span>
+                          </li>
+                        </>
+                      )}
+                      {plan === 'sem_wise' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Pay per semester</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Manageable amounts</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Clear payment schedule</span>
+                          </li>
+                        </>
+                      )}
+                      {plan === 'instalment_wise' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Monthly installments</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Maximum flexibility</span>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span>Lower monthly payments</span>
+                          </li>
+                        </>
+                      )}
+                    </ul>
                   </div>
                 </div>
 
-                {/* Features */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Features:</h4>
-                  <ul className="text-sm space-y-1">
-                    {plan === 'one_shot' && (
-                      <>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Maximum discount available</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>No recurring payments</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Online payment option</span>
-                        </li>
-                      </>
-                    )}
-                    {plan === 'sem_wise' && (
-                      <>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Pay per semester</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Manageable amounts</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Clear payment schedule</span>
-                        </li>
-                      </>
-                    )}
-                    {plan === 'instalment_wise' && (
-                      <>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Monthly installments</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Maximum flexibility</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span>Lower monthly payments</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-                </div>
-
                 {/* Select Button */}
-                <Button 
-                  onClick={() => handlePlanSelection(plan)}
-                  disabled={isSubmitting}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isSubmitting ? (
-                    'Selecting...'
-                  ) : (
-                    <>
-                      Select {getPlanTitle(plan)}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-                
-                {/* Final Decision Warning */}
-                <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-200">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Final decision - cannot be changed</span>
+                <div className="pt-4 mt-auto">
+                  <Button 
+                    onClick={() => handlePlanSelection(plan)}
+                    disabled={isSubmitting}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isSubmitting ? (
+                      'Selecting...'
+                    ) : (
+                      <>
+                        Preview Payment Plan
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -256,21 +249,16 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
         <p className="mt-1">To change your payment plan after selection, please contact the administration.</p>
       </div>
 
-      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Payment Plan Selection</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have selected the <strong>{selectedPlan ? getPlanTitle(selectedPlan) : ''}</strong> payment plan.
-              This action cannot be undone. Please confirm to proceed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelPlanSelection}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPlanSelection}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PaymentPlanPreviewModal
+        isOpen={showPreview}
+        onClose={cancelPlanSelection}
+        onConfirm={confirmPlanSelection}
+        selectedPlan={selectedPlan}
+        feeStructure={feeStructure}
+        studentData={studentData}
+        cohortData={cohortData}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

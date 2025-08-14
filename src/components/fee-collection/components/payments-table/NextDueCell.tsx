@@ -47,18 +47,37 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
     });
   };
 
-  const getPaymentTypeDisplay = (paymentType: PaymentType) => {
+  const getPaymentTypeDisplay = (paymentType: PaymentType, paymentPlan?: string, nextDue?: NextDuePayment) => {
+    // For one-shot payments, show "Program Fee"
+    if (paymentPlan === 'one_shot') {
+      return 'Program Fee';
+    }
+    
+    // For installment-wise payments, try to show installment number
+    if (paymentPlan === 'instalment_wise') {
+      // If we have installment information in the payment object, use it
+      if (nextDue && 'installment_number' in nextDue && nextDue.installment_number) {
+        return `Installment ${nextDue.installment_number}`;
+      }
+      return 'Installment';
+    }
+    
+    // For semester-wise payments, try to show semester number
+    if (paymentPlan === 'sem_wise') {
+      if (nextDue && 'semester_number' in nextDue && nextDue.semester_number) {
+        return `Semester ${nextDue.semester_number}`;
+      }
+      return 'Semester Fee';
+    }
+    
+    // Default cases
     switch (paymentType) {
       case 'admission_fee':
         return 'Admission Fee';
-      case 'instalments':
-        return 'Instalments';
-      case 'one_shot':
-        return 'One-Shot';
-      case 'sem_plan':
-        return 'Sem Plan';
+      case 'program_fee':
+        return 'Program Fee';
       default:
-        return paymentType;
+        return 'Payment';
     }
   };
 
@@ -76,7 +95,42 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
       return null;
     }
 
-    // Find the next pending payment
+    // For installment-wise payments, we need to determine which installment is next
+    if (student.payment_plan === 'instalment_wise') {
+      // Calculate which installment should be next based on total paid amount
+      const totalPaid = student.paid_amount;
+      const totalPayable = student.total_amount;
+      const installmentAmount = totalPayable / 12; // Assuming 12 installments
+      const completedInstallments = Math.floor(totalPaid / installmentAmount);
+      const nextInstallmentNumber = completedInstallments + 1;
+      
+      // Use payment schedule if available
+      if (student.payment_schedule && student.payment_schedule.installments) {
+        const nextInstallment = student.payment_schedule.installments[nextInstallmentNumber - 1];
+        if (nextInstallment) {
+          return {
+            payment_type: 'program_fee' as PaymentType,
+            due_date: nextInstallment.due_date,
+            amount_payable: nextInstallment.amount,
+            installment_number: nextInstallment.installment_number
+          };
+        }
+      }
+      
+      // Fallback calculation
+      const nextInstallmentAmount = installmentAmount;
+      const nextDueDate = new Date();
+      nextDueDate.setMonth(nextDueDate.getMonth() + (nextInstallmentNumber - 1));
+      
+      return {
+        payment_type: 'program_fee' as PaymentType,
+        due_date: nextDueDate.toISOString().split('T')[0],
+        amount_payable: nextInstallmentAmount,
+        installment_number: nextInstallmentNumber
+      };
+    }
+
+    // Find the next pending payment for other payment plans
     const pendingPayments = student.payments?.filter(p => 
       p.status === 'pending' || p.status === 'overdue' || p.status === 'partially_paid_overdue'
     );
@@ -93,7 +147,7 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
       {nextDue ? (
         <div>
           <div className="font-medium">
-            {getPaymentTypeDisplay(nextDue.payment_type)}
+            {getPaymentTypeDisplay(nextDue.payment_type, student.payment_plan, nextDue)}
             {nextDue.isFirstPayment && <span className="text-xs text-muted-foreground ml-1">(First Payment)</span>}
           </div>
           <div className="text-sm text-muted-foreground">

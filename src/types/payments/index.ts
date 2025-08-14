@@ -27,7 +27,6 @@ export type {
   PaymentMethodConfiguration,
   IndianBank,
   PaymentSubmissionData,
-  PaymentTransactionDetail,
   PaymentTransaction
 } from './PaymentMethods';
 

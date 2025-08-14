@@ -26,7 +26,10 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
   errors
 }) => {
   const handlePaymentModeChange = (mode: string) => {
+    console.log('🔍 [DEBUG] PaymentModeSelector - handlePaymentModeChange called with mode:', mode);
+    console.log('🔍 [DEBUG] PaymentModeSelector - current selectedPaymentMode:', selectedPaymentMode);
     onPaymentModeChange(mode);
+    console.log('🔍 [DEBUG] PaymentModeSelector - onPaymentModeChange called');
   };
 
   return (

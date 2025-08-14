@@ -168,19 +168,21 @@ export const usePaymentForm = ({
     }
 
     const paymentData = {
-      studentId: studentData.id,
-      cohortId: studentData.cohort_id,
+      paymentId: `student-payment-${Date.now()}`,
       amount: amountToPay,
-      paymentMode: selectedPaymentMode,
-      paymentDetails,
-      uploadedFiles,
-      installmentId: selectedInstallment?.id,
-      paymentPlan: selectedPaymentPlan,
-      timestamp: new Date().toISOString()
+      paymentMethod: selectedPaymentMode,
+      referenceNumber: paymentDetails.transactionId || paymentDetails.chequeNumber,
+      notes: paymentDetails.notes,
+      receiptFile: uploadedFiles.cashReceipt,
+      proofOfPaymentFile: uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
+      transactionScreenshotFile: uploadedFiles.scanToPayScreenshot,
+      bankName: paymentDetails.bankName,
+      bankBranch: paymentDetails.bankBranch,
+      transferDate: paymentDetails.transferDate || paymentDetails.chequeDate
     };
 
     onPaymentSubmission(paymentData);
-  }, [validateForm, studentData, amountToPay, selectedPaymentMode, paymentDetails, uploadedFiles, selectedInstallment, selectedPaymentPlan, onPaymentSubmission]);
+  }, [validateForm, amountToPay, selectedPaymentMode, paymentDetails, uploadedFiles, onPaymentSubmission]);
 
   const getCurrentPaymentModeConfig = useCallback(() => {
     if (!selectedPaymentMode) return null;

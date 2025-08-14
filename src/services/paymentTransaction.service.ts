@@ -2,37 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BaseService } from "./base.service";
 import { ApiResponse } from "@/types/common";
 import { PaymentSubmissionData } from "@/components/fee-collection/PaymentMethodSelector";
-
-export interface PaymentTransactionDetail {
-  id: string;
-  payment_id: string;
-  transaction_id?: string;
-  payment_method: string;
-  amount_paid: number;
-  is_partial_payment: boolean;
-  payment_reference_type?: 'cheque_no' | 'utr_no';
-  payment_reference_number?: string;
-  transfer_date?: string;
-  bank_name?: string;
-  bank_branch?: string;
-  receipt_url?: string;
-  proof_of_payment_url?: string;
-  transaction_screenshot_url?: string;
-  razorpay_payment_id?: string;
-  razorpay_order_id?: string;
-  razorpay_signature?: string;
-  qr_code_url?: string;
-  upi_id?: string;
-  receiver_bank_name?: string;
-  receiver_bank_logo_url?: string;
-  status: 'pending' | 'success' | 'failed' | 'verification_pending';
-  verification_notes?: string;
-  verified_by?: string;
-  verified_at?: string;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-}
+import { PaymentTransactionRow } from "@/types/payments/DatabaseAlignedTypes";
 
 export interface IndianBank {
   id: string;
@@ -69,16 +39,16 @@ export interface PaymentMethodConfiguration {
   created_by?: string;
 }
 
-class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
+class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
   constructor() {
-    super("payment_transaction_details");
+    super("payment_transactions");
   }
 
-  // Get payment transaction details by payment ID
-  async getByPaymentId(paymentId: string): Promise<ApiResponse<PaymentTransactionDetail[]>> {
+  // Get payment transactions by payment ID
+  async getByPaymentId(paymentId: string): Promise<ApiResponse<PaymentTransactionRow[]>> {
     return this.executeQuery(async () => {
       const { data, error } = await supabase
-        .from("payment_transaction_details")
+        .from("payment_transactions")
         .select("*")
         .eq("payment_id", paymentId)
         .order("created_at", { ascending: false });
@@ -92,7 +62,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
   async submitPayment(
     paymentData: PaymentSubmissionData,
     userId: string
-  ): Promise<ApiResponse<PaymentTransactionDetail>> {
+  ): Promise<ApiResponse<PaymentTransactionRow>> {
     return this.executeQuery(async () => {
       // First, upload files if they exist
       let receiptUrl = null;
@@ -111,34 +81,43 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
         transactionScreenshotUrl = await this.uploadFile(paymentData.transactionScreenshotFile, 'screenshots');
       }
 
-      // Create payment transaction detail record
-      const transactionDetail = {
+      // Create payment transaction record
+      const transactionRecord = {
         payment_id: paymentData.paymentId,
+        transaction_type: 'payment',
+        amount: paymentData.amount,
         payment_method: paymentData.paymentMethod,
-        amount_paid: paymentData.amountPaid,
-        is_partial_payment: paymentData.isPartialPayment,
-        payment_reference_type: paymentData.paymentReferenceType,
-        payment_reference_number: paymentData.paymentReferenceNumber,
-        transfer_date: paymentData.transferDate,
-        bank_name: paymentData.bankName,
-        bank_branch: paymentData.bankBranch,
+        reference_number: paymentData.referenceNumber,
+        status: 'pending',
+        notes: paymentData.notes,
+        created_by: userId,
+        verification_status: 'verification_pending',
         receipt_url: receiptUrl,
         proof_of_payment_url: proofOfPaymentUrl,
         transaction_screenshot_url: transactionScreenshotUrl,
-        status: 'verification_pending',
-        created_by: userId
+        bank_name: paymentData.bankName,
+        bank_branch: paymentData.bankBranch,
+        transfer_date: paymentData.transferDate,
+        payment_date: paymentData.transferDate,
+        qr_code_url: paymentData.qrCodeUrl,
+        payer_upi_id: paymentData.upiId,
+        receiver_bank_name: paymentData.receiverBankName,
+        receiver_bank_logo_url: paymentData.receiverBankLogoUrl,
+        razorpay_payment_id: paymentData.razorpayPaymentId,
+        razorpay_order_id: paymentData.razorpayOrderId,
+        razorpay_signature: paymentData.razorpaySignature
       };
 
       const { data, error } = await supabase
-        .from("payment_transaction_details")
-        .insert(transactionDetail)
+        .from("payment_transactions")
+        .insert(transactionRecord)
         .select()
         .single();
 
       if (error) throw error;
 
       // Update the student_payments table with the new payment amount
-      await this.updateStudentPaymentAmount(paymentData.paymentId, paymentData.amountPaid);
+      await this.updateStudentPaymentAmount(paymentData.paymentId, paymentData.amount);
 
       return { data, error: null };
     });
@@ -149,18 +128,11 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
     const { error } = await supabase
       .from("student_payments")
       .update({
-        amount_paid: supabase.rpc('add', { a: supabase.raw('amount_paid'), b: amountPaid }),
-        total_amount_paid: supabase.rpc('add', { a: supabase.raw('total_amount_paid'), b: amountPaid }),
-        remaining_amount: supabase.rpc('subtract', { a: supabase.raw('amount_payable'), b: supabase.rpc('add', { a: supabase.raw('total_amount_paid'), b: amountPaid }) }),
-        partial_payment_count: supabase.rpc('add', { a: supabase.raw('partial_payment_count'), b: 1 }),
-        last_payment_date: new Date().toISOString().split('T')[0],
-        payment_completion_percentage: supabase.rpc('multiply', { 
-          a: supabase.rpc('divide', { 
-            a: supabase.rpc('add', { a: supabase.raw('total_amount_paid'), b: amountPaid }), 
-            b: supabase.raw('amount_payable') 
-          }), 
-          b: 100 
-        })
+        total_amount_paid: supabase.rpc('increment_amount_paid', { 
+          payment_id: paymentId, 
+          amount: amountPaid 
+        }),
+        last_payment_date: new Date().toISOString().split('T')[0]
       })
       .eq("id", paymentId);
 
@@ -239,18 +211,26 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
   async verifyPayment(
     transactionId: string,
     verifiedBy: string,
-    status: 'success' | 'failed',
-    notes?: string
-  ): Promise<ApiResponse<PaymentTransactionDetail>> {
+    status: 'approved' | 'rejected',
+    notes?: string,
+    rejectionReason?: string
+  ): Promise<ApiResponse<PaymentTransactionRow>> {
     return this.executeQuery(async () => {
+      const updateData: any = {
+        verification_status: status,
+        verification_notes: notes,
+        verified_by: verifiedBy,
+        verified_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (status === 'rejected' && rejectionReason) {
+        updateData.rejection_reason = rejectionReason;
+      }
+
       const { data, error } = await supabase
-        .from("payment_transaction_details")
-        .update({
-          status,
-          verification_notes: notes,
-          verified_by: verifiedBy,
-          verified_at: new Date().toISOString()
-        })
+        .from("payment_transactions")
+        .update(updateData)
         .eq("id", transactionId)
         .select()
         .single();
@@ -267,10 +247,10 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
         .from("student_payments")
         .select(`
           *,
-          payment_transaction_details (
-            amount_paid,
+          payment_transactions (
+            amount,
             payment_method,
-            status,
+            verification_status,
             created_at
           )
         `)
@@ -282,10 +262,13 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
       const stats = {
         totalPayments: data.length,
         totalAmountPaid: data.reduce((sum, payment) => sum + (payment.total_amount_paid || 0), 0),
-        totalAmountRequired: data.reduce((sum, payment) => sum + payment.amount_payable, 0),
-        completionPercentage: data.reduce((sum, payment) => sum + (payment.payment_completion_percentage || 0), 0) / data.length,
-        pendingPayments: data.filter(payment => payment.status === 'pending').length,
-        verifiedPayments: data.filter(payment => payment.status === 'paid').length
+        totalAmountRequired: data.reduce((sum, payment) => sum + payment.total_amount_payable, 0),
+        completionPercentage: data.reduce((sum, payment) => {
+          const percentage = (payment.total_amount_paid / payment.total_amount_payable) * 100;
+          return sum + percentage;
+        }, 0) / data.length,
+        pendingPayments: data.filter(payment => payment.payment_status === 'pending').length,
+        verifiedPayments: data.filter(payment => payment.payment_status === 'paid').length
       };
 
       return { data: stats, error: null };
@@ -293,10 +276,10 @@ class PaymentTransactionService extends BaseService<PaymentTransactionDetail> {
   }
 
   // Get payment history for a student
-  async getPaymentHistory(studentId: string): Promise<ApiResponse<PaymentTransactionDetail[]>> {
+  async getPaymentHistory(studentId: string): Promise<ApiResponse<PaymentTransactionRow[]>> {
     return this.executeQuery(async () => {
       const { data, error } = await supabase
-        .from("payment_transaction_details")
+        .from("payment_transactions")
         .select(`
           *,
           student_payments!inner (

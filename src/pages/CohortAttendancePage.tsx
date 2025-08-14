@@ -100,6 +100,12 @@ const CohortAttendancePage = () => {
           selectedEpic={attendanceData.selectedEpic}
           onEpicChange={handleEpicChange}
           onMarkHolidays={() => pageState.setHolidaysDialogOpen(true)}
+          onEpicActiveChanged={async () => {
+            // Refresh epics data to reflect the new active epic
+            await attendanceData.refetchEpics();
+            await attendanceData.refetchSessions();
+            await epicAttendanceData.refetchEpicAttendance();
+          }}
         />
 
         {/* Attendance Statistics */}

@@ -18,7 +18,13 @@ export const usePaymentsTable = ({ students }: UsePaymentsTableProps) => {
                            student.student?.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus = statusFilter === 'all' || 
-        student.payments?.some(payment => payment.status === statusFilter);
+        student.payments?.some(payment => {
+          // Map UI status values to database status values
+          if (statusFilter === 'paid' && payment.status === 'success') return true;
+          if (statusFilter === 'pending' && payment.status === 'pending') return true;
+          if (statusFilter === 'verification_pending' && payment.verification_status === 'verification_pending') return true;
+          return payment.status === statusFilter;
+        });
 
       const matchesPlan = planFilter === 'all' || student.payment_plan === planFilter;
 

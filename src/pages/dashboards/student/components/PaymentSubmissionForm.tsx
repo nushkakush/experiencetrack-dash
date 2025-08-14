@@ -9,9 +9,11 @@ import {
 import { CohortStudent } from '@/types/cohort';
 import { 
   PaymentModeSelector, 
+  PaymentFieldRenderer,
   AmountInput, 
   usePaymentSubmission 
 } from '@/components/common/payments';
+import { getPaymentModeConfig } from '@/features/payments/domain/PaymentModeConfig';
 import { PaymentSubmissionData, PaymentBreakdown, Installment } from '@/types/payments';
 
 interface PaymentSubmissionFormProps {
@@ -88,6 +90,26 @@ export const PaymentSubmissionForm = React.memo<PaymentSubmissionFormProps>(({
           onRemoveFile={handleRemoveFile}
           errors={errors}
         />
+
+        {/* Payment Mode Specific Fields */}
+        {selectedPaymentMode && (
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+            <h4 className="font-medium">Payment Details</h4>
+            <PaymentFieldRenderer
+              config={getPaymentModeConfig(selectedPaymentMode)}
+              paymentDetails={paymentDetails}
+              uploadedFiles={uploadedFiles}
+              errors={errors}
+              onFieldChange={(fieldName, value) => {
+                handlePaymentDetailsChange({
+                  ...paymentDetails,
+                  [fieldName]: value
+                });
+              }}
+              onFileUpload={handleFileUpload}
+            />
+          </div>
+        )}
 
         <Separator />
 

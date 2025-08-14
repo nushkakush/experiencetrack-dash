@@ -5,6 +5,7 @@ import PaymentPlanSelection from './PaymentPlanSelection';
 import { PaymentDashboard } from './PaymentDashboard';
 import { usePaymentSubmissions } from '../hooks/usePaymentSubmissions';
 import { usePaymentCalculations } from '../hooks/usePaymentCalculationsRefactored';
+import { useStudentData } from '../hooks/useStudentData';
 import { Logger } from '@/lib/logging/Logger';
 import { CohortStudent } from '@/types/cohort';
 import { toast } from 'sonner';
@@ -16,7 +17,6 @@ interface FeePaymentSectionProps {
 }
 
 export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentData, cohortData }) => {
-  const { paymentSubmissions, submittingPayments, handlePaymentSubmission } = usePaymentSubmissions();
   const { 
     paymentBreakdown, 
     selectedPaymentPlan, 
@@ -24,8 +24,13 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
     getPaymentMethods,
     loading,
     studentPayments,
-    hasPaymentSchedule
+    hasPaymentSchedule,
+    refetch
   } = usePaymentCalculations({ studentData });
+
+  const { feeStructure } = useStudentData();
+
+  const { paymentSubmissions, submittingPayments, handlePaymentSubmission } = usePaymentSubmissions(studentData, refetch);
 
   const [isSelectingPlan, setIsSelectingPlan] = React.useState(false);
 
@@ -44,29 +49,25 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Fee Payment</CardTitle>
-            <CardDescription>
-              Manage your fee payments and view payment history
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-10 w-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-20 w-full" />
-              </div>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Fee Payment</h1>
+          <p className="text-muted-foreground mb-4">
+            Manage your fee payments and view payment history
+          </p>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-20 w-full" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -74,22 +75,20 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(({ studentDa
   // Show payment plan selection if no plan is selected or if there are any issues
   if (selectedPaymentPlan === 'not_selected' || !studentPayments || studentPayments.length === 0 || !paymentBreakdown) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Fee Payment</CardTitle>
-            <CardDescription>
-              Choose your payment plan to get started with fee payments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PaymentPlanSelection 
-              onPlanSelected={handlePlanSelection}
-              isSubmitting={isSelectingPlan}
-              feeStructure={(paymentBreakdown as any)?.overallSummary}
-            />
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Fee Payment</h1>
+          <p className="text-muted-foreground mb-4">
+            Choose your payment plan to get started with fee payments
+          </p>
+          <PaymentPlanSelection 
+            onPlanSelected={handlePlanSelection}
+            isSubmitting={isSelectingPlan}
+            feeStructure={feeStructure}
+            studentData={studentData}
+            cohortData={cohortData}
+          />
+        </div>
       </div>
     );
   }

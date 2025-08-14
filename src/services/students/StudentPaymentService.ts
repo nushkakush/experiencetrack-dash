@@ -150,16 +150,18 @@ class StudentPaymentService {
         const studentPayments = payments?.filter(p => p.student_id === student.id) || [];
         const studentScholarship = scholarshipMap.get(student.id);
 
-        const totalAmount = studentPayments.reduce((sum, payment) => sum + payment.amount_payable, 0);
-        const paidAmount = studentPayments.reduce((sum, payment) => sum + payment.amount_paid, 0);
-        const pendingAmount = totalAmount - paidAmount;
+        // Use the new schema column names
+        const totalAmount = studentPayments.reduce((sum, payment) => sum + (payment.total_amount_payable || 0), 0);
+        const paidAmount = studentPayments.reduce((sum, payment) => sum + (payment.total_amount_paid || 0), 0);
+        const pendingAmount = studentPayments.reduce((sum, payment) => sum + (payment.total_amount_pending || 0), 0);
+        
+        // Calculate overdue amount based on payment status
         const overdueAmount = studentPayments
-          .filter(payment => payment.status === 'overdue')
-          .reduce((sum, payment) => sum + (payment.amount_payable - payment.amount_paid), 0);
+          .filter(payment => payment.payment_status === 'overdue')
+          .reduce((sum, payment) => sum + (payment.total_amount_pending || 0), 0);
 
-        const tokenFeePaid = studentPayments.some(payment => 
-          payment.payment_type === 'admission_fee' && payment.status === 'paid'
-        );
+        // Check if admission fee is paid (we'll need to check payment transactions for this)
+        const tokenFeePaid = false; // TODO: Implement this check based on payment transactions
 
         return {
           student_id: student.id,

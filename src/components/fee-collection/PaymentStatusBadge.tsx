@@ -44,6 +44,7 @@ const getStatusConfig = (status: PaymentStatus) => {
       };
     
     // 🟠 PARTIALLY PAID - Orange (Medium-high urgency)
+    case 'partially_paid':
     case 'partially_paid_days_left':
       return {
         variant: 'secondary' as const,

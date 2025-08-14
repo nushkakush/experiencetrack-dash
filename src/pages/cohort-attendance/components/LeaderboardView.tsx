@@ -71,6 +71,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         attendanceRecords={epicAttendanceRecords}
         currentEpic={currentEpic}
         layout={leaderboardLayout}
+        hideFields={['email', 'late', 'absent']}
       />
     </div>
   );

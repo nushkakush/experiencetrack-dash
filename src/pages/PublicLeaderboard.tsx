@@ -129,7 +129,7 @@ const PublicLeaderboard = () => {
         </div>
         
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <Skeleton className="h-8 w-64 mb-4" />
             <Skeleton className="h-4 w-96 mb-8" />
             <div className="grid gap-4">
@@ -172,7 +172,7 @@ const PublicLeaderboard = () => {
       </div>
       
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground">
               {cohort?.name} Leaderboard

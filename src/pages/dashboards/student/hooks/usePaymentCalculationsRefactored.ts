@@ -22,6 +22,7 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     studentPayments,
     feeStructure,
     scholarships,
+    cohortData,
     loading,
     error,
     refetch
@@ -77,7 +78,13 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
   });
 
   // Try to get payment schedule from database first
-  const { paymentBreakdown: dbPaymentBreakdown, hasPaymentSchedule } = usePaymentScheduleFromDatabase(studentPayments);
+  const dbPaymentBreakdown = usePaymentScheduleFromDatabase({
+    studentPayments,
+    feeStructure,
+    scholarshipAmount: scholarshipAmount || 0,
+    cohortStartDate: cohortData?.start_date || '2025-08-14' // Use dynamic cohort start date
+  });
+  const hasPaymentSchedule = !!dbPaymentBreakdown;
 
   // Generate payment breakdown using the exact logic from fee-calculations (fallback)
   const calculatedPaymentBreakdown = useMemo(() => {
@@ -175,6 +182,7 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     loading: loading || loadingScholarship,
     studentPayments,
     scholarships,
-    hasPaymentSchedule
+    hasPaymentSchedule,
+    refetch
   };
 };

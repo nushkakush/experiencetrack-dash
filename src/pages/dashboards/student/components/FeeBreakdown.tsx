@@ -33,12 +33,15 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({
           <span>GST</span>
           <span>{formatCurrency(gstAmount)}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Scholarship Waiver</span>
-          <span className={discountAmount > 0 ? 'text-red-600' : 'text-muted-foreground'}>
-            {discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : 'Not Applied'}
-          </span>
-        </div>
+        {/* Only show scholarship waiver if there's actually a discount */}
+        {discountAmount > 0 && (
+          <div className="flex justify-between">
+            <span>Scholarship Waiver</span>
+            <span className="text-red-600">
+              - {formatCurrency(discountAmount)}
+            </span>
+          </div>
+        )}
         <Separator />
         <div className="flex justify-between font-semibold text-blue-600">
           <span>Total</span>

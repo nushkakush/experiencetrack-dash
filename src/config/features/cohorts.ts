@@ -9,7 +9,8 @@ type CohortFeatureKey =
   | 'cohorts.manage_students'
   | 'cohorts.edit_students'
   | 'cohorts.assign_scholarships'
-  | 'cohorts.bulk_upload';
+  | 'cohorts.bulk_upload'
+  | 'cohorts.set_active_epic';
 
 export const COHORT_FEATURES: Record<CohortFeatureKey, FeatureMetadata> = {
   'cohorts.view': {
@@ -72,6 +73,13 @@ export const COHORT_FEATURES: Record<CohortFeatureKey, FeatureMetadata> = {
     key: 'cohorts.bulk_upload',
     name: 'Bulk Upload Students',
     description: 'Upload multiple students via CSV file',
+    category: 'cohorts',
+    requiresAuthentication: true,
+  },
+  'cohorts.set_active_epic': {
+    key: 'cohorts.set_active_epic',
+    name: 'Set Active Epic',
+    description: 'Set which epic is currently active for a cohort',
     category: 'cohorts',
     requiresAuthentication: true,
   },

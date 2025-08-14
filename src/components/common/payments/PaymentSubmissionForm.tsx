@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PaymentSubmissionData } from '@/types/payments';
 import { getPaymentMethodConfig } from '@/types/payments';
 import { toast } from 'sonner';
+import { BankSelect } from './BankSelect';
 
 interface PaymentSubmissionFormProps {
   paymentId: string;
@@ -145,15 +146,13 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
           {/* Bank Details for Bank Transfer */}
           {formData.paymentMethod === 'bank_transfer' && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Input
-                  id="bankName"
-                  value={formData.bankName || ''}
-                  onChange={(e) => handleInputChange('bankName', e.target.value)}
-                  placeholder="Enter bank name"
-                />
-              </div>
+              <BankSelect
+                value={formData.bankName || ''}
+                onValueChange={(value) => handleInputChange('bankName', value)}
+                label="Bank Name"
+                placeholder="Select bank"
+                required={true}
+              />
               <div className="space-y-2">
                 <Label htmlFor="bankBranch">Bank Branch</Label>
                 <Input

@@ -61,11 +61,10 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       {
         name: 'bankName',
         label: 'Bank Name',
-        type: 'text',
-        placeholder: 'Enter bank name',
+        type: 'select',
+        placeholder: 'Select bank',
         required: true,
         validation: {
-          minLength: 2,
           message: 'Bank name is required'
         }
       },
@@ -166,11 +165,10 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       {
         name: 'bankName',
         label: 'Bank Name',
-        type: 'text',
-        placeholder: 'Enter bank name',
+        type: 'select',
+        placeholder: 'Select bank',
         required: true,
         validation: {
-          minLength: 2,
           message: 'Bank name is required'
         }
       },

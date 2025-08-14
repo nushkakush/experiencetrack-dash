@@ -29,8 +29,31 @@ export interface PaymentTransactionRow {
   reference_number: string | null;
   status: string;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  verification_status: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  receipt_url: string | null;
+  proof_of_payment_url: string | null;
+  transaction_screenshot_url: string | null;
+  bank_name: string | null;
+  bank_branch: string | null;
+  utr_number: string | null;
+  account_number: string | null;
+  cheque_number: string | null;
+  payer_upi_id: string | null;
+  razorpay_payment_id: string | null;
+  razorpay_order_id: string | null;
+  razorpay_signature: string | null;
+  qr_code_url: string | null;
+  receiver_bank_name: string | null;
+  receiver_bank_logo_url: string | null;
+  verification_notes: string | null;
+  rejection_reason: string | null;
+  payment_date: string | null;
+  transfer_date: string | null;
 }
 
 // Communication History Types (from CommunicationHistoryTable)

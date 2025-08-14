@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { FileUploadField } from './FileUploadField';
 import { PaymentModeConfig } from '@/features/payments/domain/PaymentModeConfig';
 import { CreditCard } from 'lucide-react';
+import { BankSelect } from './BankSelect';
 import { 
   PaymentDetails,
   FormErrors
@@ -72,25 +73,42 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(({
       {/* Form Fields */}
       {config.fields.length > 0 && (
         <div className="space-y-4">
-          {config.fields.map((field) => (
-            <div key={field.name}>
-              <Label htmlFor={field.name} className="text-sm font-medium">
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </Label>
-              <Input
-                id={field.name}
-                type={field.type}
-                placeholder={field.placeholder}
-                value={paymentDetails[field.name] || ''}
-                onChange={(e) => onFieldChange(field.name, e.target.value)}
-                className={errors[field.name] ? 'border-red-500' : ''}
-              />
-              {errors[field.name] && (
-                <p className="text-sm text-red-500 mt-1">{errors[field.name]}</p>
-              )}
-            </div>
-          ))}
+          {config.fields.map((field) => {
+            // Render different field types
+            if (field.type === 'select' && field.name === 'bankName') {
+              return (
+                <BankSelect
+                  key={field.name}
+                  value={paymentDetails[field.name] || ''}
+                  onValueChange={(value) => onFieldChange(field.name, value)}
+                  label={field.label}
+                  placeholder={field.placeholder}
+                  required={field.required}
+                  error={errors[field.name]}
+                />
+              );
+            }
+            
+            return (
+              <div key={field.name}>
+                <Label htmlFor={field.name} className="text-sm font-medium">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </Label>
+                <Input
+                  id={field.name}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={paymentDetails[field.name] || ''}
+                  onChange={(e) => onFieldChange(field.name, e.target.value)}
+                  className={errors[field.name] ? 'border-red-500' : ''}
+                />
+                {errors[field.name] && (
+                  <p className="text-sm text-red-500 mt-1">{errors[field.name]}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

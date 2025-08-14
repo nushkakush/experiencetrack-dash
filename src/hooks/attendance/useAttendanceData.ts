@@ -193,6 +193,30 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_epics',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          // Reload epics when they change (e.g., when active epic is set)
+          const loadEpics = async () => {
+            try {
+              const epicsData = await AttendanceService.getCohortEpics(cohortId);
+              setData(prev => ({
+                ...prev,
+                epics: epicsData,
+              }));
+            } catch (error) {
+              Logger.getInstance().error('Error reloading epics', { error, cohortId });
+            }
+          };
+          loadEpics();
+        }
+      )
       .subscribe();
 
     // Cleanup subscription on unmount or when dependencies change
@@ -242,6 +266,20 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     }
   };
 
+  const refetchEpics = async () => {
+    if (!cohortId) return;
+    
+    try {
+      const epicsData = await AttendanceService.getCohortEpics(cohortId);
+      setData(prev => ({
+        ...prev,
+        epics: epicsData,
+      }));
+    } catch (error) {
+      Logger.getInstance().error('Error refetching epics', { error, cohortId });
+    }
+  };
+
   const getCurrentEpic = () => {
     return data.epics.find(epic => epic.id === selectedEpic) || null;
   };
@@ -253,5 +291,6 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     currentEpic: getCurrentEpic(),
     refetchAttendance,
     refetchSessions,
+    refetchEpics,
   };
 };

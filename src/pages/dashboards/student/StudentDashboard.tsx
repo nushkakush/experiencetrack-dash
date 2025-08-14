@@ -1,7 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import DashboardShell from '@/components/DashboardShell';
-import { StudentHeader } from './components/StudentHeader';
 import { AttendanceOverview } from './components/AttendanceOverview';
 import { FeePaymentSection } from './components/FeePaymentSection';
 import { useStudentData } from './hooks/useStudentData';
@@ -47,13 +46,20 @@ const StudentDashboard = React.memo<StudentDashboardProps>(({ currentRoute }) =>
     );
   }
 
+  // Debug logging
+  console.log('StudentDashboard Debug:', {
+    currentTab,
+    hasStudentData: !!studentData,
+    hasCohortData: !!cohortData,
+    studentId: studentData?.id,
+    cohortId: cohortData?.id
+  });
+
   return (
     <DashboardShell>
       <div className="space-y-6 w-full h-full">
-        <StudentHeader studentData={studentData} cohortData={cohortData} />
-        
         {currentTab === 'attendance' ? (
-          <AttendanceOverview studentData={studentData} />
+          <AttendanceOverview studentData={studentData} cohortData={cohortData} />
         ) : (
           <FeePaymentSection studentData={studentData} cohortData={cohortData} />
         )}

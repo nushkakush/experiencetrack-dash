@@ -27,59 +27,38 @@ export const usePaymentDashboard = ({
   const [selectedInstallmentKey, setSelectedInstallmentKey] = useState<string>('');
   const [showPaymentForm, setShowPaymentForm] = useState<boolean>(false);
 
-  // Persist form state across re-renders
-  useEffect(() => {
-    const savedKey = localStorage.getItem('selectedInstallmentKey');
-    if (savedKey) {
-      setSelectedInstallmentKey(savedKey);
-      setShowPaymentForm(true);
-    }
-  }, []);
-
-  // Save form state to localStorage
-  useEffect(() => {
-    if (selectedInstallmentKey) {
-      localStorage.setItem('selectedInstallmentKey', selectedInstallmentKey);
-    } else {
-      localStorage.removeItem('selectedInstallmentKey');
-    }
-  }, [selectedInstallmentKey]);
-
-  // Find semester with immediate payment due and expand only that one
+  // Automatically expand semesters with pending payments
   useEffect(() => {
     if (paymentBreakdown?.semesters) {
-      const today = new Date();
-      let semesterWithImmediateDue: number | null = null;
+      const semestersWithPendingPayments = new Set<number>();
       
-      // Find the semester with the earliest pending/overdue payment
-      for (const semester of paymentBreakdown.semesters) {
-        const hasImmediateDue = semester.instalments?.some(installment => {
-          const dueDate = new Date(installment.paymentDate);
-          const isPending = installment.status === 'pending' || installment.status === 'overdue';
-          const isDueSoon = dueDate <= today || dueDate.getTime() - today.getTime() <= 30 * 24 * 60 * 60 * 1000; // Within 30 days
-          return isPending && isDueSoon;
+      paymentBreakdown.semesters.forEach(semester => {
+        const hasPendingPayment = semester.instalments?.some(installment => {
+          // Check if any installment needs payment
+          const needsPayment = (installment as any).amountPending > 0;
+          const paymentNeededStatuses = ['pending', 'overdue', 'partially_paid_overdue', 'partially_paid_days_left'];
+          const hasPaymentNeededStatus = paymentNeededStatuses.includes(installment.status);
+          
+          return needsPayment && hasPaymentNeededStatus;
         });
         
-        if (hasImmediateDue) {
-          semesterWithImmediateDue = semester.semesterNumber;
-          break;
+        if (hasPendingPayment) {
+          semestersWithPendingPayments.add(semester.semesterNumber);
         }
-      }
+      });
       
-      // If no immediate due found, expand the first semester
-      if (semesterWithImmediateDue === null && paymentBreakdown.semesters.length > 0) {
-        semesterWithImmediateDue = paymentBreakdown.semesters[0].semesterNumber;
-      }
-      
-      // Set only the semester with immediate payment due as expanded
-      if (semesterWithImmediateDue !== null) {
-        setExpandedSemesters(new Set([semesterWithImmediateDue]));
-      }
+      setExpandedSemesters(semestersWithPendingPayments);
     }
   }, [paymentBreakdown]);
 
+  // Remove localStorage persistence since we're not using manual clicks anymore
+  useEffect(() => {
+    // Clear any saved state since we're using automatic expansion
+    localStorage.removeItem('selectedInstallmentKey');
+  }, []);
+
   const toggleSemester = (semesterNumber: number) => {
-    setExpandedSemesters((prev) => {
+    setExpandedSemesters(prev => {
       const newSet = new Set(prev);
       if (newSet.has(semesterNumber)) {
         newSet.delete(semesterNumber);
@@ -90,34 +69,18 @@ export const usePaymentDashboard = ({
     });
   };
 
+  // Keep this for backward compatibility but it's no longer needed for payment forms
   const handleInstallmentClick = (installment: DatabaseInstallment, semesterNumber: number, installmentIndex: number) => {
-    const key = `${semesterNumber}-${installmentIndex}`;
-    
-    // If clicking the same installment, toggle the form
-    if (selectedInstallmentKey === key) {
-      setShowPaymentForm(!showPaymentForm);
-      if (!showPaymentForm) {
-        setSelectedInstallment(null);
-        setSelectedInstallmentKey('');
-        localStorage.removeItem('selectedInstallmentKey');
-      }
-    } else {
-      // If clicking a different installment, open the form for that installment
-      setSelectedInstallment(installment);
-      setSelectedInstallmentKey(key);
-      setShowPaymentForm(true);
-    }
+    // This function is no longer needed since payment forms show automatically
+    // But keeping it for backward compatibility
+    console.log('Installment click - no longer needed for payment forms');
   };
 
   const handlePaymentSubmit = (paymentData: PaymentSubmissionData) => {
     if (onPaymentSubmission) {
       onPaymentSubmission(paymentData);
     }
-    // Reset form after submission
-    setShowPaymentForm(false);
-    setSelectedInstallment(null);
-    setSelectedInstallmentKey('');
-    localStorage.removeItem('selectedInstallmentKey');
+    // No need to reset form state since forms show/hide automatically
   };
 
   return {

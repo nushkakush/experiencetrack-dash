@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { StudentPaymentRow } from '@/types/payments/DatabaseAlignedTypes';
 import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
-import { calculateSemesterPayment, calculateOneShotPayment } from '@/utils/fee-calculations/payment-plans';
-import { extractBaseAmountFromTotal, extractGSTFromTotal, calculateGST } from '@/utils/fee-calculations/gst';
+import { calculateSemesterPayment } from '@/utils/fee-calculations/payment-plans';
+import { generateSemesterPaymentDates } from '@/utils/fee-calculations/dateUtils';
+import { FeeStructure } from '@/types/fee';
 
 interface PaymentSchedule {
   plan: string;
@@ -59,33 +60,37 @@ const calculatePaymentStatus = (
   return 'pending';
 };
 
-export const usePaymentScheduleFromDatabase = (studentPayments: StudentPaymentRow[] | null) => {
+interface UsePaymentScheduleFromDatabaseProps {
+  studentPayments: StudentPaymentRow[] | null;
+  feeStructure: FeeStructure | null;
+  scholarshipAmount: number;
+  cohortStartDate: string;
+}
+
+export const usePaymentScheduleFromDatabase = ({
+  studentPayments,
+  feeStructure,
+  scholarshipAmount,
+  cohortStartDate
+}: UsePaymentScheduleFromDatabaseProps) => {
   const paymentBreakdown = useMemo(() => {
-    if (!studentPayments || studentPayments.length === 0) {
+    if (!studentPayments || studentPayments.length === 0 || !feeStructure) {
       return null;
     }
 
-    const payment = studentPayments[0];
-    const schedule = payment.payment_schedule;
-    
-    if (!schedule || !schedule.installments) {
-      return null;
-    }
+    // Get the total amount paid from student payments
+    const totalAmountPaid = studentPayments.reduce((sum, payment) => sum + (payment.total_amount_paid || 0), 0);
 
-    const { installments, admission_fee, program_fee } = schedule;
-    const totalAmount = Number(payment.total_amount_payable);
-    const admissionFee = Number(admission_fee);
-    const studentId = payment.student_id;
-
-    // Use the EXACT SAME values as admin side
-    const originalProgramFee = 1000000; // ₹10,00,000 - same as admin
-    const numberOfSemesters = 4; // same as admin
-    const instalmentsPerSemester = 3; // same as admin
-    const scholarshipPercentage = 10; // 10% scholarship
-    const totalScholarshipAmount = (originalProgramFee * scholarshipPercentage) / 100; // ₹1,00,000
+    // Use dynamic values from fee structure and scholarship data
+    const originalProgramFee = Number(feeStructure.total_program_fee);
+    const admissionFee = Number(feeStructure.admission_fee);
+    const numberOfSemesters = Number(feeStructure.number_of_semesters);
+    const instalmentsPerSemester = Number(feeStructure.instalments_per_semester);
+    const totalScholarshipAmount = scholarshipAmount;
 
     // Use the EXACT SAME LOGIC as admin side - IGNORE database installments
     const semesters = [];
+    let cumulativePaid = 0; // Track cumulative payments across installments
     
     for (let semesterNumber = 1; semesterNumber <= numberOfSemesters; semesterNumber++) {
       // Use the EXACT SAME calculateSemesterPayment function as admin
@@ -95,33 +100,31 @@ export const usePaymentScheduleFromDatabase = (studentPayments: StudentPaymentRo
         admissionFee,
         numberOfSemesters,
         instalmentsPerSemester,
-        '2025-08-14', // cohort start date
+        cohortStartDate, // Use dynamic cohort start date
         totalScholarshipAmount,
         0 // no one-shot discount
       );
 
-      // Convert admin format to student format - use admin calculations, not database
+      // Convert admin format to student format - use admin calculations only
       const instalments = adminInstallments.map((adminInst, index) => {
-        // Find corresponding database installment for status/payment info
-        const dbInst = installments.find(inst => 
-          inst.semester_number === semesterNumber && 
-          inst.installment_number === index + 1
-        );
-        
         const amountPayable = adminInst.amountPayable;
-        const amountPaid = Number(dbInst?.amount_paid || 0);
-        const dueDate = dbInst?.due_date || adminInst.paymentDate;
+        const dueDate = adminInst.paymentDate; // Use admin calculated date
+        
+        // Calculate how much has been paid for this specific installment
+        // Distribute the total paid amount across installments in order
+        const installmentPaid = Math.min(amountPayable, Math.max(0, totalAmountPaid - cumulativePaid));
+        cumulativePaid += installmentPaid;
         
         // Calculate proper payment status
-        const status = calculatePaymentStatus(dueDate, amountPayable, amountPaid);
-        const amountPending = Math.max(0, amountPayable - amountPaid);
+        const status = calculatePaymentStatus(dueDate, amountPayable, installmentPaid);
+        const amountPending = Math.max(0, amountPayable - installmentPaid);
         
         return {
           installmentNumber: index + 1,
           dueDate: dueDate,
           amount: amountPayable, // Use admin calculated amount
           status: status,
-          amountPaid: amountPaid,
+          amountPaid: installmentPaid,
           amountPending: amountPending,
           semesterNumber: semesterNumber,
           baseAmount: adminInst.baseAmount,
@@ -130,7 +133,7 @@ export const usePaymentScheduleFromDatabase = (studentPayments: StudentPaymentRo
           gstAmount: adminInst.gstAmount,
           amountPayable: amountPayable,
           totalPayable: amountPayable,
-          paymentDate: dbInst?.payment_date ? new Date(dbInst.payment_date) : null,
+          paymentDate: installmentPaid > 0 ? new Date().toISOString() : null, // Set payment date if paid
         };
       });
 
@@ -140,33 +143,28 @@ export const usePaymentScheduleFromDatabase = (studentPayments: StudentPaymentRo
         baseAmount: adminInstallments.reduce((sum, inst) => sum + inst.baseAmount, 0),
         gstAmount: adminInstallments.reduce((sum, inst) => sum + inst.gstAmount, 0),
         discountAmount: adminInstallments.reduce((sum, inst) => sum + inst.discountAmount, 0),
-        totalPayable: adminInstallments.reduce((sum, inst) => sum + inst.amountPayable, 0)
+        totalPayable: adminInstallments.reduce((sum, inst) => sum + inst.amountPayable, 0),
       };
 
       semesters.push({
         semesterNumber,
-        baseAmount: semesterTotal.baseAmount,
-        scholarshipAmount: semesterTotal.scholarshipAmount,
-        discountAmount: semesterTotal.discountAmount,
-        gstAmount: semesterTotal.gstAmount,
-        totalPayable: semesterTotal.totalPayable,
         instalments,
+        total: semesterTotal,
       });
     }
 
-    // Sort semesters by semester number
-    semesters.sort((a, b) => a.semesterNumber - b.semesterNumber);
+    // Calculate admission fee breakdown (GST inclusive)
+    const admissionFeeBase = admissionFee / 1.18; // Extract base amount from GST inclusive total
+    const admissionFeeGST = admissionFee - admissionFeeBase;
+    
+    // Calculate overall summary
+    const totalProgramFee = originalProgramFee;
+    const totalAdmissionFee = admissionFee;
+    const totalGST = semesters.reduce((sum, semester) => sum + semester.total.gstAmount, 0) + admissionFeeGST;
+    const totalScholarship = totalScholarshipAmount;
+    const totalAmountPayable = totalAdmissionFee + semesters.reduce((sum, semester) => sum + semester.total.totalPayable, 0);
 
-    // Calculate admission fee using admin logic
-    const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
-    const admissionFeeGST = extractGSTFromTotal(admissionFee);
-
-    // Calculate overall summary using admin logic
-    const totalBaseAmount = semesters.reduce((sum, semester) => sum + semester.baseAmount, 0) + admissionFeeBase;
-    const totalGSTAmount = semesters.reduce((sum, semester) => sum + semester.gstAmount, 0) + admissionFeeGST;
-    const totalScholarshipAmountFinal = semesters.reduce((sum, semester) => sum + semester.scholarshipAmount, 0);
-
-    const result = {
+    return {
       admissionFee: {
         baseAmount: admissionFeeBase,
         scholarshipAmount: 0,
@@ -176,20 +174,14 @@ export const usePaymentScheduleFromDatabase = (studentPayments: StudentPaymentRo
       },
       semesters,
       overallSummary: {
-        totalProgramFee: originalProgramFee,
-        admissionFee: admissionFee,
-        totalGST: totalGSTAmount,
-        totalDiscount: 0,
-        totalScholarship: totalScholarshipAmountFinal,
-        totalAmountPayable: totalAmount,
+        totalProgramFee,
+        admissionFee: totalAdmissionFee,
+        totalGST,
+        totalScholarship,
+        totalAmountPayable,
       },
-    } as PaymentBreakdown;
+    };
+  }, [studentPayments, feeStructure, scholarshipAmount, cohortStartDate]);
 
-    return result;
-  }, [studentPayments]);
-
-  return {
-    paymentBreakdown,
-    hasPaymentSchedule: !!paymentBreakdown,
-  };
+  return paymentBreakdown;
 };

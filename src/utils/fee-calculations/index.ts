@@ -7,6 +7,7 @@
  * - Scholarship calculations  
  * - Payment plan calculations
  * - Semester calculations
+ * - Date calculations (NEW - unified date utilities)
  */
 
 import { FeeStructure, Scholarship, PaymentPlan, FeeStructureReview } from '@/types/fee';
@@ -16,12 +17,14 @@ export * from './gst';
 export * from './scholarships';
 export * from './payment-plans';
 export * from './semesters';
+export * from './dateUtils'; // NEW - unified date utilities
 
 // Re-export commonly used functions for backward compatibility
 import { calculateGST, extractGSTFromTotal, extractBaseAmountFromTotal } from './gst';
 import { calculateScholarshipAmount, validateScholarshipRanges } from './scholarships';
 import { calculateOneShotDiscount, calculateTotalPayable, getInstalmentDistribution, calculateOneShotPayment, calculateSemesterPayment } from './payment-plans';
 import { calculateAdmissionFee, calculateSemesterFee, generateSemesterPaymentDates } from './semesters';
+import { generateSemesterPaymentDates as generateUnifiedSemesterPaymentDates } from './dateUtils';
 
 /**
  * Generate complete fee structure review

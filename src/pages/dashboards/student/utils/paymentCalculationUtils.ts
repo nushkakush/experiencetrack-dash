@@ -4,6 +4,7 @@ import {
 } from '@/utils/fee-calculations/payment-plans';
 import { extractBaseAmountFromTotal, extractGSTFromTotal, calculateGST } from '@/utils/fee-calculations/gst';
 import { FeeStructure, Installment, ScholarshipData } from '@/types/payments';
+import { generateSemesterPaymentDates, generateSemesterWisePaymentDates } from '@/utils/fee-calculations/dateUtils';
 
 // Function to distribute scholarship backwards across installments
 export const distributeScholarshipBackwards = (installments: Installment[], totalScholarship: number) => {
@@ -149,14 +150,17 @@ export const calculateSemesterWiseBreakdown = (
   let totalGST = admissionFeeGST;
   let totalAmountPayable = admissionFee;
 
+  // Use unified date calculation for semester-wise payments
+  const semesterPaymentDates = generateSemesterWisePaymentDates(numberOfSemesters, '2025-08-14');
+
   for (let semesterNumber = 1; semesterNumber <= numberOfSemesters; semesterNumber++) {
     // For semester-wise, we want ONE payment per semester, not multiple installments
     const semesterAmount = (totalProgramFee - admissionFeeBase) / numberOfSemesters;
     const semesterGST = calculateGST(semesterAmount);
     
-    // Create a single payment for this semester
+    // Create a single payment for this semester using unified date calculation
     const semesterPayment = {
-      paymentDate: new Date(Date.now() + (semesterNumber - 1) * 6 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      paymentDate: semesterPaymentDates[semesterNumber - 1], // Use unified date calculation
       baseAmount: semesterAmount,
       gstAmount: semesterGST,
       scholarshipAmount: 0,
@@ -187,23 +191,20 @@ export const calculateSemesterWiseBreakdown = (
   // Update the semester payments with the distributed scholarship
   let installmentIndex = 0;
   semesterPayments.forEach(semester => {
-    semester.instalments[0] = updatedInstallments[installmentIndex];
-    semester.total = {
-      baseAmount: semester.instalments[0].baseAmount,
-      scholarshipAmount: semester.instalments[0].scholarshipAmount,
-      discountAmount: semester.instalments[0].discountAmount,
-      gstAmount: semester.instalments[0].gstAmount,
-      totalPayable: semester.instalments[0].amountPayable,
-    };
-    installmentIndex++;
+    semester.instalments.forEach(installment => {
+      if (installmentIndex < updatedInstallments.length) {
+        installment.scholarshipAmount = updatedInstallments[installmentIndex];
+        installment.amountPayable = Math.max(0, installment.amountPayable - installment.scholarshipAmount);
+        installmentIndex++;
+      }
+    });
   });
-
-  // Recalculate totals
-  totalAmountPayable = admissionFee + semesterPayments.reduce((sum, semester) => sum + semester.total.totalPayable, 0);
 
   return {
     semesters: semesterPayments,
     overallSummary: {
+      totalProgramFee,
+      admissionFee,
       totalGST,
       totalAmountPayable,
     },
@@ -226,13 +227,14 @@ export const calculateInstallmentWiseBreakdown = (
   let totalAmountPayable = admissionFee;
 
   for (let semesterNumber = 1; semesterNumber <= numberOfSemesters; semesterNumber++) {
+    // Use unified date calculation for installment-wise payments
     const semesterInstallments = calculateSemesterPayment(
       semesterNumber,
       totalProgramFee,
       admissionFee,
       numberOfSemesters,
       installmentsPerSemester,
-      new Date().toISOString().split('T')[0],
+      '2025-08-14', // cohort start date
       0, // scholarship amount (will be distributed manually)
       0  // one-shot discount
     );
@@ -262,27 +264,20 @@ export const calculateInstallmentWiseBreakdown = (
   // Update the semester payments with the distributed scholarship
   let installmentIndex = 0;
   semesterPayments.forEach(semester => {
-    semester.instalments.forEach((installment, instIndex) => {
-      semester.instalments[instIndex] = updatedInstallments[installmentIndex];
-      installmentIndex++;
+    semester.instalments.forEach(installment => {
+      if (installmentIndex < updatedInstallments.length) {
+        installment.scholarshipAmount = updatedInstallments[installmentIndex];
+        installment.amountPayable = Math.max(0, installment.amountPayable - installment.scholarshipAmount);
+        installmentIndex++;
+      }
     });
-    
-    // Recalculate semester totals
-    semester.total = {
-      baseAmount: semester.instalments.reduce((sum, inst) => sum + inst.baseAmount, 0),
-      scholarshipAmount: semester.instalments.reduce((sum, inst) => sum + inst.scholarshipAmount, 0),
-      discountAmount: semester.instalments.reduce((sum, inst) => sum + inst.discountAmount, 0),
-      gstAmount: semester.instalments.reduce((sum, inst) => sum + inst.gstAmount, 0),
-      totalPayable: semester.instalments.reduce((sum, inst) => sum + inst.amountPayable, 0),
-    };
   });
-
-  // Recalculate overall totals
-  totalAmountPayable = admissionFee + semesterPayments.reduce((sum, semester) => sum + semester.total.totalPayable, 0);
 
   return {
     semesters: semesterPayments,
     overallSummary: {
+      totalProgramFee,
+      admissionFee,
       totalGST,
       totalAmountPayable,
     },

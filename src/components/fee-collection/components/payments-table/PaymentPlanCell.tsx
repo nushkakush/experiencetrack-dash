@@ -28,11 +28,11 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({ student }) => 
     
     switch (plan) {
       case 'one_shot':
-        return 'One-Shot';
+        return 'One Shot';
       case 'sem_wise':
-        return 'Semester-wise';
+        return 'Semester Wise';
       case 'instalment_wise':
-        return 'Installment-wise';
+        return 'Instalment Wise';
       default:
         return plan;
     }

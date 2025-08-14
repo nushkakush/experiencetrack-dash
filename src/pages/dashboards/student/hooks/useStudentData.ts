@@ -135,6 +135,9 @@ export const useStudentData = (): StudentData => {
     studentPayments,
     loading,
     error,
-    refetch: loadStudentData
+    refetch: () => {
+      console.log('🔄 [DEBUG] Refetching student data after payment submission');
+      return loadStudentData();
+    }
   };
 };

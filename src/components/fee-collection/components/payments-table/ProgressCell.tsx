@@ -13,17 +13,44 @@ export const ProgressCell: React.FC<ProgressCellProps> = ({ student }) => {
       return null;
     }
 
-    // Count paid installments
-    const paidInstallments = student.payments?.filter(p => 
-      p.status === 'paid' || p.status === 'complete'
-    ).length || 0;
+    // Calculate based on amount paid vs total amount
+    const totalAmount = student.total_amount;
+    const paidAmount = student.paid_amount;
+    
+    if (totalAmount === 0) return null;
 
-    const totalInstallments = student.payments?.length || 0;
-
-    if (totalInstallments === 0) return null;
-
-    const progress = Math.round((paidInstallments / totalInstallments) * 100);
-    return { progress, paidInstallments, totalInstallments };
+    const progress = Math.round((paidAmount / totalAmount) * 100);
+    
+    // For installment-wise payments, calculate how many installments are completed
+    let completedInstallments = 0;
+    let totalInstallments = 0;
+    
+    if (student.payment_plan === 'instalment_wise') {
+      // Assuming 12 installments based on the payment schedule
+      totalInstallments = 12;
+      const installmentAmount = totalAmount / totalInstallments;
+      completedInstallments = Math.floor(paidAmount / installmentAmount);
+    } else if (student.payment_plan === 'sem_wise') {
+      // For semester-wise, assume 4 semesters
+      totalInstallments = 4;
+      const semesterAmount = totalAmount / totalInstallments;
+      completedInstallments = Math.floor(paidAmount / semesterAmount);
+    } else if (student.payment_plan === 'one_shot') {
+      // For one-shot, it's either 0 or 1
+      totalInstallments = 1;
+      completedInstallments = paidAmount >= totalAmount ? 1 : 0;
+    } else {
+      // Fallback to transaction count for other cases
+      const paidTransactions = student.payments?.filter(p => 
+        p.status === 'paid' || p.status === 'complete'
+      ).length || 0;
+      const totalTransactions = student.payments?.length || 0;
+      
+      completedInstallments = paidTransactions;
+      totalInstallments = totalTransactions;
+    }
+    
+    return { progress, paidInstallments: completedInstallments, totalInstallments };
   };
 
   const progressData = getPaymentProgress(student);

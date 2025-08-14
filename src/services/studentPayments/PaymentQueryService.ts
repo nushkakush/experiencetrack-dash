@@ -99,41 +99,82 @@ export class PaymentQueryService {
         throw paymentsError;
       }
 
+      // Get all payment transactions for the cohort
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .in('payment_id', payments?.map(p => p.id) || []);
+
+      if (transactionsError) {
+        Logger.getInstance().error('PaymentQueryService: Transactions query error', { error: transactionsError });
+        throw transactionsError;
+      }
+
+
+      
       // Create summary for each student
       const summary: StudentPaymentSummary[] = students.map((student) => {
         const studentPayment = payments?.find(p => p.student_id === student.id);
         
         if (!studentPayment) {
-          return {
-            student_id: student.id,
-            student_name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
-            student_email: student.email,
-            total_payable: 0,
-            total_paid: 0,
-            total_pending: 0,
-            payment_count: 0,
-            next_due_date: null,
-            next_due_amount: 0,
-            payment_status: 'no_plan',
-            payment_plan: 'not_selected'
-          };
+                  return {
+          student_id: student.id,
+          total_amount: 0,
+          paid_amount: 0,
+          pending_amount: 0,
+          overdue_amount: 0,
+          scholarship_name: undefined,
+          scholarship_id: undefined,
+          token_fee_paid: false,
+          payment_plan: 'not_selected',
+          student: student,
+          payments: []
+        };
         }
 
+        // Get transactions for this student's payment
+        const studentTransactions = transactions?.filter(t => t.payment_id === studentPayment.id) || [];
+        
+        // Convert payment transactions to a format that matches StudentPayment interface
+        const convertedPayments = studentTransactions.map(transaction => ({
+          id: transaction.id,
+          student_id: student.id,
+          cohort_id: cohortId,
+          payment_type: 'program_fee' as const,
+          payment_plan: studentPayment.payment_plan,
+          base_amount: parseFloat(transaction.amount || '0'),
+          scholarship_amount: 0,
+          discount_amount: 0,
+          gst_amount: 0,
+          amount_payable: parseFloat(transaction.amount || '0'),
+          amount_paid: transaction.status === 'success' ? parseFloat(transaction.amount || '0') : 0,
+          due_date: transaction.payment_date || transaction.created_at,
+          payment_date: transaction.payment_date,
+          status: transaction.status === 'success' ? 'paid' : 'pending',
+          receipt_url: transaction.receipt_url || transaction.proof_of_payment_url,
+          notes: transaction.notes,
+          created_at: transaction.created_at,
+          updated_at: transaction.updated_at
+        }));
+        
         return {
           student_id: student.id,
-          student_name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
-          student_email: student.email,
-          total_payable: studentPayment.total_amount_payable || 0,
-          total_paid: studentPayment.total_amount_paid || 0,
-          total_pending: studentPayment.total_amount_pending || 0,
-          payment_count: 1, // Single record per student
-          next_due_date: studentPayment.next_due_date || null,
-          next_due_amount: studentPayment.total_amount_pending || 0,
-          payment_status: studentPayment.payment_status || 'pending',
-          payment_plan: studentPayment.payment_plan || 'unknown'
+          total_amount: parseFloat(studentPayment.total_amount_payable || '0'),
+          paid_amount: parseFloat(studentPayment.total_amount_paid || '0'),
+          pending_amount: parseFloat(studentPayment.total_amount_pending || '0'),
+          overdue_amount: 0, // TODO: Calculate overdue amount
+          scholarship_name: undefined, // TODO: Get from scholarship table
+          scholarship_id: studentPayment.scholarship_id || undefined,
+          token_fee_paid: false, // TODO: Check if admission fee is paid
+          payment_plan: studentPayment.payment_plan || 'not_selected',
+          student: student,
+          payments: convertedPayments,
+          payment_schedule: studentPayment.payment_schedule
         };
       });
 
+
+      
       return {
         data: summary,
         error: null,

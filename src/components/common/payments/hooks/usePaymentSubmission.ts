@@ -1,25 +1,8 @@
 import { useState, useEffect } from 'react';
 import { CohortStudent } from '@/types/cohort';
-import { validatePaymentForm } from '../PaymentFormValidation';
-
-interface Installment {
-  paymentDate: string;
-  baseAmount: number;
-  gstAmount: number;
-  amountPayable: number;
-}
-
-interface Semester {
-  semesterNumber: number;
-  instalments: Installment[];
-}
-
-interface PaymentBreakdown {
-  semesters: Semester[];
-  overallSummary: {
-    totalAmountPayable: number;
-  };
-}
+import { PaymentBreakdown, Installment, Semester } from '@/types/payments/PaymentCalculationTypes';
+import { validatePaymentForm } from '@/components/fee-collection/utils/PaymentValidation';
+import { PaymentSubmissionData } from '@/types/payments/PaymentMethods';
 
 interface PaymentData {
   paymentMode: string;
@@ -33,7 +16,7 @@ export interface UsePaymentSubmissionProps {
   selectedPaymentPlan?: string;
   paymentBreakdown?: PaymentBreakdown;
   selectedInstallment?: Installment;
-  onPaymentSubmission: (paymentData: PaymentData) => void;
+  onPaymentSubmission: (paymentData: PaymentSubmissionData) => void;
 }
 
 export const usePaymentSubmission = ({
@@ -82,6 +65,10 @@ export const usePaymentSubmission = ({
   }, [maxAmount]);
 
   const handlePaymentModeChange = (mode: string) => {
+    console.log('🔍 [DEBUG] handlePaymentModeChange called with mode:', mode);
+    console.log('🔍 [DEBUG] handlePaymentModeChange - mode type:', typeof mode);
+    console.log('🔍 [DEBUG] handlePaymentModeChange - mode length:', mode?.length);
+    
     setSelectedPaymentMode(mode);
     setPaymentDetails({});
     setUploadedFiles({});
@@ -89,6 +76,8 @@ export const usePaymentSubmission = ({
       ...prev,
       paymentMode: ''
     }));
+    
+    console.log('🔍 [DEBUG] handlePaymentModeChange - state updated');
   };
 
   const handleAmountChange = (amount: number) => {
@@ -127,6 +116,16 @@ export const usePaymentSubmission = ({
   };
 
   const handleSubmit = () => {
+    console.log('🔍 [DEBUG] handleSubmit called');
+    console.log('🔍 [DEBUG] selectedPaymentMode:', selectedPaymentMode);
+    console.log('🔍 [DEBUG] amountToPay:', amountToPay);
+    console.log('🔍 [DEBUG] maxAmount:', maxAmount);
+    console.log('🔍 [DEBUG] paymentDetails:', paymentDetails);
+    console.log('🔍 [DEBUG] uploadedFiles:', uploadedFiles);
+    console.log('🔍 [DEBUG] selectedPaymentMode type:', typeof selectedPaymentMode);
+    console.log('🔍 [DEBUG] selectedPaymentMode length:', selectedPaymentMode?.length);
+    console.log('🔍 [DEBUG] selectedPaymentMode truthy check:', !!selectedPaymentMode);
+
     const validation = validatePaymentForm(
       selectedPaymentMode,
       amountToPay,
@@ -135,23 +134,37 @@ export const usePaymentSubmission = ({
       uploadedFiles
     );
 
+    console.log('🔍 [DEBUG] validation result:', validation);
+    console.log('🔍 [DEBUG] validation.isValid:', validation.isValid);
+    console.log('🔍 [DEBUG] validation.errors:', validation.errors);
+
     setErrors(validation.errors);
 
     if (!validation.isValid) {
+      console.log('❌ [DEBUG] Validation failed, returning early');
       return;
     }
 
+    console.log('✅ [DEBUG] Validation passed, creating payment data');
+
     const paymentData = {
-      studentId: studentData.id,
-      cohortId: studentData.cohort_id,
+      paymentId: `student-payment-${Date.now()}`,
       amount: amountToPay,
-      paymentMode: selectedPaymentMode,
-      paymentDetails,
-      uploadedFiles,
-      installmentId: selectedInstallment?.id,
-      paymentPlan: selectedPaymentPlan,
-      timestamp: new Date().toISOString()
+      paymentMethod: selectedPaymentMode,
+      referenceNumber: paymentDetails.transactionId || paymentDetails.chequeNumber,
+      notes: paymentDetails.notes,
+      receiptFile: uploadedFiles.cashReceipt,
+      proofOfPaymentFile: uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
+      transactionScreenshotFile: uploadedFiles.scanToPayScreenshot,
+      bankName: paymentDetails.bankName,
+      bankBranch: paymentDetails.bankBranch,
+      transferDate: paymentDetails.transferDate || paymentDetails.chequeDate,
+      studentId: studentData.id,
+      cohortId: studentData.cohort_id
     };
+
+    console.log('🔍 [DEBUG] paymentData:', paymentData);
+    console.log('🔍 [DEBUG] Calling onPaymentSubmission');
 
     onPaymentSubmission(paymentData);
   };

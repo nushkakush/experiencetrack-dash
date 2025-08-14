@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard } from 'lucide-react';
 import { FileUploadField } from './FileUploadField';
+import { BankSelect } from './BankSelect';
 import { 
   PaymentDetails,
   FormErrors
@@ -49,15 +50,13 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               onChange={(e) => handleFieldChange('transactionId', e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="bankName">Bank Name</Label>
-            <Input
-              id="bankName"
-              placeholder="Enter bank name"
-              value={paymentDetails.bankName || ''}
-              onChange={(e) => handleFieldChange('bankName', e.target.value)}
-            />
-          </div>
+          <BankSelect
+            value={paymentDetails.bankName || ''}
+            onValueChange={(value) => handleFieldChange('bankName', value)}
+            label="Bank Name"
+            placeholder="Select bank"
+            required={true}
+          />
           <div>
             <Label htmlFor="transferDate">Transfer Date</Label>
             <Input
@@ -156,15 +155,13 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               onChange={(e) => handleFieldChange('chequeNumber', e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="bankName">Bank Name</Label>
-            <Input
-              id="bankName"
-              placeholder="Enter bank name"
-              value={paymentDetails.bankName || ''}
-              onChange={(e) => handleFieldChange('bankName', e.target.value)}
-            />
-          </div>
+          <BankSelect
+            value={paymentDetails.bankName || ''}
+            onValueChange={(value) => handleFieldChange('bankName', value)}
+            label="Bank Name"
+            placeholder="Select bank"
+            required={true}
+          />
           <div>
             <Label htmlFor="chequeDate">Cheque Date</Label>
             <Input

@@ -73,6 +73,17 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
     }).format(amount);
   };
 
+  // Check if all installments in a semester are completed
+  const isSemesterCompleted = (semester: any) => {
+    if (!semester.instalments || semester.instalments.length === 0) {
+      return false;
+    }
+    
+    return semester.instalments.every((installment: DatabaseInstallment) => {
+      return installment.status === 'paid' || installment.amountPaid >= installment.amount;
+    });
+  };
+
   Logger.getInstance().debug('SemesterBreakdown render', {
     hasPaymentBreakdown: !!paymentBreakdown,
     semestersCount: paymentBreakdown?.semesters?.length || 0,
@@ -124,63 +135,90 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
       </Card>
 
       {/* Semester Cards */}
-      {paymentBreakdown.semesters?.map((semester: any) => (
-        <Card key={semester.semesterNumber} className="overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-                  <Calendar className="h-5 w-5 text-yellow-600" />
+      {paymentBreakdown.semesters?.map((semester: any) => {
+        const isCompleted = isSemesterCompleted(semester);
+        
+        return (
+          <Card 
+            key={semester.semesterNumber} 
+            className={`overflow-hidden transition-all duration-300 ${
+              isCompleted 
+                ? 'border-green-200 bg-green-600/10' 
+                : ''
+            }`}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                    isCompleted 
+                      ? 'bg-green-600' 
+                      : 'bg-yellow-100'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    ) : (
+                      <Calendar className="h-5 w-5 text-yellow-600" />
+                    )}
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">
+                      {selectedPaymentPlan === 'one_shot' ? 'Program Fee' : `Semester ${semester.semesterNumber}`}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(semester.total?.totalPayable || semester.totalPayable || 0)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg">
-                    {selectedPaymentPlan === 'one_shot' ? 'Program Fee' : `Semester ${semester.semesterNumber}`}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {formatCurrency(semester.total?.totalPayable || semester.totalPayable || 0)}
-                  </p>
+                <div className="flex items-center gap-2">
+                  {isCompleted && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className="text-xs text-green-600 font-medium">Paid</p>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onToggleSemester(semester.semesterNumber)}
+                  >
+                    {expandedSemesters.has(semester.semesterNumber) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onToggleSemester(semester.semesterNumber)}
-              >
-                {expandedSemesters.has(semester.semesterNumber) ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
+            </CardHeader>
 
-          {expandedSemesters.has(semester.semesterNumber) && (
-            <CardContent className="pt-0">
-              <Separator className="my-4" />
-              <div className="space-y-4">
-                {semester.instalments?.map((installment: DatabaseInstallment, index: number) => (
-                  <InstallmentCard
-                    key={`${semester.semesterNumber}-${index}`}
-                    installment={installment}
-                    semesterNumber={semester.semesterNumber}
-                    installmentIndex={index}
-                    selectedPaymentPlan={selectedPaymentPlan}
-                    selectedInstallmentKey={selectedInstallmentKey}
-                    showPaymentForm={showPaymentForm}
-                    paymentSubmissions={paymentSubmissions}
-                    submittingPayments={submittingPayments}
-                    studentData={studentData}
-                    paymentBreakdown={paymentBreakdown}
-                    onInstallmentClick={onInstallmentClick}
-                    onPaymentSubmission={onPaymentSubmission}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      ))}
+            {expandedSemesters.has(semester.semesterNumber) && (
+              <CardContent className="pt-0">
+                <Separator className="my-4" />
+                <div className="space-y-4">
+                  {semester.instalments?.map((installment: DatabaseInstallment, index: number) => (
+                    <InstallmentCard
+                      key={`${semester.semesterNumber}-${index}`}
+                      installment={installment}
+                      semesterNumber={semester.semesterNumber}
+                      installmentIndex={index}
+                      selectedPaymentPlan={selectedPaymentPlan}
+                      selectedInstallmentKey={selectedInstallmentKey}
+                      showPaymentForm={showPaymentForm}
+                      paymentSubmissions={paymentSubmissions}
+                      submittingPayments={submittingPayments}
+                      studentData={studentData}
+                      paymentBreakdown={paymentBreakdown}
+                      onInstallmentClick={onInstallmentClick}
+                      onPaymentSubmission={onPaymentSubmission}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 };

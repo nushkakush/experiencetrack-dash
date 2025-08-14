@@ -171,6 +171,7 @@ export interface StudentPaymentSummary {
   // Joined fields
   student?: CohortStudent;
   payments?: StudentPayment[];
+  payment_schedule?: any; // Payment schedule data from database
 }
 
 export interface PaymentTransaction {

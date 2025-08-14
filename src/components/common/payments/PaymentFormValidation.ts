@@ -21,6 +21,12 @@ export const validatePaymentForm = (
   paymentDetails: PaymentDetails,
   uploadedFiles: Record<string, File>
 ): PaymentValidationResult => {
+  console.log('🔍 [DEBUG] validatePaymentForm called');
+  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode:', selectedPaymentMode);
+  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode type:', typeof selectedPaymentMode);
+  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode truthy:', !!selectedPaymentMode);
+  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode length:', selectedPaymentMode?.length);
+  
   const errors: Record<string, string> = {};
 
   // Validate amount
@@ -31,7 +37,10 @@ export const validatePaymentForm = (
 
   // Validate payment mode
   if (!selectedPaymentMode) {
+    console.log('❌ [DEBUG] Payment mode validation failed - selectedPaymentMode is falsy');
     errors.paymentMode = 'Please select a payment mode';
+  } else {
+    console.log('✅ [DEBUG] Payment mode validation passed');
   }
 
   // Validate payment mode specific fields

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, CheckCircle, Calendar } from 'lucide-react';
 import { PaymentPlan } from '@/types/fee';
 import PaymentSubmissionForm from './PaymentSubmissionFormV2';
 import { FeeBreakdown } from './FeeBreakdown';
-import { PaymentSubmissionData, StudentData } from '@/types/payments';
-import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
+import { PaymentSubmissionData, PaymentBreakdown } from '@/types/payments';
 import { PaymentStatusBadge } from '@/components/fee-collection/PaymentStatusBadge';
+import { CohortStudent } from '@/types/cohort';
 
 // Define the installment type that includes scholarship amounts
 interface DatabaseInstallment {
@@ -35,7 +35,7 @@ export interface InstallmentCardProps {
   showPaymentForm: boolean;
   paymentSubmissions?: Map<string, PaymentSubmissionData>;
   submittingPayments?: Set<string>;
-  studentData?: StudentData;
+  studentData?: CohortStudent;
   paymentBreakdown?: PaymentBreakdown;
   onInstallmentClick: (installment: DatabaseInstallment, semesterNumber: number, installmentIndex: number) => void;
   onPaymentSubmission: (paymentData: PaymentSubmissionData) => void;
@@ -72,6 +72,22 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
 
   const currentKey = `${semesterNumber}-${installmentIndex}`;
   const isSelected = selectedInstallmentKey === currentKey;
+  const isPaid = installment.status === 'paid' || installment.amountPaid >= installment.amount;
+
+  // Determine if payment form should be shown automatically
+  const shouldShowPaymentForm = () => {
+    // Don't show form if installment is paid
+    if (isPaid) return false;
+    
+    // Show form if payment is needed (not fully paid)
+    const needsPayment = installment.amountPending > 0;
+    
+    // Show for these statuses: pending, overdue, partially_paid_overdue, partially_paid_days_left
+    const paymentNeededStatuses = ['pending', 'overdue', 'partially_paid_overdue', 'partially_paid_days_left'];
+    const hasPaymentNeededStatus = paymentNeededStatuses.includes(installment.status);
+    
+    return needsPayment && hasPaymentNeededStatus;
+  };
 
   const getInstallmentLabel = () => {
     switch (selectedPaymentPlan) {
@@ -108,43 +124,90 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   return (
     <div className="space-y-4">
       {/* Installment Header */}
-      <div className="p-4 border rounded-lg bg-card">
+      <div className={`p-4 border rounded-lg transition-all duration-300 ${
+        isPaid 
+          ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 dark:from-green-950/30 dark:to-emerald-950/30 dark:border-green-800/50' 
+          : 'bg-card'
+      }`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <Button 
-              variant={isSelected ? "default" : "outline"}
-              size="sm" 
-              className="flex items-center gap-2"
-              onClick={() => onInstallmentClick(installment, semesterNumber, installmentIndex)}
-            >
-              {getInstallmentLabel()}
-              {isSelected ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            </Button>
-            <div className="text-sm text-muted-foreground">
-              {formatCurrency(installment.amount)} • {formatDate(installment.dueDate)}
+            <div className={`text-sm ${
+              isPaid 
+                ? 'text-green-700 dark:text-green-300' 
+                : 'text-muted-foreground'
+            }`}>
+              {getInstallmentLabel()} • {formatCurrency(installment.amount)} • {formatDate(installment.dueDate)}
             </div>
+            {isPaid && (
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            )}
           </div>
           <PaymentStatusBadge status={installment.status as any} />
         </div>
-
-        {/* Payment Amount Information */}
-        <div className="grid grid-cols-2 gap-4 mb-3 p-3 bg-muted/50 rounded-lg">
+        
+        <div className={`grid grid-cols-2 gap-4 mb-3 p-3 rounded-lg ${
+          isPaid 
+            ? 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50' 
+            : 'bg-muted/50'
+        }`}>
           <div>
-            <p className="text-xs text-muted-foreground">Amount Paid</p>
-            <p className="text-sm font-semibold text-green-600">
+            <p className={`text-xs ${
+              isPaid 
+                ? 'text-green-700 dark:text-green-300' 
+                : 'text-muted-foreground'
+            }`}>
+              Amount Paid
+            </p>
+            <p className={`text-sm font-semibold ${
+              isPaid 
+                ? 'text-green-700 dark:text-green-300' 
+                : 'text-green-600'
+            }`}>
               {formatCurrency(installment.amountPaid)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Amount Pending</p>
-            <p className="text-sm font-semibold text-orange-600">
+            <p className={`text-xs ${
+              isPaid 
+                ? 'text-green-700 dark:text-green-300' 
+                : 'text-muted-foreground'
+            }`}>
+              Amount Pending
+            </p>
+            <p className={`text-sm font-semibold ${
+              isPaid 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-orange-600'
+            }`}>
               {formatCurrency(installment.amountPending)}
             </p>
           </div>
         </div>
 
-        {/* Payment Form - Inside the installment card */}
-        {isSelected && showPaymentForm && (
+        {/* Completion Message - Show when paid */}
+        {isPaid && (
+          <div className="mt-4 p-4 bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-green-800 dark:text-green-200">
+                  Payment Completed
+                </h4>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  This installment has been fully paid. Thank you for your payment!
+                </p>
+                {installment.paymentDate && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Paid on {formatDate(installment.paymentDate)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Form - Automatically show if payment is needed */}
+        {shouldShowPaymentForm() && (
           <div className="mt-4 p-4 border rounded-lg bg-muted/50">
             <PaymentSubmissionForm
               paymentSubmissions={paymentSubmissions || new Map()}
@@ -158,7 +221,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
           </div>
         )}
 
-        {/* Fee Breakdown - Below the form */}
+        {/* Fee Breakdown - Show for all installments */}
         <div className="mt-4">
           <FeeBreakdown
             baseAmount={convertedInstallment.baseAmount}

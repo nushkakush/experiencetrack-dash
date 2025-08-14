@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2 } from 'lucide-react';
 import { FileUploadField } from '@/components/common/payments/FileUploadField';
-import { INDIAN_BANKS } from '@/components/fee-collection/constants';
+import { BankSelect } from '@/components/common/payments/BankSelect';
 
 interface BankTransferFieldsProps {
   paymentReferenceType: string;
@@ -102,21 +102,13 @@ export const BankTransferFields: React.FC<BankTransferFieldsProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="bank-name" className="text-left block">Bank Name *</Label>
-          <Select value={bankName} onValueChange={onBankNameChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select bank" />
-            </SelectTrigger>
-            <SelectContent>
-              {INDIAN_BANKS.map((bank) => (
-                <SelectItem key={bank} value={bank}>
-                  {bank}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <BankSelect
+          value={bankName}
+          onValueChange={onBankNameChange}
+          label="Bank Name"
+          placeholder="Select bank"
+          required={true}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="bank-branch" className="text-left block">Bank Branch *</Label>

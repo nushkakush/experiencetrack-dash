@@ -141,7 +141,8 @@ export class PaymentCalculationService {
         if (updateError) throw updateError;
         result = data;
       } else {
-        // Create new record
+        // Create new record with admission fee already paid
+        const admissionFee = paymentSchedule.admission_fee || 0;
         const { data, error: insertError } = await supabase
           .from('student_payments')
           .insert({
@@ -150,9 +151,9 @@ export class PaymentCalculationService {
             payment_plan: paymentPlan,
             payment_schedule: paymentSchedule,
             total_amount_payable: totalAmountPayable,
-            total_amount_paid: 0,
+            total_amount_paid: admissionFee, // Include admission fee as already paid
             scholarship_id: scholarshipId,
-            payment_status: 'pending',
+            payment_status: this.calculatePaymentStatus(admissionFee, totalAmountPayable),
             next_due_date: paymentSchedule.summary.next_due_date
           })
           .select()

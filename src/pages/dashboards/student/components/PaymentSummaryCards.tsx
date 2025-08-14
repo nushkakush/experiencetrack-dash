@@ -107,43 +107,44 @@ export const PaymentSummaryCards: React.FC<PaymentSummaryCardsProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Enhanced Scholarship Card */}
-      <Card className="border-purple-200 bg-purple-600/10">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600">
-                <Award className="h-5 w-5 text-white" />
+      {/* Enhanced Scholarship Card - Only show if there's a scholarship */}
+      {hasScholarship && (
+        <Card className="border-purple-200 bg-purple-600/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600">
+                  <Award className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold">
+                    {loadingScholarship ? 'Loading...' : formatCurrency(getScholarshipAmount())}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {getScholarshipMessage()}
+                  </p>
+                  {scholarshipInfo && (
+                    <div className="mt-1 space-y-1">
+                      <p className="text-xs text-purple-600 dark:text-purple-400">
+                        Fee reduced from ₹{formatCurrency(paymentBreakdown.overallSummary?.totalProgramFee || 0)} to ₹{formatCurrency((paymentBreakdown.overallSummary?.totalProgramFee || 0) - getScholarshipAmount())} + GST
+                      </p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400">
+                        💡 Scholarship waiver applied from last semesters to first
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-semibold">
-                  {loadingScholarship ? 'Loading...' : 
-                   hasScholarship ? formatCurrency(getScholarshipAmount()) : 'Pending'}
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                  Active
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {getScholarshipMessage()}
-                </p>
-                {hasScholarship && scholarshipInfo && (
-                  <div className="mt-1 space-y-1">
-                    <p className="text-xs text-purple-600 dark:text-purple-400">
-                      Fee reduced from ₹{formatCurrency(paymentBreakdown.overallSummary?.totalProgramFee || 0)} to ₹{formatCurrency((paymentBreakdown.overallSummary?.totalProgramFee || 0) - getScholarshipAmount())} + GST
-                    </p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400">
-                      💡 Scholarship waiver applied from last semesters to first
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Status</p>
-              <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                {hasScholarship ? 'Active' : 'Pending'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Total Payment Summary Card */}
       <Card className="border-2 border-blue-200 bg-blue-600/10">
