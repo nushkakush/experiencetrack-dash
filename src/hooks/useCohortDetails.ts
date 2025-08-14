@@ -10,14 +10,21 @@ import { useAuth } from "@/hooks/useAuth";
 export function useCohortDetails(cohortId: string | undefined) {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [students, setStudents] = useState<CohortStudent[]>([]);
   const [cohort, setCohort] = useState<CohortWithCounts | null>(null);
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  // Load data. When background=true, avoid flipping the main loading state
+  // to prevent full-page skeleton flashes during focus/visibility or realtime updates.
+  const loadData = useCallback(async (background: boolean = false) => {
     if (!cohortId) return;
     
-    setLoading(true);
+    if (background) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       // Load cohort details with counts
       const cohortRes = await cohortsService.getByIdWithCounts(cohortId);
@@ -32,7 +39,11 @@ export function useCohortDetails(cohortId: string | undefined) {
       Logger.getInstance().error("Error loading cohort details", { error, cohortId });
       toast.error("Failed to load cohort details");
     } finally {
-      setLoading(false);
+      if (background) {
+        setIsRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, [cohortId]);
 
@@ -256,7 +267,7 @@ export function useCohortDetails(cohortId: string | undefined) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadData();
+        loadData(true);
       }
     };
 
@@ -264,16 +275,16 @@ export function useCohortDetails(cohortId: string | undefined) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [loadData]);
+  }, []); // Remove loadData dependency to prevent infinite re-renders
 
   // Auto-refresh every 30 seconds as fallback for real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
-      loadData();
+      loadData(true);
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, []); // Remove loadData dependency to prevent infinite re-renders
 
   // Set up real-time subscription for cohort_students changes
   useEffect(() => {
@@ -299,7 +310,7 @@ export function useCohortDetails(cohortId: string | undefined) {
             // Refresh data when invitation status changes
           }
           // Refresh data when any change occurs
-          loadData();
+          loadData(true);
         }
       )
       .on(
@@ -311,7 +322,7 @@ export function useCohortDetails(cohortId: string | undefined) {
           filter: `cohort_id=eq.${cohortId}`
         },
         (payload) => {
-          loadData();
+          loadData(true);
         }
       )
       .on(
@@ -323,7 +334,7 @@ export function useCohortDetails(cohortId: string | undefined) {
           filter: `cohort_id=eq.${cohortId}`
         },
         (payload) => {
-          loadData();
+          loadData(true);
         }
       )
       .subscribe();
@@ -331,7 +342,7 @@ export function useCohortDetails(cohortId: string | undefined) {
     return () => {
       connectionManager.removeChannel(channelName);
     };
-  }, [cohortId, loadData]);
+  }, [cohortId]); // Remove loadData dependency to prevent infinite re-renders
 
   return {
     loading,

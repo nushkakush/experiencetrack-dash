@@ -4,7 +4,7 @@ import { extractBaseAmountFromTotal, extractGSTFromTotal } from '@/utils/fee-cal
 import { useStudentData } from './useStudentData';
 import { usePaymentPlanManagement } from './usePaymentPlanManagement';
 import { usePaymentScheduleFromDatabase } from './usePaymentScheduleFromDatabase';
-import { PaymentBreakdown } from '@/types/payments';
+import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
 import {
   calculateScholarshipAmount,
   generateDefaultPaymentBreakdown,
@@ -144,6 +144,7 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
         admissionFee: admissionFee,
         totalGST: 0,
         totalDiscount: 0,
+        totalScholarship: scholarshipAmount,
         totalAmountPayable: 0,
       },
     };
@@ -151,10 +152,10 @@ export const usePaymentCalculations = ({ studentData }: UsePaymentCalculationsPr
     if (selectedPaymentPlan === 'one_shot') {
       const oneShotResult = calculateOneShotBreakdown(feeStructure, scholarshipAmount, admissionFeeGST);
       breakdown.semesters = oneShotResult.semesters;
+      breakdown.oneShotPayment = oneShotResult.oneShotPayment;
       breakdown.overallSummary.totalGST = oneShotResult.overallSummary.totalGST;
       breakdown.overallSummary.totalDiscount = oneShotResult.overallSummary.totalDiscount;
       breakdown.overallSummary.totalAmountPayable = oneShotResult.overallSummary.totalAmountPayable;
-
     } else if (selectedPaymentPlan === 'sem_wise') {
       const semesterResult = calculateSemesterWiseBreakdown(feeStructure, scholarshipAmount, admissionFeeGST, admissionFee);
       breakdown.semesters = semesterResult.semesters;

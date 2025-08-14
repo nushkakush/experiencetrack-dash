@@ -8,11 +8,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      overlay: false, // Disable HMR overlay that might cause issues
+    },
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    // mode === 'development' &&
+    // componentTagger(), // Disable component tagger temporarily
   ].filter(Boolean),
   resolve: {
     alias: {

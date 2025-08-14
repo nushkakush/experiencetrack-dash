@@ -92,24 +92,15 @@ export const PaymentPlanPreviewModal: React.FC<PaymentPlanPreviewModalProps> = (
               gstAmount: admissionFeeGST,
               totalPayable: admissionFee,
             },
-            semesters: oneShotResult.semesters.map(semester => ({
-              semesterNumber: semester.semesterNumber,
-              baseAmount: semester.total.baseAmount,
-              scholarshipAmount: semester.total.scholarshipAmount,
-              discountAmount: semester.total.discountAmount,
-              gstAmount: semester.total.gstAmount,
-              totalPayable: semester.total.totalPayable,
-              instalments: semester.instalments.map((inst, index) => ({
-                installmentNumber: index + 1,
-                baseAmount: inst.baseAmount,
-                scholarshipAmount: inst.scholarshipAmount,
-                discountAmount: inst.discountAmount,
-                gstAmount: inst.gstAmount,
-                totalPayable: inst.amountPayable,
-                paymentDate: new Date(inst.paymentDate),
-                status: 'pending' as const
-              }))
-            })),
+            semesters: [],
+            oneShotPayment: {
+              paymentDate: oneShotResult.oneShotPayment.paymentDate,
+              baseAmount: oneShotResult.oneShotPayment.baseAmount,
+              scholarshipAmount: oneShotResult.oneShotPayment.scholarshipAmount,
+              discountAmount: oneShotResult.oneShotPayment.discountAmount,
+              gstAmount: oneShotResult.oneShotPayment.gstAmount,
+              amountPayable: oneShotResult.oneShotPayment.amountPayable,
+            },
             overallSummary: {
               totalProgramFee,
               admissionFee,
@@ -393,17 +384,21 @@ export const PaymentPlanPreviewModal: React.FC<PaymentPlanPreviewModalProps> = (
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Semesters</p>
-                      <p className="text-lg font-semibold">{paymentBreakdown.semesters.length}</p>
+                      <p className="text-lg font-semibold">
+                        {selectedPlan === 'one_shot' ? 'N/A' : paymentBreakdown.semesters.length}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Installments</p>
                       <p className="text-lg font-semibold">
-                        {paymentBreakdown.semesters.reduce((sum, semester) => sum + semester.instalments.length, 0)}
+                        {selectedPlan === 'one_shot' ? '1' : paymentBreakdown.semesters.reduce((sum, semester) => sum + semester.instalments.length, 0)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Program Duration</p>
-                      <p className="text-lg font-semibold">{paymentBreakdown.semesters.length * 6} months</p>
+                      <p className="text-lg font-semibold">
+                        {selectedPlan === 'one_shot' ? 'One-time' : `${paymentBreakdown.semesters.length * 6} months`}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -439,74 +434,125 @@ export const PaymentPlanPreviewModal: React.FC<PaymentPlanPreviewModalProps> = (
                 </CardContent>
               </Card>
 
-              {/* Semester/Installment Breakdown */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold">Payment Schedule</h3>
-                {paymentBreakdown.semesters.map((semester) => (
-                  <Card key={semester.semesterNumber}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Calendar className="h-5 w-5" />
-                          Semester {semester.semesterNumber}
-                        </CardTitle>
-                        <Badge variant="outline">
-                          {semester.instalments.length} {semester.instalments.length === 1 ? 'Payment' : 'Payments'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {semester.instalments.map((installment, index) => (
-                          <div key={index} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {selectedPlan === 'one_shot' ? 'Full Payment' : 
-                                   selectedPlan === 'sem_wise' ? `Semester ${semester.semesterNumber} Payment` :
-                                   `Installment ${installment.installmentNumber || index + 1}`}
-                                </span>
-                                                                 <Badge variant="secondary">Due: {formatDate(installment.paymentDate.toISOString())}</Badge>
-                              </div>
-                              <div className="text-right">
-                                                                 <p className="text-lg font-semibold text-green-600">
-                                   {formatCurrency(installment.totalPayable)}
-                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {installment.scholarshipAmount > 0 && `-${formatCurrency(installment.scholarshipAmount)} scholarship`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">Base:</span>
-                                <span className="ml-1">{formatCurrency(installment.baseAmount)}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">GST:</span>
-                                <span className="ml-1">{formatCurrency(installment.gstAmount)}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Discount:</span>
-                                <span className="ml-1">{formatCurrency(installment.discountAmount)}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Scholarship:</span>
-                                <span className="ml-1">{formatCurrency(installment.scholarshipAmount)}</span>
-                              </div>
-                            </div>
+              {/* One-Shot Payment Breakdown */}
+              {selectedPlan === 'one_shot' && paymentBreakdown.oneShotPayment && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Program Fee (One-Shot Payment)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Full Payment</span>
+                            <Badge variant="secondary">Due: {formatDate(paymentBreakdown.oneShotPayment.paymentDate)}</Badge>
                           </div>
-                        ))}
+                          <div className="text-right">
+                            <p className="text-lg font-semibold text-green-600">
+                              {formatCurrency(paymentBreakdown.oneShotPayment.amountPayable)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {paymentBreakdown.oneShotPayment.scholarshipAmount > 0 && `-${formatCurrency(paymentBreakdown.oneShotPayment.scholarshipAmount)} scholarship`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Base:</span>
+                            <span className="ml-1">{formatCurrency(paymentBreakdown.oneShotPayment.baseAmount)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">GST:</span>
+                            <span className="ml-1">{formatCurrency(paymentBreakdown.oneShotPayment.gstAmount)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Discount:</span>
+                            <span className="ml-1">{formatCurrency(paymentBreakdown.oneShotPayment.discountAmount)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Scholarship:</span>
+                            <span className="ml-1">{formatCurrency(paymentBreakdown.oneShotPayment.scholarshipAmount)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <Separator className="my-4" />
-                                             <div className="flex justify-between items-center">
-                         <span className="font-medium">Semester Total:</span>
-                         <span className="text-lg font-semibold">{formatCurrency(semester.totalPayable)}</span>
-                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Semester/Installment Breakdown - Only for non-one-shot plans */}
+              {selectedPlan !== 'one_shot' && (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold">Payment Schedule</h3>
+                  {paymentBreakdown.semesters.map((semester) => (
+                    <Card key={semester.semesterNumber}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5" />
+                            Semester {semester.semesterNumber}
+                          </CardTitle>
+                          <Badge variant="outline">
+                            {semester.instalments.length} {semester.instalments.length === 1 ? 'Payment' : 'Payments'}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {semester.instalments.map((installment, index) => (
+                            <div key={index} className="border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {selectedPlan === 'sem_wise' ? `Semester ${semester.semesterNumber} Payment` :
+                                     `Installment ${installment.installmentNumber || index + 1}`}
+                                  </span>
+                                  <Badge variant="secondary">Due: {formatDate(installment.paymentDate.toISOString())}</Badge>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-semibold text-green-600">
+                                    {formatCurrency(installment.totalPayable)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {installment.scholarshipAmount > 0 && `-${formatCurrency(installment.scholarshipAmount)} scholarship`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Base:</span>
+                                  <span className="ml-1">{formatCurrency(installment.baseAmount)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">GST:</span>
+                                  <span className="ml-1">{formatCurrency(installment.gstAmount)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Discount:</span>
+                                  <span className="ml-1">{formatCurrency(installment.discountAmount)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Scholarship:</span>
+                                  <span className="ml-1">{formatCurrency(installment.scholarshipAmount)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <Separator className="my-4" />
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Semester Total:</span>
+                          <span className="text-lg font-semibold">{formatCurrency(semester.totalPayable)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
               {/* Overall Summary */}
               <Card className="bg-muted/50">
@@ -603,7 +649,7 @@ export const PaymentPlanPreviewModal: React.FC<PaymentPlanPreviewModalProps> = (
               'Confirming...'
             ) : (
               <>
-                Preview Payment Plan
+                Select Payment Plan
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}

@@ -110,6 +110,7 @@ const generatePaymentBreakdown = (
     case 'one_shot':
       const oneShotResult = calculateOneShotBreakdown(feeStructure, scholarshipAmount, admissionFeeGST);
       breakdown.semesters = oneShotResult.semesters;
+      breakdown.oneShotPayment = oneShotResult.oneShotPayment;
       breakdown.overallSummary.totalGST = oneShotResult.overallSummary.totalGST;
       breakdown.overallSummary.totalDiscount = oneShotResult.overallSummary.totalDiscount;
       breakdown.overallSummary.totalAmountPayable = oneShotResult.overallSummary.totalAmountPayable;

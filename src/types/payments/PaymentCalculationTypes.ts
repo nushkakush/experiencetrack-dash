@@ -64,9 +64,19 @@ export interface OverallSummary {
   totalAmountPayable: number;
 }
 
+export interface OneShotPaymentBreakdown {
+  paymentDate: string;
+  baseAmount: number;
+  scholarshipAmount: number;
+  discountAmount: number;
+  gstAmount: number;
+  amountPayable: number;
+}
+
 export interface PaymentBreakdown {
   admissionFee: AdmissionFeeBreakdown;
   semesters: SemesterBreakdown[];
+  oneShotPayment?: OneShotPaymentBreakdown;
   overallSummary: OverallSummary;
 }
 

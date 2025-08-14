@@ -31,19 +31,59 @@ export const useStudentData = (): StudentData => {
   const [studentPayments, setStudentPayments] = useState<StudentPaymentRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  // Ref to track if data has been loaded to prevent duplicate loads
+  // Use localStorage to persist data loaded state across component re-mounts
+  const getDataLoadedKey = (userId: string) => `studentDataLoaded_${userId}`;
+  const getLastProfileIdKey = (userId: string) => `lastProfileId_${userId}`;
+  
   const dataLoadedRef = React.useRef(false);
+  const lastProfileIdRef = React.useRef<string | null>(null);
+  
+  // Initialize from localStorage (only once when profile changes)
+  React.useEffect(() => {
+    if (profile?.user_id) {
+      const dataLoadedKey = getDataLoadedKey(profile.user_id);
+      const lastProfileIdKey = getLastProfileIdKey(profile.user_id);
+      
+      const storedDataLoaded = localStorage.getItem(dataLoadedKey);
+      const storedLastProfileId = localStorage.getItem(lastProfileIdKey);
+      
+      // Only restore dataLoaded if we actually have data in state
+      const hasDataInState = !!studentData && !!cohortData;
+      
+      dataLoadedRef.current = storedDataLoaded === 'true' && hasDataInState;
+      lastProfileIdRef.current = storedLastProfileId;
+      
+      console.log('🔄 [DEBUG] Initialized from localStorage:', {
+        dataLoaded: dataLoadedRef.current,
+        lastProfileId: lastProfileIdRef.current,
+        userId: profile.user_id,
+        hasDataInState,
+        storedDataLoaded: storedDataLoaded === 'true'
+      });
+    }
+  }, [profile?.user_id]); // Remove studentData and cohortData dependencies
 
-  const loadStudentData = async () => {
-    // Prevent multiple simultaneous loads
-    if (loading) {
+  const loadStudentData = React.useCallback(async () => {
+    console.log('🔄 [DEBUG] loadStudentData called');
+    
+    // Check if data is already loaded
+    if (dataLoadedRef.current) {
+      console.log('🔄 [DEBUG] Data already loaded, skipping');
       return;
     }
     
-    setLoading(true);
+    // Prevent multiple simultaneous loads by checking if already loading
+    setLoading(prevLoading => {
+      if (prevLoading) {
+        console.log('🔄 [DEBUG] Already loading, skipping');
+        return prevLoading; // Don't change loading state if already loading
+      }
+      console.log('🔄 [DEBUG] Starting to load student data');
+      return true;
+    });
+    
     setError(null);
-    // Reset the data loaded flag to allow reloading
-    dataLoadedRef.current = false;
+    // Don't reset the data loaded flag here - it should only be set to true when data is successfully loaded
     
     try {
       if (!profile?.user_id) {
@@ -111,21 +151,68 @@ export const useStudentData = (): StudentData => {
       }
 
       dataLoadedRef.current = true;
+      if (profile?.user_id) {
+        const dataLoadedKey = getDataLoadedKey(profile.user_id);
+        localStorage.setItem(dataLoadedKey, 'true');
+      }
+      console.log('🔄 [DEBUG] Data loaded flag set to true and saved to localStorage');
     } catch (err) {
       logger.error('Error loading student data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load student data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile?.user_id]); // Remove loading dependency to prevent circular dependency
 
   useEffect(() => {
     // Only load data if we have a profile and haven't loaded data yet
     // Don't reload when route changes, only when auth state changes
-    if (profile?.user_id && !loading && !authLoading && !profileLoading && !dataLoadedRef.current) {
+    console.log('🔄 [DEBUG] useStudentData useEffect triggered', {
+      hasProfile: !!profile?.user_id,
+      authLoading,
+      profileLoading,
+      dataLoaded: dataLoadedRef.current,
+      lastProfileId: lastProfileIdRef.current,
+      currentProfileId: profile?.user_id
+    });
+    
+    // Check if profile ID has changed
+    const profileIdChanged = profile?.user_id !== lastProfileIdRef.current;
+    
+    // Check if this is a fresh page load (no data in state)
+    const isFreshPageLoad = !studentData && !cohortData;
+    
+    // Check if we should load data
+    const shouldLoadData = profile?.user_id && 
+                          !authLoading && 
+                          !profileLoading && 
+                          !dataLoadedRef.current && 
+                          (profileIdChanged || isFreshPageLoad);
+    
+    if (shouldLoadData) {
+      console.log('🔄 [DEBUG] Loading student data...', {
+        reason: profileIdChanged ? 'profile changed' : 'fresh page load',
+        dataLoadedRef: dataLoadedRef.current,
+        hasStudentData: !!studentData,
+        hasCohortData: !!cohortData
+      });
+      lastProfileIdRef.current = profile.user_id;
+      if (profile?.user_id) {
+        const lastProfileIdKey = getLastProfileIdKey(profile.user_id);
+        localStorage.setItem(lastProfileIdKey, profile.user_id);
+      }
       loadStudentData();
+    } else {
+      console.log('🔄 [DEBUG] Skipping student data load', {
+        reason: !profile?.user_id ? 'no profile' : 
+                authLoading ? 'auth loading' : 
+                profileLoading ? 'profile loading' : 
+                dataLoadedRef.current ? 'already loaded' : 
+                !profileIdChanged && !isFreshPageLoad ? 'profile not changed and not fresh load' :
+                'unknown'
+      });
     }
-  }, [profile?.user_id, authLoading, profileLoading]); // Remove location dependency to prevent reloads
+  }, [profile?.user_id, authLoading, profileLoading]); // Simplified dependencies
 
   return {
     studentData,

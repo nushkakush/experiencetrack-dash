@@ -76,6 +76,8 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
+            {/* Background refresh shimmer */}
+            {/* We can show a subtle indicator when background refresh is happening */}
           </div>
         </div>
       </DashboardShell>

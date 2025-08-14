@@ -107,6 +107,7 @@ export const calculateOneShotBreakdown = (
   const admissionFee = Number(feeStructure.admission_fee);
   const oneShotDiscount = Number(feeStructure.one_shot_discount_percentage);
 
+  // Use the same calculation logic as admin interface
   const oneShotPayment = calculateOneShotPayment(
     totalProgramFee,
     admissionFee,
@@ -116,17 +117,17 @@ export const calculateOneShotBreakdown = (
   );
 
   return {
-    semesters: [{
-      semesterNumber: 1,
-      instalments: [oneShotPayment],
-      total: {
-        baseAmount: oneShotPayment.baseAmount,
-        scholarshipAmount: oneShotPayment.scholarshipAmount,
-        discountAmount: oneShotPayment.discountAmount,
-        gstAmount: oneShotPayment.gstAmount,
-        totalPayable: oneShotPayment.amountPayable,
-      },
-    }],
+    // For one-shot payments, semesters should be empty
+    semesters: [],
+    // Use the same structure as admin interface
+    oneShotPayment: {
+      paymentDate: oneShotPayment.paymentDate,
+      baseAmount: oneShotPayment.baseAmount,
+      scholarshipAmount: oneShotPayment.scholarshipAmount,
+      discountAmount: oneShotPayment.discountAmount,
+      gstAmount: oneShotPayment.gstAmount,
+      amountPayable: oneShotPayment.amountPayable,
+    },
     overallSummary: {
       totalGST: admissionFeeGST + oneShotPayment.gstAmount,
       totalDiscount: oneShotPayment.discountAmount,

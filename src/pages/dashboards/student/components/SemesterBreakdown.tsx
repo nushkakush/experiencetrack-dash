@@ -93,6 +93,68 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
 
   if (!paymentBreakdown?.semesters || paymentBreakdown.semesters.length === 0) {
     Logger.getInstance().debug('SemesterBreakdown - no semesters available');
+    
+    // For one-shot payments, show the one-shot payment card
+    if (selectedPaymentPlan === 'one_shot' && paymentBreakdown?.oneShotPayment) {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Payment Breakdown</h2>
+          
+          {/* Admission Fee Card */}
+          <Card className="border-green-200 bg-green-600/10">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600">
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold">
+                      {formatCurrency(paymentBreakdown.admissionFee?.totalPayable || 0)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Admission Fee</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-xs text-green-600 font-medium">Paid</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* One-Shot Payment Card */}
+          <Card className="border-blue-200 bg-blue-600/10">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
+                    <Calendar className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold">Program Fee (One-Shot)</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(paymentBreakdown.oneShotPayment.amountPayable)}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Due Date</p>
+                  <p className="text-xs text-blue-600 font-medium">
+                    {new Date(paymentBreakdown.oneShotPayment.paymentDate).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Payment Breakdown</h2>

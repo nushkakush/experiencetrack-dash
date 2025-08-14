@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   // Lint and format TypeScript/JavaScript files
   '*.{ts,tsx,js,jsx}': [
     'eslint --fix',

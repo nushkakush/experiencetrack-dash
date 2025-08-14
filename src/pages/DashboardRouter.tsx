@@ -27,8 +27,9 @@ const DashboardRouter = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // If user is authenticated but profile is still loading, show loading
-  if (profileLoading || !profile) {
+  // If profile is not yet available, show loading. Do NOT gate on `profileLoading`
+  // to avoid unmounting dashboards on transient refetches (e.g., on focus).
+  if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

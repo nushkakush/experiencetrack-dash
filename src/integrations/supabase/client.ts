@@ -23,11 +23,11 @@ const createSupabaseClient = () => {
       auth: {
         storage: localStorage,
         persistSession: true,
-        autoRefreshToken: true,
+        autoRefreshToken: false, // Disable auto refresh to prevent reloads
       },
       realtime: {
         params: {
-          eventsPerSecond: 10, // Limit real-time events to prevent resource exhaustion
+          eventsPerSecond: 5, // Reduce real-time events further
         },
       },
       global: {

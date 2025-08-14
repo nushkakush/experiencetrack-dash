@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { APP_CONFIG } from '@/config/constants';
+import { queryLogger } from '@/lib/logging/QueryLogger';
 
 /**
  * Enterprise-grade React Query client configuration
@@ -28,8 +29,8 @@ export const queryClient = new QueryClient({
       
       // Background refetching
       refetchOnWindowFocus: false, // Disable to prevent unnecessary refetches
-      refetchOnReconnect: true,    // Refetch when network reconnects
-      refetchOnMount: true,        // Refetch when component mounts
+      refetchOnReconnect: false,   // Disable refetch on reconnect to prevent reloads
+      refetchOnMount: false,       // Disable refetch on mount to prevent reloads
       
       // Network mode
       networkMode: 'online',
@@ -56,6 +57,32 @@ export const queryClient = new QueryClient({
         // For now, we'll just return a placeholder
         return Promise.resolve(null);
       },
+      
+      // Query logging
+      onSuccess: (data, query) => {
+        queryLogger.logQuerySuccess(query.queryHash, data, {
+          queryKey: query.queryKey,
+          staleTime: query.options.staleTime,
+          gcTime: query.options.gcTime
+        });
+      },
+      
+      onError: (error, query) => {
+        queryLogger.logQueryError(query.queryHash, error as Error, {
+          queryKey: query.queryKey,
+          failureCount: query.state.failureCount
+        });
+      },
+      
+      onSettled: (data, error, query) => {
+        if (!error) {
+          queryLogger.logQueryStart(query.queryHash, {
+            queryKey: query.queryKey,
+            isStale: query.state.isStale,
+            isFetching: query.state.isFetching
+          });
+        }
+      },
     },
     
     mutations: {
@@ -76,6 +103,19 @@ export const queryClient = new QueryClient({
       onSuccess: undefined,
       onError: undefined,
       onSettled: undefined,
+      
+      // Mutation logging
+      onMutate: (variables, mutation) => {
+        queryLogger.logMutationStart(mutation.options.mutationKey as string, variables);
+      },
+      
+      onSuccess: (data, variables, context, mutation) => {
+        queryLogger.logMutationSuccess(mutation.options.mutationKey as string, data);
+      },
+      
+      onError: (error, variables, context, mutation) => {
+        queryLogger.logMutationError(mutation.options.mutationKey as string, error as Error);
+      },
     },
   },
 });
