@@ -7,13 +7,17 @@ import { FeeStructureService } from '@/services/feeStructure.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { logger } from '@/lib/logging/Logger';
+import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
 
-import { CohortScholarshipRow, StudentPaymentRow } from '@/types/payments/DatabaseAlignedTypes';
+import {
+  CohortScholarshipRow,
+  StudentPaymentRow,
+} from '@/types/payments/DatabaseAlignedTypes';
 
 interface StudentData {
   studentData: CohortStudent | null;
   cohortData: Cohort | null;
-  feeStructure: any | null;
+  feeStructure: FeeStructure | null;
   scholarships: CohortScholarshipRow[];
   studentPayments: StudentPaymentRow[] | null;
   loading: boolean;
@@ -22,56 +26,64 @@ interface StudentData {
 }
 
 export const useStudentData = (): StudentData => {
-  const { profile, user, session, loading: authLoading, profileLoading } = useAuth();
+  const {
+    profile,
+    user,
+    session,
+    loading: authLoading,
+    profileLoading,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [studentData, setStudentData] = useState<CohortStudent | null>(null);
   const [cohortData, setCohortData] = useState<Cohort | null>(null);
-  const [feeStructure, setFeeStructure] = useState<any | null>(null);
+  const [feeStructure, setFeeStructure] = useState<FeeStructure | null>(null);
   const [scholarships, setScholarships] = useState<CohortScholarshipRow[]>([]);
-  const [studentPayments, setStudentPayments] = useState<StudentPaymentRow[] | null>(null);
+  const [studentPayments, setStudentPayments] = useState<
+    StudentPaymentRow[] | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Use localStorage to persist data loaded state across component re-mounts
   const getDataLoadedKey = (userId: string) => `studentDataLoaded_${userId}`;
   const getLastProfileIdKey = (userId: string) => `lastProfileId_${userId}`;
-  
+
   const dataLoadedRef = React.useRef(false);
   const lastProfileIdRef = React.useRef<string | null>(null);
-  
+
   // Initialize from localStorage (only once when profile changes)
   React.useEffect(() => {
     if (profile?.user_id) {
       const dataLoadedKey = getDataLoadedKey(profile.user_id);
       const lastProfileIdKey = getLastProfileIdKey(profile.user_id);
-      
+
       const storedDataLoaded = localStorage.getItem(dataLoadedKey);
       const storedLastProfileId = localStorage.getItem(lastProfileIdKey);
-      
+
       // Only restore dataLoaded if we actually have data in state
       const hasDataInState = !!studentData && !!cohortData;
-      
+
       dataLoadedRef.current = storedDataLoaded === 'true' && hasDataInState;
       lastProfileIdRef.current = storedLastProfileId;
-      
+
       console.log('🔄 [DEBUG] Initialized from localStorage:', {
         dataLoaded: dataLoadedRef.current,
         lastProfileId: lastProfileIdRef.current,
         userId: profile.user_id,
         hasDataInState,
-        storedDataLoaded: storedDataLoaded === 'true'
+        storedDataLoaded: storedDataLoaded === 'true',
       });
     }
   }, [profile?.user_id]); // Remove studentData and cohortData dependencies
 
   const loadStudentData = React.useCallback(async () => {
     console.log('🔄 [DEBUG] loadStudentData called');
-    
+
     // Check if data is already loaded
     if (dataLoadedRef.current) {
       console.log('🔄 [DEBUG] Data already loaded, skipping');
       return;
     }
-    
+
     // Prevent multiple simultaneous loads by checking if already loading
     setLoading(prevLoading => {
       if (prevLoading) {
@@ -81,38 +93,49 @@ export const useStudentData = (): StudentData => {
       console.log('🔄 [DEBUG] Starting to load student data');
       return true;
     });
-    
+
     setError(null);
     // Don't reset the data loaded flag here - it should only be set to true when data is successfully loaded
-    
+
     try {
       if (!profile?.user_id) {
         throw new Error('No user profile available');
       }
 
-      logger.info('Loading student data for user:', { userId: profile.user_id });
+      logger.info('Loading student data for user:', {
+        userId: profile.user_id,
+      });
 
       // Get student data with retry logic
       let studentResult;
       let retryCount = 0;
       const maxRetries = 3;
-      
+
       while (retryCount < maxRetries) {
         try {
-          studentResult = await cohortStudentsService.getByUserId(profile.user_id);
+          studentResult = await cohortStudentsService.getByUserId(
+            profile.user_id
+          );
           if (studentResult.success && studentResult.data) {
             break; // Success, exit retry loop
           }
-          
+
           // If no data found, wait a bit and retry (for newly created users)
           if (retryCount < maxRetries - 1) {
-            logger.info(`No student data found, retrying in ${(retryCount + 1) * 2} seconds...`, { retryCount });
-            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+            logger.info(
+              `No student data found, retrying in ${(retryCount + 1) * 2} seconds...`,
+              { retryCount }
+            );
+            await new Promise(resolve =>
+              setTimeout(resolve, (retryCount + 1) * 2000)
+            );
           }
         } catch (err) {
           logger.warn(`Attempt ${retryCount + 1} failed:`, { error: err });
           if (retryCount < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+            await new Promise(resolve =>
+              setTimeout(resolve, (retryCount + 1) * 2000)
+            );
           }
         }
         retryCount++;
@@ -120,7 +143,9 @@ export const useStudentData = (): StudentData => {
 
       if (!studentResult?.success || !studentResult?.data) {
         logger.error('Failed to load student data after retries');
-        throw new Error('Student data not found. Please ensure you have accepted your invitation and try again.');
+        throw new Error(
+          'Student data not found. Please ensure you have accepted your invitation and try again.'
+        );
       }
 
       const student = studentResult.data;
@@ -136,18 +161,24 @@ export const useStudentData = (): StudentData => {
       setCohortData(cohortResult.data);
 
       // Get fee structure
-      const { feeStructure: feeData, scholarships: scholarshipData } = 
+      const { feeStructure: feeData, scholarships: scholarshipData } =
         await FeeStructureService.getCompleteFeeStructure(student.cohort_id);
-      
+
       setFeeStructure(feeData);
       setScholarships(scholarshipData as CohortScholarshipRow[]);
 
       // Get student payment record for this specific student
-      const paymentsResult = await studentPaymentsService.getStudentPaymentByStudentId(student.id, student.cohort_id);
+      const paymentsResult =
+        await studentPaymentsService.getStudentPaymentByStudentId(
+          student.id,
+          student.cohort_id
+        );
       if (paymentsResult.success) {
         setStudentPayments(paymentsResult.data || []);
       } else {
-        logger.error('Failed to load student payments:', { error: paymentsResult.error });
+        logger.error('Failed to load student payments:', {
+          error: paymentsResult.error,
+        });
       }
 
       dataLoadedRef.current = true;
@@ -155,10 +186,14 @@ export const useStudentData = (): StudentData => {
         const dataLoadedKey = getDataLoadedKey(profile.user_id);
         localStorage.setItem(dataLoadedKey, 'true');
       }
-      console.log('🔄 [DEBUG] Data loaded flag set to true and saved to localStorage');
+      console.log(
+        '🔄 [DEBUG] Data loaded flag set to true and saved to localStorage'
+      );
     } catch (err) {
       logger.error('Error loading student data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load student data');
+      setError(
+        err instanceof Error ? err.message : 'Failed to load student data'
+      );
     } finally {
       setLoading(false);
     }
@@ -173,28 +208,29 @@ export const useStudentData = (): StudentData => {
       profileLoading,
       dataLoaded: dataLoadedRef.current,
       lastProfileId: lastProfileIdRef.current,
-      currentProfileId: profile?.user_id
+      currentProfileId: profile?.user_id,
     });
-    
+
     // Check if profile ID has changed
     const profileIdChanged = profile?.user_id !== lastProfileIdRef.current;
-    
+
     // Check if this is a fresh page load (no data in state)
     const isFreshPageLoad = !studentData && !cohortData;
-    
+
     // Check if we should load data
-    const shouldLoadData = profile?.user_id && 
-                          !authLoading && 
-                          !profileLoading && 
-                          !dataLoadedRef.current && 
-                          (profileIdChanged || isFreshPageLoad);
-    
+    const shouldLoadData =
+      profile?.user_id &&
+      !authLoading &&
+      !profileLoading &&
+      !dataLoadedRef.current &&
+      (profileIdChanged || isFreshPageLoad);
+
     if (shouldLoadData) {
       console.log('🔄 [DEBUG] Loading student data...', {
         reason: profileIdChanged ? 'profile changed' : 'fresh page load',
         dataLoadedRef: dataLoadedRef.current,
         hasStudentData: !!studentData,
-        hasCohortData: !!cohortData
+        hasCohortData: !!cohortData,
       });
       lastProfileIdRef.current = profile.user_id;
       if (profile?.user_id) {
@@ -204,12 +240,17 @@ export const useStudentData = (): StudentData => {
       loadStudentData();
     } else {
       console.log('🔄 [DEBUG] Skipping student data load', {
-        reason: !profile?.user_id ? 'no profile' : 
-                authLoading ? 'auth loading' : 
-                profileLoading ? 'profile loading' : 
-                dataLoadedRef.current ? 'already loaded' : 
-                !profileIdChanged && !isFreshPageLoad ? 'profile not changed and not fresh load' :
-                'unknown'
+        reason: !profile?.user_id
+          ? 'no profile'
+          : authLoading
+            ? 'auth loading'
+            : profileLoading
+              ? 'profile loading'
+              : dataLoadedRef.current
+                ? 'already loaded'
+                : !profileIdChanged && !isFreshPageLoad
+                  ? 'profile not changed and not fresh load'
+                  : 'unknown',
       });
     }
   }, [profile?.user_id, authLoading, profileLoading]); // Simplified dependencies
@@ -222,9 +263,13 @@ export const useStudentData = (): StudentData => {
     studentPayments,
     loading,
     error,
-    refetch: () => {
-      console.log('🔄 [DEBUG] Refetching student data after payment submission');
-      return loadStudentData();
-    }
+    refetch: async () => {
+      console.log(
+        '🔄 [DEBUG] Refetching student data after payment submission'
+      );
+      // Force reload by temporarily setting dataLoaded to false
+      dataLoadedRef.current = false;
+      await loadStudentData();
+    },
   };
 };

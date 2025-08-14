@@ -29,7 +29,10 @@ interface NextDueCellProps {
   feeStructure?: FeeStructureData;
 }
 
-export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure }) => {
+export const NextDueCell: React.FC<NextDueCellProps> = ({
+  student,
+  feeStructure,
+}) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -43,25 +46,33 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
     return new Date(dateString).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
-  const getPaymentTypeDisplay = (paymentType: PaymentType, paymentPlan?: string, nextDue?: NextDuePayment) => {
+  const getPaymentTypeDisplay = (
+    paymentType: PaymentType,
+    paymentPlan?: string,
+    nextDue?: NextDuePayment
+  ) => {
     // For one-shot payments, show "Program Fee"
     if (paymentPlan === 'one_shot') {
       return 'Program Fee';
     }
-    
+
     // For installment-wise payments, try to show installment number
     if (paymentPlan === 'instalment_wise') {
       // If we have installment information in the payment object, use it
-      if (nextDue && 'installment_number' in nextDue && nextDue.installment_number) {
+      if (
+        nextDue &&
+        'installment_number' in nextDue &&
+        nextDue.installment_number
+      ) {
         return `Installment ${nextDue.installment_number}`;
       }
       return 'Installment';
     }
-    
+
     // For semester-wise payments, try to show semester number
     if (paymentPlan === 'sem_wise') {
       if (nextDue && 'semester_number' in nextDue && nextDue.semester_number) {
@@ -69,7 +80,7 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
       }
       return 'Semester Fee';
     }
-    
+
     // Default cases
     switch (paymentType) {
       case 'admission_fee':
@@ -89,7 +100,7 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
           payment_type: 'admission_fee' as PaymentType,
           due_date: feeStructure.start_date,
           amount_payable: feeStructure.admission_fee || 0,
-          isFirstPayment: true
+          isFirstPayment: true,
         } as NextDuePayment; // Type assertion to handle the additional property
       }
       return null;
@@ -103,62 +114,87 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({ student, feeStructure 
       const installmentAmount = totalPayable / 12; // Assuming 12 installments
       const completedInstallments = Math.floor(totalPaid / installmentAmount);
       const nextInstallmentNumber = completedInstallments + 1;
-      
+
       // Use payment schedule if available
       if (student.payment_schedule && student.payment_schedule.installments) {
-        const nextInstallment = student.payment_schedule.installments[nextInstallmentNumber - 1];
+        const nextInstallment =
+          student.payment_schedule.installments[nextInstallmentNumber - 1];
         if (nextInstallment) {
           return {
             payment_type: 'program_fee' as PaymentType,
             due_date: nextInstallment.due_date,
             amount_payable: nextInstallment.amount,
-            installment_number: nextInstallment.installment_number
+            installment_number: nextInstallment.installment_number,
           };
         }
       }
-      
+
       // Fallback calculation
       const nextInstallmentAmount = installmentAmount;
       const nextDueDate = new Date();
-      nextDueDate.setMonth(nextDueDate.getMonth() + (nextInstallmentNumber - 1));
-      
+      nextDueDate.setMonth(
+        nextDueDate.getMonth() + (nextInstallmentNumber - 1)
+      );
+
       return {
         payment_type: 'program_fee' as PaymentType,
         due_date: nextDueDate.toISOString().split('T')[0],
         amount_payable: nextInstallmentAmount,
-        installment_number: nextInstallmentNumber
+        installment_number: nextInstallmentNumber,
       };
     }
 
     // Find the next pending payment for other payment plans
-    const pendingPayments = student.payments?.filter(p => 
-      p.status === 'pending' || p.status === 'overdue' || p.status === 'partially_paid_overdue'
+    const pendingPayments = student.payments?.filter(
+      p =>
+        p.status === 'pending' ||
+        p.status === 'overdue' ||
+        p.status === 'partially_paid_overdue'
     );
-    
+
     if (!pendingPayments || pendingPayments.length === 0) return null;
-    
-    return pendingPayments.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+
+    return pendingPayments.sort(
+      (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    )[0];
   };
 
   const nextDue = getNextDuePayment(student);
+
+  // Show "-" if payment setup is still required (no payment plan selected)
+  if (!student.payment_plan || student.payment_plan === 'not_selected') {
+    return (
+      <TableCell>
+        <span className='text-muted-foreground'>-</span>
+      </TableCell>
+    );
+  }
 
   return (
     <TableCell>
       {nextDue ? (
         <div>
-          <div className="font-medium">
-            {getPaymentTypeDisplay(nextDue.payment_type, student.payment_plan, nextDue)}
-            {nextDue.isFirstPayment && <span className="text-xs text-muted-foreground ml-1">(First Payment)</span>}
+          <div className='font-medium'>
+            {getPaymentTypeDisplay(
+              nextDue.payment_type,
+              student.payment_plan,
+              nextDue
+            )}
+            {nextDue.isFirstPayment && (
+              <span className='text-xs text-muted-foreground ml-1'>
+                (First Payment)
+              </span>
+            )}
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className='text-sm text-muted-foreground'>
             {formatDate(nextDue.due_date)}
           </div>
-          <div className="text-sm font-medium">
+          <div className='text-sm font-medium'>
             {formatCurrency(nextDue.amount_payable)}
           </div>
         </div>
       ) : (
-        <span className="text-muted-foreground">No pending payments</span>
+        <span className='text-muted-foreground'>No pending payments</span>
       )}
     </TableCell>
   );

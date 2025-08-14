@@ -1,5 +1,6 @@
 import { studentPaymentsService } from '@/services/studentPayments.service';
 import { CohortStudent } from '@/types/cohort';
+import { PaymentPlan } from '@/types/fee';
 import { logger } from '@/lib/logging/Logger';
 
 interface UsePaymentPlanManagementProps {
@@ -13,28 +14,30 @@ export const usePaymentPlanManagement = ({
   studentData,
   selectedPaymentPlan,
   setSelectedPaymentPlan,
-  reloadStudentPayments
+  reloadStudentPayments,
 }: UsePaymentPlanManagementProps) => {
-  
   const handlePaymentPlanSelection = async (plan: string) => {
     if (!studentData?.cohort_id) return;
 
     try {
-      logger.info('Updating payment plan:', { studentId: studentData.id, plan });
-      
+      logger.info('Updating payment plan:', {
+        studentId: studentData.id,
+        plan,
+      });
+
       const result = await studentPaymentsService.updateStudentPaymentPlan(
         studentData.id,
         studentData.cohort_id,
-        plan as any
+        plan as PaymentPlan
       );
 
       if (result.success) {
-        setSelectedPaymentPlan(plan);
+        // Note: setSelectedPaymentPlan is now called by the parent component immediately
         logger.info('Payment plan updated successfully');
-        
+
         // Add a small delay to ensure database changes are processed
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Reload student payments
         await reloadStudentPayments();
       } else {
@@ -54,6 +57,6 @@ export const usePaymentPlanManagement = ({
 
   return {
     handlePaymentPlanSelection,
-    getPaymentMethods
+    getPaymentMethods,
   };
 };

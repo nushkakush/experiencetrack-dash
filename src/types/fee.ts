@@ -45,7 +45,11 @@ export interface NewScholarshipInput {
   amount_percentage: number;
 }
 
-export type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise' | 'not_selected';
+export type PaymentPlan =
+  | 'one_shot'
+  | 'sem_wise'
+  | 'instalment_wise'
+  | 'not_selected';
 
 export interface FeeCalculation {
   baseAmount: number;
@@ -110,24 +114,24 @@ export interface StudentScholarshipWithDetails extends StudentScholarship {
 }
 
 // New types for payment tracking
-export type PaymentStatus = 
-  | 'pending' 
-  | 'pending_10_plus_days' 
-  | 'verification_pending' 
-  | 'paid' 
-  | 'overdue' 
-  | 'not_setup' 
-  | 'awaiting_bank_approval_e_nach' 
-  | 'awaiting_bank_approval_physical_mandate' 
-  | 'setup_request_failed_e_nach' 
-  | 'setup_request_failed_physical_mandate' 
-  | 'on_time' 
-  | 'failed_5_days_left' 
-  | 'complete' 
-  | 'dropped' 
-  | 'upcoming' 
-  | 'partially_paid_verification_pending' 
-  | 'partially_paid_days_left' 
+export type PaymentStatus =
+  | 'pending'
+  | 'pending_10_plus_days'
+  | 'verification_pending'
+  | 'paid'
+  | 'overdue'
+  | 'not_setup'
+  | 'awaiting_bank_approval_e_nach'
+  | 'awaiting_bank_approval_physical_mandate'
+  | 'setup_request_failed_e_nach'
+  | 'setup_request_failed_physical_mandate'
+  | 'on_time'
+  | 'failed_5_days_left'
+  | 'complete'
+  | 'dropped'
+  | 'upcoming'
+  | 'partially_paid_verification_pending'
+  | 'partially_paid_days_left'
   | 'partially_paid_overdue';
 
 export type PaymentType = 'admission_fee' | 'program_fee' | 'scholarship';
@@ -160,6 +164,8 @@ export interface StudentPayment {
 
 export interface StudentPaymentSummary {
   student_id: string;
+  // Link to student's single payment record (used to fetch transactions)
+  student_payment_id?: string;
   total_amount: number;
   paid_amount: number;
   pending_amount: number;
@@ -171,7 +177,7 @@ export interface StudentPaymentSummary {
   // Joined fields
   student?: CohortStudent;
   payments?: StudentPayment[];
-  payment_schedule?: any; // Payment schedule data from database
+  payment_schedule?: Record<string, unknown>; // Payment schedule data from database
 }
 
 export interface PaymentTransaction {

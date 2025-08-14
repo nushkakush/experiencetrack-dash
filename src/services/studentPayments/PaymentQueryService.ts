@@ -1,10 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
-import { 
+import {
   StudentPaymentRow,
   PaymentTransactionRow,
   CommunicationHistoryRow,
-  StudentPaymentSummaryRow
+  StudentPaymentSummaryRow,
 } from '@/types/payments/DatabaseAlignedTypes';
 import { Logger } from '@/lib/logging/Logger';
 
@@ -15,14 +15,18 @@ type CommunicationHistory = CommunicationHistoryRow;
 type StudentPaymentSummary = StudentPaymentSummaryRow;
 
 export class PaymentQueryService {
-  async getStudentPayments(cohortId: string): Promise<ApiResponse<StudentPaymentRow[]>> {
+  async getStudentPayments(
+    cohortId: string
+  ): Promise<ApiResponse<StudentPaymentRow[]>> {
     try {
       const { data, error } = await supabase
         .from('student_payments')
-        .select(`
+        .select(
+          `
           *,
           student:cohort_students(*)
-        `)
+        `
+        )
         .eq('cohort_id', cohortId);
 
       if (error) throw error;
@@ -33,41 +37,63 @@ export class PaymentQueryService {
         success: true,
       };
     } catch (error) {
-      Logger.getInstance().error('PaymentQueryService: Error fetching student payments', { error });
+      Logger.getInstance().error(
+        'PaymentQueryService: Error fetching student payments',
+        { error }
+      );
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch student payments',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch student payments',
         success: false,
       };
     }
   }
 
-  async getStudentPaymentByStudentId(studentId: string, cohortId: string): Promise<ApiResponse<StudentPayment[]>> {
+  async getStudentPaymentByStudentId(
+    studentId: string,
+    cohortId: string
+  ): Promise<ApiResponse<StudentPayment[]>> {
     try {
       const { data, error } = await supabase
         .from('student_payments')
-        .select('*')
+        .select('*, payment_transactions(*)')
         .eq('student_id', studentId)
         .eq('cohort_id', cohortId);
 
       if (error) throw error;
 
+      // Attach convenience field for UI to access the record id
+      const withId = (data || []).map(p => ({
+        ...p,
+        student_payment_id: p.id,
+      }));
       return {
-        data: data as StudentPayment[],
+        data: withId as StudentPayment[],
         error: null,
         success: true,
       };
     } catch (error) {
-      Logger.getInstance().error('PaymentQueryService: Error fetching student payment by student ID', { error, studentId, cohortId });
+      Logger.getInstance().error(
+        'PaymentQueryService: Error fetching student payment by student ID',
+        { error, studentId, cohortId }
+      );
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch student payment',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch student payment',
         success: false,
       };
     }
   }
 
-  async getStudentPaymentSummary(cohortId: string): Promise<ApiResponse<StudentPaymentSummary[]>> {
+  async getStudentPaymentSummary(
+    cohortId: string
+  ): Promise<ApiResponse<StudentPaymentSummary[]>> {
     try {
       // First, get all students in the cohort
       const { data: students, error: studentsError } = await supabase
@@ -76,7 +102,10 @@ export class PaymentQueryService {
         .eq('cohort_id', cohortId);
 
       if (studentsError) {
-        Logger.getInstance().error('PaymentQueryService: Students query error', { error: studentsError });
+        Logger.getInstance().error(
+          'PaymentQueryService: Students query error',
+          { error: studentsError }
+        );
         throw studentsError;
       }
 
@@ -95,7 +124,10 @@ export class PaymentQueryService {
         .eq('cohort_id', cohortId);
 
       if (paymentsError) {
-        Logger.getInstance().error('PaymentQueryService: Payments query error', { error: paymentsError });
+        Logger.getInstance().error(
+          'PaymentQueryService: Payments query error',
+          { error: paymentsError }
+        );
         throw paymentsError;
       }
 
@@ -106,35 +138,37 @@ export class PaymentQueryService {
         .in('payment_id', payments?.map(p => p.id) || []);
 
       if (transactionsError) {
-        Logger.getInstance().error('PaymentQueryService: Transactions query error', { error: transactionsError });
+        Logger.getInstance().error(
+          'PaymentQueryService: Transactions query error',
+          { error: transactionsError }
+        );
         throw transactionsError;
       }
 
-
-      
       // Create summary for each student
-      const summary: StudentPaymentSummary[] = students.map((student) => {
+      const summary: StudentPaymentSummary[] = students.map(student => {
         const studentPayment = payments?.find(p => p.student_id === student.id);
-        
+
         if (!studentPayment) {
-                  return {
-          student_id: student.id,
-          total_amount: 0,
-          paid_amount: 0,
-          pending_amount: 0,
-          overdue_amount: 0,
-          scholarship_name: undefined,
-          scholarship_id: undefined,
-          token_fee_paid: false,
-          payment_plan: 'not_selected',
-          student: student,
-          payments: []
-        };
+          return {
+            student_id: student.id,
+            total_amount: 0,
+            paid_amount: 0,
+            pending_amount: 0,
+            overdue_amount: 0,
+            scholarship_name: undefined,
+            scholarship_id: undefined,
+            token_fee_paid: false,
+            payment_plan: 'not_selected',
+            student: student,
+            payments: [],
+          };
         }
 
         // Get transactions for this student's payment
-        const studentTransactions = transactions?.filter(t => t.payment_id === studentPayment.id) || [];
-        
+        const studentTransactions =
+          transactions?.filter(t => t.payment_id === studentPayment.id) || [];
+
         // Convert payment transactions to a format that matches StudentPayment interface
         const convertedPayments = studentTransactions.map(transaction => ({
           id: transaction.id,
@@ -147,21 +181,27 @@ export class PaymentQueryService {
           discount_amount: 0,
           gst_amount: 0,
           amount_payable: parseFloat(transaction.amount || '0'),
-          amount_paid: transaction.status === 'success' ? parseFloat(transaction.amount || '0') : 0,
+          amount_paid:
+            transaction.status === 'success'
+              ? parseFloat(transaction.amount || '0')
+              : 0,
           due_date: transaction.payment_date || transaction.created_at,
           payment_date: transaction.payment_date,
           status: transaction.status === 'success' ? 'paid' : 'pending',
-          receipt_url: transaction.receipt_url || transaction.proof_of_payment_url,
+          receipt_url:
+            transaction.receipt_url || transaction.proof_of_payment_url,
           notes: transaction.notes,
           created_at: transaction.created_at,
-          updated_at: transaction.updated_at
+          updated_at: transaction.updated_at,
         }));
-        
+
         return {
           student_id: student.id,
           total_amount: parseFloat(studentPayment.total_amount_payable || '0'),
           paid_amount: parseFloat(studentPayment.total_amount_paid || '0'),
-          pending_amount: parseFloat(studentPayment.total_amount_pending || '0'),
+          pending_amount: parseFloat(
+            studentPayment.total_amount_pending || '0'
+          ),
           overdue_amount: 0, // TODO: Calculate overdue amount
           scholarship_name: undefined, // TODO: Get from scholarship table
           scholarship_id: studentPayment.scholarship_id || undefined,
@@ -169,28 +209,34 @@ export class PaymentQueryService {
           payment_plan: studentPayment.payment_plan || 'not_selected',
           student: student,
           payments: convertedPayments,
-          payment_schedule: studentPayment.payment_schedule
+          payment_schedule: studentPayment.payment_schedule,
         };
       });
 
-
-      
       return {
         data: summary,
         error: null,
         success: true,
       };
     } catch (error) {
-      Logger.getInstance().error('PaymentQueryService: Error fetching student payment summary', { error });
+      Logger.getInstance().error(
+        'PaymentQueryService: Error fetching student payment summary',
+        { error }
+      );
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch payment summary',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch payment summary',
         success: false,
       };
     }
   }
 
-  async getPaymentTransactions(paymentId: string): Promise<ApiResponse<PaymentTransaction[]>> {
+  async getPaymentTransactions(
+    paymentId: string
+  ): Promise<ApiResponse<PaymentTransaction[]>> {
     try {
       const { data, error } = await supabase
         .from('payment_transactions')
@@ -206,16 +252,24 @@ export class PaymentQueryService {
         success: true,
       };
     } catch (error) {
-      Logger.getInstance().error('PaymentQueryService: Error fetching payment transactions', { error, paymentId });
+      Logger.getInstance().error(
+        'PaymentQueryService: Error fetching payment transactions',
+        { error, paymentId }
+      );
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch payment transactions',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch payment transactions',
         success: false,
       };
     }
   }
 
-  async getCommunicationHistory(studentId: string): Promise<ApiResponse<CommunicationHistory[]>> {
+  async getCommunicationHistory(
+    studentId: string
+  ): Promise<ApiResponse<CommunicationHistory[]>> {
     try {
       const { data, error } = await supabase
         .from('communication_history')
@@ -231,10 +285,16 @@ export class PaymentQueryService {
         success: true,
       };
     } catch (error) {
-      Logger.getInstance().error('PaymentQueryService: Error fetching communication history', { error, studentId });
+      Logger.getInstance().error(
+        'PaymentQueryService: Error fetching communication history',
+        { error, studentId }
+      );
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch communication history',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch communication history',
         success: false,
       };
     }
@@ -242,11 +302,11 @@ export class PaymentQueryService {
 
   private calculateOverallStatus(payments: StudentPayment[]): string {
     if (payments.length === 0) return 'no_payments';
-    
+
     // With single record approach, we only have one payment record per student
     const payment = payments[0];
     if (!payment) return 'unknown';
-    
+
     return payment.payment_status || 'unknown';
   }
 }
