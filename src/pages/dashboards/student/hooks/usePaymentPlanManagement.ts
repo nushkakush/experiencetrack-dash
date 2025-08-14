@@ -49,10 +49,8 @@ export const usePaymentPlanManagement = ({
   };
 
   const getPaymentMethods = (): string[] => {
-    if (selectedPaymentPlan === 'one_shot') {
-      return ['cash', 'bank_transfer', 'cheque', 'razorpay'];
-    }
-    return ['cash', 'bank_transfer', 'cheque'];
+    // All payment plans now support all payment methods
+    return ['cash', 'bank_transfer', 'cheque', 'scan_to_pay', 'razorpay'];
   };
 
   return {

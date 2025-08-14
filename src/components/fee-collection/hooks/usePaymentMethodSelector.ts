@@ -46,7 +46,7 @@ export const usePaymentMethodSelector = ({
   const [transactionScreenshotFile, setTransactionScreenshotFile] = useState<File | null>(null);
 
   // Default payment methods if none provided
-  const defaultPaymentMethods = ['cash', 'bank_transfer', 'cheque', 'razorpay'];
+  const defaultPaymentMethods = ['cash', 'bank_transfer', 'cheque', 'scan_to_pay', 'razorpay'];
   const availablePaymentMethods = (paymentMethods && paymentMethods.length > 0) ? paymentMethods : defaultPaymentMethods;
 
   // Ensure we have valid payment methods

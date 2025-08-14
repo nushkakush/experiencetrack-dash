@@ -49,7 +49,7 @@ export const OverallSummary: React.FC<OverallSummaryProps> = ({
           )}
           {selectedScholarshipId !== 'no_scholarship' && overallSummary.totalScholarship > 0 && (
             <div className="flex justify-between text-red-600">
-              <span>Total Scholarship Amount ({scholarships.find(s => s.id === selectedScholarshipId)?.amount_percentage || 0}%):</span>
+              <span>Total Scholarship Amount ({Math.round((overallSummary.totalScholarship / overallSummary.totalProgramFee) * 100)}%):</span>
               <span>- {formatCurrency(overallSummary.totalScholarship)}</span>
             </div>
           )}

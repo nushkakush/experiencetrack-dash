@@ -59,7 +59,7 @@ export class PaymentQueryService {
     try {
       const { data, error } = await supabase
         .from('student_payments')
-        .select('*, payment_transactions(*)')
+        .select('*')
         .eq('student_id', studentId)
         .eq('cohort_id', cohortId);
 

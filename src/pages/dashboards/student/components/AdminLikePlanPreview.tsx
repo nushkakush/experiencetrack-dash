@@ -1,5 +1,6 @@
 import React from 'react';
-import { PaymentPlan, FeeStructure, Scholarship } from '@/types/fee';
+import { PaymentPlan, Scholarship, StudentScholarshipWithDetails } from '@/types/fee';
+import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { AdmissionFeeSection } from '@/components/fee-collection/components/AdmissionFeeSection';
 import { OneShotPaymentSection } from '@/components/fee-collection/components/OneShotPaymentSection';
@@ -49,6 +50,7 @@ interface AdminLikePlanPreviewProps {
   cohortId: string;
   selectedScholarshipId?: string; // 'no_scholarship' | scholarship id | 'detect'
   studentId?: string; // used when selectedScholarshipId === 'detect'
+  studentScholarship?: StudentScholarshipWithDetails; // Add student scholarship data
 }
 
 export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
@@ -58,6 +60,7 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
   cohortId,
   selectedScholarshipId = 'no_scholarship',
   studentId,
+  studentScholarship,
 }) => {
   const [scholarships, setScholarships] = React.useState<Scholarship[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -121,7 +124,8 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
   }, [selectedScholarshipId, studentId]);
 
   const feeReview = React.useMemo(() => {
-    return generateFeeStructureReview(
+    // First generate the base fee review
+    const baseFeeReview = generateFeeStructureReview(
       feeStructure,
       scholarships,
       selectedPlan,
@@ -131,12 +135,49 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
         ? undefined
         : effectiveScholarshipId
     );
+
+    // If we have student scholarship data, calculate the total scholarship amount (base + additional)
+    if (studentScholarship && studentScholarship.scholarship) {
+      const baseScholarshipPercentage = studentScholarship.scholarship.amount_percentage || 0;
+      const additionalDiscountPercentage = studentScholarship.additional_discount_percentage || 0;
+      const totalDiscountPercentage = baseScholarshipPercentage + additionalDiscountPercentage;
+      
+      const totalScholarshipAmount = (Number(feeStructure.total_program_fee) * totalDiscountPercentage) / 100;
+
+      console.log('💰 AdminLikePlanPreview - Total Scholarship Calculation:', {
+        baseScholarshipPercentage,
+        additionalDiscountPercentage,
+        totalDiscountPercentage,
+        totalScholarshipAmount
+      });
+
+      // Override the scholarship amount in the breakdown
+      baseFeeReview.overallSummary.totalScholarship = totalScholarshipAmount;
+      
+      // Recalculate the total amount payable with the correct scholarship amount
+      const totalProgramFee = Number(feeStructure.total_program_fee);
+      const admissionFee = Number(feeStructure.admission_fee);
+      const totalDiscount = baseFeeReview.overallSummary.totalDiscount;
+      
+      // Calculate amount after discount and scholarship
+      const amountAfterDiscount = totalProgramFee - totalDiscount;
+      const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
+      
+      // Calculate GST on the amount after scholarship and discount
+      const totalBaseGST = (amountAfterScholarship * 18) / 100; // 18% GST
+      
+      // Calculate final payable amount
+      baseFeeReview.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);
+    }
+
+    return baseFeeReview;
   }, [
     feeStructure,
     scholarships,
     selectedPlan,
     cohortStartDate,
     effectiveScholarshipId,
+    studentScholarship,
   ]);
 
   const noop = () => {};

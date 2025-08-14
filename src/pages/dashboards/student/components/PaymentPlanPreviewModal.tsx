@@ -16,7 +16,7 @@ import {
   ArrowRight,
   X,
 } from 'lucide-react';
-import { PaymentPlan } from '@/types/fee';
+import { PaymentPlan, StudentScholarshipWithDetails } from '@/types/fee';
 import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import AdminLikePlanPreview from './AdminLikePlanPreview';
@@ -29,6 +29,7 @@ interface PaymentPlanPreviewModalProps {
   feeStructure?: FeeStructure;
   studentData?: CohortStudent;
   cohortData?: Cohort;
+  studentScholarship?: StudentScholarshipWithDetails; // Add student scholarship data
   isSubmitting?: boolean;
 }
 
@@ -42,6 +43,7 @@ export const PaymentPlanPreviewModal: React.FC<
   feeStructure,
   studentData,
   cohortData,
+  studentScholarship,
   isSubmitting = false,
 }) => {
   if (!selectedPlan) return null;
@@ -134,12 +136,11 @@ export const PaymentPlanPreviewModal: React.FC<
           <AdminLikePlanPreview
             selectedPlan={selectedPlan}
             feeStructure={feeStructure}
-            cohortStartDate={
-              cohortData?.start_date || new Date().toISOString().split('T')[0]
-            }
-            cohortId={cohortData?.id}
-            selectedScholarshipId='detect'
+            cohortStartDate={cohortData?.start_date || new Date().toISOString().split('T')[0]}
+            cohortId={cohortData?.id || ''}
+            selectedScholarshipId={studentScholarship?.scholarship_id || 'no_scholarship'}
             studentId={studentData?.id}
+            studentScholarship={studentScholarship}
           />
         </div>
 

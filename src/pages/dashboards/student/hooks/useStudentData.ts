@@ -20,6 +20,7 @@ interface StudentData {
   feeStructure: FeeStructure | null;
   scholarships: CohortScholarshipRow[];
   studentPayments: StudentPaymentRow[] | null;
+  studentScholarship: any | null; // Add student scholarship data
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -41,6 +42,7 @@ export const useStudentData = (): StudentData => {
   const [studentPayments, setStudentPayments] = useState<
     StudentPaymentRow[] | null
   >(null);
+  const [studentScholarship, setStudentScholarship] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Use localStorage to persist data loaded state across component re-mounts
@@ -164,7 +166,7 @@ export const useStudentData = (): StudentData => {
       const { feeStructure: feeData, scholarships: scholarshipData } =
         await FeeStructureService.getCompleteFeeStructure(student.cohort_id);
 
-      setFeeStructure(feeData);
+      setFeeStructure(feeData as any);
       setScholarships(scholarshipData as CohortScholarshipRow[]);
 
       // Get student payment record for this specific student
@@ -179,6 +181,20 @@ export const useStudentData = (): StudentData => {
         logger.error('Failed to load student payments:', {
           error: paymentsResult.error,
         });
+        // Don't fail the entire data load if student payments fail
+        // Just set empty array and continue
+        setStudentPayments([]);
+      }
+
+      // Get student scholarship record for this specific student
+      const scholarshipResult = await studentScholarshipsService.getByStudent(student.id);
+      if (scholarshipResult.success && scholarshipResult.data) {
+        setStudentScholarship(scholarshipResult.data);
+      } else {
+        logger.error('Failed to load student scholarship:', {
+          error: scholarshipResult.error,
+        });
+        setStudentScholarship(null);
       }
 
       dataLoadedRef.current = true;
@@ -261,6 +277,7 @@ export const useStudentData = (): StudentData => {
     feeStructure,
     scholarships,
     studentPayments,
+    studentScholarship,
     loading,
     error,
     refetch: async () => {
