@@ -43,10 +43,11 @@ export const getInstalmentDistribution = (instalmentsPerSemester: number): numbe
       return [40, 40, 20]; // 40-40-20 rule
     case 4:
       return [30, 30, 30, 10]; // 30-30-30-10 rule
-    default:
+    default: {
       // Even distribution for other numbers
       const percentage = 100 / instalmentsPerSemester;
       return Array(instalmentsPerSemester).fill(percentage);
+    }
   }
 };
 

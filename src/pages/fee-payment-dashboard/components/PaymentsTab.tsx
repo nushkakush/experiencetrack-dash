@@ -8,7 +8,7 @@ import { StudentPaymentSummary } from '@/types/fee';
 interface PaymentsTabProps {
   students: StudentPaymentSummary[];
   selectedRows: Set<string>;
-  feeStructure: any;
+  feeStructure: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   onStudentSelect: (student: StudentPaymentSummary) => void;
   onCloseStudentDetails: () => void;
   onRowSelection: (studentId: string, isSelected: boolean) => void;

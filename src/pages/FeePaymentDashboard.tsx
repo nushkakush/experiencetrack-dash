@@ -20,7 +20,9 @@ import {
   CommunicationTab 
 } from './fee-payment-dashboard/components';
 
-interface FeePaymentDashboardProps {}
+interface FeePaymentDashboardProps {
+  // Add properties if needed in the future
+}
 
 const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
