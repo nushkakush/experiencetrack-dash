@@ -202,37 +202,36 @@ export class PaymentQueryService {
           // expose underlying record id so UI can fetch transactions reliably
           student_payment_id: studentPayment.id,
           total_amount: (() => {
-            // Calculate total amount from payment transactions
-            const totalTransactions = studentTransactions.reduce(
-              (sum, t) => sum + parseFloat(t.amount || '0'),
-              0
-            );
-            return totalTransactions;
+            // Use the total_amount_payable from the student payment record as the source of truth
+            return studentPayment.total_amount_payable || 0;
           })(),
           paid_amount: (() => {
             // Calculate paid amount from approved transactions only
             const approvedTransactions = studentTransactions.filter(
               t => t.verification_status === 'approved'
             );
-            return approvedTransactions.reduce(
+            const transactionPaidAmount = approvedTransactions.reduce(
               (sum, t) => sum + parseFloat(t.amount || '0'),
               0
+            );
+
+            // Use the total_amount_paid from the student payment record as the source of truth
+            // This includes admission fee if it's been paid
+            return Math.max(
+              transactionPaidAmount,
+              studentPayment.total_amount_paid || 0
             );
           })(),
           pending_amount: (() => {
             // Calculate pending amount (total - paid)
-            const totalTransactions = studentTransactions.reduce(
-              (sum, t) => sum + parseFloat(t.amount || '0'),
-              0
+            const totalAmount = studentPayment.total_amount_payable || 0;
+            const paidAmount = Math.max(
+              studentTransactions
+                .filter(t => t.verification_status === 'approved')
+                .reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0),
+              studentPayment.total_amount_paid || 0
             );
-            const approvedTransactions = studentTransactions.filter(
-              t => t.verification_status === 'approved'
-            );
-            const paidAmount = approvedTransactions.reduce(
-              (sum, t) => sum + parseFloat(t.amount || '0'),
-              0
-            );
-            return Math.max(0, totalTransactions - paidAmount);
+            return Math.max(0, totalAmount - paidAmount);
           })(),
           overdue_amount: 0, // TODO: Calculate overdue amount
           scholarship_name: undefined, // TODO: Get from scholarship table
