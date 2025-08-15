@@ -20,6 +20,7 @@ interface StudentData {
   feeStructure: FeeStructure | null;
   scholarships: CohortScholarshipRow[];
   studentPayments: StudentPaymentRow[] | null;
+  paymentTransactions: any[] | null;
   studentScholarship: any | null; // Add student scholarship data
   loading: boolean;
   error: string | null;
@@ -42,6 +43,7 @@ export const useStudentData = (): StudentData => {
   const [studentPayments, setStudentPayments] = useState<
     StudentPaymentRow[] | null
   >(null);
+  const [paymentTransactions, setPaymentTransactions] = useState<any[] | null>(null);
   const [studentScholarship, setStudentScholarship] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -177,6 +179,16 @@ export const useStudentData = (): StudentData => {
         );
       if (paymentsResult.success) {
         setStudentPayments(paymentsResult.data || []);
+        
+        // Fetch payment transactions for each payment record
+        const allTransactions: any[] = [];
+        for (const payment of paymentsResult.data || []) {
+          const transactionsResult = await studentPaymentsService.getPaymentTransactions(payment.id);
+          if (transactionsResult.success && transactionsResult.data) {
+            allTransactions.push(...transactionsResult.data);
+          }
+        }
+        setPaymentTransactions(allTransactions);
       } else {
         logger.error('Failed to load student payments:', {
           error: paymentsResult.error,
@@ -184,6 +196,7 @@ export const useStudentData = (): StudentData => {
         // Don't fail the entire data load if student payments fail
         // Just set empty array and continue
         setStudentPayments([]);
+        setPaymentTransactions([]);
       }
 
       // Get student scholarship record for this specific student
@@ -277,6 +290,7 @@ export const useStudentData = (): StudentData => {
     feeStructure,
     scholarships,
     studentPayments,
+    paymentTransactions,
     studentScholarship,
     loading,
     error,

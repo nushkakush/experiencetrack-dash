@@ -1,6 +1,5 @@
 import React from 'react';
-import { PaymentPlan, Scholarship, StudentScholarshipWithDetails } from '@/types/fee';
-import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
+import { PaymentPlan, Scholarship, StudentScholarshipWithDetails, FeeStructure } from '@/types/fee';
 import { supabase } from '@/integrations/supabase/client';
 import { AdmissionFeeSection } from '@/components/fee-collection/components/AdmissionFeeSection';
 import { OneShotPaymentSection } from '@/components/fee-collection/components/OneShotPaymentSection';
@@ -133,7 +132,9 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
       cohortStartDate,
       effectiveScholarshipId === 'no_scholarship'
         ? undefined
-        : effectiveScholarshipId
+        : effectiveScholarshipId,
+      // Ensure additional discount is included when present
+      studentScholarship?.additional_discount_percentage || 0
     );
 
     // If we have student scholarship data, calculate the total scholarship amount (base + additional)
@@ -154,6 +155,20 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
       // Override the scholarship amount in the breakdown
       baseFeeReview.overallSummary.totalScholarship = totalScholarshipAmount;
       
+      // Also override the one-shot payment scholarship amount if it exists
+      if (baseFeeReview.oneShotPayment) {
+        baseFeeReview.oneShotPayment.scholarshipAmount = totalScholarshipAmount;
+        
+        // Recalculate the one-shot payment amount payable
+        const baseAmount = baseFeeReview.oneShotPayment.baseAmount;
+        const discountAmount = baseFeeReview.oneShotPayment.discountAmount;
+        const amountAfterDiscount = baseAmount - discountAmount;
+        const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
+        const gstAmount = (amountAfterScholarship * 18) / 100; // 18% GST
+        baseFeeReview.oneShotPayment.amountPayable = Math.max(0, amountAfterScholarship + gstAmount);
+        baseFeeReview.oneShotPayment.gstAmount = gstAmount;
+      }
+      
       // Recalculate the total amount payable with the correct scholarship amount
       const totalProgramFee = Number(feeStructure.total_program_fee);
       const admissionFee = Number(feeStructure.admission_fee);
@@ -165,6 +180,8 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
       
       // Calculate GST on the amount after scholarship and discount
       const totalBaseGST = (amountAfterScholarship * 18) / 100; // 18% GST
+      // Keep GST in overall summary in sync with recalculation
+      baseFeeReview.overallSummary.totalGST = totalBaseGST;
       
       // Calculate final payable amount
       baseFeeReview.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);

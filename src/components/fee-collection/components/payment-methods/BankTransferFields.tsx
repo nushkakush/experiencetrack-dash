@@ -8,32 +8,32 @@ import { FileUploadField } from '@/components/common/payments/FileUploadField';
 import { BankSelect } from '@/components/common/payments/BankSelect';
 
 interface BankTransferFieldsProps {
-  paymentReferenceType: string;
-  paymentReferenceNumber: string;
-  transferDate: string;
+  paymentDate: string;
   bankName: string;
   bankBranch: string;
+  accountNumber: string;
+  transactionId: string;
   proofOfPaymentFile: File | null;
-  onPaymentReferenceTypeChange: (value: string) => void;
-  onPaymentReferenceNumberChange: (value: string) => void;
-  onTransferDateChange: (value: string) => void;
+  onPaymentDateChange: (value: string) => void;
   onBankNameChange: (value: string) => void;
   onBankBranchChange: (value: string) => void;
+  onAccountNumberChange: (value: string) => void;
+  onTransactionIdChange: (value: string) => void;
   onProofOfPaymentFileChange: (file: File | null) => void;
 }
 
 export const BankTransferFields: React.FC<BankTransferFieldsProps> = ({
-  paymentReferenceType,
-  paymentReferenceNumber,
-  transferDate,
+  paymentDate,
   bankName,
   bankBranch,
+  accountNumber,
+  transactionId,
   proofOfPaymentFile,
-  onPaymentReferenceTypeChange,
-  onPaymentReferenceNumberChange,
-  onTransferDateChange,
+  onPaymentDateChange,
   onBankNameChange,
   onBankBranchChange,
+  onAccountNumberChange,
+  onTransactionIdChange,
   onProofOfPaymentFileChange
 }) => {
   return (
@@ -69,63 +69,59 @@ export const BankTransferFields: React.FC<BankTransferFieldsProps> = ({
       {/* Payment Form Fields */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="payment-reference-type" className="text-left block">Payment Reference Type *</Label>
-          <Select value={paymentReferenceType} onValueChange={onPaymentReferenceTypeChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select reference type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="transaction_id">Transaction ID</SelectItem>
-              <SelectItem value="reference_number">Reference Number</SelectItem>
-              <SelectItem value="utr_number">UTR Number</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="payment-reference-number" className="text-left block">Payment Reference Number *</Label>
+          <Label htmlFor="payment-date" className="text-left block">Payment Date *</Label>
           <Input
-            id="payment-reference-number"
-            value={paymentReferenceNumber}
-            onChange={(e) => onPaymentReferenceNumberChange(e.target.value)}
-            placeholder="Enter reference number"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="transfer-date" className="text-left block">Transfer Date *</Label>
-          <Input
-            id="transfer-date"
+            id="payment-date"
             type="date"
-            value={transferDate}
-            onChange={(e) => onTransferDateChange(e.target.value)}
+            value={paymentDate}
+            onChange={(e) => onPaymentDateChange(e.target.value)}
           />
         </div>
 
         <BankSelect
           value={bankName}
           onValueChange={onBankNameChange}
-          label="Bank Name"
+          label="Select Bank"
           placeholder="Select bank"
           required={true}
         />
 
         <div className="space-y-2">
-          <Label htmlFor="bank-branch" className="text-left block">Bank Branch *</Label>
+          <Label htmlFor="bank-branch" className="text-left block">Branch Name *</Label>
           <Input
             id="bank-branch"
             value={bankBranch}
             onChange={(e) => onBankBranchChange(e.target.value)}
-            placeholder="Enter bank branch"
+            placeholder="Enter branch name"
           />
         </div>
 
         <div className="space-y-2">
-          <Label className="text-left block">Upload Proof of Payment *</Label>
+          <Label htmlFor="account-number" className="text-left block">Account Number *</Label>
+          <Input
+            id="account-number"
+            value={accountNumber}
+            onChange={(e) => onAccountNumberChange(e.target.value)}
+            placeholder="Enter account number"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="utr-number" className="text-left block">UTR Number *</Label>
+          <Input
+            id="utr-number"
+            value={transactionId}
+            onChange={(e) => onTransactionIdChange(e.target.value)}
+            placeholder="Enter UTR number"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-left block">Bank Transfer Screenshot/Acknowledgement Receipt *</Label>
           <FileUploadField
-            fieldName="proof-upload"
-            label="Proof of Payment"
-            description="Upload proof of payment document"
+            fieldName="proof-of-payment"
+            label="Bank Transfer Screenshot/Acknowledgement Receipt"
+            description="Upload screenshot or acknowledgement receipt of your bank transfer"
             acceptedTypes=".pdf,.jpg,.jpeg,.png"
             file={proofOfPaymentFile}
             onFileChange={onProofOfPaymentFileChange}

@@ -6,11 +6,12 @@ export interface PaymentValidationResult {
 interface PaymentDetails {
   transactionId?: string;
   bankName?: string;
-  transferDate?: string;
-  receiptNumber?: string;
+  bankBranch?: string;
+  accountNumber?: string;
   paymentDate?: string;
   chequeNumber?: string;
-  chequeDate?: string;
+  qrCode?: string;
+  payerUpiId?: string;
   [key: string]: any; // For any additional fields
 }
 
@@ -87,13 +88,13 @@ export const formatCurrency = (amount: number): string => {
 export const getRequiredFieldsForMode = (mode: string): string[] => {
   switch (mode) {
     case 'bank_transfer':
-      return ['transactionId', 'bankName', 'transferDate'];
+      return ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'];
     case 'cash':
-      return ['receiptNumber', 'paymentDate'];
+      return ['paymentDate'];
     case 'cheque':
-      return ['chequeNumber', 'bankName', 'chequeDate'];
+      return ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'];
     case 'scan_to_pay':
-      return []; // No additional fields required for scan to pay
+      return ['qrCode', 'paymentDate', 'payerUpiId'];
     case 'razorpay':
       return []; // No additional fields required for Razorpay
     default:
@@ -106,13 +107,13 @@ export const getRequiredFilesForMode = (mode: string): string[] => {
     case 'bank_transfer':
       return ['bankTransferScreenshot'];
     case 'cash':
-      return ['cashReceipt'];
+      return ['cashAcknowledgment'];
     case 'cheque':
-      return ['chequeImage'];
+      return ['chequeImage', 'chequeAcknowledgment'];
     case 'scan_to_pay':
       return ['scanToPayScreenshot'];
     case 'razorpay':
-      return []; // Optional for Razorpay
+      return []; // No files required for online payment
     default:
       return [];
   }

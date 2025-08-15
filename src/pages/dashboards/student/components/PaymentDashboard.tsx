@@ -21,6 +21,7 @@ interface PaymentDashboardProps {
   selectedPaymentPlan: PaymentPlan;
   onPaymentPlanSelection: (plan: PaymentPlan) => void;
   studentPayments?: StudentPaymentData[];
+  paymentTransactions?: any[];
   cohortData?: CohortData;
   studentData?: StudentData;
   paymentSubmissions?: Map<string, PaymentSubmissionData>;
@@ -34,6 +35,7 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(
     selectedPaymentPlan,
     onPaymentPlanSelection,
     studentPayments,
+    paymentTransactions,
     cohortData,
     studentData,
     paymentSubmissions,
@@ -69,7 +71,7 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(
     }
 
     return (
-      <div className='space-y-6'>
+      <div className='space-y-6 pb-8'>
         {/* Header Section */}
         <PaymentDashboardHeader
           cohortName={cohortData?.name}
@@ -99,6 +101,7 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(
           submittingPayments={submittingPayments}
           studentData={studentData}
           studentPayments={studentPayments}
+          paymentTransactions={paymentTransactions}
           onToggleSemester={toggleSemester}
           onInstallmentClick={handleInstallmentClick}
           onPaymentSubmission={handlePaymentSubmit}

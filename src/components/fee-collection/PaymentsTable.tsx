@@ -25,7 +25,6 @@ interface FeeStructureData {
 interface PaymentsTableProps {
   students: StudentPaymentSummary[];
   onStudentSelect: (student: StudentPaymentSummary) => void;
-  selectedStudent?: StudentPaymentSummary;
   feeStructure?: FeeStructureData;
   selectedRows?: Set<string>;
   onRowSelection?: (studentId: string, isSelected: boolean) => void;
@@ -36,7 +35,6 @@ interface PaymentsTableProps {
 export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   students,
   onStudentSelect,
-  selectedStudent,
   feeStructure,
   selectedRows = new Set(),
   onRowSelection,
@@ -96,7 +94,6 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
               <PaymentsTableRow
                 key={student.student_id}
                 student={student}
-                selectedStudent={selectedStudent}
                 selectedRows={selectedRows}
                 onStudentSelect={onStudentSelect}
                 onRowSelection={onRowSelection}

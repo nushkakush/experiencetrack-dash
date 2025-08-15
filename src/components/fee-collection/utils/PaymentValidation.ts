@@ -9,8 +9,8 @@ export const validatePaymentForm = (
   selectedMethod: string,
   amountPaid: number,
   requiredAmount: number,
-  paymentReferenceNumber: string,
-  transferDate: string,
+  transactionId: string,
+  paymentDate: string,
   bankName: string,
   bankBranch: string,
   receiptFile: File | null,
@@ -36,23 +36,23 @@ export const validatePaymentForm = (
   switch (selectedMethod) {
     case 'cash':
       if (!receiptFile) {
-        errors.push('Please upload Fee Acknowledgement Receipt for cash payment');
+        errors.push('Please upload Payment Acknowledgement for cash payment');
       }
       break;
 
     case 'bank_transfer':
     case 'cheque':
-      if (!paymentReferenceNumber) {
-        errors.push('Please enter payment reference number');
-      }
-      if (!transferDate) {
-        errors.push('Please select transfer date');
+      if (!paymentDate) {
+        errors.push('Please select payment date');
       }
       if (!bankName) {
         errors.push('Please select bank name');
       }
       if (!bankBranch) {
         errors.push('Please enter bank branch');
+      }
+      if (!transactionId) {
+        errors.push('Please enter UTR number');
       }
       if (!proofOfPaymentFile) {
         errors.push('Please upload proof of payment document');

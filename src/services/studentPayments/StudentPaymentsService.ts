@@ -77,18 +77,13 @@ export class StudentPaymentsService {
     return this.communicationService.sendCommunication(studentId, type, channel, subject, message);
   }
 
-  // Payment calculation operations
+  // Payment plan operations
   async updateStudentPaymentPlan(
     studentId: string,
     cohortId: string,
     paymentPlan: PaymentPlan,
-    scholarshipId?: string,
-    forceUpdate: boolean = false
+    scholarshipId?: string
   ): Promise<ApiResponse<{ success: boolean; message: string }>> {
-    return this.paymentCalculationService.calculatePaymentPlan(studentId, cohortId, paymentPlan, scholarshipId, forceUpdate);
-  }
-
-  async recalculatePaymentSchedules(cohortId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
-    return this.paymentCalculationService.recalculateExistingPaymentSchedules(cohortId);
+    return this.paymentCalculationService.updatePaymentPlan(studentId, cohortId, paymentPlan, scholarshipId);
   }
 }

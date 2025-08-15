@@ -152,6 +152,8 @@ export class PaymentQueryService {
         if (!studentPayment) {
           return {
             student_id: student.id,
+            // No payment record yet, so no linked id
+            student_payment_id: undefined as unknown as string,
             total_amount: 0,
             paid_amount: 0,
             pending_amount: 0,
@@ -197,11 +199,25 @@ export class PaymentQueryService {
 
         return {
           student_id: student.id,
-          total_amount: parseFloat(studentPayment.total_amount_payable || '0'),
-          paid_amount: parseFloat(studentPayment.total_amount_paid || '0'),
-          pending_amount: parseFloat(
-            studentPayment.total_amount_pending || '0'
-          ),
+          // expose underlying record id so UI can fetch transactions reliably
+          student_payment_id: studentPayment.id,
+          total_amount: (() => {
+            // Calculate total amount from payment transactions
+            const totalTransactions = studentTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            return totalTransactions;
+          })(),
+          paid_amount: (() => {
+            // Calculate paid amount from approved transactions only
+            const approvedTransactions = studentTransactions.filter(t => t.verification_status === 'approved');
+            return approvedTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+          })(),
+          pending_amount: (() => {
+            // Calculate pending amount (total - paid)
+            const totalTransactions = studentTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            const approvedTransactions = studentTransactions.filter(t => t.verification_status === 'approved');
+            const paidAmount = approvedTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            return Math.max(0, totalTransactions - paidAmount);
+          })(),
           overdue_amount: 0, // TODO: Calculate overdue amount
           scholarship_name: undefined, // TODO: Get from scholarship table
           scholarship_id: studentPayment.scholarship_id || undefined,

@@ -25,7 +25,6 @@ interface FeeStructureData {
 
 interface TableRowProps {
   student: StudentPaymentSummary;
-  selectedStudent?: StudentPaymentSummary;
   selectedRows?: Set<string>;
   onStudentSelect: (student: StudentPaymentSummary) => void;
   onRowSelection?: (studentId: string, isSelected: boolean) => void;
@@ -34,19 +33,13 @@ interface TableRowProps {
 
 export const TableRow: React.FC<TableRowProps> = ({
   student,
-  selectedStudent,
   selectedRows = new Set(),
   onStudentSelect,
   onRowSelection,
   feeStructure
 }) => {
   return (
-    <UITableRow 
-      className={`cursor-pointer hover:bg-muted/50 ${
-        selectedStudent?.student_id === student.student_id ? 'bg-muted' : ''
-      }`}
-      onClick={() => onStudentSelect(student)}
-    >
+    <UITableRow className="hover:bg-muted/50">
       <TableCell className="w-12">
         {onRowSelection && (
           <Checkbox

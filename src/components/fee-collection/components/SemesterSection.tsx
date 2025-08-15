@@ -95,13 +95,6 @@ export const SemesterSection: React.FC<SemesterSectionProps> = ({
                 </TableRow>
               );
             })}
-            <TableRow className="font-semibold bg-muted/50">
-              <TableCell>Total</TableCell>
-              <TableCell>{formatCurrency(semester.total.scholarshipAmount)}</TableCell>
-              <TableCell>{formatCurrency(semester.total.baseAmount)}</TableCell>
-              <TableCell>{formatCurrency(semester.total.gstAmount)}</TableCell>
-              <TableCell>{formatCurrency(semester.total.totalPayable)}</TableCell>
-            </TableRow>
           </TableBody>
         </Table>
         

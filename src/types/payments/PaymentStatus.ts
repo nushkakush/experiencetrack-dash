@@ -23,25 +23,33 @@ export type PaymentStatus =
   | 'partially_paid_days_left'
   | 'partially_paid_overdue';
 
-export type PaymentType = 'admission_fee' | 'program_fee' | 'scholarship';
-
 export type PaymentPlan =
   | 'one_shot'
   | 'sem_wise'
   | 'instalment_wise'
   | 'not_selected';
 
+// Use database enum types for transaction-related types
 export type TransactionStatus = 'success' | 'failed' | 'pending';
 
 export type TransactionType = 'payment' | 'refund' | 'adjustment';
 
 export type PaymentMethod = 'online' | 'bank_transfer' | 'cash' | 'cheque';
 
-export type CommunicationType = 'reminder' | 'receipt' | 'notification';
+export type VerificationStatus = 'pending' | 'verification_pending' | 'approved' | 'rejected';
 
-export type CommunicationChannel = 'email' | 'whatsapp' | 'sms';
+export type CommunicationType = 
+  | 'reminder' 
+  | 'receipt' 
+  | 'notification' 
+  | 'verification_request' 
+  | 'payment_confirmation' 
+  | 'overdue_notice' 
+  | 'plan_change_notification';
 
-export type CommunicationStatus = 'sent' | 'delivered' | 'failed';
+export type CommunicationChannel = 'email' | 'whatsapp' | 'sms' | 'in_app';
+
+export type CommunicationStatus = 'sent' | 'delivered' | 'failed' | 'read';
 
 /**
  * Payment Status Utilities

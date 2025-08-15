@@ -13,11 +13,11 @@ export const CashPaymentFields: React.FC<CashPaymentFieldsProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <Label className="text-left block">Upload Fee Acknowledgement Receipt *</Label>
+      <Label className="text-left block">Payment Acknowledgement *</Label>
       <FileUploadField
         fieldName="receipt-upload"
-        label="Fee Acknowledgement Receipt"
-        description="Upload the receipt for cash payment"
+        label="Payment Acknowledgement"
+        description="Upload the payment acknowledgement document"
         acceptedTypes=".pdf,.jpg,.jpeg,.png"
         file={receiptFile}
         onFileChange={onReceiptFileChange}

@@ -103,15 +103,7 @@ export type StudentPaymentTable = {
     student_id: string
     cohort_id: string
     payment_plan: string
-    payment_schedule: any
-    total_amount_payable: number
-    total_amount_paid: number
-    total_amount_pending: number
     scholarship_id: string | null
-    payment_status: string
-    next_due_date: string | null
-    last_payment_date: string | null
-    notes: string | null
     created_at: string
     updated_at: string
   }
@@ -119,16 +111,8 @@ export type StudentPaymentTable = {
     id?: string
     student_id: string
     cohort_id: string
-    payment_plan: string
-    payment_schedule?: any
-    total_amount_payable?: number
-    total_amount_paid?: number
-    total_amount_pending?: number
+    payment_plan?: string
     scholarship_id?: string | null
-    payment_status?: string
-    next_due_date?: string | null
-    last_payment_date?: string | null
-    notes?: string | null
     created_at?: string
     updated_at?: string
   }
@@ -137,15 +121,7 @@ export type StudentPaymentTable = {
     student_id?: string
     cohort_id?: string
     payment_plan?: string
-    payment_schedule?: any
-    total_amount_payable?: number
-    total_amount_paid?: number
-    total_amount_pending?: number
     scholarship_id?: string | null
-    payment_status?: string
-    next_due_date?: string | null
-    last_payment_date?: string | null
-    notes?: string | null
     created_at?: string
     updated_at?: string
   }

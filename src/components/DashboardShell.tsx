@@ -1,3 +1,4 @@
+import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -104,6 +105,7 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
 const DashboardShell = ({ children }: DashboardShellProps) => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
   if (!profile) return null;
 
@@ -114,10 +116,14 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
     navigate('/profile');
   };
 
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className="w-64 bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full">
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full transition-all duration-300 overflow-hidden`}>
         <div className="p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -151,7 +157,12 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
         {/* Header */}
         <header className="h-16 border-b border-border bg-background px-6 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={handleSidebarToggle}
+            >
               <Menu className="h-4 w-4" />
             </Button>
           </div>

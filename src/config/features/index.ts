@@ -40,8 +40,10 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
   {
     role: 'program_manager',
     features: [
-      // Cohort Management (view only + set active epic)
+      // Cohort Management (view, edit, delete + set active epic)
       'cohorts.view',
+      'cohorts.edit',
+      'cohorts.delete',
       'cohorts.set_active_epic',
       
       // Attendance Management

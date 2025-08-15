@@ -38,7 +38,6 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
 
   const {
     settingsModalOpen,
-    selectedStudent,
     selectedRows,
     activeTab,
     setSettingsModalOpen,
@@ -92,14 +91,13 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
           <TabsContent value="payments" className="mt-6">
             <PaymentsTab
               students={students}
-              selectedStudent={selectedStudent}
               selectedRows={selectedRows}
               feeStructure={feeStructure}
               onStudentSelect={handleStudentSelect}
               onCloseStudentDetails={handleCloseStudentDetails}
               onRowSelection={handleRowSelection}
               onSelectAll={(isSelected) => handleSelectAll(isSelected, students)}
-              onExportSelected={handleExportSelected}
+              onExportSelected={(students) => handleExportSelected(students)}
             />
           </TabsContent>
 

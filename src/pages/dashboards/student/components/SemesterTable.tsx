@@ -71,15 +71,6 @@ export const SemesterTable: React.FC<SemesterTableProps> = ({ semester }) => {
                 <TableCell>{formatCurrency(installment.amountPayable)}</TableCell>
               </TableRow>
             ))}
-            <TableRow className="font-semibold bg-muted/50">
-              <TableCell>Total</TableCell>
-              <TableCell>
-                {semester.scholarshipAmount > 0 ? formatCurrency(semester.scholarshipAmount) : '₹0.00'}
-              </TableCell>
-              <TableCell>{formatCurrency(semester.baseAmount)}</TableCell>
-              <TableCell>{formatCurrency(semester.gstAmount)}</TableCell>
-              <TableCell>{formatCurrency(semester.totalPayable)}</TableCell>
-            </TableRow>
           </TableBody>
         </Table>
         

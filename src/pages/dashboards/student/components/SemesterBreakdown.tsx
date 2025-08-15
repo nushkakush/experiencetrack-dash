@@ -50,6 +50,7 @@ export interface SemesterBreakdownProps {
   submittingPayments?: Set<string>;
   studentData?: StudentData;
   studentPayments?: StudentPaymentRow[];
+  paymentTransactions?: any[];
   onToggleSemester: (semesterNumber: number) => void;
   onInstallmentClick: (
     installment: DatabaseInstallment,
@@ -69,6 +70,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
   submittingPayments,
   studentData,
   studentPayments,
+  paymentTransactions,
   onToggleSemester,
   onInstallmentClick,
   onPaymentSubmission,
@@ -109,6 +111,104 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
       selectedPaymentPlan === 'one_shot' &&
       paymentBreakdown?.oneShotPayment
     ) {
+      // Build a single synthetic installment to reuse the InstallmentCard
+      const totalPayable = Number(
+        paymentBreakdown.oneShotPayment.amountPayable || 0
+      );
+      // Support both DB row shape (total_amount_paid) and converted shape (amountPaid)
+      // Calculate amount paid from payment_transactions table (pure source of truth)
+      const amountPaidRaw = Array.isArray(paymentTransactions)
+        ? paymentTransactions.reduce((total, tx) => {
+            // Only count approved transactions or pending verification transactions
+            if (tx.verification_status === 'approved' || tx.verification_status === 'verification_pending') {
+              return total + (tx.amount || 0);
+            }
+            return total;
+          }, 0)
+        : 0;
+      
+      // Clamp paid shown for this installment to not exceed its payable
+      const amountPaid = Math.min(amountPaidRaw, totalPayable);
+      const due = String(paymentBreakdown.oneShotPayment.paymentDate || '');
+
+      // Derive status using payment_transactions as primary source of truth
+      const computeStatus = (): PaymentStatus => {
+        // Check verification status from payment_transactions table (primary source)
+        const hasVerificationPendingByTx = Array.isArray(paymentTransactions)
+          ? paymentTransactions.some((t) => t.verification_status === 'verification_pending')
+          : false;
+        
+        const hasApprovedTransactions = Array.isArray(paymentTransactions)
+          ? paymentTransactions.some((t) => t.verification_status === 'approved')
+          : false;
+
+        // If no transactions exist, this is a pending payment
+        if (!Array.isArray(paymentTransactions) || paymentTransactions.length === 0) {
+          return 'pending';
+        }
+
+        // If there are approved transactions and amount is fully paid, it's paid
+        if (hasApprovedTransactions && amountPaid >= totalPayable) {
+          return 'paid';
+        }
+
+        // If there are verification pending transactions
+        if (hasVerificationPendingByTx && amountPaid > 0) {
+          // Check if amount is fully paid first
+          if (amountPaid >= totalPayable) {
+            return 'verification_pending';
+          }
+          return 'partially_paid_verification_pending';
+        }
+
+        // No fallback - rely purely on payment_transactions table
+
+        if (!due) return 'pending';
+        const dueDate = new Date(due);
+        const today = new Date();
+        const d0 = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        ).getTime();
+        const d1 = new Date(
+          dueDate.getFullYear(),
+          dueDate.getMonth(),
+          dueDate.getDate()
+        ).getTime();
+        const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
+
+        // Only return 'paid' if there's no verification_pending status and amount is fully paid
+        if (amountPaid >= totalPayable && !hasVerificationPendingByTx) return 'paid';
+        if (daysUntilDue < 0) {
+          return amountPaid > 0 ? 'partially_paid_overdue' : 'overdue';
+        }
+        if (daysUntilDue >= 10) return 'pending_10_plus_days';
+        return 'pending';
+      };
+
+      const status = computeStatus();
+      const dbInst: DatabaseInstallment = {
+        installmentNumber: 1,
+        dueDate: due,
+        amount: totalPayable,
+        status,
+        amountPaid,
+        amountPending: Math.max(0, totalPayable - amountPaid),
+        semesterNumber: 1,
+        baseAmount: Number(paymentBreakdown.oneShotPayment.baseAmount || 0),
+        scholarshipAmount: Number(
+          paymentBreakdown.oneShotPayment.scholarshipAmount || 0
+        ),
+        discountAmount: Number(
+          paymentBreakdown.oneShotPayment.discountAmount || 0
+        ),
+        gstAmount: Number(paymentBreakdown.oneShotPayment.gstAmount || 0),
+        amountPayable: totalPayable,
+        totalPayable: totalPayable,
+        paymentDate: null,
+      };
+
       return (
         <div className='space-y-4'>
           <h2 className='text-xl font-semibold'>Payment Breakdown</h2>
@@ -140,40 +240,21 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
             </CardContent>
           </Card>
 
-          {/* One-Shot Payment Card */}
-          <Card className='border-blue-200 bg-blue-600/10'>
-            <CardContent className='pt-6'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-full bg-blue-600'>
-                    <Calendar className='h-5 w-5 text-white' />
-                  </div>
-                  <div>
-                    <p className='text-lg font-semibold'>
-                      Program Fee (One-Shot)
-                    </p>
-                    <p className='text-sm text-muted-foreground'>
-                      {formatCurrency(
-                        paymentBreakdown.oneShotPayment.amountPayable
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className='text-right'>
-                  <p className='text-xs text-muted-foreground'>Due Date</p>
-                  <p className='text-xs text-blue-600 font-medium'>
-                    {new Date(
-                      paymentBreakdown.oneShotPayment.paymentDate
-                    ).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* One-Shot Installment Card with status + payment form */}
+          <InstallmentCard
+            installment={dbInst}
+            semesterNumber={1}
+            installmentIndex={0}
+            selectedPaymentPlan={selectedPaymentPlan}
+            selectedInstallmentKey={selectedInstallmentKey}
+            showPaymentForm={showPaymentForm}
+            paymentSubmissions={paymentSubmissions}
+            submittingPayments={submittingPayments}
+            studentData={studentData}
+            paymentBreakdown={paymentBreakdown}
+            onInstallmentClick={onInstallmentClick}
+            onPaymentSubmission={onPaymentSubmission}
+          />
         </div>
       );
     }
@@ -222,7 +303,23 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
       </Card>
 
       {/* Semester Cards */}
-      {paymentBreakdown.semesters?.map((semester: DatabaseSemester) => {
+      {(() => {
+        // Calculate total paid from payment_transactions table (pure source of truth)
+        const aggregatePaidAll = Array.isArray(paymentTransactions)
+          ? paymentTransactions.reduce((total, tx) => {
+              // Only count approved transactions or pending verification transactions
+              if (tx.verification_status === 'approved' || tx.verification_status === 'verification_pending') {
+                return total + (tx.amount || 0);
+              }
+              return total;
+            }, 0)
+          : 0;
+        const admissionTotal = Number(
+          (paymentBreakdown.admissionFee as any)?.totalPayable ?? 0
+        );
+        let paidCursor = Math.max(0, aggregatePaidAll - admissionTotal);
+
+        return paymentBreakdown.semesters?.map((semester: DatabaseSemester) => {
         const isCompleted = isSemesterCompleted(semester);
 
         return (
@@ -290,27 +387,46 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                   {semester.instalments?.map(
                     (inst: DatabaseInstallment, index: number) => {
                       const totalPayable = Number(
-                        inst.totalPayable ??
-                          inst.amountPayable ??
-                          inst.amount ??
-                          0
+                        inst.totalPayable ?? inst.amountPayable ?? inst.amount ?? 0
                       );
-                      // If we have live DB summary, prefer it to reflect verification-pending state
-                      const amountPaid = Number(
-                        inst.amountPaid ??
-                          studentPayments?.[0]?.total_amount_paid ??
-                          0
-                      );
-                      const due = String(
-                        inst.paymentDate ?? inst.due_date ?? ''
-                      );
+                      // Allocate paid sequentially across installments from the paidCursor
+                      const allocatedPaid = Math.min(paidCursor, totalPayable);
+                      paidCursor = Math.max(0, paidCursor - allocatedPaid);
+                      const due = String(inst.paymentDate ?? inst.due_date ?? '');
 
-                      // Derive a consistent status if not provided
-                      const computeStatus = (): string => {
+                      // Derive a consistent status using payment_transactions as primary source of truth
+                      const computeStatus = (): PaymentStatus => {
                         const hasProvided =
-                          typeof inst.status === 'string' &&
-                          inst.status.length > 0;
-                        if (hasProvided) return String(inst.status);
+                          typeof inst.status === 'string' && inst.status.length > 0;
+                        if (hasProvided) return String(inst.status) as PaymentStatus;
+
+                        // Check verification status from payment_transactions table (primary source)
+                        const hasVerificationPendingByTx = Array.isArray(paymentTransactions)
+                          ? paymentTransactions.some((t) => t.verification_status === 'verification_pending')
+                          : false;
+                        
+                        const hasApprovedTransactions = Array.isArray(paymentTransactions)
+                          ? paymentTransactions.some((t) => t.verification_status === 'approved')
+                          : false;
+
+                        // If no transactions exist, this is a pending payment
+                        if (!Array.isArray(paymentTransactions) || paymentTransactions.length === 0) {
+                          return 'pending';
+                        }
+
+                        // If there are approved transactions and amount is fully paid, it's paid
+                        if (hasApprovedTransactions && allocatedPaid >= totalPayable) {
+                          return 'paid';
+                        }
+
+                        // If there are verification pending transactions
+                        if (hasVerificationPendingByTx && allocatedPaid > 0) {
+                          // Check if amount is fully paid first
+                          if (allocatedPaid >= totalPayable) {
+                            return 'verification_pending';
+                          }
+                          return 'partially_paid_verification_pending';
+                        }
 
                         if (!due) return 'pending';
                         const dueDate = new Date(due);
@@ -326,54 +442,46 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                           dueDate.getMonth(),
                           dueDate.getDate()
                         ).getTime();
-                        const daysUntilDue = Math.ceil(
-                          (d1 - d0) / (1000 * 60 * 60 * 24)
-                        );
+                        const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
 
-                        if (amountPaid >= totalPayable) return 'paid';
+                        // No fallback - rely purely on payment_transactions table
+                        const hasVerificationPending = hasVerificationPendingByTx;
+
+                        // Only return 'paid' if there's no verification_pending status and amount is fully paid
+                        if (allocatedPaid >= totalPayable && !hasVerificationPending) return 'paid';
                         if (daysUntilDue < 0) {
                           // Past due
-                          return amountPaid > 0
-                            ? 'partially_paid_overdue'
-                            : 'overdue';
+                          return allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
                         }
-                        // Upcoming
-                        // If there is any submitted transaction awaiting verification, reflect that
-                        const hasVerificationPending = Array.isArray(
-                          studentPayments?.[0]?.payment_transactions
-                        )
-                          ? studentPayments![0].payment_transactions.some(
-                              (t: { verification_status?: string }) =>
-                                t.verification_status === 'verification_pending'
-                            )
-                          : false;
-                        if (hasVerificationPending && amountPaid > 0)
+
+                        if (hasVerificationPending && allocatedPaid > 0) {
+                          // Check if amount is fully paid first
+                          if (allocatedPaid >= totalPayable) {
+                            return 'verification_pending';
+                          }
                           return 'partially_paid_verification_pending';
-                        if (amountPaid > 0) return 'partially_paid_days_left';
+                        }
+                        if (allocatedPaid > 0) return 'partially_paid_days_left';
                         if (daysUntilDue >= 10) return 'pending_10_plus_days';
                         return 'pending';
                       };
 
                       const status = computeStatus();
                       const dbInst: DatabaseInstallment = {
-                        installmentNumber: Number(
-                          inst.installmentNumber ?? index + 1
-                        ),
+                        installmentNumber: Number(inst.installmentNumber ?? index + 1),
                         dueDate: due,
                         amount: totalPayable,
                         status,
-                        amountPaid: amountPaid,
-                        amountPending: Math.max(0, totalPayable - amountPaid),
-                        semesterNumber: Number(
-                          semester.semesterNumber ?? inst.semester_number ?? 1
-                        ),
+                        amountPaid: allocatedPaid,
+                        amountPending: Math.max(0, totalPayable - allocatedPaid),
+                        semesterNumber: Number(inst.semesterNumber ?? semester.semesterNumber ?? 1),
                         baseAmount: Number(inst.baseAmount ?? 0),
                         scholarshipAmount: Number(inst.scholarshipAmount ?? 0),
                         discountAmount: Number(inst.discountAmount ?? 0),
                         gstAmount: Number(inst.gstAmount ?? 0),
-                        amountPayable: totalPayable,
+                        amountPayable: Number(inst.amountPayable ?? totalPayable),
                         totalPayable: totalPayable,
-                        paymentDate: inst.paymentDate ?? null,
+                        paymentDate: null,
                       };
                       return (
                         <InstallmentCard
@@ -399,7 +507,8 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
             )}
           </Card>
         );
-      })}
+        });
+      })()}
     </div>
   );
 };

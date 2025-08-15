@@ -8,12 +8,8 @@ export interface StudentPaymentRow {
   payment_plan: string;
   payment_schedule: any; // JSON object containing payment schedule
   total_amount_payable: number;
-  total_amount_paid: number;
-  total_amount_pending: number;
   scholarship_id?: string;
-  payment_status: string;
   next_due_date?: string;
-  last_payment_date?: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -23,16 +19,16 @@ export interface StudentPaymentRow {
 export interface PaymentTransactionRow {
   id: string;
   payment_id: string;
-  transaction_type: string;
+  transaction_type: 'payment' | 'refund' | 'adjustment';
   amount: number;
-  payment_method: string;
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
   reference_number: string | null;
-  status: string;
+  status: 'success' | 'failed' | 'pending';
   notes: string | null;
   created_at: string | null;
   created_by: string | null;
   updated_at: string | null;
-  verification_status: string | null;
+  verification_status: 'pending' | 'verification_pending' | 'approved' | 'rejected' | null;
   verified_by: string | null;
   verified_at: string | null;
   receipt_url: string | null;

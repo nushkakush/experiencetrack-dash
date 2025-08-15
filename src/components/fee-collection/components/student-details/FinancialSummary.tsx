@@ -2,26 +2,193 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
+import { generateFeeStructureReview } from '@/utils/fee-calculations';
+import { paymentTransactionService } from '@/services/paymentTransaction.service';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
 }
 
+interface CalculatedFinancialData {
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  overdueAmount: number;
+  verifiedPayments: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  progressPercentage: number;
+  admissionFee: number;
+  admissionFeePaid: boolean;
+}
+
 export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) => {
   const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
+  const [financialData, setFinancialData] = useState<CalculatedFinancialData>({
+    totalAmount: 0,
+    paidAmount: 0,
+    pendingAmount: 0,
+    overdueAmount: 0,
+    verifiedPayments: 0,
+    totalInstallments: 0,
+    paidInstallments: 0,
+    progressPercentage: 0,
+    admissionFee: 0,
+    admissionFeePaid: false
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchScholarshipPercentage = async () => {
-      if (student.scholarship_id) {
-        const percentage = await getScholarshipPercentageForDisplay(student.scholarship_id);
-        setScholarshipPercentage(percentage);
+    const fetchFinancialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch scholarship percentage
+        if (student.scholarship_id) {
+          const percentage = await getScholarshipPercentageForDisplay(student.scholarship_id);
+          setScholarshipPercentage(percentage);
+        }
+
+        // Calculate financial data
+        const calculatedData = await calculateFinancialData();
+        setFinancialData(calculatedData);
+      } catch (error) {
+        console.error('Error fetching financial data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchScholarshipPercentage();
-  }, [student.scholarship_id]);
+    fetchFinancialData();
+  }, [student]);
+
+  const calculateFinancialData = async (): Promise<CalculatedFinancialData> => {
+    if (!student.student_id || !student.payment_plan || student.payment_plan === 'not_selected') {
+      return {
+        totalAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        overdueAmount: 0,
+        verifiedPayments: 0,
+        totalInstallments: 0,
+        paidInstallments: 0,
+        progressPercentage: 0,
+        admissionFee: 0,
+        admissionFeePaid: false
+      };
+    }
+
+    try {
+      // Fetch fee structure for the cohort
+      const { data: feeStructure } = await supabase
+        .from('fee_structures')
+        .select('*')
+        .eq('cohort_id', student.student?.cohort_id)
+        .single();
+
+      if (!feeStructure) {
+        throw new Error('Fee structure not found');
+      }
+
+      // Fetch scholarships
+      const { data: scholarships } = await supabase
+        .from('scholarships')
+        .select('*')
+        .eq('cohort_id', student.student?.cohort_id);
+
+      // Fetch cohort data for start date
+      const { data: cohortData } = await supabase
+        .from('cohorts')
+        .select('start_date')
+        .eq('id', student.student?.cohort_id)
+        .single();
+
+      // Generate fee structure review to get total amounts
+      const feeReview = generateFeeStructureReview(
+        feeStructure,
+        scholarships || [],
+        student.payment_plan,
+        0, // test score
+        cohortData?.start_date || new Date().toISOString(),
+        student.scholarship_id
+      );
+
+      // Calculate total amount (program fee + admission fee)
+      const totalAmount = feeReview.overallSummary.totalAmountPayable;
+      const admissionFee = feeStructure.admission_fee;
+
+      // Fetch verified payment transactions
+      let verifiedPayments = 0;
+      let totalInstallments = 0;
+      let paidInstallments = 0;
+      let admissionFeePaid = false;
+
+      if (student.student_payment_id) {
+        const transactions = await paymentTransactionService.getByPaymentId(student.student_payment_id);
+        
+        if (transactions && Array.isArray(transactions)) {
+          // Only count verified payments
+          const approvedTransactions = transactions.filter(t => t.verification_status === 'approved');
+          verifiedPayments = approvedTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+          
+          // Check if admission fee is paid (if verified payments >= admission fee)
+          admissionFeePaid = verifiedPayments >= admissionFee;
+        }
+      }
+
+      // Calculate paid amount (includes admission fee since student is registered)
+      const paidAmount = verifiedPayments + admissionFee;
+      const pendingAmount = Math.max(0, totalAmount - paidAmount);
+      const progressPercentage = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
+
+      // Calculate installments based on payment plan
+      if (student.payment_plan === 'one_shot') {
+        totalInstallments = 1;
+        paidInstallments = verifiedPayments > 0 ? 1 : 0;
+      } else if (student.payment_plan === 'sem_wise') {
+        totalInstallments = feeStructure.number_of_semesters;
+        // Calculate paid installments based on verified payments
+        const installmentAmount = (totalAmount - feeStructure.admission_fee) / totalInstallments;
+        paidInstallments = Math.floor(verifiedPayments / installmentAmount);
+      } else if (student.payment_plan === 'instalment_wise') {
+        totalInstallments = feeStructure.number_of_semesters * feeStructure.instalments_per_semester;
+        // Calculate paid installments based on verified payments
+        const installmentAmount = (totalAmount - feeStructure.admission_fee) / totalInstallments;
+        paidInstallments = Math.floor(verifiedPayments / installmentAmount);
+      }
+
+      return {
+        totalAmount,
+        paidAmount,
+        pendingAmount,
+        overdueAmount: 0, // TODO: Calculate based on due dates
+        verifiedPayments,
+        totalInstallments,
+        paidInstallments,
+        progressPercentage,
+        admissionFee,
+        admissionFeePaid
+      };
+    } catch (error) {
+      console.error('Error calculating financial data:', error);
+      return {
+        totalAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        overdueAmount: 0,
+        verifiedPayments: 0,
+        totalInstallments: 0,
+        paidInstallments: 0,
+        progressPercentage: 0,
+        admissionFee: 0,
+        admissionFeePaid: false
+      };
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -49,38 +216,84 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) =
     }
   };
 
-  const getPaymentProgress = () => {
-    if (!student.payment_plan || student.payment_plan === 'not_selected') {
-      return null;
-    }
+  // Check if payment plan is selected
+  const hasPaymentPlan = student.payment_plan && student.payment_plan !== 'not_selected';
 
-    const paidInstallments = student.payments?.filter(p => 
-      p.status === 'paid' || p.status === 'complete'
-    ).length || 0;
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="animate-pulse">
+          <div className="h-4 bg-muted rounded mb-2"></div>
+          <div className="h-4 bg-muted rounded mb-2"></div>
+          <div className="h-4 bg-muted rounded mb-2"></div>
+          <div className="h-4 bg-muted rounded mb-2"></div>
+        </div>
+      </div>
+    );
+  }
 
-    const totalInstallments = student.payments?.length || 0;
-
-    if (totalInstallments === 0) return null;
-
-    return { 
-      paidInstallments, 
-      totalInstallments, 
-      percentage: Math.round((paidInstallments / totalInstallments) * 100) 
-    };
-  };
+  // Empty state when no payment plan is selected
+  if (!hasPaymentPlan) {
+    return (
+      <>
+        <div className="text-center py-8">
+          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <CreditCard className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">No Payment Plan Selected</h3>
+          <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+            This student hasn't chosen a payment plan yet. Once a plan is selected, you'll see detailed financial information here.
+          </p>
+          
+          {/* Payment Plan Options Preview */}
+          <div className="grid grid-cols-1 gap-3 max-w-xs mx-auto">
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              <div className="text-left">
+                <p className="text-sm font-medium">One-Shot Payment</p>
+                <p className="text-xs text-muted-foreground">Pay everything upfront</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <div className="text-left">
+                <p className="text-sm font-medium">Semester-wise</p>
+                <p className="text-xs text-muted-foreground">Pay by semester</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <CreditCard className="h-5 w-5 text-purple-600" />
+              <div className="text-left">
+                <p className="text-sm font-medium">Installment-wise</p>
+                <p className="text-xs text-muted-foreground">Pay in installments</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Separator className="bg-border" />
+      </>
+    );
+  }
 
   return (
     <>
       <div>
-        <h4 className="font-semibold mb-4 text-foreground">Financial Summary</h4>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Total Amount:</span>
-            <span className="font-medium text-foreground">{formatCurrency(student.total_amount)}</span>
+            <span className="font-medium text-foreground">{formatCurrency(financialData.totalAmount)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Admission Fee:</span>
+            <span className="font-medium text-foreground">{formatCurrency(financialData.admissionFee || 0)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Paid Amount:</span>
-            <span className="font-medium text-green-400">{formatCurrency(student.paid_amount)}</span>
+            <span className="font-medium text-green-400">{formatCurrency(financialData.paidAmount)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Pending Amount:</span>
+            <span className="font-medium text-orange-400">{formatCurrency(financialData.pendingAmount)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Payment Plan:</span>
@@ -94,38 +307,18 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) =
               </span>
             </div>
           )}
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Token Fee:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">₹25,000</span>
-              {student.token_fee_paid ? (
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Paid</Badge>
-              ) : (
-                <Badge className="bg-muted text-muted-foreground border-border text-xs">Pending</Badge>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Progress Bar */}
         <div className="mt-4">
-          {getPaymentProgress() ? (
-            <>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-foreground">{formatCurrency(student.paid_amount)} / {formatCurrency(student.total_amount)}</span>
-                <span className="text-foreground">{getPaymentProgress()?.percentage}%</span>
-              </div>
-              <Progress value={getPaymentProgress()?.percentage || 0} className="h-2 bg-muted" />
-              <div className="text-xs text-muted-foreground mt-1">
-                {getPaymentProgress()?.paidInstallments} of {getPaymentProgress()?.totalInstallments} installments paid
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">Payment plan not selected</p>
-              <p className="text-xs text-muted-foreground">Student needs to choose a payment plan</p>
-            </div>
-          )}
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-foreground">{formatCurrency(financialData.paidAmount)} / {formatCurrency(financialData.totalAmount)}</span>
+            <span className="text-foreground">{financialData.progressPercentage}%</span>
+          </div>
+          <Progress value={financialData.progressPercentage} className="h-2 bg-muted" />
+          <div className="text-xs text-muted-foreground mt-1">
+            {financialData.paidInstallments} of {financialData.totalInstallments} installments paid
+          </div>
         </div>
       </div>
       <Separator className="bg-border" />

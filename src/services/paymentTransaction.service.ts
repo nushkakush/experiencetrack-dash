@@ -216,6 +216,23 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
     rejectionReason?: string
   ): Promise<ApiResponse<PaymentTransactionRow>> {
     return this.executeQuery(async () => {
+      // First, get the transaction details to understand the payment context
+      const { data: transaction, error: fetchError } = await supabase
+        .from("payment_transactions")
+        .select(`
+          *,
+          student_payments!inner (
+            id,
+            student_id
+          )
+        `)
+        .eq("id", transactionId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!transaction) throw new Error('Transaction not found');
+
+      // Update the transaction verification status
       const updateData: any = {
         verification_status: status,
         verification_notes: notes,
@@ -224,8 +241,14 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         updated_at: new Date().toISOString()
       };
 
-      if (status === 'rejected' && rejectionReason) {
-        updateData.rejection_reason = rejectionReason;
+      // Update the transaction status based on verification result
+      if (status === 'approved') {
+        updateData.status = 'success';
+      } else if (status === 'rejected') {
+        updateData.status = 'failed';
+        if (rejectionReason) {
+          updateData.rejection_reason = rejectionReason;
+        }
       }
 
       const { data, error } = await supabase
@@ -236,6 +259,13 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         .single();
 
       if (error) throw error;
+
+      // Note: Since we simplified the student_payments table and removed payment_status,
+      // the payment status is now calculated dynamically in the frontend based on
+      // the verification_status of payment_transactions. The verification process
+      // only needs to update the transaction verification_status, and the UI will
+      // automatically reflect the correct status based on the approved transactions.
+
       return { data, error: null };
     });
   }

@@ -36,16 +36,19 @@ export const generateFeeStructureReview = (
   paymentPlan: PaymentPlan,
   testScore: number = 0,
   cohortStartDate: string,
-  selectedScholarshipId?: string
+  selectedScholarshipId?: string,
+  additionalScholarshipPercentage: number = 0
 ): FeeStructureReview => {
   const selectedScholarship = selectedScholarshipId 
     ? scholarships.find(s => s.id === selectedScholarshipId)
     : null;
   
-  // Calculate scholarship amount directly from selected scholarship, not based on test score
-  const scholarshipAmount = selectedScholarship 
-    ? Math.round(feeStructure.total_program_fee * (selectedScholarship.amount_percentage / 100) * 100) / 100
-    : 0;
+  // Calculate scholarship amount from base scholarship PLUS any additional percentage
+  const baseScholarshipPercentage = selectedScholarship ? (selectedScholarship.amount_percentage || 0) : 0;
+  const totalScholarshipPercentage = baseScholarshipPercentage + (additionalScholarshipPercentage || 0);
+  const scholarshipAmount = Math.round(
+    feeStructure.total_program_fee * (totalScholarshipPercentage / 100) * 100
+  ) / 100;
 
   // Remove debug log to clean up console
   // console.log('generateFeeStructureReview - Scholarship calculation:', {

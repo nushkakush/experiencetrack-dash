@@ -33,7 +33,7 @@ interface FeePaymentSectionProps {
 
 export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
   ({ studentData, cohortData }) => {
-    const { studentPayments, feeStructure, scholarships, studentScholarship, loading, refetch } =
+    const { studentPayments, paymentTransactions, feeStructure, scholarships, studentScholarship, loading, refetch } =
       useStudentData();
 
     // Use the new payment plan state hook
@@ -113,10 +113,9 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         }
       }
       
-      const totalAmountPaid =
-        studentPayments && studentPayments[0]?.total_amount_paid
-          ? Number(studentPayments[0].total_amount_paid)
-          : 0;
+      // Since we removed total_amount_paid from the database, we'll calculate it dynamically
+      // For now, we'll assume no payments have been made yet
+      const totalAmountPaid = 0;
       const startDate =
         cohortData?.start_date || new Date().toISOString().split('T')[0];
       
@@ -126,12 +125,28 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         selectedPaymentPlan as PaymentPlan,
         totalAmountPaid,
         startDate,
-        scholarshipId
+        scholarshipId,
+        // Pass additional discount percentage when present so base+additional are considered uniformly
+        studentScholarship?.additional_discount_percentage || 0
       );
 
       // Override the scholarship amount in the breakdown to use our calculated total
       if (totalScholarshipAmount > 0) {
         breakdown.overallSummary.totalScholarship = totalScholarshipAmount;
+        
+        // Also override the one-shot payment scholarship amount if it exists
+        if (breakdown.oneShotPayment) {
+          breakdown.oneShotPayment.scholarshipAmount = totalScholarshipAmount;
+          
+          // Recalculate the one-shot payment amount payable
+          const baseAmount = breakdown.oneShotPayment.baseAmount;
+          const discountAmount = breakdown.oneShotPayment.discountAmount;
+          const amountAfterDiscount = baseAmount - discountAmount;
+          const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
+          const gstAmount = (amountAfterScholarship * 18) / 100; // 18% GST
+          breakdown.oneShotPayment.amountPayable = Math.max(0, amountAfterScholarship + gstAmount);
+          breakdown.oneShotPayment.gstAmount = gstAmount;
+        }
         
         // Recalculate the total amount payable with the correct scholarship amount
         const totalProgramFee = Number(feeStructure.total_program_fee);
@@ -144,6 +159,8 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         
         // Calculate GST on the amount after scholarship and discount
         const totalBaseGST = (amountAfterScholarship * 18) / 100; // 18% GST
+        // Keep GST in overall summary in sync with recalculation
+        breakdown.overallSummary.totalGST = totalBaseGST;
         
         // Calculate final payable amount
         breakdown.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);
@@ -175,11 +192,11 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         cohortId: payment.cohort_id,
         paymentType: 'program_fee',
         paymentPlan: payment.payment_plan as PaymentPlan,
-        amountPayable: payment.total_amount_payable,
-        amountPaid: payment.total_amount_paid,
-        dueDate: payment.next_due_date || new Date().toISOString(),
-        status: payment.payment_status,
-        notes: payment.notes || '',
+        amountPayable: 0, // Will be calculated dynamically
+        amountPaid: 0, // Will be calculated from payment transactions
+        dueDate: new Date().toISOString(), // Will be calculated based on payment plan
+        status: 'pending', // Default status since we removed payment_status
+        notes: '', // Removed notes column
         createdAt: payment.created_at,
         updatedAt: payment.updated_at,
         student: {
@@ -397,6 +414,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         selectedPaymentPlan={selectedPaymentPlan as PaymentPlan}
         onPaymentPlanSelection={updatePaymentPlan}
         studentPayments={convertedStudentPayments}
+        paymentTransactions={paymentTransactions}
         cohortData={convertedCohortData}
         studentData={convertedStudentData}
         paymentSubmissions={paymentSubmissions}

@@ -4,7 +4,8 @@ import { Separator } from '@/components/ui/separator';
 export interface FeeBreakdownProps {
   baseAmount: number;
   gstAmount: number;
-  discountAmount: number;
+  discountAmount: number; // One-shot or other discount
+  scholarshipAmount?: number; // Scholarship waiver (separate from discount)
   amountPayable: number;
 }
 
@@ -12,6 +13,7 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({
   baseAmount,
   gstAmount,
   discountAmount,
+  scholarshipAmount = 0,
   amountPayable
 }) => {
   const formatCurrency = (amount: number) => {
@@ -29,17 +31,22 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({
           <span>Base Fee</span>
           <span>{formatCurrency(baseAmount)}</span>
         </div>
+        {/* One-shot or other discount, if any */}
+        {discountAmount > 0 && (
+          <div className="flex justify-between">
+            <span>One-shot Discount</span>
+            <span className="text-green-600">- {formatCurrency(discountAmount)}</span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span>GST</span>
           <span>{formatCurrency(gstAmount)}</span>
         </div>
-        {/* Only show scholarship waiver if there's actually a discount */}
-        {discountAmount > 0 && (
+        {/* Scholarship waiver shown separately from discount */}
+        {scholarshipAmount > 0 && (
           <div className="flex justify-between">
             <span>Scholarship Waiver</span>
-            <span className="text-red-600">
-              - {formatCurrency(discountAmount)}
-            </span>
+            <span className="text-red-600">- {formatCurrency(scholarshipAmount)}</span>
           </div>
         )}
         <Separator />

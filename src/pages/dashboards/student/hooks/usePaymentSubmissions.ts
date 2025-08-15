@@ -325,57 +325,29 @@ export const usePaymentSubmissions = (
         );
       }
 
-      // 4. Update the student_payments record to reflect the new payment
-      // First get the current values
-      const { data: currentStudentPayment, error: fetchError } = await supabase
+      // 4. Update the student_payments record (only update timestamp since we removed calculated fields)
+      const { error: updateError } = await supabase
         .from('student_payments')
-        .select('total_amount_paid, total_amount_payable')
-        .eq('id', studentPaymentId)
-        .single();
+        .update({
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', studentPaymentId);
 
-      if (fetchError) {
+      if (updateError) {
         Logger.getInstance().error(
-          'Failed to fetch current student payment values',
-          { error: fetchError }
+          'Failed to update student payment record timestamp',
+          { error: updateError }
         );
+        // Don't throw error here, as the transaction was already created
+        // Just log the error for debugging
       } else {
-        const currentPaid = currentStudentPayment.total_amount_paid || 0;
-        const newPaid = currentPaid + paymentData.amount;
-
-        // Calculate new payment status
-        const newPaymentStatus =
-          newPaid >= (currentStudentPayment.total_amount_payable || 0)
-            ? 'paid'
-            : 'partially_paid_verification_pending';
-
-        const { error: updateError } = await supabase
-          .from('student_payments')
-          .update({
-            total_amount_paid: newPaid,
-            payment_status: newPaymentStatus,
-            last_payment_date: new Date().toISOString().split('T')[0],
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', studentPaymentId);
-
-        if (updateError) {
-          Logger.getInstance().error(
-            'Failed to update student payment record',
-            { error: updateError }
-          );
-          // Don't throw error here, as the transaction was already created
-          // Just log the error for debugging
-        } else {
-          Logger.getInstance().info(
-            'Updated student payment record with new payment',
-            {
-              studentPaymentId,
-              amount: paymentData.amount,
-              oldPaid: currentPaid,
-              newPaid: newPaid,
-            }
-          );
-        }
+        Logger.getInstance().info(
+          'Updated student payment record timestamp after payment submission',
+          {
+            studentPaymentId,
+            amount: paymentData.amount,
+          }
+        );
       }
 
       Logger.getInstance().info('Payment submission completed successfully', {

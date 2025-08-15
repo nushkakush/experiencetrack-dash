@@ -17,7 +17,9 @@ export const ProgressCell: React.FC<ProgressCellProps> = ({ student }) => {
     const totalAmount = student.total_amount;
     const paidAmount = student.paid_amount;
     
-    if (totalAmount === 0) return null;
+    if (totalAmount === 0) {
+      return null;
+    }
 
     const progress = Math.round((paidAmount / totalAmount) * 100);
     

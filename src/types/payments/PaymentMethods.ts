@@ -73,7 +73,7 @@ export interface PaymentTransaction {
   created_at: string | null;
   created_by?: string | null;
   updated_at: string | null;
-  verification_status?: string | null;
+  verification_status?: 'pending' | 'verification_pending' | 'approved' | 'rejected' | null;
   verified_by?: string | null;
   verified_at?: string | null;
   receipt_url?: string | null;

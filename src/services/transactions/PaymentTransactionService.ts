@@ -154,8 +154,14 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         updated_at: new Date().toISOString()
       };
 
-      if (status === 'rejected' && rejectionReason) {
-        updateData.rejection_reason = rejectionReason;
+      // Update the transaction status based on verification result
+      if (status === 'approved') {
+        updateData.status = 'success';
+      } else if (status === 'rejected') {
+        updateData.status = 'failed';
+        if (rejectionReason) {
+          updateData.rejection_reason = rejectionReason;
+        }
       }
 
       const { data, error } = await supabase

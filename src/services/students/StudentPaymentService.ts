@@ -233,39 +233,51 @@ class StudentPaymentService {
     studentId: string,
     cohortId: string,
     paymentPlan: PaymentPlan,
-    scholarshipId?: string,
-    forceUpdate: boolean = false
+    scholarshipId?: string
   ): Promise<ApiResponse<{ success: boolean; message: string }>> {
     try {
-      // Check if student already has a payment plan
-      const { data: existingPayments, error: existingError } = await supabase
+      // Check if record already exists
+      const { data: existingRecord } = await supabase
         .from('student_payments')
         .select('*')
         .eq('student_id', studentId)
-        .eq('cohort_id', cohortId);
+        .eq('cohort_id', cohortId)
+        .single();
 
-      if (existingError) throw existingError;
-
-      if (existingPayments && existingPayments.length > 0 && !forceUpdate) {
-        return {
-          data: { success: false, message: 'Student already has a payment plan. Use forceUpdate to override.' },
-          error: null,
-          success: true,
-        };
-      }
-
-      // If force update, delete existing payments
-      if (forceUpdate && existingPayments && existingPayments.length > 0) {
-        const { error: deleteError } = await supabase
+      let result;
+      if (existingRecord) {
+        // Update existing record
+        const { data, error: updateError } = await supabase
           .from('student_payments')
-          .delete()
-          .eq('student_id', studentId)
-          .eq('cohort_id', cohortId);
+          .update({
+            payment_plan: paymentPlan,
+            scholarship_id: scholarshipId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
 
-        if (deleteError) throw deleteError;
+        if (updateError) throw updateError;
+        result = data;
+      } else {
+        // Create new record
+        const { data, error: insertError } = await supabase
+          .from('student_payments')
+          .insert({
+            student_id: studentId,
+            cohort_id: cohortId,
+            payment_plan: paymentPlan,
+            scholarship_id: scholarshipId
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        result = data;
       }
 
-      // Update or create scholarship assignment
+      // Update or create scholarship assignment if scholarshipId is provided
       if (scholarshipId) {
         const { error: scholarshipError } = await supabase
           .from('student_scholarships')
@@ -274,11 +286,16 @@ class StudentPaymentService {
             scholarship_id: scholarshipId,
             additional_discount_percentage: 0,
             assigned_at: new Date().toISOString(),
-            assigned_by: null // This will be set by the calling function if needed
+            assigned_by: null
           });
 
         if (scholarshipError) throw scholarshipError;
       }
+
+      Logger.getInstance().info('StudentPaymentService: Payment plan updated successfully', { 
+        studentId, 
+        paymentPlan 
+      });
 
       return {
         data: { success: true, message: 'Payment plan updated successfully' },

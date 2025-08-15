@@ -9,6 +9,7 @@ interface OverallSummaryData {
   totalDiscount: number;
   totalScholarship: number;
   totalAmountPayable: number;
+  admissionFee?: number;
 }
 
 interface OverallSummaryProps {
@@ -54,8 +55,18 @@ export const OverallSummary: React.FC<OverallSummaryProps> = ({
             </div>
           )}
           <div className="flex justify-between font-bold text-lg border-t pt-2">
-            <span>Total Amount Payable:</span>
+            <span>Total Fees:</span>
             <span>{formatCurrency(overallSummary.totalAmountPayable)}</span>
+          </div>
+          {overallSummary.admissionFee && overallSummary.admissionFee > 0 && (
+            <div className="flex justify-between text-red-600">
+              <span>Admission Fee (including GST):</span>
+              <span>- {formatCurrency(overallSummary.admissionFee)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-lg border-t pt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+            <span className="text-foreground">Total Amount Payable:</span>
+            <span className="text-foreground">{formatCurrency(Math.max(0, overallSummary.totalAmountPayable - (overallSummary.admissionFee || 0)))}</span>
           </div>
         </div>
       </CardContent>

@@ -12,11 +12,11 @@ interface PaymentSubmissionData {
   receiptFile?: File;
   proofOfPaymentFile?: File;
   transactionScreenshotFile?: File;
-  paymentReferenceType?: 'cheque_no' | 'utr_no';
-  paymentReferenceNumber?: string;
-  transferDate?: string;
+  paymentDate?: string;
   bankName?: string;
   bankBranch?: string;
+  accountNumber?: string;
+  transactionId?: string;
 }
 
 export interface UsePaymentMethodSelectorProps {
@@ -35,11 +35,11 @@ export const usePaymentMethodSelector = ({
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [isPartialPayment, setIsPartialPayment] = useState<boolean>(false);
-  const [paymentReferenceType, setPaymentReferenceType] = useState<'cheque_no' | 'utr_no'>('utr_no');
-  const [paymentReferenceNumber, setPaymentReferenceNumber] = useState<string>('');
-  const [transferDate, setTransferDate] = useState<string>('');
+  const [paymentDate, setPaymentDate] = useState<string>('');
   const [bankName, setBankName] = useState<string>('');
   const [bankBranch, setBankBranch] = useState<string>('');
+  const [accountNumber, setAccountNumber] = useState<string>('');
+  const [transactionId, setTransactionId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [proofOfPaymentFile, setProofOfPaymentFile] = useState<File | null>(null);
@@ -67,16 +67,8 @@ export const usePaymentMethodSelector = ({
     setAmountPaid(amount);
   };
 
-  const handlePaymentReferenceTypeChange = (type: 'cheque_no' | 'utr_no') => {
-    setPaymentReferenceType(type);
-  };
-
-  const handlePaymentReferenceNumberChange = (value: string) => {
-    setPaymentReferenceNumber(value);
-  };
-
-  const handleTransferDateChange = (value: string) => {
-    setTransferDate(value);
+  const handlePaymentDateChange = (value: string) => {
+    setPaymentDate(value);
   };
 
   const handleBankNameChange = (value: string) => {
@@ -85,6 +77,14 @@ export const usePaymentMethodSelector = ({
 
   const handleBankBranchChange = (value: string) => {
     setBankBranch(value);
+  };
+
+  const handleAccountNumberChange = (value: string) => {
+    setAccountNumber(value);
+  };
+
+  const handleTransactionIdChange = (value: string) => {
+    setTransactionId(value);
   };
 
   const handleReceiptFileChange = (file: File | null) => {
@@ -113,8 +113,8 @@ export const usePaymentMethodSelector = ({
       selectedMethod,
       amountPaid,
       requiredAmount,
-      paymentReferenceNumber,
-      transferDate,
+      transactionId,
+      paymentDate,
       bankName,
       bankBranch,
       receiptFile,
@@ -127,7 +127,7 @@ export const usePaymentMethodSelector = ({
       return;
     }
 
-    const paymentData = {
+    const paymentData: PaymentSubmissionData = {
       paymentId,
       paymentMethod: selectedMethod,
       amountPaid,
@@ -140,11 +140,11 @@ export const usePaymentMethodSelector = ({
 
     // Add bank transfer/cheque specific data
     if (selectedMethod === 'bank_transfer' || selectedMethod === 'cheque') {
-      paymentData.paymentReferenceType = paymentReferenceType;
-      paymentData.paymentReferenceNumber = paymentReferenceNumber;
-      paymentData.transferDate = transferDate;
+      paymentData.paymentDate = paymentDate;
       paymentData.bankName = bankName;
       paymentData.bankBranch = bankBranch;
+      paymentData.accountNumber = accountNumber;
+      paymentData.transactionId = transactionId;
     }
 
     onPaymentSubmit(paymentData);
@@ -155,11 +155,11 @@ export const usePaymentMethodSelector = ({
     selectedMethod,
     amountPaid,
     isPartialPayment,
-    paymentReferenceType,
-    paymentReferenceNumber,
-    transferDate,
+    paymentDate,
     bankName,
     bankBranch,
+    accountNumber,
+    transactionId,
     notes,
     receiptFile,
     proofOfPaymentFile,
@@ -168,11 +168,11 @@ export const usePaymentMethodSelector = ({
     // Handlers
     handleMethodSelect,
     handleAmountChange,
-    handlePaymentReferenceTypeChange,
-    handlePaymentReferenceNumberChange,
-    handleTransferDateChange,
+    handlePaymentDateChange,
     handleBankNameChange,
     handleBankBranchChange,
+    handleAccountNumberChange,
+    handleTransactionIdChange,
     handleReceiptFileChange,
     handleProofOfPaymentFileChange,
     handleTransactionScreenshotFileChange,

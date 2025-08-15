@@ -48,19 +48,17 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
     icon: Building2,
     fields: [
       {
-        name: 'transactionId',
-        label: 'Transaction ID / Reference Number',
-        type: 'text',
-        placeholder: 'Enter transaction ID',
+        name: 'paymentDate',
+        label: 'Payment Date',
+        type: 'date',
         required: true,
         validation: {
-          minLength: 3,
-          message: 'Transaction ID is required'
+          message: 'Payment date is required'
         }
       },
       {
         name: 'bankName',
-        label: 'Bank Name',
+        label: 'Select Bank',
         type: 'select',
         placeholder: 'Select bank',
         required: true,
@@ -69,33 +67,48 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         }
       },
       {
-        name: 'transferDate',
-        label: 'Transfer Date',
-        type: 'date',
+        name: 'bankBranch',
+        label: 'Branch Name',
+        type: 'text',
+        placeholder: 'Enter branch name',
         required: true,
         validation: {
-          message: 'Transfer date is required'
+          message: 'Branch name is required'
+        }
+      },
+      {
+        name: 'accountNumber',
+        label: 'Account Number',
+        type: 'text',
+        placeholder: 'Enter account number',
+        required: true,
+        validation: {
+          message: 'Account number is required'
+        }
+      },
+      {
+        name: 'transactionId',
+        label: 'UTR Number',
+        type: 'text',
+        placeholder: 'Enter UTR number',
+        required: true,
+        validation: {
+          minLength: 3,
+          message: 'UTR number is required'
         }
       }
     ],
     fileUploads: [
       {
         name: 'bankTransferScreenshot',
-        label: 'Bank Transfer Screenshot/Receipt',
-        description: 'Upload screenshot or receipt of your bank transfer',
+        label: 'Bank Transfer Screenshot/Acknowledgement Receipt',
+        description: 'Upload screenshot or acknowledgement receipt of your bank transfer',
         acceptedTypes: 'image/*,.pdf',
         required: true
-      },
-      {
-        name: 'bankTransferAcknowledgment',
-        label: 'Transfer Acknowledgment',
-        description: 'Upload bank acknowledgment or confirmation',
-        acceptedTypes: 'image/*,.pdf',
-        required: false
       }
     ],
     validation: {
-      required: ['transactionId', 'bankName', 'transferDate'],
+      required: ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'],
       files: ['bankTransferScreenshot']
     }
   },
@@ -104,17 +117,6 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
     name: 'Cash',
     icon: DollarSign,
     fields: [
-      {
-        name: 'receiptNumber',
-        label: 'Receipt Number',
-        type: 'text',
-        placeholder: 'Enter receipt number',
-        required: true,
-        validation: {
-          minLength: 3,
-          message: 'Receipt number is required'
-        }
-      },
       {
         name: 'paymentDate',
         label: 'Payment Date',
@@ -127,23 +129,16 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
     ],
     fileUploads: [
       {
-        name: 'cashReceipt',
-        label: 'Cash Payment Receipt',
-        description: 'Upload the original cash payment receipt',
+        name: 'cashAcknowledgment',
+        label: 'Payment Acknowledgement',
+        description: 'Upload the payment acknowledgement document',
         acceptedTypes: 'image/*,.pdf',
         required: true
-      },
-      {
-        name: 'cashAcknowledgment',
-        label: 'Payment Acknowledgment',
-        description: 'Upload any acknowledgment document',
-        acceptedTypes: 'image/*,.pdf',
-        required: false
       }
     ],
     validation: {
-      required: ['receiptNumber', 'paymentDate'],
-      files: ['cashReceipt']
+      required: ['paymentDate'],
+      files: ['cashAcknowledgment']
     }
   },
 
@@ -151,6 +146,45 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
     name: 'Cheque',
     icon: FileText,
     fields: [
+      {
+        name: 'paymentDate',
+        label: 'Payment Date',
+        type: 'date',
+        required: true,
+        validation: {
+          message: 'Payment date is required'
+        }
+      },
+      {
+        name: 'bankName',
+        label: 'Select Bank',
+        type: 'select',
+        placeholder: 'Select bank',
+        required: true,
+        validation: {
+          message: 'Bank name is required'
+        }
+      },
+      {
+        name: 'bankBranch',
+        label: 'Branch Name',
+        type: 'text',
+        placeholder: 'Enter branch name',
+        required: true,
+        validation: {
+          message: 'Branch name is required'
+        }
+      },
+      {
+        name: 'accountNumber',
+        label: 'Account Number',
+        type: 'text',
+        placeholder: 'Enter account number',
+        required: true,
+        validation: {
+          message: 'Account number is required'
+        }
+      },
       {
         name: 'chequeNumber',
         label: 'Cheque Number',
@@ -160,25 +194,6 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         validation: {
           minLength: 3,
           message: 'Cheque number is required'
-        }
-      },
-      {
-        name: 'bankName',
-        label: 'Bank Name',
-        type: 'select',
-        placeholder: 'Select bank',
-        required: true,
-        validation: {
-          message: 'Bank name is required'
-        }
-      },
-      {
-        name: 'chequeDate',
-        label: 'Cheque Date',
-        type: 'date',
-        required: true,
-        validation: {
-          message: 'Cheque date is required'
         }
       }
     ],
@@ -195,70 +210,72 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         label: 'Cheque Acknowledgment',
         description: 'Upload bank acknowledgment for cheque deposit',
         acceptedTypes: 'image/*,.pdf',
-        required: false
+        required: true
       }
     ],
     validation: {
-      required: ['chequeNumber', 'bankName', 'chequeDate'],
-      files: ['chequeImage']
+      required: ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'],
+      files: ['chequeImage', 'chequeAcknowledgment']
     }
   },
 
   razorpay: {
-    name: 'Online Payment (Razorpay)',
+    name: 'Online Payment',
     icon: CreditCard,
     fields: [],
-    fileUploads: [
-      {
-        name: 'razorpayReceipt',
-        label: 'Payment Receipt',
-        description: 'Upload Razorpay payment receipt (optional)',
-        acceptedTypes: 'image/*,.pdf',
-        required: false
-      }
-    ],
+    fileUploads: [],
     validation: {
       required: [],
       files: []
-    },
-    ui: {
-      alert: {
-        icon: CreditCard,
-        description: 'You will be redirected to Razorpay for secure online payment processing.'
-      }
     }
   },
 
   scan_to_pay: {
-    name: 'Scan to Pay (UPI)',
+    name: 'Scan to Pay',
     icon: CreditCard,
-    fields: [],
+    fields: [
+      {
+        name: 'qrCode',
+        label: 'UPI QR Code',
+        type: 'text',
+        placeholder: 'Enter UPI QR Code',
+        required: true,
+        validation: {
+          message: 'UPI QR Code is required'
+        }
+      },
+      {
+        name: 'paymentDate',
+        label: 'Payment Date',
+        type: 'date',
+        required: true,
+        validation: {
+          message: 'Payment date is required'
+        }
+      },
+      {
+        name: 'payerUpiId',
+        label: 'Payer UPI ID',
+        type: 'text',
+        placeholder: 'Enter payer UPI ID',
+        required: true,
+        validation: {
+          message: 'Payer UPI ID is required'
+        }
+      }
+    ],
     fileUploads: [
       {
         name: 'scanToPayScreenshot',
         label: 'UPI Payment Screenshot',
-        description: 'Upload screenshot of your UPI payment confirmation',
+        description: 'Upload screenshot of your UPI payment',
         acceptedTypes: 'image/*',
         required: true
-      },
-      {
-        name: 'scanToPayReceipt',
-        label: 'Payment Receipt',
-        description: 'Upload UPI payment receipt (optional)',
-        acceptedTypes: 'image/*,.pdf',
-        required: false
       }
     ],
     validation: {
-      required: [],
+      required: ['qrCode', 'paymentDate', 'payerUpiId'],
       files: ['scanToPayScreenshot']
-    },
-    ui: {
-      alert: {
-        icon: CreditCard,
-        description: 'Scan the QR code below with your UPI application to make the payment.'
-      },
-      customComponent: 'QRCodeDisplay'
     }
   }
 };

@@ -185,7 +185,7 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
 
   const getPlanDiscount = (plan: PaymentPlan) => {
     if (plan === 'one_shot' && feeStructure?.one_shot_discount_percentage) {
-      return `${feeStructure.one_shot_discount_percentage}% discount`;
+      return `+${feeStructure.one_shot_discount_percentage}% discount`;
     }
     return null;
   };
@@ -196,117 +196,31 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
     <div className="space-y-6">
       {/* Scholarship Celebration Section */}
       {studentScholarshipData && scholarshipSavings && (
-        <Card className="border-2 border-yellow-400 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-lg">
+        <Card className="border bg-card">
           <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              {/* Debug info - remove this later */}
-              <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-                Debug: Scholarship found! {studentScholarshipData.name} - {scholarshipSavings.totalPercentage}% total discount
-              </div>
-              {/* Celebration Header */}
-              <div className="flex justify-center items-center space-x-2">
-                <Trophy className="h-8 w-8 text-yellow-600 animate-pulse" />
-                <Star className="h-6 w-6 text-orange-500 animate-bounce" />
-                <Gift className="h-8 w-8 text-yellow-600 animate-pulse" />
-              </div>
-              
-              {/* Confetti Effect */}
-              <div className="flex justify-center space-x-1 text-2xl">
-                <span className="animate-bounce" style={{ animationDelay: '0s' }}>🎉</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>✨</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>🎊</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.3s' }}>🌟</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.4s' }}>🎉</span>
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  🎉 Congratulations! You've Earned a Scholarship! 🎉
-                </h2>
-                <p className="text-lg text-gray-700 font-medium">
-                  {studentScholarshipData.name}
-                </p>
-                {studentScholarshipData.description && (
-                  <p className="text-gray-600 max-w-2xl mx-auto">
-                    {studentScholarshipData.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Scholarship Details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                <div className="bg-white rounded-lg p-4 shadow-md border border-yellow-200">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <Sparkles className="h-5 w-5 text-yellow-600" />
-                    <span className="text-sm font-medium text-gray-600">Scholarship Percentage</span>
-                  </div>
-                  <p className="text-2xl font-bold text-yellow-600 text-center">
-                    {scholarshipSavings.totalPercentage}%
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg p-4 shadow-md border border-green-200">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium text-gray-600">You Save</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600 text-center">
-                    ₹{scholarshipSavings.totalScholarshipAmount.toLocaleString('en-IN')}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg p-4 shadow-md border border-blue-200">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-600">Final Amount</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-600 text-center">
-                    ₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
-
-              {/* Fee Reduction Breakdown */}
-              <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 max-w-2xl mx-auto">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Fee Reduction Breakdown</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Original Program Fee:</span>
-                    <span className="font-medium line-through text-gray-500">
-                      ₹{scholarshipSavings.originalAmount.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Scholarship Discount:</span>
-                    <span className="font-medium text-green-600">
-                      - ₹{scholarshipSavings.totalScholarshipAmount.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-800">Your Final Fee:</span>
-                      <span className="font-bold text-lg text-blue-600">
-                        ₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+            <div className="space-y-4">
               <div className="text-center">
-                <p className="text-gray-600 text-sm">
-                  💡 <strong>Pro Tip:</strong> This scholarship will be automatically applied to your payment plan below!
-                </p>
-                {studentPayments?.[0]?.created_at && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Scholarship assigned on {new Date(studentPayments[0].created_at).toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                )}
+                <h2 className="text-xl font-semibold">Scholarship applied</h2>
+                <p className="text-sm text-muted-foreground">{studentScholarshipData.name}</p>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-4xl mx-auto">
+                <div className="rounded-md border p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Scholarship Percentage</p>
+                  <p className="text-lg font-semibold">{scholarshipSavings.totalPercentage}%</p>
+                </div>
+                <div className="rounded-md border p-3 text-center">
+                  <p className="text-xs text-muted-foreground">You Save</p>
+                  <p className="text-lg font-semibold">₹{scholarshipSavings.totalScholarshipAmount.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="rounded-md border p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Final Amount</p>
+                  <p className="text-lg font-semibold">₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-muted-foreground">+GST</p>
+                </div>
+              </div>
+
+              <p className="text-center text-xs text-muted-foreground">This scholarship will be automatically applied to your payment plan below.</p>
             </div>
           </CardContent>
         </Card>

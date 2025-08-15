@@ -9,11 +9,11 @@ interface PaymentMethodFieldFactoryProps {
   selectedMethod: string;
   amountPaid: number;
   // Bank transfer/cheque fields
-  paymentReferenceType: 'cheque_no' | 'utr_no';
-  paymentReferenceNumber: string;
-  transferDate: string;
+  paymentDate: string;
   bankName: string;
   bankBranch: string;
+  accountNumber: string;
+  transactionId: string;
   // File uploads
   receiptFile: File | null;
   proofOfPaymentFile: File | null;
@@ -21,11 +21,11 @@ interface PaymentMethodFieldFactoryProps {
   // Notes
   notes: string;
   // Handlers
-  onPaymentReferenceTypeChange: (type: 'cheque_no' | 'utr_no') => void;
-  onPaymentReferenceNumberChange: (value: string) => void;
-  onTransferDateChange: (value: string) => void;
+  onPaymentDateChange: (value: string) => void;
   onBankNameChange: (value: string) => void;
   onBankBranchChange: (value: string) => void;
+  onAccountNumberChange: (value: string) => void;
+  onTransactionIdChange: (value: string) => void;
   onReceiptFileChange: (file: File | null) => void;
   onProofOfPaymentFileChange: (file: File | null) => void;
   onTransactionScreenshotFileChange: (file: File | null) => void;
@@ -36,20 +36,20 @@ interface PaymentMethodFieldFactoryProps {
 export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps> = ({
   selectedMethod,
   amountPaid,
-  paymentReferenceType,
-  paymentReferenceNumber,
-  transferDate,
+  paymentDate,
   bankName,
   bankBranch,
+  accountNumber,
+  transactionId,
   receiptFile,
   proofOfPaymentFile,
   transactionScreenshotFile,
   notes,
-  onPaymentReferenceTypeChange,
-  onPaymentReferenceNumberChange,
-  onTransferDateChange,
+  onPaymentDateChange,
   onBankNameChange,
   onBankBranchChange,
+  onAccountNumberChange,
+  onTransactionIdChange,
   onReceiptFileChange,
   onProofOfPaymentFileChange,
   onTransactionScreenshotFileChange,
@@ -71,20 +71,37 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
         );
       
       case 'bank_transfer':
+        return (
+          <BankTransferFields
+            paymentDate={paymentDate}
+            bankName={bankName}
+            bankBranch={bankBranch}
+            accountNumber={accountNumber}
+            transactionId={transactionId}
+            proofOfPaymentFile={proofOfPaymentFile}
+            onPaymentDateChange={onPaymentDateChange}
+            onBankNameChange={onBankNameChange}
+            onBankBranchChange={onBankBranchChange}
+            onAccountNumberChange={onAccountNumberChange}
+            onTransactionIdChange={onTransactionIdChange}
+            onProofOfPaymentFileChange={onProofOfPaymentFileChange}
+          />
+        );
+      
       case 'cheque':
         return (
           <BankTransferFields
-            paymentReferenceType={paymentReferenceType}
-            paymentReferenceNumber={paymentReferenceNumber}
-            transferDate={transferDate}
+            paymentDate={paymentDate}
             bankName={bankName}
             bankBranch={bankBranch}
+            accountNumber={accountNumber}
+            transactionId={transactionId}
             proofOfPaymentFile={proofOfPaymentFile}
-            onPaymentReferenceTypeChange={onPaymentReferenceTypeChange}
-            onPaymentReferenceNumberChange={onPaymentReferenceNumberChange}
-            onTransferDateChange={onTransferDateChange}
+            onPaymentDateChange={onPaymentDateChange}
             onBankNameChange={onBankNameChange}
             onBankBranchChange={onBankBranchChange}
+            onAccountNumberChange={onAccountNumberChange}
+            onTransactionIdChange={onTransactionIdChange}
             onProofOfPaymentFileChange={onProofOfPaymentFileChange}
           />
         );
@@ -110,10 +127,10 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
   };
 
   return (
-    <div className="space-y-4 border-t pt-4">
+    <div className="space-y-6">
       {renderMethodFields()}
       
-      {/* Notes Field (Common for all methods) */}
+      {/* Notes Field */}
       <NotesField
         notes={notes}
         onNotesChange={onNotesChange}

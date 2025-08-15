@@ -27,28 +27,10 @@ export interface StudentPayment {
   id: string;
   student_id: string;
   cohort_id: string;
-  payment_type: 'admission_fee' | 'semester_fee' | 'installment_fee' | 'other';
-  payment_plan?: PaymentPlan;
-  installment_number?: number;
-  semester_number?: number;
-  base_amount: number;
-  scholarship_amount: number;
-  discount_amount: number;
-  gst_amount: number;
-  amount_payable: number;
-  amount_paid: number;
-  due_date: string;
-  payment_date?: string;
-  status: PaymentStatus;
-  receipt_url?: string;
-  notes?: string;
+  payment_plan: PaymentPlan;
+  scholarship_id?: string;
   created_at: string;
   updated_at: string;
-  total_amount_paid: number;
-  remaining_amount: number;
-  partial_payment_count: number;
-  last_payment_date?: string;
-  payment_completion_percentage: number;
   student?: Student;
 }
 
@@ -125,7 +107,6 @@ export interface PaymentPlanUpdate {
   cohortId: string;
   paymentPlan: PaymentPlan;
   scholarshipId?: string;
-  forceUpdate: boolean;
 }
 
 export interface PaymentPlanUpdateResult {
@@ -152,7 +133,7 @@ export interface PaymentRecord {
   receipt_url?: string;
   notes?: string;
   reference_number?: string;
-  payment_method: string;
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
   submitted_by: string;
   submitted_at: string;
 }
@@ -161,9 +142,9 @@ export interface PaymentRecord {
 export interface TransactionRecord {
   payment_id: string;
   amount: number;
-  payment_method: string;
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
   reference_number?: string;
-  status: string;
+  status: 'success' | 'failed' | 'pending';
   notes?: string;
   receipt_url?: string;
   submitted_by: string;

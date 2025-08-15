@@ -93,8 +93,9 @@ export const calculateOneShotPayment = (
   // Base amount is the remaining base fee (GST exclusive)
   const baseAmount = remainingBaseFee;
   
-  // Step 1: Calculate one-shot discount on base amount (GST exclusive)
-  const oneShotDiscount = calculateOneShotDiscount(baseAmount, discountPercentage);
+  // Step 1: Calculate one-shot discount on TOTAL PROGRAM FEE (GST exclusive)
+  // This ensures the discount is calculated on the full program fee, not just the remaining amount
+  const oneShotDiscount = calculateOneShotDiscount(totalProgramFee, discountPercentage);
   
   // Step 2: Calculate amount after one-shot discount
   const amountAfterDiscount = baseAmount - oneShotDiscount;

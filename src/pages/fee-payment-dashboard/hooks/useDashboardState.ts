@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Logger } from '@/lib/logging/Logger';
 import { StudentPaymentSummary } from '@/types/fee';
+import { exportPaymentData } from '@/utils/exportUtils';
 
 export const useDashboardState = () => {
   const navigate = useNavigate();
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentPaymentSummary | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('payments');
 
@@ -20,11 +20,11 @@ export const useDashboardState = () => {
   };
 
   const handleStudentSelect = (student: StudentPaymentSummary) => {
-    setSelectedStudent(student);
+    // No longer needed since we're using modal instead of sidebar
   };
 
   const handleCloseStudentDetails = () => {
-    setSelectedStudent(null);
+    // No longer needed since we're using modal instead of sidebar
   };
 
   const handleRowSelection = (studentId: string, isSelected: boolean) => {
@@ -46,18 +46,23 @@ export const useDashboardState = () => {
     }
   };
 
-  const handleExportSelected = () => {
-    if (selectedRows.size === 0) {
-      toast.error('Please select at least one student to export');
+  const handleExportSelected = (students: StudentPaymentSummary[]) => {
+    if (students.length === 0) {
+      toast.error('No students to export');
       return;
     }
-    // TODO: Implement export functionality
-    toast.info(`Exporting ${selectedRows.size} selected students`);
+
+    try {
+      exportPaymentData(students, { format: 'csv' });
+      toast.success(`Successfully exported ${students.length} student(s)`);
+    } catch (error) {
+      Logger.getInstance().error('Export failed', { error });
+      toast.error('Failed to export data');
+    }
   };
 
   return {
     settingsModalOpen,
-    selectedStudent,
     selectedRows,
     activeTab,
     setSettingsModalOpen,
