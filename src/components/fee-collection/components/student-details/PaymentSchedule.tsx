@@ -146,42 +146,53 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
           verificationStatus
         });
       } else if (student.payment_plan === 'sem_wise') {
-        // Add semester-wise payments
-        feeReview.semesters.forEach((semester, index) => {
-          const semesterAmount = semester.total.totalPayable;
-          
-          // Find transactions that match this semester's amount
-          const matchingTransactions = transactions.filter(t => 
-            Math.abs(Number(t.amount) - semesterAmount) < 1 // Allow for small rounding differences
-          );
-          
-          const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
-            t.verification_status === 'approved'
-          );
-          const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
-            t.verification_status === 'verification_pending'
-          );
-
-          let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-          let verificationStatus: string | undefined = undefined;
-
-          if (hasMatchingApprovedTransaction) {
-            status = 'paid';
-          } else if (hasMatchingVerificationPendingTransaction) {
-            status = 'verification_pending';
-            verificationStatus = 'verification_pending';
-          }
-
-          schedule.push({
-            id: `semester_${index + 1}`,
-            type: `Program Fee (Semester ${index + 1})`,
-            amount: semesterAmount,
-            dueDate: semester.instalments[0]?.paymentDate || new Date().toISOString(),
-            status,
-            paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
-            verificationStatus
-          });
+              // Add semester-wise payments
+      feeReview.semesters.forEach((semester, index) => {
+        const semesterAmount = semester.total.totalPayable;
+        
+        // Debug logging
+        console.log(`Semester ${index + 1} calculation:`, {
+          semesterAmount,
+          transactions: transactions.map(t => ({ amount: t.amount, status: t.verification_status })),
+          totalTransactions: transactions.length
         });
+        
+        // Find transactions that match this semester's amount
+        const matchingTransactions = transactions.filter(t => 
+          Math.abs(Number(t.amount) - semesterAmount) < 1 // Allow for small rounding differences
+        );
+        
+        console.log(`Semester ${index + 1} matching transactions:`, matchingTransactions);
+        
+        const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
+          t.verification_status === 'approved'
+        );
+        const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
+          t.verification_status === 'verification_pending'
+        );
+
+        let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
+        let verificationStatus: string | undefined = undefined;
+
+        if (hasMatchingApprovedTransaction) {
+          status = 'paid';
+        } else if (hasMatchingVerificationPendingTransaction) {
+          status = 'verification_pending';
+          verificationStatus = 'verification_pending';
+        }
+
+        console.log(`Semester ${index + 1} final status:`, status);
+
+        schedule.push({
+          id: `semester_${index + 1}`,
+          type: `Program Fee (Semester ${index + 1})`,
+          amount: semesterAmount,
+          dueDate: semester.instalments[0]?.paymentDate || new Date().toISOString(),
+          status,
+          paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
+          verificationStatus
+        });
+      });
       } else if (student.payment_plan === 'instalment_wise') {
         // Add installment-wise payments
         let installmentIndex = 1;
