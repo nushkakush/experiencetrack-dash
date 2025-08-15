@@ -82,7 +82,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
       );
 
       // Fetch payment transactions to check verification status
-      let transactions: any[] = [];
+      let transactions: Array<{ verification_status?: string; amount?: string | number }> = [];
       // Ensure we have a payment_id; fall back to querying by student/cohort if not provided
       let paymentId: string | undefined = student.student_payment_id as string | undefined;
       if (!paymentId) {
@@ -149,20 +149,25 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
         // Add semester-wise payments
         feeReview.semesters.forEach((semester, index) => {
           const semesterAmount = semester.total.totalPayable;
-          const hasAnyTransaction = transactions.length > 0;
-          const hasApprovedTransaction = transactions.some(t => 
+          
+          // Find transactions that match this semester's amount
+          const matchingTransactions = transactions.filter(t => 
+            Math.abs(Number(t.amount) - semesterAmount) < 1 // Allow for small rounding differences
+          );
+          
+          const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
             t.verification_status === 'approved'
           );
-          const hasVerificationPendingTransaction = transactions.some(t => 
+          const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
             t.verification_status === 'verification_pending'
           );
 
           let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
           let verificationStatus: string | undefined = undefined;
 
-          if (hasApprovedTransaction) {
+          if (hasMatchingApprovedTransaction) {
             status = 'paid';
-          } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
+          } else if (hasMatchingVerificationPendingTransaction) {
             status = 'verification_pending';
             verificationStatus = 'verification_pending';
           }
@@ -173,7 +178,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
             amount: semesterAmount,
             dueDate: semester.instalments[0]?.paymentDate || new Date().toISOString(),
             status,
-            paymentDate: hasApprovedTransaction ? new Date().toISOString() : undefined,
+            paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
             verificationStatus
           });
         });
@@ -182,20 +187,26 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
         let installmentIndex = 1;
         feeReview.semesters.forEach((semester) => {
           semester.instalments.forEach((installment) => {
-            const hasAnyTransaction = transactions.length > 0;
-            const hasApprovedTransaction = transactions.some(t => 
+            const installmentAmount = installment.amountPayable;
+            
+            // Find transactions that match this installment's amount
+            const matchingTransactions = transactions.filter(t => 
+              Math.abs(Number(t.amount) - installmentAmount) < 1 // Allow for small rounding differences
+            );
+            
+            const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
               t.verification_status === 'approved'
             );
-            const hasVerificationPendingTransaction = transactions.some(t => 
+            const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
               t.verification_status === 'verification_pending'
             );
 
             let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
             let verificationStatus: string | undefined = undefined;
 
-            if (hasApprovedTransaction) {
+            if (hasMatchingApprovedTransaction) {
               status = 'paid';
-            } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
+            } else if (hasMatchingVerificationPendingTransaction) {
               status = 'verification_pending';
               verificationStatus = 'verification_pending';
             }
@@ -203,10 +214,10 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
             schedule.push({
               id: `installment_${installmentIndex}`,
               type: `Program Fee (Instalment ${installmentIndex})`,
-              amount: installment.amountPayable,
+              amount: installmentAmount,
               dueDate: installment.paymentDate,
               status,
-              paymentDate: hasApprovedTransaction ? new Date().toISOString() : undefined,
+              paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
               verificationStatus
             });
             installmentIndex++;
