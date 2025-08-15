@@ -47,269 +47,183 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
     }
 
     try {
-      // Use the centralized payments array from StudentPaymentSummary
-      const payments = student.payments || [];
+      // Always generate the complete payment structure using centralized fee calculation
+      const completeSchedule = await generateCompletePaymentStructure();
       
-      // If no payments data is available, fall back to the old method
-      if (payments.length === 0) {
-        console.warn('No payments data available in StudentPaymentSummary, falling back to manual calculation');
-        return await calculatePaymentScheduleFallback();
-      }
-
-      const schedule: PaymentScheduleItem[] = [];
-
-      // Add admission fee (always first) - always marked as paid since student is registered
-      schedule.push({
-        id: 'admission_fee',
-        type: 'Admission Fee',
-        amount: 10000, // Admission fee is typically 10,000
-        dueDate: new Date().toISOString(),
-        status: 'paid',
-        paymentDate: new Date().toISOString()
-      });
-
-      // Add program fee installments based on payment plan
-      if (student.payment_plan === 'one_shot') {
-        // Find the one-shot payment
-        const oneShotPayment = payments.find(p => p.payment_type === 'program_fee');
-        
-        if (oneShotPayment) {
-          schedule.push({
-            id: 'program_fee_one_shot',
-            type: 'Program Fee (One-Shot)',
-            amount: oneShotPayment.amount_payable,
-            dueDate: oneShotPayment.due_date,
-            status: oneShotPayment.status as 'pending' | 'verification_pending' | 'paid',
-            paymentDate: oneShotPayment.payment_date,
-            verificationStatus: oneShotPayment.status === 'verification_pending' ? 'verification_pending' : undefined
-          });
-        }
-      } else if (student.payment_plan === 'sem_wise') {
-        // Add semester-wise payments
-        payments
-          .filter(p => p.payment_type === 'program_fee')
-          .forEach((payment, index) => {
-            schedule.push({
-              id: `semester_${index + 1}`,
-              type: `Program Fee (Semester ${index + 1})`,
-              amount: payment.amount_payable,
-              dueDate: payment.due_date,
-              status: payment.status as 'pending' | 'verification_pending' | 'paid',
-              paymentDate: payment.payment_date,
-              verificationStatus: payment.status === 'verification_pending' ? 'verification_pending' : undefined
-            });
-          });
-      } else if (student.payment_plan === 'instalment_wise') {
-        // Add installment-wise payments
-        payments
-          .filter(p => p.payment_type === 'program_fee')
-          .forEach((payment, index) => {
-            schedule.push({
-              id: `installment_${index + 1}`,
-              type: `Program Fee (Instalment ${index + 1})`,
-              amount: payment.amount_payable,
-              dueDate: payment.due_date,
-              status: payment.status as 'pending' | 'verification_pending' | 'paid',
-              paymentDate: payment.payment_date,
-              verificationStatus: payment.status === 'verification_pending' ? 'verification_pending' : undefined
-            });
-          });
-      }
-
-      return schedule;
+      // Merge with existing transaction data to update statuses
+      const mergedSchedule = await mergeWithTransactionData(completeSchedule);
+      
+      return mergedSchedule;
     } catch (error) {
       console.error('Error calculating payment schedule:', error);
       return [];
     }
   };
 
-  // Fallback method for when payments array is not available
-  const calculatePaymentScheduleFallback = async (): Promise<PaymentScheduleItem[]> => {
-    try {
-      // Fetch fee structure for the cohort
-      const { data: feeStructure } = await supabase
-        .from('fee_structures')
-        .select('*')
+  // Generate complete payment structure using centralized fee calculation
+  const generateCompletePaymentStructure = async (): Promise<PaymentScheduleItem[]> => {
+    // Fetch fee structure for the cohort
+    const { data: feeStructure } = await supabase
+      .from('fee_structures')
+      .select('*')
+      .eq('cohort_id', student.student?.cohort_id)
+      .single();
+
+    if (!feeStructure) {
+      throw new Error('Fee structure not found');
+    }
+
+    // Fetch scholarships
+    const { data: scholarships } = await supabase
+      .from('scholarships')
+      .select('*')
+      .eq('cohort_id', student.student?.cohort_id);
+
+    // Fetch cohort data for start date
+    const { data: cohortData } = await supabase
+      .from('cohorts')
+      .select('start_date')
+      .eq('id', student.student?.cohort_id)
+      .single();
+
+    // Generate fee structure review to get complete payment breakdown
+    const feeReview = generateFeeStructureReview(
+      feeStructure,
+      scholarships || [],
+      student.payment_plan,
+      0, // test score
+      cohortData?.start_date || new Date().toISOString(),
+      student.scholarship_id
+    );
+
+    const schedule: PaymentScheduleItem[] = [];
+
+    // Add admission fee (always first) - always marked as paid since student is registered
+    schedule.push({
+      id: 'admission_fee',
+      type: 'Admission Fee',
+      amount: feeStructure.admission_fee,
+      dueDate: cohortData?.start_date || new Date().toISOString(),
+      status: 'paid',
+      paymentDate: new Date().toISOString()
+    });
+
+    // Add program fee installments based on payment plan
+    if (student.payment_plan === 'one_shot') {
+      const programFeeAmount = feeReview.overallSummary.totalAmountPayable - feeStructure.admission_fee;
+      
+      schedule.push({
+        id: 'program_fee_one_shot',
+        type: 'Program Fee (One-Shot)',
+        amount: programFeeAmount,
+        dueDate: cohortData?.start_date || new Date().toISOString(),
+        status: 'pending', // Will be updated by mergeWithTransactionData
+        paymentDate: undefined,
+        verificationStatus: undefined
+      });
+    } else if (student.payment_plan === 'sem_wise') {
+      // Add all semester-wise payments (including future ones)
+      feeReview.semesters.forEach((semester, index) => {
+        const semesterAmount = semester.total.totalPayable;
+        const dueDate = semester.instalments[0]?.paymentDate || new Date().toISOString();
+        
+        schedule.push({
+          id: `semester_${index + 1}`,
+          type: `Program Fee (Semester ${index + 1})`,
+          amount: semesterAmount,
+          dueDate: dueDate,
+          status: 'pending', // Will be updated by mergeWithTransactionData
+          paymentDate: undefined,
+          verificationStatus: undefined
+        });
+      });
+    } else if (student.payment_plan === 'instalment_wise') {
+      // Add all installment-wise payments (including future ones)
+      let installmentIndex = 1;
+      feeReview.semesters.forEach((semester) => {
+        semester.instalments.forEach((installment) => {
+          schedule.push({
+            id: `installment_${installmentIndex}`,
+            type: `Program Fee (Instalment ${installmentIndex})`,
+            amount: installment.amountPayable,
+            dueDate: installment.paymentDate,
+            status: 'pending', // Will be updated by mergeWithTransactionData
+            paymentDate: undefined,
+            verificationStatus: undefined
+          });
+          installmentIndex++;
+        });
+      });
+    }
+
+    return schedule;
+  };
+
+  // Merge complete payment structure with transaction data to update statuses
+  const mergeWithTransactionData = async (completeSchedule: PaymentScheduleItem[]): Promise<PaymentScheduleItem[]> => {
+    // Fetch payment transactions to check verification status
+    let transactions: Array<{ verification_status?: string; amount?: string | number }> = [];
+    
+    // Ensure we have a payment_id; fall back to querying by student/cohort if not provided
+    let paymentId: string | undefined = student.student_payment_id as string | undefined;
+    if (!paymentId) {
+      const { data: paymentRecord } = await supabase
+        .from('student_payments')
+        .select('id')
+        .eq('student_id', student.student_id)
         .eq('cohort_id', student.student?.cohort_id)
         .single();
+      paymentId = paymentRecord?.id;
+    }
+    
+    if (paymentId) {
+      const transactionResponse = await paymentTransactionService.getByPaymentId(paymentId);
+      if (transactionResponse.success && transactionResponse.data) {
+        transactions = transactionResponse.data;
+      }
+    }
 
-      if (!feeStructure) {
-        throw new Error('Fee structure not found');
+    // Update schedule items with transaction data
+    return completeSchedule.map(scheduleItem => {
+      // Skip admission fee - it's always paid
+      if (scheduleItem.id === 'admission_fee') {
+        return scheduleItem;
       }
 
-      // Fetch scholarships
-      const { data: scholarships } = await supabase
-        .from('scholarships')
-        .select('*')
-        .eq('cohort_id', student.student?.cohort_id);
-
-      // Fetch cohort data for start date
-      const { data: cohortData } = await supabase
-        .from('cohorts')
-        .select('start_date')
-        .eq('id', student.student?.cohort_id)
-        .single();
-
-      // Generate fee structure review to get payment breakdown
-      const feeReview = generateFeeStructureReview(
-        feeStructure,
-        scholarships || [],
-        student.payment_plan,
-        0, // test score
-        cohortData?.start_date || new Date().toISOString(),
-        student.scholarship_id
+      // Find transactions that match this payment's amount
+      const matchingTransactions = transactions.filter(t => 
+        Math.abs(Number(t.amount) - scheduleItem.amount) < 1 // Allow for small rounding differences
       );
 
-      // Fetch payment transactions to check verification status
-      let transactions: Array<{ verification_status?: string; amount?: string | number }> = [];
-      // Ensure we have a payment_id; fall back to querying by student/cohort if not provided
-      let paymentId: string | undefined = student.student_payment_id as string | undefined;
-      if (!paymentId) {
-        const { data: paymentRecord } = await supabase
-          .from('student_payments')
-          .select('id')
-          .eq('student_id', student.student_id)
-          .eq('cohort_id', student.student?.cohort_id)
-          .single();
-        paymentId = paymentRecord?.id;
-      }
-      if (paymentId) {
-        const transactionResponse = await paymentTransactionService.getByPaymentId(paymentId);
-        if (transactionResponse.success && transactionResponse.data) {
-          transactions = transactionResponse.data;
-        }
-      }
+      const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
+        t.verification_status === 'approved'
+      );
+      const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
+        t.verification_status === 'verification_pending'
+      );
 
-      const schedule: PaymentScheduleItem[] = [];
+      let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
+      let verificationStatus: string | undefined = undefined;
+      let paymentDate: string | undefined = undefined;
 
-      // Add admission fee (always first) - always marked as paid since student is registered
-      schedule.push({
-        id: 'admission_fee',
-        type: 'Admission Fee',
-        amount: feeStructure.admission_fee,
-        dueDate: cohortData?.start_date || new Date().toISOString(),
-        status: 'paid',
-        paymentDate: new Date().toISOString()
-      });
-
-      // Add program fee installments based on payment plan
-      if (student.payment_plan === 'one_shot') {
-        const programFeeAmount = feeReview.overallSummary.totalAmountPayable - feeStructure.admission_fee;
-        
-        // Check for transactions and their verification status
-        const hasAnyTransaction = transactions.length > 0;
-        const hasApprovedTransaction = transactions.some(t => 
-          t.verification_status === 'approved'
-        );
-        const hasVerificationPendingTransaction = transactions.some(t => 
-          t.verification_status === 'verification_pending'
-        );
-
-        let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-        let verificationStatus: string | undefined = undefined;
-
-        if (hasApprovedTransaction) {
-          status = 'paid';
-        } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
-          status = 'verification_pending';
-          verificationStatus = 'verification_pending';
-        }
-
-        schedule.push({
-          id: 'program_fee_one_shot',
-          type: 'Program Fee (One-Shot)',
-          amount: programFeeAmount,
-          dueDate: cohortData?.start_date || new Date().toISOString(),
-          status,
-          paymentDate: hasApprovedTransaction ? new Date().toISOString() : undefined,
-          verificationStatus
-        });
-      } else if (student.payment_plan === 'sem_wise') {
-        // Add semester-wise payments
-        feeReview.semesters.forEach((semester, index) => {
-          const semesterAmount = semester.total.totalPayable;
-          
-          // Find transactions that match this semester's amount
-          const matchingTransactions = transactions.filter(t => 
-            Math.abs(Number(t.amount) - semesterAmount) < 1 // Allow for small rounding differences
-          );
-          
-          const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
-            t.verification_status === 'approved'
-          );
-          const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
-            t.verification_status === 'verification_pending'
-          );
-
-          let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-          let verificationStatus: string | undefined = undefined;
-
-          if (hasMatchingApprovedTransaction) {
-            status = 'paid';
-          } else if (hasMatchingVerificationPendingTransaction) {
-            status = 'verification_pending';
-            verificationStatus = 'verification_pending';
-          }
-
-          schedule.push({
-            id: `semester_${index + 1}`,
-            type: `Program Fee (Semester ${index + 1})`,
-            amount: semesterAmount,
-            dueDate: semester.instalments[0]?.paymentDate || new Date().toISOString(),
-            status,
-            paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
-            verificationStatus
-          });
-        });
-      } else if (student.payment_plan === 'instalment_wise') {
-        // Add installment-wise payments
-        let installmentIndex = 1;
-        feeReview.semesters.forEach((semester) => {
-          semester.instalments.forEach((installment) => {
-            const installmentAmount = installment.amountPayable;
-            
-            // Find transactions that match this installment's amount
-            const matchingTransactions = transactions.filter(t => 
-              Math.abs(Number(t.amount) - installmentAmount) < 1 // Allow for small rounding differences
-            );
-            
-            const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
-              t.verification_status === 'approved'
-            );
-            const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
-              t.verification_status === 'verification_pending'
-            );
-
-            let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-            let verificationStatus: string | undefined = undefined;
-
-            if (hasMatchingApprovedTransaction) {
-              status = 'paid';
-            } else if (hasMatchingVerificationPendingTransaction) {
-              status = 'verification_pending';
-              verificationStatus = 'verification_pending';
-            }
-
-            schedule.push({
-              id: `installment_${installmentIndex}`,
-              type: `Program Fee (Instalment ${installmentIndex})`,
-              amount: installmentAmount,
-              dueDate: installment.paymentDate,
-              status,
-              paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
-              verificationStatus
-            });
-            installmentIndex++;
-          });
-        });
+      if (hasMatchingApprovedTransaction) {
+        status = 'paid';
+        paymentDate = new Date().toISOString(); // Use current date as payment date
+      } else if (hasMatchingVerificationPendingTransaction) {
+        status = 'verification_pending';
+        verificationStatus = 'verification_pending';
       }
 
-      return schedule;
-    } catch (error) {
-      console.error('Error calculating payment schedule:', error);
-      return [];
-    }
+      return {
+        ...scheduleItem,
+        status,
+        paymentDate,
+        verificationStatus
+      };
+    });
   };
+
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
