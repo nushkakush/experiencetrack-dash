@@ -314,10 +314,8 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
               return total;
             }, 0)
           : 0;
-        const admissionTotal = Number(
-          (paymentBreakdown.admissionFee as any)?.totalPayable ?? 0
-        );
-        let paidCursor = Math.max(0, aggregatePaidAll - admissionTotal);
+        // Don't subtract admission fee - the payment is for the semester fee
+        let paidCursor = aggregatePaidAll;
 
         return paymentBreakdown.semesters?.map((semester: DatabaseSemester) => {
         const isCompleted = isSemesterCompleted(semester);
