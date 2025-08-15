@@ -183,6 +183,9 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
       }
     }
 
+    console.log('Debug - Transactions found:', transactions);
+    console.log('Debug - Complete schedule before merge:', completeSchedule);
+
     // Update schedule items with transaction data
     return completeSchedule.map(scheduleItem => {
       // Skip admission fee - it's always paid
@@ -194,6 +197,8 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
       const matchingTransactions = transactions.filter(t => 
         Math.abs(Number(t.amount) - scheduleItem.amount) < 1 // Allow for small rounding differences
       );
+
+      console.log(`Debug - ${scheduleItem.id}: amount=${scheduleItem.amount}, matching transactions:`, matchingTransactions);
 
       const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
         t.verification_status === 'approved'
@@ -213,6 +218,8 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
         status = 'verification_pending';
         verificationStatus = 'verification_pending';
       }
+
+      console.log(`Debug - ${scheduleItem.id}: final status = ${status}`);
 
       return {
         ...scheduleItem,
