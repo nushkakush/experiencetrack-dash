@@ -184,12 +184,24 @@ export class PaymentQueryService {
           gst_amount: 0,
           amount_payable: parseFloat(transaction.amount || '0'),
           amount_paid:
-            transaction.status === 'success'
+            transaction.verification_status === 'approved'
               ? parseFloat(transaction.amount || '0')
               : 0,
           due_date: transaction.payment_date || transaction.created_at,
           payment_date: transaction.payment_date,
-          status: transaction.status === 'success' ? 'paid' : 'pending',
+          status: (() => {
+            // Map verification_status to payment status
+            switch (transaction.verification_status) {
+              case 'approved':
+                return 'paid';
+              case 'verification_pending':
+                return 'verification_pending';
+              case 'rejected':
+                return 'pending';
+              default:
+                return 'pending';
+            }
+          })(),
           receipt_url:
             transaction.receipt_url || transaction.proof_of_payment_url,
           notes: transaction.notes,
