@@ -184,24 +184,12 @@ export class PaymentQueryService {
           gst_amount: 0,
           amount_payable: parseFloat(transaction.amount || '0'),
           amount_paid:
-            transaction.verification_status === 'approved'
+            transaction.status === 'success'
               ? parseFloat(transaction.amount || '0')
               : 0,
           due_date: transaction.payment_date || transaction.created_at,
           payment_date: transaction.payment_date,
-          status: (() => {
-            // Map verification_status to payment status
-            switch (transaction.verification_status) {
-              case 'approved':
-                return 'paid';
-              case 'verification_pending':
-                return 'verification_pending';
-              case 'rejected':
-                return 'pending';
-              default:
-                return 'pending';
-            }
-          })(),
+          status: transaction.status === 'success' ? 'paid' : 'pending',
           receipt_url:
             transaction.receipt_url || transaction.proof_of_payment_url,
           notes: transaction.notes,
@@ -215,19 +203,35 @@ export class PaymentQueryService {
           student_payment_id: studentPayment.id,
           total_amount: (() => {
             // Calculate total amount from payment transactions
-            const totalTransactions = studentTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            const totalTransactions = studentTransactions.reduce(
+              (sum, t) => sum + parseFloat(t.amount || '0'),
+              0
+            );
             return totalTransactions;
           })(),
           paid_amount: (() => {
             // Calculate paid amount from approved transactions only
-            const approvedTransactions = studentTransactions.filter(t => t.verification_status === 'approved');
-            return approvedTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            const approvedTransactions = studentTransactions.filter(
+              t => t.verification_status === 'approved'
+            );
+            return approvedTransactions.reduce(
+              (sum, t) => sum + parseFloat(t.amount || '0'),
+              0
+            );
           })(),
           pending_amount: (() => {
             // Calculate pending amount (total - paid)
-            const totalTransactions = studentTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
-            const approvedTransactions = studentTransactions.filter(t => t.verification_status === 'approved');
-            const paidAmount = approvedTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
+            const totalTransactions = studentTransactions.reduce(
+              (sum, t) => sum + parseFloat(t.amount || '0'),
+              0
+            );
+            const approvedTransactions = studentTransactions.filter(
+              t => t.verification_status === 'approved'
+            );
+            const paidAmount = approvedTransactions.reduce(
+              (sum, t) => sum + parseFloat(t.amount || '0'),
+              0
+            );
             return Math.max(0, totalTransactions - paidAmount);
           })(),
           overdue_amount: 0, // TODO: Calculate overdue amount

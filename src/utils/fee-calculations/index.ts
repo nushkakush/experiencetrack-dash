@@ -1,16 +1,21 @@
 /**
  * Fee calculation utilities - Main entry point
- * 
+ *
  * This module provides a unified interface for all fee-related calculations.
  * It combines functionality from specialized modules:
  * - GST calculations
- * - Scholarship calculations  
+ * - Scholarship calculations
  * - Payment plan calculations
  * - Semester calculations
  * - Date calculations (NEW - unified date utilities)
  */
 
-import { FeeStructure, Scholarship, PaymentPlan, FeeStructureReview } from '@/types/fee';
+import {
+  FeeStructure,
+  Scholarship,
+  PaymentPlan,
+  FeeStructureReview,
+} from '@/types/fee';
 
 // Import all calculation modules
 export * from './gst';
@@ -20,10 +25,27 @@ export * from './semesters';
 export * from './dateUtils'; // NEW - unified date utilities
 
 // Re-export commonly used functions for backward compatibility
-import { calculateGST, extractGSTFromTotal, extractBaseAmountFromTotal } from './gst';
-import { calculateScholarshipAmount, validateScholarshipRanges } from './scholarships';
-import { calculateOneShotDiscount, calculateTotalPayable, getInstalmentDistribution, calculateOneShotPayment, calculateSemesterPayment } from './payment-plans';
-import { calculateAdmissionFee, calculateSemesterFee, generateSemesterPaymentDates } from './semesters';
+import {
+  calculateGST,
+  extractGSTFromTotal,
+  extractBaseAmountFromTotal,
+} from './gst';
+import {
+  calculateScholarshipAmount,
+  validateScholarshipRanges,
+} from './scholarships';
+import {
+  calculateOneShotDiscount,
+  calculateTotalPayable,
+  getInstalmentDistribution,
+  calculateOneShotPayment,
+  calculateSemesterPayment,
+} from './payment-plans';
+import {
+  calculateAdmissionFee,
+  calculateSemesterFee,
+  generateSemesterPaymentDates,
+} from './semesters';
 import { generateSemesterPaymentDates as generateUnifiedSemesterPaymentDates } from './dateUtils';
 
 /**
@@ -39,16 +61,20 @@ export const generateFeeStructureReview = (
   selectedScholarshipId?: string,
   additionalScholarshipPercentage: number = 0
 ): FeeStructureReview => {
-  const selectedScholarship = selectedScholarshipId 
+  const selectedScholarship = selectedScholarshipId
     ? scholarships.find(s => s.id === selectedScholarshipId)
     : null;
-  
+
   // Calculate scholarship amount from base scholarship PLUS any additional percentage
-  const baseScholarshipPercentage = selectedScholarship ? (selectedScholarship.amount_percentage || 0) : 0;
-  const totalScholarshipPercentage = baseScholarshipPercentage + (additionalScholarshipPercentage || 0);
-  const scholarshipAmount = Math.round(
-    feeStructure.total_program_fee * (totalScholarshipPercentage / 100) * 100
-  ) / 100;
+  const baseScholarshipPercentage = selectedScholarship
+    ? selectedScholarship.amount_percentage || 0
+    : 0;
+  const totalScholarshipPercentage =
+    baseScholarshipPercentage + (additionalScholarshipPercentage || 0);
+  const scholarshipAmount =
+    Math.round(
+      feeStructure.total_program_fee * (totalScholarshipPercentage / 100) * 100
+    ) / 100;
 
   // Remove debug log to clean up console
   // console.log('generateFeeStructureReview - Scholarship calculation:', {
@@ -59,17 +85,18 @@ export const generateFeeStructureReview = (
   //   scholarshipAmount,
   //   numberOfSemesters: feeStructure.number_of_semesters
   // });
-  
+
   // Calculate admission fee
   const admissionFee = calculateAdmissionFee(feeStructure.admission_fee);
-  
+
   // Calculate semesters based on payment plan
   const semesters = [];
   if (paymentPlan === 'sem_wise' || paymentPlan === 'instalment_wise') {
     // For semester plan, use 1 installment per semester
     // For installment plan, use the configured installments per semester
-    const installmentsPerSemester = paymentPlan === 'sem_wise' ? 1 : feeStructure.instalments_per_semester;
-    
+    const installmentsPerSemester =
+      paymentPlan === 'sem_wise' ? 1 : feeStructure.instalments_per_semester;
+
     for (let i = 1; i <= feeStructure.number_of_semesters; i++) {
       const semesterInstallments = calculateSemesterPayment(
         i,
@@ -81,24 +108,39 @@ export const generateFeeStructureReview = (
         scholarshipAmount,
         0 // No one-shot discount for semester payments
       );
-      
+
       // Calculate semester totals
       const semesterTotal = {
-        scholarshipAmount: semesterInstallments.reduce((sum, inst) => sum + inst.scholarshipAmount, 0),
-        baseAmount: semesterInstallments.reduce((sum, inst) => sum + inst.baseAmount, 0),
-        gstAmount: semesterInstallments.reduce((sum, inst) => sum + inst.gstAmount, 0),
-        discountAmount: semesterInstallments.reduce((sum, inst) => sum + inst.discountAmount, 0),
-        totalPayable: semesterInstallments.reduce((sum, inst) => sum + inst.amountPayable, 0)
+        scholarshipAmount: semesterInstallments.reduce(
+          (sum, inst) => sum + inst.scholarshipAmount,
+          0
+        ),
+        baseAmount: semesterInstallments.reduce(
+          (sum, inst) => sum + inst.baseAmount,
+          0
+        ),
+        gstAmount: semesterInstallments.reduce(
+          (sum, inst) => sum + inst.gstAmount,
+          0
+        ),
+        discountAmount: semesterInstallments.reduce(
+          (sum, inst) => sum + inst.discountAmount,
+          0
+        ),
+        totalPayable: semesterInstallments.reduce(
+          (sum, inst) => sum + inst.amountPayable,
+          0
+        ),
       };
-      
+
       semesters.push({
         semesterNumber: i,
         instalments: semesterInstallments,
-        total: semesterTotal
+        total: semesterTotal,
       });
     }
   }
-  
+
   // Calculate one-shot payment if applicable
   let oneShotPayment = null;
   if (paymentPlan === 'one_shot') {
@@ -110,49 +152,53 @@ export const generateFeeStructureReview = (
       cohortStartDate
     );
   }
-  
+
   // Calculate overall summary
-  const admissionFeeBase = extractBaseAmountFromTotal(feeStructure.admission_fee);
+  const admissionFeeBase = extractBaseAmountFromTotal(
+    feeStructure.admission_fee
+  );
   const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
-  
-  // For overall summary: show the total program fee as the base amount (GST exclusive)
-  const totalBaseAmount = feeStructure.total_program_fee;
-  
-  // Step 1: Calculate one-shot discount on base amount (GST exclusive)
-  const totalDiscount = paymentPlan === 'one_shot' 
-    ? calculateOneShotDiscount(totalBaseAmount, feeStructure.one_shot_discount_percentage)
-    : 0;
-  
-  // Step 2: Calculate amount after one-shot discount
-  const amountAfterDiscount = totalBaseAmount - totalDiscount;
-  
-  // Step 3: Apply scholarship to the amount after discount
-  const amountAfterScholarship = amountAfterDiscount - scholarshipAmount;
-  
-  // Step 4: Calculate GST on the amount after scholarship and discount
-  const totalBaseGST = calculateGST(amountAfterScholarship);
-  
-  // Step 5: Calculate final payable amount
-  const totalAmountPayable = amountAfterScholarship + totalBaseGST;
-  
+
+  // For overall summary: calculate based on actual semester totals to ensure consistency
+  // This ensures the overall summary matches the sum of individual semesters
+  const totalSemesterAmount = semesters.reduce(
+    (sum, semester) => sum + semester.total.totalPayable,
+    0
+  );
+  const totalSemesterGST = semesters.reduce(
+    (sum, semester) => sum + semester.total.gstAmount,
+    0
+  );
+  const totalSemesterScholarship = semesters.reduce(
+    (sum, semester) => sum + semester.total.scholarshipAmount,
+    0
+  );
+  const totalSemesterDiscount = semesters.reduce(
+    (sum, semester) => sum + semester.total.discountAmount,
+    0
+  );
+
+  // Calculate total amount payable as admission fee + semester totals
+  const totalAmountPayable = feeStructure.admission_fee + totalSemesterAmount;
+
   return {
     admissionFee: {
       baseAmount: admissionFeeBase,
       scholarshipAmount: 0,
       discountAmount: 0,
       gstAmount: admissionFeeGST,
-      totalPayable: feeStructure.admission_fee
+      totalPayable: feeStructure.admission_fee,
     },
     semesters,
     oneShotPayment,
     overallSummary: {
-      totalProgramFee: totalBaseAmount,
+      totalProgramFee: feeStructure.total_program_fee,
       admissionFee: feeStructure.admission_fee,
-      totalGST: totalBaseGST,
-      totalDiscount,
-      totalScholarship: scholarshipAmount,
-      totalAmountPayable: Math.max(0, totalAmountPayable)
-    }
+      totalGST: totalSemesterGST + admissionFeeGST,
+      totalDiscount: totalSemesterDiscount,
+      totalScholarship: totalSemesterScholarship,
+      totalAmountPayable: Math.max(0, totalAmountPayable),
+    },
   };
 };
 
