@@ -230,7 +230,193 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
     });
   };
 
+  // Fallback method for when payments array is not available
+  const calculatePaymentScheduleFallback = async (): Promise<PaymentScheduleItem[]> => {
+    try {
+      // Fetch fee structure for the cohort
+      const { data: feeStructure } = await supabase
+        .from('fee_structures')
+        .select('*')
+        .eq('cohort_id', student.student?.cohort_id)
+        .single();
 
+      if (!feeStructure) {
+        throw new Error('Fee structure not found');
+      }
+
+      // Fetch scholarships
+      const { data: scholarships } = await supabase
+        .from('scholarships')
+        .select('*')
+        .eq('cohort_id', student.student?.cohort_id);
+
+      // Fetch cohort data for start date
+      const { data: cohortData } = await supabase
+        .from('cohorts')
+        .select('start_date')
+        .eq('id', student.student?.cohort_id)
+        .single();
+
+      // Generate fee structure review to get payment breakdown
+      const feeReview = generateFeeStructureReview(
+        feeStructure,
+        scholarships || [],
+        student.payment_plan,
+        0, // test score
+        cohortData?.start_date || new Date().toISOString(),
+        student.scholarship_id
+      );
+
+      // Fetch payment transactions to check verification status
+      let transactions: Array<{ verification_status?: string; amount?: string | number }> = [];
+      // Ensure we have a payment_id; fall back to querying by student/cohort if not provided
+      let paymentId: string | undefined = student.student_payment_id as string | undefined;
+      if (!paymentId) {
+        const { data: paymentRecord } = await supabase
+          .from('student_payments')
+          .select('id')
+          .eq('student_id', student.student_id)
+          .eq('cohort_id', student.student?.cohort_id)
+          .single();
+        paymentId = paymentRecord?.id;
+      }
+      if (paymentId) {
+        const transactionResponse = await paymentTransactionService.getByPaymentId(paymentId);
+        if (transactionResponse.success && transactionResponse.data) {
+          transactions = transactionResponse.data;
+        }
+      }
+
+      const schedule: PaymentScheduleItem[] = [];
+
+      // Add admission fee (always first) - always marked as paid since student is registered
+      schedule.push({
+        id: 'admission_fee',
+        type: 'Admission Fee',
+        amount: feeStructure.admission_fee,
+        dueDate: cohortData?.start_date || new Date().toISOString(),
+        status: 'paid',
+        paymentDate: new Date().toISOString()
+      });
+
+      // Add program fee installments based on payment plan
+      if (student.payment_plan === 'one_shot') {
+        const programFeeAmount = feeReview.overallSummary.totalAmountPayable - feeStructure.admission_fee;
+        
+        // Check for transactions and their verification status
+        const hasAnyTransaction = transactions.length > 0;
+        const hasApprovedTransaction = transactions.some(t => 
+          t.verification_status === 'approved'
+        );
+        const hasVerificationPendingTransaction = transactions.some(t => 
+          t.verification_status === 'verification_pending'
+        );
+
+        let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
+        let verificationStatus: string | undefined = undefined;
+
+        if (hasApprovedTransaction) {
+          status = 'paid';
+        } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
+          status = 'verification_pending';
+          verificationStatus = 'verification_pending';
+        }
+
+        schedule.push({
+          id: 'program_fee_one_shot',
+          type: 'Program Fee (One-Shot)',
+          amount: programFeeAmount,
+          dueDate: cohortData?.start_date || new Date().toISOString(),
+          status,
+          paymentDate: hasApprovedTransaction ? new Date().toISOString() : undefined,
+          verificationStatus
+        });
+      } else if (student.payment_plan === 'sem_wise') {
+        // Add semester-wise payments
+        feeReview.semesters.forEach((semester, index) => {
+          const semesterAmount = semester.total.totalPayable;
+          
+          // Find transactions that match this semester's amount
+          const matchingTransactions = transactions.filter(t => 
+            Math.abs(Number(t.amount) - semesterAmount) < 1 // Allow for small rounding differences
+          );
+          
+          const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
+            t.verification_status === 'approved'
+          );
+          const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
+            t.verification_status === 'verification_pending'
+          );
+
+          let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
+          let verificationStatus: string | undefined = undefined;
+
+          if (hasMatchingApprovedTransaction) {
+            status = 'paid';
+          } else if (hasMatchingVerificationPendingTransaction) {
+            status = 'verification_pending';
+            verificationStatus = 'verification_pending';
+          }
+
+          schedule.push({
+            id: `semester_${index + 1}`,
+            type: `Program Fee (Semester ${index + 1})`,
+            amount: semesterAmount,
+            dueDate: semester.instalments[0]?.paymentDate || new Date().toISOString(),
+            status,
+            paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
+            verificationStatus
+          });
+        });
+      } else if (student.payment_plan === 'instalment_wise') {
+        // Add installment-wise payments
+        let installmentIndex = 1;
+        feeReview.semesters.forEach((semester) => {
+          semester.instalments.forEach((installment) => {
+            const installmentAmount = installment.amountPayable;
+            
+            // Find transactions that match this installment's amount
+            const matchingTransactions = transactions.filter(t => 
+              Math.abs(Number(t.amount) - installmentAmount) < 1 // Allow for small rounding differences
+            );
+            
+            const hasMatchingApprovedTransaction = matchingTransactions.some(t => 
+              t.verification_status === 'approved'
+            );
+            const hasMatchingVerificationPendingTransaction = matchingTransactions.some(t => 
+              t.verification_status === 'verification_pending'
+            );
+
+            let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
+            let verificationStatus: string | undefined = undefined;
+
+            if (hasMatchingApprovedTransaction) {
+              status = 'paid';
+            } else if (hasMatchingVerificationPendingTransaction) {
+              status = 'verification_pending';
+              verificationStatus = 'verification_pending';
+            }
+
+            schedule.push({
+              id: `installment_${installmentIndex}`,
+              type: `Program Fee (Instalment ${installmentIndex})`,
+              amount: installmentAmount,
+              dueDate: installment.paymentDate,
+              status,
+              paymentDate: hasMatchingApprovedTransaction ? new Date().toISOString() : undefined,
+              verificationStatus
+            });
+            installmentIndex++;
+          });
+        });
+      }
+
+      return schedule;
+    } catch (error) {
+      console.error('Error calculating payment schedule:', error);
+      return [];
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -326,39 +512,86 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({ student }) => 
     <>
       <div>
         {paymentSchedule.length > 0 ? (
-          <div className="space-y-3">
-            {paymentSchedule.map((item) => (
-              <div key={item.id} className="border border-border rounded-lg p-4 bg-card">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-medium text-sm text-foreground">
-                    {item.type}
-                  </span>
-                  {getStatusBadge(item.status, item.verificationStatus)}
-                </div>
-                
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Amount Payable:</span>
-                    <span className="text-foreground">{formatCurrency(item.amount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Due:</span>
-                    <span className="text-foreground">{formatDate(item.dueDate)}</span>
-                  </div>
-                  {item.paymentDate && (
-                    <div className="flex justify-between">
-                      <span>Paid:</span>
-                      <span className="text-foreground">{formatDate(item.paymentDate)}</span>
+          <div className="space-y-6">
+            {/* Completed/In Progress Payments Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Completed & In Progress Payments</h3>
+              <div className="space-y-3">
+                {paymentSchedule
+                  .filter(item => item.status === 'paid' || item.status === 'verification_pending')
+                  .map((item) => (
+                    <div key={item.id} className="border border-border rounded-lg p-4 bg-card">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-sm text-foreground">
+                          {item.type}
+                        </span>
+                        {getStatusBadge(item.status, item.verificationStatus)}
+                      </div>
+                      
+                      <div className="space-y-2 text-xs text-muted-foreground">
+                        <div className="flex justify-between">
+                          <span>Amount Payable:</span>
+                          <span className="text-foreground">{formatCurrency(item.amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Due:</span>
+                          <span className="text-foreground">{formatDate(item.dueDate)}</span>
+                        </div>
+                        {item.paymentDate && (
+                          <div className="flex justify-between">
+                            <span>Paid:</span>
+                            <span className="text-foreground">{formatDate(item.paymentDate)}</span>
+                          </div>
+                        )}
+                        {item.verificationStatus === 'verification_pending' && (
+                          <div className="text-yellow-600 text-xs mt-2">
+                            Payment proof submitted, awaiting verification
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {item.verificationStatus === 'verification_pending' && (
-                    <div className="text-yellow-600 text-xs mt-2">
-                      Payment proof submitted, awaiting verification
-                    </div>
-                  )}
-                </div>
+                  ))}
               </div>
-            ))}
+            </div>
+
+            {/* Future Payments Section */}
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <Separator className="flex-1" />
+                <h3 className="text-sm font-semibold text-muted-foreground">Future Payments</h3>
+                <Separator className="flex-1" />
+              </div>
+              <div className="space-y-3">
+                {paymentSchedule
+                  .filter(item => item.status === 'pending')
+                  .map((item) => (
+                    <div key={item.id} className="border border-border rounded-lg p-4 bg-card">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-sm text-foreground">
+                          {item.type}
+                        </span>
+                        {getStatusBadge(item.status, item.verificationStatus)}
+                      </div>
+                      
+                      <div className="space-y-2 text-xs text-muted-foreground">
+                        <div className="flex justify-between">
+                          <span>Amount Payable:</span>
+                          <span className="text-foreground">{formatCurrency(item.amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Due:</span>
+                          <span className="text-foreground">{formatDate(item.dueDate)}</span>
+                        </div>
+                        {item.verificationStatus === 'verification_pending' && (
+                          <div className="text-yellow-600 text-xs mt-2">
+                            Payment proof submitted, awaiting verification
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-8">
