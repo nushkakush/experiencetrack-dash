@@ -140,8 +140,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ student }) =
         }
       }
 
-      // Calculate paid amount (includes admission fee since student is registered)
-      const paidAmount = verifiedPayments + admissionFee;
+      // Calculate paid amount (only from verified transactions)
+      const paidAmount = verifiedPayments;
       const pendingAmount = Math.max(0, totalAmount - paidAmount);
       const progressPercentage = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
 
