@@ -248,19 +248,22 @@ const generateFeeStructureReview = async (
   selectedScholarshipId: string | null | undefined,
   additionalScholarshipPercentage: number,
   cohortStartDateOverride?: string,
+  studentId?: string,
 ): Promise<Breakdown> => {
   // Load fee structure and scholarships
   // Prefer a custom structure if one exists for this cohort (simple heuristic; client can pass student later)
   let feeStructure: any | null = null;
-  const { data: customFs } = await supabase
-    .from('fee_structures')
-    .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type,student_id')
-    .eq('cohort_id', cohortId)
-    .eq('structure_type', 'custom')
-    .maybeSingle();
-  if (customFs && customFs.student_id) {
-    feeStructure = customFs;
-  } else {
+  if (studentId) {
+    const { data: customFsExact } = await supabase
+      .from('fee_structures')
+      .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type,student_id')
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'custom')
+      .eq('student_id', studentId)
+      .maybeSingle();
+    if (customFsExact) feeStructure = customFsExact;
+  }
+  if (!feeStructure) {
     const { data: cohortFs, error: fsErr2 } = await supabase
       .from('fee_structures')
       .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type')
@@ -554,6 +557,7 @@ serve(async (req) => {
       effectiveScholarshipId,
       additionalDiscountPercentage || 0,
       startDate,
+      studentId,
     );
 
     if (action === "breakdown") {
