@@ -50,6 +50,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
   const [rejectionReason, setRejectionReason] = React.useState('');
   const [showRejectDialog, setShowRejectDialog] = React.useState(false);
   const [currentTransaction, setCurrentTransaction] = React.useState<PaymentTransactionRow | null>(null);
+  const [customPlanOpen, setCustomPlanOpen] = React.useState(false);
 
   const fetchTransactions = async () => {
     if (!student || !student.student_id) return;
@@ -141,6 +142,16 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
           <Eye className='h-4 w-4' />
         </Button>
         <Button
+          variant='outline'
+          size='sm'
+          onClick={e => {
+            e.stopPropagation();
+            setCustomPlanOpen(true);
+          }}
+        >
+          Set Custom Plan
+        </Button>
+        <Button
           variant='ghost'
           size='sm'
           onClick={async e => {
@@ -166,6 +177,21 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       </div>
 
       {/* Student Details Modal */}
+      {/* Placeholder Custom Plan Dialog (UI only; save wired later) */}
+      <Dialog open={customPlanOpen} onOpenChange={setCustomPlanOpen}>
+        <DialogContent className='max-w-2xl' aria-describedby='custom-plan-description'>
+          <DialogHeader>
+            <DialogTitle>Set Custom Payment Plan</DialogTitle>
+          </DialogHeader>
+          <div id='custom-plan-description' className='sr-only'>Create a custom payment plan for this student</div>
+          <div className='text-sm text-muted-foreground'>
+            This will create a custom fee structure for this student in this cohort. Dates and plan will be editable in the next iteration.
+          </div>
+          <DialogFooter>
+            <Button variant='secondary' onClick={() => setCustomPlanOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <StudentDetailsModal
         student={student}
         open={studentDetailsOpen}
