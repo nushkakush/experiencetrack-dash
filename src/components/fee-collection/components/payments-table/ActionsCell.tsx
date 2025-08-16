@@ -289,8 +289,79 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
                       </div>
                     </div>
 
+                    {/* Payment Proof Images */}
+                    {(t.transaction_screenshot_url || t.proof_of_payment_url || t.receipt_url) && (
+                      <div className='space-y-3'>
+                        <h4 className='text-sm font-medium text-muted-foreground'>Payment Proof</h4>
+                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                          {t.transaction_screenshot_url && (
+                            <div className='space-y-2'>
+                              <p className='text-xs font-medium text-muted-foreground'>Transaction Screenshot</p>
+                              <div className='relative group'>
+                                <img
+                                  src={t.transaction_screenshot_url}
+                                  alt='Transaction Screenshot'
+                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
+                                  onClick={() => window.open(t.transaction_screenshot_url, '_blank')}
+                                />
+                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
+                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {t.proof_of_payment_url && (
+                            <div className='space-y-2'>
+                              <p className='text-xs font-medium text-muted-foreground'>Payment Proof</p>
+                              <div className='relative group'>
+                                <img
+                                  src={t.proof_of_payment_url}
+                                  alt='Payment Proof'
+                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
+                                  onClick={() => window.open(t.proof_of_payment_url, '_blank')}
+                                />
+                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
+                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {t.receipt_url && (
+                            <div className='space-y-2'>
+                              <p className='text-xs font-medium text-muted-foreground'>Receipt</p>
+                              <div className='relative group'>
+                                <img
+                                  src={t.receipt_url}
+                                  alt='Receipt'
+                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
+                                  onClick={() => window.open(t.receipt_url, '_blank')}
+                                />
+                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
+                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className='flex items-center gap-3'>
+                      {t.transaction_screenshot_url && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='flex-1'
+                          onClick={() => window.open(t.transaction_screenshot_url, '_blank')}
+                        >
+                          <ExternalLink className='h-4 w-4 mr-2' />
+                          View Screenshot
+                        </Button>
+                      )}
+                      
                       {t.proof_of_payment_url && (
                         <Button
                           variant='outline'
