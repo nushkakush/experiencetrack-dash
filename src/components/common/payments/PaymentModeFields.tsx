@@ -10,6 +10,7 @@ import {
   PaymentDetails,
   FormErrors
 } from '@/types/components/PaymentFormTypes';
+import { logger } from '@/lib/logging/Logger';
 
 export interface PaymentModeFieldsProps {
   paymentMode: string;
@@ -30,12 +31,26 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
   onRemoveFile,
   errors
 }) => {
+  const [scanQrError, setScanQrError] = React.useState(false);
+  const SCAN_QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';
+
   const handleFieldChange = (fieldName: string, value: string) => {
     onPaymentDetailsChange({
       ...paymentDetails,
       [fieldName]: value
     });
   };
+
+  React.useEffect(() => {
+    if (paymentMode === 'scan_to_pay') {
+      logger.info('Scan to Pay selected UI rendering', {
+        component: 'PaymentModeFields',
+        timestamp: new Date().toISOString()
+      });
+      // Also emit a console for quick visibility
+      console.info('[ScanToPay] Selected - rendering QR section');
+    }
+  }, [paymentMode]);
 
   const handleFileUpload = (fieldName: string, file: File | null) => {
     if (file) {
@@ -224,31 +239,33 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
       return (
         <div className="space-y-4">
           {/* Static QR for Scan to Pay */}
-          {(() => {
-            const QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';
-            const [qrError, setQrError] = React.useState(false);
-            return (
-              <div className="p-4 border rounded-lg bg-muted/50">
-                <h4 className="font-medium text-sm mb-2">Scan this QR to pay</h4>
-                <div className="mt-2 p-4 bg-background rounded-lg border text-center">
-                  {qrError ? (
-                    <div className="w-56 h-56 mx-auto bg-muted rounded-lg flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground">QR unavailable</span>
-                    </div>
-                  ) : (
-                    <img
-                      src={QR_IMAGE_URL}
-                      alt="Scan to Pay QR code"
-                      loading="lazy"
-                      className="mx-auto rounded-md shadow-sm border w-56 h-56 object-contain bg-white"
-                      onError={() => setQrError(true)}
-                    />
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">Open your UPI app and scan the QR</p>
+          <div className="p-4 border rounded-lg bg-muted/50">
+            <h4 className="font-medium text-sm mb-2">Scan this QR to pay</h4>
+            <div className="mt-2 p-4 bg-background rounded-lg border text-center">
+              {scanQrError ? (
+                <div className="w-56 h-56 mx-auto bg-muted rounded-lg flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground">QR unavailable</span>
                 </div>
-              </div>
-            );
-          })()}
+              ) : (
+                <img
+                  src={SCAN_QR_IMAGE_URL}
+                  alt="Scan to Pay QR code"
+                  loading="lazy"
+                  className="mx-auto rounded-md shadow-sm border w-56 h-56 object-contain bg-white"
+                  onLoad={() => {
+                    logger.info('Scan to Pay QR image loaded', { src: SCAN_QR_IMAGE_URL });
+                    console.info('[ScanToPay] QR image loaded');
+                  }}
+                  onError={() => {
+                    setScanQrError(true);
+                    logger.error('Scan to Pay QR image failed to load', { src: SCAN_QR_IMAGE_URL });
+                    console.error('[ScanToPay] QR image failed to load');
+                  }}
+                />
+              )}
+              <p className="text-xs text-muted-foreground mt-2">Open your UPI app and scan the QR</p>
+            </div>
+          </div>
 
           <div>
             <Label htmlFor="qrCode">UPI QR Code *</Label>
