@@ -223,6 +223,33 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
     case 'scan_to_pay':
       return (
         <div className="space-y-4">
+          {/* Static QR for Scan to Pay */}
+          {(() => {
+            const QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';
+            const [qrError, setQrError] = React.useState(false);
+            return (
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium text-sm mb-2">Scan this QR to pay</h4>
+                <div className="mt-2 p-4 bg-background rounded-lg border text-center">
+                  {qrError ? (
+                    <div className="w-56 h-56 mx-auto bg-muted rounded-lg flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground">QR unavailable</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={QR_IMAGE_URL}
+                      alt="Scan to Pay QR code"
+                      loading="lazy"
+                      className="mx-auto rounded-md shadow-sm border w-56 h-56 object-contain bg-white"
+                      onError={() => setQrError(true)}
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">Open your UPI app and scan the QR</p>
+                </div>
+              </div>
+            );
+          })()}
+
           <div>
             <Label htmlFor="qrCode">UPI QR Code *</Label>
             <Input
