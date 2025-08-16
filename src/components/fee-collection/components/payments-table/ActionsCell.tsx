@@ -155,6 +155,27 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
           Set Custom Plan
         </Button>
         <Button
+          variant='outline'
+          size='sm'
+          onClick={async e => {
+            e.stopPropagation();
+            try {
+              const cohortId = String(student.student?.cohort_id);
+              const studentId = String(student.student_id);
+              const ok = await FeeStructureService.deleteCustomPlan(cohortId, studentId);
+              if (ok) {
+                toast.success('Reverted to cohort plan for this student');
+              } else {
+                toast.error('No custom plan found or failed to revert');
+              }
+            } catch {
+              toast.error('Failed to revert to cohort plan');
+            }
+          }}
+        >
+          Revert to Cohort Plan
+        </Button>
+        <Button
           variant='ghost'
           size='sm'
           onClick={async e => {
