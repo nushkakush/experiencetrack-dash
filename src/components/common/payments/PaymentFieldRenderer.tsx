@@ -31,6 +31,44 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(({
 }) => {
   // Render custom components
   const renderCustomComponent = () => {
+    // Check if this is scan_to_pay mode by looking at the config fields
+    const isScanToPay = config.fields.some(field => field.name === 'qrCode') && 
+                       config.fields.some(field => field.name === 'payerUpiId');
+    
+    if (isScanToPay) {
+      const SCAN_QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';
+      console.info('[PaymentFieldRenderer] Rendering scan_to_pay QR code');
+      
+      return (
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+          <h4 className="font-medium text-sm mb-2">Scan this QR to pay</h4>
+          <div className="mt-2 p-4 bg-background rounded-lg border text-center">
+            <img
+              src={SCAN_QR_IMAGE_URL}
+              alt="Scan to Pay QR code"
+              loading="lazy"
+              className="mx-auto rounded-md shadow-sm border w-56 h-56 object-contain bg-white"
+              onLoad={() => {
+                console.info('[PaymentFieldRenderer] Scan to Pay QR image loaded');
+              }}
+              onError={(e) => {
+                console.error('[PaymentFieldRenderer] Scan to Pay QR image failed to load');
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement('div');
+                  fallback.className = 'w-56 h-56 mx-auto flex items-center justify-center bg-gray-100 rounded-lg';
+                  fallback.innerHTML = '<span class="text-xs text-gray-500">QR Code unavailable</span>';
+                  parent.appendChild(fallback);
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground mt-2">Open your UPI app and scan the QR</p>
+          </div>
+        </div>
+      );
+    }
+    
     if (config.ui?.customComponent === 'QRCodeDisplay') {
       return (
         <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
