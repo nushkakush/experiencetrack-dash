@@ -235,16 +235,6 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
     icon: CreditCard,
     fields: [
       {
-        name: 'qrCode',
-        label: 'UPI QR Code',
-        type: 'text',
-        placeholder: 'Enter UPI QR Code',
-        required: true,
-        validation: {
-          message: 'UPI QR Code is required'
-        }
-      },
-      {
         name: 'paymentDate',
         label: 'Payment Date',
         type: 'date',
@@ -274,7 +264,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       }
     ],
     validation: {
-      required: ['qrCode', 'paymentDate', 'payerUpiId'],
+      required: ['paymentDate', 'payerUpiId'],
       files: ['scanToPayScreenshot']
     }
   }

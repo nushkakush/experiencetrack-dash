@@ -32,8 +32,8 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(({
   // Render custom components
   const renderCustomComponent = () => {
     // Check if this is scan_to_pay mode by looking at the config fields
-    const isScanToPay = config.fields.some(field => field.name === 'qrCode') && 
-                       config.fields.some(field => field.name === 'payerUpiId');
+    const isScanToPay = config.fields.some(field => field.name === 'payerUpiId') && 
+                       config.fileUploads.some(upload => upload.name === 'scanToPayScreenshot');
     
     if (isScanToPay) {
       const SCAN_QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';

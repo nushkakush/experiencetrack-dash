@@ -10,7 +10,6 @@ interface PaymentDetails {
   accountNumber?: string;
   paymentDate?: string;
   chequeNumber?: string;
-  qrCode?: string;
   payerUpiId?: string;
   [key: string]: any; // For any additional fields
 }
@@ -94,7 +93,7 @@ export const getRequiredFieldsForMode = (mode: string): string[] => {
     case 'cheque':
       return ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'];
     case 'scan_to_pay':
-      return ['qrCode', 'paymentDate', 'payerUpiId'];
+      return ['paymentDate', 'payerUpiId'];
     case 'razorpay':
       return []; // No additional fields required for Razorpay
     default:
