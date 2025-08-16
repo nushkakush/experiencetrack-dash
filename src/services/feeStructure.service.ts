@@ -76,6 +76,90 @@ export class FeeStructureService {
   }
 
   /**
+   * Create or replace a custom plan for a specific student by cloning the cohort plan
+   */
+  static async createCustomPlanFromCohort(cohortId: string, studentId: string): Promise<FeeStructure | null> {
+    try {
+      const { data: cohortFs, error: fsErr } = await supabase
+        .from('fee_structures')
+        .select('cohort_id, admission_fee, total_program_fee, number_of_semesters, instalments_per_semester, one_shot_discount_percentage')
+        .eq('cohort_id', cohortId)
+        .eq('structure_type', 'cohort')
+        .single();
+      if (fsErr || !cohortFs) {
+        Logger.getInstance().error('No cohort fee structure found to clone', { fsErr, cohortId, studentId });
+        return null;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from('fee_structures')
+        .upsert({
+          cohort_id: cohortId,
+          student_id: studentId,
+          structure_type: 'custom' as any,
+          admission_fee: cohortFs.admission_fee,
+          total_program_fee: cohortFs.total_program_fee,
+          number_of_semesters: cohortFs.number_of_semesters,
+          instalments_per_semester: cohortFs.instalments_per_semester,
+          one_shot_discount_percentage: cohortFs.one_shot_discount_percentage,
+          custom_dates_enabled: false,
+          payment_schedule_dates: {},
+          created_by: user?.id,
+        }, { onConflict: 'cohort_id,student_id' })
+        .select()
+        .single();
+
+      if (error) {
+        Logger.getInstance().error('Error upserting custom plan', { error, cohortId, studentId });
+        return null;
+      }
+      return data as FeeStructure;
+    } catch (error) {
+      Logger.getInstance().error('createCustomPlanFromCohort failed', { error, cohortId, studentId });
+      return null;
+    }
+  }
+
+  /** Update custom plan dates (and toggle enabled flag) */
+  static async updateCustomPlanDates(
+    cohortId: string,
+    studentId: string,
+    paymentScheduleDates: Record<string, unknown>,
+    enabled = true,
+  ): Promise<boolean> {
+    const { error } = await supabase
+      .from('fee_structures')
+      .update({
+        custom_dates_enabled: enabled,
+        payment_schedule_dates: paymentScheduleDates as any,
+      })
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'custom')
+      .eq('student_id', studentId);
+    if (error) {
+      Logger.getInstance().error('updateCustomPlanDates failed', { error, cohortId, studentId });
+      return false;
+    }
+    return true;
+  }
+
+  /** Delete a custom plan so student falls back to cohort plan */
+  static async deleteCustomPlan(cohortId: string, studentId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('fee_structures')
+      .delete()
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'custom')
+      .eq('student_id', studentId);
+    if (error) {
+      Logger.getInstance().error('deleteCustomPlan failed', { error, cohortId, studentId });
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Mark fee structure as complete
    */
   static async markFeeStructureComplete(cohortId: string): Promise<boolean> {

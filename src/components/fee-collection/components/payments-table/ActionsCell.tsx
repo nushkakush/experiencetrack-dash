@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
 import { StudentDetailsModal } from '@/components/fee-collection/StudentDetailsModal';
 import { useAuth } from '@/hooks/useAuth';
+import { FeeStructureService } from '@/services/feeStructure.service';
 
 interface ActionsCellProps {
   student: StudentPaymentSummary;
@@ -51,6 +52,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
   const [showRejectDialog, setShowRejectDialog] = React.useState(false);
   const [currentTransaction, setCurrentTransaction] = React.useState<PaymentTransactionRow | null>(null);
   const [customPlanOpen, setCustomPlanOpen] = React.useState(false);
+  const [savingCustom, setSavingCustom] = React.useState(false);
 
   const fetchTransactions = async () => {
     if (!student || !student.student_id) return;
@@ -189,6 +191,29 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
           </div>
           <DialogFooter>
             <Button variant='secondary' onClick={() => setCustomPlanOpen(false)}>Close</Button>
+            <Button
+              disabled={savingCustom}
+              onClick={async () => {
+                try {
+                  setSavingCustom(true);
+                  const cohortId = String(student.student?.cohort_id);
+                  const studentId = String(student.student_id);
+                  const res = await FeeStructureService.createCustomPlanFromCohort(cohortId, studentId);
+                  if (res) {
+                    toast.success('Custom plan created for the student');
+                    setCustomPlanOpen(false);
+                  } else {
+                    toast.error('Failed to create custom plan');
+                  }
+                } catch (e) {
+                  toast.error('Failed to create custom plan');
+                } finally {
+                  setSavingCustom(false);
+                }
+              }}
+            >
+              {savingCustom ? 'Saving…' : 'Create Custom Plan'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
