@@ -13,9 +13,10 @@ interface Step3ReviewProps {
   scholarships: Scholarship[];
   cohortStartDate: string;
   isReadOnly?: boolean;
+  onDatesChange?: (dates: Record<string, string>) => void;
 }
 
-export default function Step3Review({ feeStructure, scholarships, cohortStartDate, isReadOnly = false }: Step3ReviewProps) {
+export default function Step3Review({ feeStructure, scholarships, cohortStartDate, isReadOnly = false, onDatesChange }: Step3ReviewProps) {
   const {
     selectedPaymentPlan,
     selectedScholarshipId,
@@ -26,6 +27,11 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
     handleScholarshipSelect,
     handlePaymentPlanChange
   } = useFeeReview({ feeStructure, scholarships, cohortStartDate });
+
+  // Bubble up date edits to the setup layer so they can be saved as overrides
+  React.useEffect(() => {
+    onDatesChange?.(editablePaymentDates);
+  }, [editablePaymentDates, onDatesChange]);
 
   if (loading || !feeReview) {
     return (

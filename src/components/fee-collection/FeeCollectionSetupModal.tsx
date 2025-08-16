@@ -112,6 +112,7 @@ export default function FeeCollectionSetupModal({
             scholarships={scholarships}
             cohortStartDate={cohortStartDate}
             isReadOnly={isReadOnly}
+            onDatesChange={(dates) => updateState({ editedDates: dates as any })}
           />
         );
       default:
