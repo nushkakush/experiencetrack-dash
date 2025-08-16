@@ -53,6 +53,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
   const [currentTransaction, setCurrentTransaction] = React.useState<PaymentTransactionRow | null>(null);
   const [customPlanOpen, setCustomPlanOpen] = React.useState(false);
   const [savingCustom, setSavingCustom] = React.useState(false);
+  const [customDates, setCustomDates] = React.useState<Record<string, string>>({});
 
   const fetchTransactions = async () => {
     if (!student || !student.student_id) return;
@@ -186,8 +187,32 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
             <DialogTitle>Set Custom Payment Plan</DialogTitle>
           </DialogHeader>
           <div id='custom-plan-description' className='sr-only'>Create a custom payment plan for this student</div>
-          <div className='text-sm text-muted-foreground'>
-            This will create a custom fee structure for this student in this cohort. Dates and plan will be editable in the next iteration.
+          <div className='text-sm text-muted-foreground space-y-2'>
+            <p>This will create a custom fee structure for this student in this cohort.</p>
+            <div className='grid grid-cols-1 gap-2'>
+              {/* Minimal date editor (flat keys) */}
+              <div className='flex items-center gap-2'>
+                <Label className='w-40'>One-shot date</Label>
+                <input type='date' className='border rounded px-2 py-1'
+                  value={customDates['one-shot'] || ''}
+                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['one-shot']: e.target.value }))}
+                />
+              </div>
+              <div className='flex items-center gap-2'>
+                <Label className='w-40'>Semester 1 - Installment 1</Label>
+                <input type='date' className='border rounded px-2 py-1'
+                  value={customDates['semester-1-instalment-0'] || ''}
+                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['semester-1-instalment-0']: e.target.value }))}
+                />
+              </div>
+              <div className='flex items-center gap-2'>
+                <Label className='w-40'>Semester 1 - Installment 2</Label>
+                <input type='date' className='border rounded px-2 py-1'
+                  value={customDates['semester-1-instalment-1'] || ''}
+                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['semester-1-instalment-1']: e.target.value }))}
+                />
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant='secondary' onClick={() => setCustomPlanOpen(false)}>Close</Button>
@@ -200,8 +225,13 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
                   const studentId = String(student.student_id);
                   const res = await FeeStructureService.createCustomPlanFromCohort(cohortId, studentId);
                   if (res) {
+                    // Save dates if provided
+                    if (Object.keys(customDates).length > 0) {
+                      await FeeStructureService.updateCustomPlanDates(cohortId, studentId, customDates as any, true);
+                    }
                     toast.success('Custom plan created for the student');
                     setCustomPlanOpen(false);
+                    setCustomDates({});
                   } else {
                     toast.error('Failed to create custom plan');
                   }

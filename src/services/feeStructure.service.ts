@@ -144,6 +144,27 @@ export class FeeStructureService {
     return true;
   }
 
+  /** Update cohort plan dates (and toggle enabled flag) */
+  static async updateCohortPlanDates(
+    cohortId: string,
+    paymentScheduleDates: Record<string, unknown>,
+    enabled = true,
+  ): Promise<boolean> {
+    const { error } = await supabase
+      .from('fee_structures')
+      .update({
+        custom_dates_enabled: enabled,
+        payment_schedule_dates: paymentScheduleDates as any,
+      })
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort');
+    if (error) {
+      Logger.getInstance().error('updateCohortPlanDates failed', { error, cohortId });
+      return false;
+    }
+    return true;
+  }
+
   /** Delete a custom plan so student falls back to cohort plan */
   static async deleteCustomPlan(cohortId: string, studentId: string): Promise<boolean> {
     const { error } = await supabase

@@ -16,6 +16,7 @@ interface FeeCollectionSetupState {
   scholarships: Scholarship[];
   errors: Record<string, string>;
   isFeeStructureComplete: boolean;
+  editedDates: Record<string, string>;
 }
 
 export const useFeeCollectionSetup = ({ cohortId, onSetupComplete }: UseFeeCollectionSetupProps) => {
@@ -33,7 +34,8 @@ export const useFeeCollectionSetup = ({ cohortId, onSetupComplete }: UseFeeColle
     },
     scholarships: [],
     errors: {},
-    isFeeStructureComplete: false
+    isFeeStructureComplete: false,
+    editedDates: {}
   });
 
   const updateState = useCallback((updates: Partial<FeeCollectionSetupState>) => {
@@ -223,6 +225,10 @@ export const useFeeCollectionSetup = ({ cohortId, onSetupComplete }: UseFeeColle
       });
 
       await Promise.all(scholarshipPromises);
+      // Save cohort-level overrides if any
+      if (Object.keys(state.editedDates).length > 0) {
+        await FeeStructureService.updateCohortPlanDates(cohortId, state.editedDates as any, true);
+      }
       await FeeStructureService.markFeeStructureComplete(cohortId);
 
       toast.success('Fee structure setup completed successfully!');
@@ -241,7 +247,8 @@ export const useFeeCollectionSetup = ({ cohortId, onSetupComplete }: UseFeeColle
         },
         scholarships: [],
         errors: {},
-        isFeeStructureComplete: false
+        isFeeStructureComplete: false,
+        editedDates: {}
       });
     } catch (error) {
       console.error('Error saving fee structure:', error);
@@ -249,7 +256,7 @@ export const useFeeCollectionSetup = ({ cohortId, onSetupComplete }: UseFeeColle
     } finally {
       updateState({ saving: false });
     }
-  }, [state.feeStructureData, state.scholarships, cohortId, onSetupComplete, updateState]);
+  }, [state.feeStructureData, state.scholarships, state.editedDates, cohortId, onSetupComplete, updateState]);
 
   const resetForm = useCallback(() => {
     updateState({
