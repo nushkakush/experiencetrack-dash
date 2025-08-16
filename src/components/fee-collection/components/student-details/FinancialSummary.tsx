@@ -101,6 +101,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         .from('fee_structures')
         .select('*')
         .eq('cohort_id', student.student?.cohort_id)
+        .eq('structure_type', 'cohort')
         .maybeSingle();
 
       if (!feeStructure) {

@@ -55,11 +55,12 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     }
 
     try {
-      // Fetch fee structure for the cohort
+      // Fetch fee structure for the cohort (prefer custom if exists)
       const { data: feeStructure } = await supabase
         .from('fee_structures')
         .select('*')
         .eq('cohort_id', student.student?.cohort_id)
+        .eq('structure_type', 'cohort')
         .maybeSingle();
 
       if (!feeStructure) {
