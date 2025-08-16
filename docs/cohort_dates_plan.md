@@ -102,3 +102,78 @@ ALTER TABLE public.cohort_fee_structures
   ADD COLUMN IF NOT EXISTS custom_dates_enabled boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS payment_schedule_dates jsonb NOT NULL DEFAULT '{}';
 ```
+
+### Per-student Custom Payment Plan (from Cohort Dashboard)
+
+Goal
+- Allow admins to create a tailored payment plan for a specific student directly from the cohort dashboard (same place where scholarships are awarded).
+- Custom plans are stored in the SAME table as cohort plans and selected automatically for that student everywhere (admin and student views, submissions).
+
+Data model updates (same table: public.cohort_fee_structures)
+- Add a scope/type column and a student link:
+
+```sql
+-- Scope for fee structure rows
+DO $$ BEGIN
+  CREATE TYPE fee_structure_scope AS ENUM ('cohort','custom');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+ALTER TABLE public.cohort_fee_structures
+  ADD COLUMN IF NOT EXISTS structure_type fee_structure_scope NOT NULL DEFAULT 'cohort',
+  ADD COLUMN IF NOT EXISTS student_id uuid NULL REFERENCES public.cohort_students(id) ON DELETE CASCADE;
+
+-- Enforce correct nullability based on scope
+ALTER TABLE public.cohort_fee_structures
+  ADD CONSTRAINT IF NOT EXISTS cohort_fee_structures_student_scope_chk
+  CHECK ((structure_type = 'cohort' AND student_id IS NULL) OR (structure_type = 'custom' AND student_id IS NOT NULL));
+
+-- Uniqueness
+CREATE UNIQUE INDEX IF NOT EXISTS cohort_plan_unique
+  ON public.cohort_fee_structures(cohort_id)
+  WHERE structure_type = 'cohort';
+
+CREATE UNIQUE INDEX IF NOT EXISTS custom_plan_unique
+  ON public.cohort_fee_structures(cohort_id, student_id)
+  WHERE structure_type = 'custom';
+```
+
+Notes
+- All existing columns (admission_fee, total_program_fee, instalments_per_semester, payment_schedule_dates, custom_dates_enabled, etc.) apply to both scopes.
+- Partial overrides continue to work on both cohort and custom rows.
+
+Selection/Resolution logic (single source of truth)
+- Helper: `resolveFeeStructure(cohortId: uuid, studentId?: uuid)`
+  - If `studentId` provided: try `structure_type='custom'` for `(cohortId, studentId)`; if not found, fall back to cohort row for `cohortId`.
+  - If `studentId` not provided: return cohort row for `cohortId`.
+- After resolving the row, compute dynamic schedule and apply `mergeScheduleWithOverrides` if enabled.
+
+Client UI/flows
+- Cohort Dashboard → Students table row actions:
+  - Existing: Award Scholarship
+  - New: "Set Custom Plan"
+    - Opens `CustomFeePlanModal` prefilled from cohort plan; admin edits amounts/plan/dates.
+    - Save: upsert into `cohort_fee_structures` with `structure_type='custom'` and `student_id=<selected student>`.
+    - Provide action to "Revert to Cohort Plan" (delete custom row or set a soft flag if you prefer).
+- Everywhere we currently show schedules/amounts (student dashboard, admin previews), call `resolveFeeStructure(cohortId, studentId)` so the custom plan is automatically used when present.
+
+Edge Function
+- Request includes `cohortId` and optionally `studentId`.
+- Perform the same resolution logic:
+  - Prefer custom `(cohortId, studentId)` row; else fallback to cohort row.
+  - Compute dynamic schedule and apply overrides.
+- Returns merged schedule used for payments, breakdowns, etc.
+
+Validation & Rules
+- Only one custom plan per `(cohortId, studentId)` due to unique index.
+- RLS: allow `super_admin` & `fee_collector` create/update/delete custom rows; students can read only their custom/cohort plan via existing read policies.
+
+Testing additions
+- Resolution helper selects custom when present; cohort otherwise.
+- Custom plan save/edit/delete roundtrip from the cohort dashboard.
+- Edge Function returns custom/cohort appropriately for the same inputs.
+- Submission flow uses the right plan for the right student.
+
+SQL summary
+```sql
+-- New type + columns + constraints + indexes (see block above)
+```
