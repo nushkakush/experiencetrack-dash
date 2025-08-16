@@ -209,6 +209,38 @@ const calculateSemesterPayment = (
   return installments;
 };
 
+// Apply JSON overrides to dates (shallow merge by known keys)
+function applyDateOverrides(
+  plan: PaymentPlan,
+  startDate: string,
+  semesters: SemesterView[],
+  oneShotPayment: InstallmentView | undefined,
+  overrides: any,
+) {
+  try {
+    if (!overrides || typeof overrides !== 'object') return;
+    if (plan === 'one_shot' && oneShotPayment) {
+      const os = overrides?.one_shot;
+      if (os?.program_fee_due_date) oneShotPayment.paymentDate = os.program_fee_due_date;
+    }
+    if (plan === 'sem_wise' || plan === 'instalment_wise') {
+      const semJson = overrides?.sem_wise || overrides?.instalment_wise || overrides?.semesters;
+      if (semJson) {
+        semesters.forEach((s) => {
+          const key = `semester_${s.semesterNumber}`;
+          const semOverride = semJson[key] || semJson[s.semesterNumber] || semJson[`semester-${s.semesterNumber}`];
+          if (!semOverride) return;
+          s.instalments?.forEach((inst, idx) => {
+            const instKey = `installment_${idx + 1}`;
+            const value = semOverride[instKey] || semOverride[idx + 1] || semOverride[`installment-${idx + 1}`] || semOverride;
+            if (typeof value === 'string') inst.paymentDate = value;
+          });
+        });
+      }
+    }
+  } catch (_) {}
+}
+
 const generateFeeStructureReview = async (
   supabase: any,
   cohortId: string,
@@ -218,12 +250,26 @@ const generateFeeStructureReview = async (
   cohortStartDateOverride?: string,
 ): Promise<Breakdown> => {
   // Load fee structure and scholarships
-  const { data: feeStructure, error: fsErr } = await supabase
-    .from("fee_structures")
-    .select("cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage")
-    .eq("cohort_id", cohortId)
-    .single();
-  if (fsErr || !feeStructure) throw new Error("Fee structure not found");
+  // Prefer a custom structure if one exists for this cohort (simple heuristic; client can pass student later)
+  let feeStructure: any | null = null;
+  const { data: customFs } = await supabase
+    .from('fee_structures')
+    .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type,student_id')
+    .eq('cohort_id', cohortId)
+    .eq('structure_type', 'custom')
+    .maybeSingle();
+  if (customFs && customFs.student_id) {
+    feeStructure = customFs;
+  } else {
+    const { data: cohortFs, error: fsErr2 } = await supabase
+      .from('fee_structures')
+      .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type')
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort')
+      .single();
+    if (fsErr2 || !cohortFs) throw new Error('Fee structure not found');
+    feeStructure = cohortFs;
+  }
 
   // Load cohort for start_date
   const { data: cohort, error: cohErr } = await supabase
@@ -291,6 +337,11 @@ const generateFeeStructureReview = async (
       scholarshipAmount,
       startDate,
     );
+  }
+
+  // Apply overrides if enabled
+  if (feeStructure?.custom_dates_enabled) {
+    applyDateOverrides(paymentPlan, startDate, semesters, oneShotPayment, feeStructure?.payment_schedule_dates);
   }
 
   const totalSemesterAmount = semesters.reduce((sum, s) => sum + (s.total?.totalPayable || 0), 0);

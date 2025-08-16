@@ -4,6 +4,34 @@ import { Logger } from '@/lib/logging/Logger';
 
 export class FeeStructureService {
   /**
+   * Resolve fee structure for a cohort/student with override-awareness
+   * - If studentId provided, prefer custom row for that student; else fallback to cohort row
+   */
+  static async resolveFeeStructure(cohortId: string, studentId?: string): Promise<FeeStructure | null> {
+    try {
+      if (studentId) {
+        const { data: customFs, error: customErr } = await supabase
+          .from('fee_structures')
+          .select('*')
+          .eq('cohort_id', cohortId)
+          .eq('structure_type', 'custom')
+          .eq('student_id', studentId)
+          .maybeSingle();
+        if (!customErr && customFs) return customFs as FeeStructure;
+      }
+      const { data: cohortFs } = await supabase
+        .from('fee_structures')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .eq('structure_type', 'cohort')
+        .maybeSingle();
+      return (cohortFs as FeeStructure) || null;
+    } catch (error) {
+      Logger.getInstance().error('resolveFeeStructure failed', { error, cohortId, studentId });
+      return null;
+    }
+  }
+  /**
    * Get fee structure for a cohort
    */
   static async getFeeStructure(cohortId: string): Promise<FeeStructure | null> {
@@ -11,6 +39,7 @@ export class FeeStructureService {
       .from('fee_structures')
       .select('*')
       .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort')
       .maybeSingle();
 
     if (error) {
@@ -29,6 +58,8 @@ export class FeeStructureService {
       .from('fee_structures')
       .upsert({
         ...input,
+        // default to cohort scope for existing calls
+        structure_type: 'cohort' as any,
         created_by: (await supabase.auth.getUser()).data.user?.id
       }, {
         onConflict: 'cohort_id'
