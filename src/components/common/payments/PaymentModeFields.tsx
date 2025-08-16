@@ -34,6 +34,12 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
   const [scanQrError, setScanQrError] = React.useState(false);
   const SCAN_QR_IMAGE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/payment-modes/qr%20code.jpeg';
 
+  // Log component mount and payment mode changes
+  React.useEffect(() => {
+    console.info('[PaymentModeFields] Component mounted/updated', { paymentMode });
+    logger.info('PaymentModeFields component rendered', { paymentMode });
+  });
+
   const handleFieldChange = (fieldName: string, value: string) => {
     onPaymentDetailsChange({
       ...paymentDetails,
@@ -59,6 +65,9 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
       onRemoveFile(fieldName);
     }
   };
+
+  console.info('[PaymentModeFields] About to render payment mode:', paymentMode);
+  logger.info('PaymentModeFields rendering payment mode', { paymentMode });
 
   switch (paymentMode) {
     case 'bank_transfer':
@@ -236,6 +245,8 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
       );
 
     case 'scan_to_pay':
+      console.info('[PaymentModeFields] Rendering scan_to_pay case');
+      logger.info('PaymentModeFields rendering scan_to_pay case');
       return (
         <div className="space-y-4">
           {/* Static QR for Scan to Pay */}
