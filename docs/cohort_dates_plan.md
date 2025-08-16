@@ -79,13 +79,12 @@ Notes
 - JSON values must be ISO date strings (YYYY-MM-DD).
 - Admin overrides are not constrained by "future" rules; student payment submissions already enforce payment date ≤ today.
 
-### Backward Compatibility & Rollout
-- Default behavior unchanged (`custom_dates_enabled=false`).
+### Rollout (no backward compatibility needed)
+- Environment is test-only; we can roll forward without compatibility constraints.
 - Rollout order:
-  1) Schema (via MCP) → safe noop.
-  2) Client save + merge helper.
-  3) Edge Function reads overrides.
-- No backfill required.
+  1) Apply schema (via MCP).
+  2) Implement client save + merge helper and ship.
+  3) Update Edge Function to honor overrides.
 
 ### Testing
 - Unit: `mergeScheduleWithOverrides` (empty, partial, full overrides; invalid keys ignored).
