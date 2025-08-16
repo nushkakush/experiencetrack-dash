@@ -49,6 +49,15 @@ export const validatePaymentForm = (
     for (const field of requiredFields) {
       if (!paymentDetails[field]) {
         errors[field] = `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
+      } else if (field === 'paymentDate') {
+        // Validate payment date cannot be in the future
+        const paymentDate = new Date(paymentDetails[field]);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+        
+        if (paymentDate > today) {
+          errors[field] = 'Payment date cannot be in the future';
+        }
       }
     }
   }
@@ -82,6 +91,11 @@ export const formatCurrency = (amount: number): string => {
     style: 'currency',
     currency: 'INR',
   }).format(amount);
+};
+
+export const getTodayDateString = (): string => {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
 };
 
 export const getRequiredFieldsForMode = (mode: string): string[] => {

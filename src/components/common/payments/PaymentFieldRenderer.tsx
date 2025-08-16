@@ -11,6 +11,7 @@ import {
   PaymentDetails,
   FormErrors
 } from '@/types/components/PaymentFormTypes';
+import { getTodayDateString } from './PaymentFormValidation';
 
 interface PaymentFieldRendererProps {
   config: PaymentModeConfig;
@@ -140,6 +141,7 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(({
                   value={paymentDetails[field.name] || ''}
                   onChange={(e) => onFieldChange(field.name, e.target.value)}
                   className={errors[field.name] ? 'border-red-500' : ''}
+                  max={field.type === 'date' ? getTodayDateString() : undefined}
                 />
                 {errors[field.name] && (
                   <p className="text-sm text-red-500 mt-1">{errors[field.name]}</p>
