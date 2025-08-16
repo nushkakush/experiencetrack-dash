@@ -109,48 +109,72 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
     // For installment-wise payments, we need to determine which installment is next
     if (student.payment_plan === 'instalment_wise') {
       // Calculate which installment should be next based on total paid amount
-      const totalPaid = student.paid_amount;
-      const totalPayable = student.total_amount;
-      const installmentAmount = totalPayable / 12; // Assuming 12 installments
+      const totalPaid = Number(student.paid_amount) || 0;
+      const totalPayable = Number(student.total_amount) || 0;
+      const scheduleInstallments = Array.isArray(student.payment_schedule?.installments)
+        ? student.payment_schedule!.installments.length
+        : 12; // default to 12 when unknown
+      const totalInstallments = Math.max(1, scheduleInstallments);
+      const installmentAmount = totalInstallments > 0 ? totalPayable / totalInstallments : 0;
+
+      if (!isFinite(installmentAmount) || installmentAmount <= 0) {
+        const today = new Date();
+        return {
+          payment_type: 'program_fee' as PaymentType,
+          due_date: today.toISOString().split('T')[0],
+          amount_payable: 0,
+          installment_number: 1,
+        };
+      }
+
       const completedInstallments = Math.floor(totalPaid / installmentAmount);
-      const nextInstallmentNumber = completedInstallments + 1;
+      const nextInstallmentNumber = Math.min(
+        totalInstallments,
+        Math.max(1, completedInstallments + 1)
+      );
 
       // Use payment schedule if available
-      if (student.payment_schedule && student.payment_schedule.installments) {
+      if (Array.isArray(student.payment_schedule?.installments)) {
         const nextInstallment =
-          student.payment_schedule.installments[nextInstallmentNumber - 1];
-        if (nextInstallment) {
+          student.payment_schedule!.installments[nextInstallmentNumber - 1];
+        if (nextInstallment && nextInstallment.due_date) {
           return {
             payment_type: 'program_fee' as PaymentType,
             due_date: nextInstallment.due_date,
-            amount_payable: nextInstallment.amount,
-            installment_number: nextInstallment.installment_number,
+            amount_payable: Number(nextInstallment.amount) || installmentAmount,
+            installment_number: nextInstallment.installment_number || nextInstallmentNumber,
           };
         }
       }
 
-      // Fallback calculation
-      const nextInstallmentAmount = installmentAmount;
+      // Fallback calculation with guard against invalid dates
       const nextDueDate = new Date();
-      nextDueDate.setMonth(
-        nextDueDate.getMonth() + (nextInstallmentNumber - 1)
-      );
+      if (isFinite(nextInstallmentNumber)) {
+        nextDueDate.setMonth(nextDueDate.getMonth() + (nextInstallmentNumber - 1));
+      }
+      const dueDateStr = isNaN(nextDueDate.getTime())
+        ? new Date().toISOString().split('T')[0]
+        : nextDueDate.toISOString().split('T')[0];
 
       return {
         payment_type: 'program_fee' as PaymentType,
-        due_date: nextDueDate.toISOString().split('T')[0],
-        amount_payable: nextInstallmentAmount,
+        due_date: dueDateStr,
+        amount_payable: installmentAmount,
         installment_number: nextInstallmentNumber,
       };
     }
 
     // Find the next pending payment for other payment plans
-    const pendingPayments = student.payments?.filter(
-      p =>
-        p.status === 'pending' ||
-        p.status === 'overdue' ||
-        p.status === 'partially_paid_overdue'
-    );
+    const pendingPayments = student.payments?.filter(p => {
+      if (
+        p.status !== 'pending' &&
+        p.status !== 'overdue' &&
+        p.status !== 'partially_paid_overdue'
+      ) return false;
+      if (!p.due_date) return false;
+      const t = new Date(p.due_date).getTime();
+      return !isNaN(t);
+    });
 
     if (!pendingPayments || pendingPayments.length === 0) return null;
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
@@ -23,91 +23,143 @@ export const useInvitationAcceptance = ({
   const [processing, setProcessing] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [existingUserMode, setExistingUserMode] = useState<boolean>(isExistingUser);
+  const [canJoinWithoutPassword, setCanJoinWithoutPassword] = useState<boolean>(false);
+
+  // If already signed in with the same email, we can skip password entry entirely
+  useEffect(() => {
+    let cancelled = false;
+    const checkExistingSession = async () => {
+      try {
+        if (!student) return;
+        const { data: existingSession } = await supabase.auth.getSession();
+        const sessionUser = existingSession?.session?.user;
+        if (
+          sessionUser?.email &&
+          sessionUser.email.toLowerCase() === student.email.toLowerCase()
+        ) {
+          if (!cancelled) setCanJoinWithoutPassword(true);
+        } else {
+          if (!cancelled) setCanJoinWithoutPassword(false);
+        }
+      } catch {
+        if (!cancelled) setCanJoinWithoutPassword(false);
+      }
+    };
+    checkExistingSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [student]);
 
   const handleAcceptInvitation = async () => {
     if (!student || !token) return;
 
-    // Validate password
-    if (!isExistingUser && password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (!isExistingUser && password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
-      return;
-    }
+    const effectiveExistingUser = existingUserMode || isExistingUser;
 
     setProcessing(true);
     try {
-      let userId: string;
+      let userId: string | undefined;
 
-      if (isExistingUser) {
-        // Existing user - just sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: student.email,
-          password: password,
-        });
+      // If already signed in with the same email, skip auth and just accept
+      try {
+        const { data: existingSession } = await supabase.auth.getSession();
+        const sessionUser = existingSession?.session?.user;
+        if (sessionUser?.email && sessionUser.email.toLowerCase() === student.email.toLowerCase()) {
+          userId = sessionUser.id;
+        }
+      } catch {}
 
-        if (error) {
-          toast.error("Invalid password");
+      // If no active matching session, proceed with auth flow
+      if (!userId) {
+        // Validate password only when we actually need to authenticate
+        if (!effectiveExistingUser && password !== confirmPassword) {
+          toast.error("Passwords do not match");
           return;
         }
 
-        userId = data.user.id;
-      } else {
-        // New user - create account
-        const { data, error } = await supabase.auth.signUp({
-          email: student.email,
-          password: password,
-          options: {
-            data: {
-              first_name: student.first_name,
-              last_name: student.last_name,
-              role: "student",
-            },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-          },
-        });
+        if (!effectiveExistingUser && password.length < 6) {
+          toast.error("Password must be at least 6 characters long");
+          return;
+        }
 
-        // Since they came from an invitation link, we can trust their email
-        // Let's confirm their email automatically using our Edge Function
-        if (data.user && !data.user.email_confirmed_at) {
-          Logger.getInstance().info("Attempting to confirm email for user", { userId: data.user.id });
-          try {
-            const confirmResponse = await fetch(
-              `https://ghmpaghyasyllfvamfna.supabase.co/functions/v1/confirm-user-email`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`
-                },
-                body: JSON.stringify({
-                  userId: data.user.id
-                })
-              }
-            );
-            
-            if (confirmResponse.ok) {
-              Logger.getInstance().info("Email confirmed automatically");
-            } else {
-              const errorText = await confirmResponse.text();
-              console.warn("Failed to auto-confirm email:", errorText);
-            }
-          } catch (error) {
-            console.warn("Error confirming email:", error);
+        if (effectiveExistingUser) {
+          // Existing user - just sign in
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: student.email,
+            password: password,
+          });
+
+          if (error) {
+            toast.error("Invalid password");
+            return;
           }
-        }
 
-        if (error) {
-          console.error("Signup error:", error);
-          toast.error(error.message);
-          return;
-        }
+          userId = data.user.id;
+        } else {
+          // New user - create account
+          const { data, error } = await supabase.auth.signUp({
+            email: student.email,
+            password: password,
+            options: {
+              data: {
+                first_name: student.first_name,
+                last_name: student.last_name,
+                role: "student",
+              },
+              emailRedirectTo: `${window.location.origin}/dashboard`,
+            },
+          });
 
-        Logger.getInstance().info("User created successfully", { userId: data.user.id });
-        userId = data.user!.id;
+          // Since they came from an invitation link, we can trust their email
+          // Let's confirm their email automatically using our Edge Function
+          if (data.user && !data.user.email_confirmed_at) {
+            Logger.getInstance().info("Attempting to confirm email for user", { userId: data.user.id });
+            try {
+              const confirmResponse = await fetch(
+                `https://ghmpaghyasyllfvamfna.supabase.co/functions/v1/confirm-user-email`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`
+                  },
+                  body: JSON.stringify({
+                    userId: data.user.id
+                  })
+                }
+              );
+              
+              if (confirmResponse.ok) {
+                Logger.getInstance().info("Email confirmed automatically");
+              } else {
+                const errorText = await confirmResponse.text();
+                console.warn("Failed to auto-confirm email:", errorText);
+              }
+            } catch (error) {
+              console.warn("Error confirming email:", error);
+            }
+          }
+
+          if (error) {
+            // If the user already exists, switch to existing-user mode gracefully
+            const message = (error as any)?.message?.toLowerCase?.() || '';
+            const status = (error as any)?.status;
+            if (status === 422 || message.includes('already registered') || message.includes('already exists')) {
+              setExistingUserMode(true);
+              setConfirmPassword("");
+              toast.info("This email already has an account. Please enter your existing password to join the cohort.");
+              return;
+            }
+
+            console.error("Signup error:", error);
+            toast.error((error as any)?.message || "Failed to create account");
+            return;
+          }
+
+          Logger.getInstance().info("User created successfully", { userId: data.user.id });
+          userId = data.user!.id;
+        }
       }
 
       // Ensure user is properly authenticated before proceeding
@@ -156,6 +208,9 @@ export const useInvitationAcceptance = ({
     confirmPassword,
     setPassword,
     setConfirmPassword,
-    handleAcceptInvitation
+    handleAcceptInvitation,
+    isExistingUser: existingUserMode || isExistingUser,
+    canJoinWithoutPassword,
+    toggleExistingUserMode: () => setExistingUserMode((prev) => !prev)
   };
 };

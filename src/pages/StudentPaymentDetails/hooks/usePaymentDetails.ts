@@ -11,7 +11,7 @@ import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { FeeStructureService } from '@/services/feeStructure.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { useAuth } from '@/hooks/useAuth';
-import { generateFeeStructureReview } from '@/utils/fee-calculations';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { Logger } from '@/lib/logging/Logger';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -65,6 +65,7 @@ export const usePaymentDetails = () => {
   const [feeStructure, setFeeStructure] = useState<any>(null);
   const [scholarships, setScholarships] = useState<any[]>([]);
   const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<string>('');
+  const [engineBreakdown, setEngineBreakdown] = useState<any | null>(null);
   const [expandedSemesters, setExpandedSemesters] = useState<Set<number>>(new Set());
   const [expandedInstallments, setExpandedInstallments] = useState<Set<string>>(new Set());
   
@@ -78,6 +79,34 @@ export const usePaymentDetails = () => {
       loadStudentData();
     }
   }, [authLoading, profile]);
+
+  // Fetch canonical breakdown from Edge Function when inputs are ready
+  useEffect(() => {
+    const fetchBreakdown = async () => {
+      try {
+        if (!studentData?.id || !cohortData?.cohort_id || !selectedPaymentPlan) {
+          setEngineBreakdown(null);
+          return;
+        }
+        const plan = selectedPaymentPlan as 'one_shot' | 'sem_wise' | 'instalment_wise' | 'not_selected';
+        if (plan === 'not_selected') {
+          setEngineBreakdown(null);
+          return;
+        }
+        const { breakdown } = await getFullPaymentView({
+          studentId: String(studentData.id),
+          cohortId: String(cohortData.cohort_id || cohortData.id),
+          paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+          startDate: cohortData?.start_date,
+        });
+        setEngineBreakdown(breakdown || null);
+      } catch (error) {
+        console.error('Failed to fetch payment breakdown from engine', error);
+        setEngineBreakdown(null);
+      }
+    };
+    fetchBreakdown();
+  }, [studentData?.id, cohortData?.cohort_id, cohortData?.id, cohortData?.start_date, selectedPaymentPlan]);
 
   const loadStudentData = async () => {
     try {
@@ -132,23 +161,7 @@ export const usePaymentDetails = () => {
     }
   };
 
-  const generatePaymentBreakdown = () => {
-    if (!feeStructure || !studentData) return null;
-
-    try {
-      const scholarship = scholarships.find(s => s.student_id === studentData.id);
-      const scholarshipPercentage = scholarship?.scholarship?.amount_percentage || 0;
-
-      return generateFeeStructureReview(
-        feeStructure,
-        selectedPaymentPlan,
-        scholarshipPercentage
-      );
-    } catch (error) {
-      console.error('Error generating payment breakdown:', error);
-      return null;
-    }
-  };
+  const generatePaymentBreakdown = () => engineBreakdown;
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');

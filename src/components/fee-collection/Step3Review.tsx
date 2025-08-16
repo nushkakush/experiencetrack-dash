@@ -21,10 +21,21 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
     selectedScholarshipId,
     editablePaymentDates,
     feeReview,
+    loading,
     handlePaymentDateChange,
     handleScholarshipSelect,
     handlePaymentPlanChange
   } = useFeeReview({ feeStructure, scholarships, cohortStartDate });
+
+  if (loading || !feeReview) {
+    return (
+      <div className="space-y-6">
+        <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+        <div className="h-8 w-full bg-muted rounded animate-pulse" />
+        <div className="h-8 w-full bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

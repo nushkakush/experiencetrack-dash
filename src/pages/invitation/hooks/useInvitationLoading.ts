@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CohortStudent } from '@/types/cohort';
+import { toast } from 'sonner';
 
 interface UseInvitationLoadingProps {
   token: string | undefined;
@@ -90,14 +91,39 @@ export const useInvitationLoading = ({ token }: UseInvitationLoadingProps) => {
         // Don't fail the invitation if we can't get the cohort name
       }
 
-      // Check if user already exists - we'll handle this differently
-      // For now, we'll assume new user and let the signup process handle it
-      setIsExistingUser(false);
+      // Proactively check if a user exists for this email (to show the right form immediately)
+      try {
+        const checkResp = await fetch(
+          `https://ghmpaghyasyllfvamfna.supabase.co/functions/v1/check-user-exists`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
+            },
+            body: JSON.stringify({ email: studentData.email })
+          }
+        );
+
+        if (checkResp.ok) {
+          const checkJson = await checkResp.json();
+          setIsExistingUser(!!checkJson.exists);
+        } else {
+          // If the function errors, default to assuming existing user to reduce friction
+          setIsExistingUser(true);
+        }
+      } catch {
+        // Network or other error – assume existing user to avoid double password friction
+        setIsExistingUser(true);
+      }
       
       setLoading(false);
     } catch (error: unknown) {
       console.error("Error loading invitation:", error);
-      setError(error?.message || "Failed to load invitation details");
+      const message = typeof error === 'object' && error && 'message' in (error as any)
+        ? String((error as any).message)
+        : 'Failed to load invitation details';
+      setError(message);
       setLoading(false);
     }
   };

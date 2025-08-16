@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { PaymentPlan, StudentScholarshipWithDetails } from '@/types/fee';
-import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
+import { FeeStructure } from '@/types/fee';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import AdminLikePlanPreview from './AdminLikePlanPreview';
 
@@ -89,7 +89,7 @@ export const PaymentPlanPreviewModal: React.FC<
 
   if (!feeStructure) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
             <DialogTitle className='text-xl font-bold'>
@@ -116,7 +116,7 @@ export const PaymentPlanPreviewModal: React.FC<
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <div className='flex items-center gap-3'>

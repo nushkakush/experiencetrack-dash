@@ -28,6 +28,19 @@ export const AdmissionFeeSection: React.FC<AdmissionFeeSectionProps> = ({
 }) => {
   const admissionDate = editablePaymentDates['admission'] || cohortStartDate;
 
+  if (!admissionFee) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-green-600">Admission Fee</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-20 bg-muted rounded animate-pulse" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

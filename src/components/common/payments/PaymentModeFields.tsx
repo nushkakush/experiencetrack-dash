@@ -54,12 +54,12 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="paymentDate"
               type="date"
-              value={paymentDetails.paymentDate || ''}
+              value={String(paymentDetails.paymentDate ?? '')}
               onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
             />
           </div>
           <BankSelect
-            value={paymentDetails.bankName || ''}
+            value={String(paymentDetails.bankName ?? '')}
             onValueChange={(value) => handleFieldChange('bankName', value)}
             label="Select Bank"
             placeholder="Select bank"
@@ -69,7 +69,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="bankBranch"
               placeholder="Enter branch name"
-              value={paymentDetails.bankBranch || ''}
+              value={String(paymentDetails.bankBranch ?? '')}
               onChange={(e) => handleFieldChange('bankBranch', e.target.value)}
             />
           </div>
@@ -78,7 +78,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="accountNumber"
               placeholder="Enter account number"
-              value={paymentDetails.accountNumber || ''}
+              value={String(paymentDetails.accountNumber ?? '')}
               onChange={(e) => handleFieldChange('accountNumber', e.target.value)}
             />
           </div>
@@ -87,7 +87,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="transactionId"
               placeholder="Enter UTR number"
-              value={paymentDetails.transactionId || ''}
+              value={String(paymentDetails.transactionId ?? '')}
               onChange={(e) => handleFieldChange('transactionId', e.target.value)}
             />
           </div>
@@ -100,7 +100,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               label="Bank Transfer Screenshot/Acknowledgement Receipt"
               description="Upload screenshot or acknowledgement receipt of your bank transfer"
               acceptedTypes="image/*,.pdf"
-              value={uploadedFiles.bankTransferScreenshot || null}
+              value={uploadedFiles['bankTransferScreenshot'] ?? null}
               onChange={handleFileUpload}
               required={true}
             />
@@ -116,7 +116,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="paymentDate"
               type="date"
-              value={paymentDetails.paymentDate || ''}
+              value={String(paymentDetails.paymentDate ?? '')}
               onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
             />
           </div>
@@ -129,7 +129,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               label="Payment Acknowledgement"
               description="Upload the payment acknowledgement document"
               acceptedTypes="image/*,.pdf"
-              value={uploadedFiles.cashAcknowledgment || null}
+              value={uploadedFiles['cashAcknowledgment'] ?? null}
               onChange={handleFileUpload}
               required={true}
             />
@@ -145,12 +145,12 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="paymentDate"
               type="date"
-              value={paymentDetails.paymentDate || ''}
+              value={String(paymentDetails.paymentDate ?? '')}
               onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
             />
           </div>
           <BankSelect
-            value={paymentDetails.bankName || ''}
+            value={String(paymentDetails.bankName ?? '')}
             onValueChange={(value) => handleFieldChange('bankName', value)}
             label="Select Bank"
             placeholder="Select bank"
@@ -160,7 +160,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="bankBranch"
               placeholder="Enter branch name"
-              value={paymentDetails.bankBranch || ''}
+              value={String(paymentDetails.bankBranch ?? '')}
               onChange={(e) => handleFieldChange('bankBranch', e.target.value)}
             />
           </div>
@@ -169,7 +169,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="accountNumber"
               placeholder="Enter account number"
-              value={paymentDetails.accountNumber || ''}
+              value={String(paymentDetails.accountNumber ?? '')}
               onChange={(e) => handleFieldChange('accountNumber', e.target.value)}
             />
           </div>
@@ -178,7 +178,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="chequeNumber"
               placeholder="Enter cheque number"
-              value={paymentDetails.chequeNumber || ''}
+              value={String(paymentDetails.chequeNumber ?? '')}
               onChange={(e) => handleFieldChange('chequeNumber', e.target.value)}
             />
           </div>
@@ -191,7 +191,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               label="Cheque Image"
               description="Upload front and back images of the cheque"
               acceptedTypes="image/*"
-              value={uploadedFiles.chequeImage || null}
+              value={uploadedFiles['chequeImage'] ?? null}
               onChange={handleFileUpload}
               required={true}
             />
@@ -200,7 +200,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               label="Cheque Acknowledgment"
               description="Upload bank acknowledgment for cheque deposit"
               acceptedTypes="image/*,.pdf"
-              value={uploadedFiles.chequeAcknowledgment || null}
+              value={uploadedFiles['chequeAcknowledgment'] ?? null}
               onChange={handleFileUpload}
               required={true}
             />
@@ -228,7 +228,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="qrCode"
               placeholder="Enter UPI QR Code"
-              value={paymentDetails.qrCode || ''}
+              value={String(paymentDetails.qrCode ?? '')}
               onChange={(e) => handleFieldChange('qrCode', e.target.value)}
             />
           </div>
@@ -237,7 +237,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="paymentDate"
               type="date"
-              value={paymentDetails.paymentDate || ''}
+              value={String(paymentDetails.paymentDate ?? '')}
               onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
             />
           </div>
@@ -246,7 +246,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             <Input
               id="payerUpiId"
               placeholder="Enter payer UPI ID"
-              value={paymentDetails.payerUpiId || ''}
+              value={String(paymentDetails.payerUpiId ?? '')}
               onChange={(e) => handleFieldChange('payerUpiId', e.target.value)}
             />
           </div>
@@ -259,7 +259,7 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               label="UPI Payment Screenshot"
               description="Upload screenshot of your UPI payment"
               acceptedTypes="image/*"
-              value={uploadedFiles.scanToPayScreenshot || null}
+              value={uploadedFiles['scanToPayScreenshot'] ?? null}
               onChange={handleFileUpload}
               required={true}
             />

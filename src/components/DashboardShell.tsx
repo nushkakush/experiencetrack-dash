@@ -44,6 +44,7 @@ interface NavigationItem {
 
 interface DashboardShellProps {
   children: React.ReactNode;
+  hideSidebar?: boolean;
 }
 
 const getNavigationItems = (role: UserRole, navigate: (path: string) => void): NavigationItem[] => {
@@ -102,7 +103,7 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
   ];
 };
 
-const DashboardShell = ({ children }: DashboardShellProps) => {
+const DashboardShell = ({ children, hideSidebar = false }: DashboardShellProps) => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -123,6 +124,7 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
+      {!hideSidebar && (
       <div className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full transition-all duration-300 overflow-hidden`}>
         <div className="p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -151,20 +153,23 @@ const DashboardShell = ({ children }: DashboardShellProps) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
         <header className="h-16 border-b border-border bg-background px-6 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={handleSidebarToggle}
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
+            {!hideSidebar && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0"
+                onClick={handleSidebarToggle}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           
           <div className="flex items-center gap-2">

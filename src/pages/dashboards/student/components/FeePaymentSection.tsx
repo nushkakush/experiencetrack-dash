@@ -12,7 +12,6 @@ import { PaymentDashboard } from './PaymentDashboard';
 import { usePaymentSubmissions } from '../hooks/usePaymentSubmissions';
 import { usePaymentPlanState } from '../hooks/usePaymentPlanState';
 import { useStudentData } from '../hooks/useStudentData';
-import { generateFeeStructureReview } from '@/utils/fee-calculations';
 import { Logger } from '@/lib/logging/Logger';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { toast } from 'sonner';
@@ -21,6 +20,8 @@ import { FeeStructure } from '@/types/fee';
 import { Scholarship } from '@/types/fee';
 import { StudentPaymentData, CohortData, StudentData } from '@/types/payments';
 import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
+import type { PaymentPlan as EnginePaymentPlan } from '@/services/payments/paymentEngineClient';
 
 interface FeePaymentSectionProps {
   studentData: CohortStudent;
@@ -96,38 +97,53 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
     }, [studentPayments, studentData?.id, studentData?.cohort_id]);
 
     // Generate payment breakdown based on selected plan
-    const paymentBreakdown = React.useMemo(() => {
-      if (!feeStructure || !hasSelectedPlan) return undefined;
+    const [paymentBreakdown, setPaymentBreakdown] = React.useState<PaymentBreakdown | undefined>(undefined);
 
-      // Use the EXACT SAME LOGIC as admin dashboard - use generateFeeStructureReview directly
-      // This ensures consistency between admin and student dashboards
+    React.useEffect(() => {
+      let cancelled = false;
+      const compute = async () => {
+        if (!feeStructure || !hasSelectedPlan) {
+          setPaymentBreakdown(undefined);
+          return;
+        }
 
-      // Determine scholarship ID from student data
-      let scholarshipId = undefined;
-      if (studentScholarship && studentScholarship.scholarship) {
-        scholarshipId = studentScholarship.scholarship_id;
-      } else if (studentPayments && studentPayments[0]?.scholarship_id) {
-        scholarshipId = String(studentPayments[0].scholarship_id);
-      }
+        let scholarshipId = undefined as string | undefined;
+        if (studentScholarship && studentScholarship.scholarship) {
+          scholarshipId = studentScholarship.scholarship_id;
+        } else if (studentPayments && studentPayments[0]?.scholarship_id) {
+          scholarshipId = String(studentPayments[0].scholarship_id);
+        }
 
-      const startDate =
-        cohortData?.start_date || new Date().toISOString().split('T')[0];
+        const startDate = cohortData?.start_date || new Date().toISOString().split('T')[0];
 
-      // Use the EXACT SAME LOGIC as admin dashboard - use generateFeeStructureReview directly
-      // This ensures consistency between admin and student dashboards
-      const breakdown = generateFeeStructureReview(
-        feeStructure as unknown as FeeStructure,
-        (scholarships as Scholarship[]) || [],
-        selectedPaymentPlan as PaymentPlan,
-        0, // test score
-        startDate,
-        scholarshipId,
-        // Pass additional discount percentage when present so base+additional are considered uniformly
-        studentScholarship?.additional_discount_percentage || 0
-      );
-
-      // Convert to the expected PaymentBreakdown type
-      return breakdown as unknown as PaymentBreakdown;
+        try {
+          const toEnginePlan = (p: PaymentPlan): EnginePaymentPlan | undefined => {
+            if (p === 'one_shot' || p === 'sem_wise' || p === 'instalment_wise') return p as EnginePaymentPlan;
+            return undefined;
+          };
+          const enginePlan = toEnginePlan(selectedPaymentPlan as PaymentPlan);
+          if (!enginePlan) throw new Error('Invalid payment plan');
+          const { breakdown } = await getFullPaymentView({
+            studentId: studentData?.id,
+            cohortId: String(cohortData?.id),
+            paymentPlan: enginePlan,
+            scholarshipId,
+            additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+            startDate,
+          });
+          if (!cancelled) setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
+        } catch (err) {
+          console.error('payment-engine call failed', err);
+          if (!cancelled) {
+            setPaymentBreakdown(undefined);
+            toast.error('Failed to load payment schedule. Please try again.');
+          }
+        }
+      };
+      compute();
+      return () => {
+        cancelled = true;
+      };
     }, [
       feeStructure,
       scholarships,
@@ -136,6 +152,8 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
       studentPayments,
       cohortData?.start_date,
       hasSelectedPlan,
+      studentData?.id,
+      cohortData?.id,
     ]);
 
     // Payment submissions hook

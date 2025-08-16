@@ -5,6 +5,7 @@ import { AttendanceOverview } from './components/AttendanceOverview';
 import { FeePaymentSection } from './components/FeePaymentSection';
 import { useStudentData } from './hooks/useStudentData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { NoCohortState } from './components/NoCohortState';
 
 interface StudentDashboardProps {
   currentRoute?: string;
@@ -12,12 +13,21 @@ interface StudentDashboardProps {
 
 const StudentDashboard = React.memo<StudentDashboardProps>(({ currentRoute }) => {
   const location = useLocation();
-  const { studentData, cohortData, loading, error } = useStudentData();
+  const { studentData, cohortData, loading, error, noCohort } = useStudentData();
   
   // Determine which tab to show based on currentRoute prop or URL
   const currentTab = React.useMemo(() => {
     return (currentRoute || location.pathname).includes('fee-payment') ? 'fee-payment' : 'attendance';
   }, [currentRoute, location.pathname]);
+
+  // Show no-cohort state immediately when known
+  if (noCohort) {
+    return (
+      <DashboardShell hideSidebar>
+        <NoCohortState />
+      </DashboardShell>
+    );
+  }
 
   if (loading) {
     return (

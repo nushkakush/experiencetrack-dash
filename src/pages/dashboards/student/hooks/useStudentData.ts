@@ -25,6 +25,7 @@ interface StudentData {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  noCohort: boolean;
 }
 
 export const useStudentData = (): StudentData => {
@@ -35,7 +36,7 @@ export const useStudentData = (): StudentData => {
     loading: authLoading,
     profileLoading,
   } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState<CohortStudent | null>(null);
   const [cohortData, setCohortData] = useState<Cohort | null>(null);
   const [feeStructure, setFeeStructure] = useState<FeeStructure | null>(null);
@@ -46,6 +47,7 @@ export const useStudentData = (): StudentData => {
   const [paymentTransactions, setPaymentTransactions] = useState<any[] | null>(null);
   const [studentScholarship, setStudentScholarship] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [noCohort, setNoCohort] = useState<boolean>(false);
 
   // Use localStorage to persist data loaded state across component re-mounts
   const getDataLoadedKey = (userId: string) => `studentDataLoaded_${userId}`;
@@ -110,46 +112,23 @@ export const useStudentData = (): StudentData => {
         userId: profile.user_id,
       });
 
-      // Get student data with retry logic
-      let studentResult;
-      let retryCount = 0;
-      const maxRetries = 3;
+      // Get student data – single attempt for fast no-cohort detection
+      const studentResult = await cohortStudentsService.getByUserId(
+        profile.user_id
+      );
 
-      while (retryCount < maxRetries) {
-        try {
-          studentResult = await cohortStudentsService.getByUserId(
-            profile.user_id
-          );
-          if (studentResult.success && studentResult.data) {
-            break; // Success, exit retry loop
-          }
-
-          // If no data found, wait a bit and retry (for newly created users)
-          if (retryCount < maxRetries - 1) {
-            logger.info(
-              `No student data found, retrying in ${(retryCount + 1) * 2} seconds...`,
-              { retryCount }
-            );
-            await new Promise(resolve =>
-              setTimeout(resolve, (retryCount + 1) * 2000)
-            );
-          }
-        } catch (err) {
-          logger.warn(`Attempt ${retryCount + 1} failed:`, { error: err });
-          if (retryCount < maxRetries - 1) {
-            await new Promise(resolve =>
-              setTimeout(resolve, (retryCount + 1) * 2000)
-            );
-          }
-        }
-        retryCount++;
+      if (!studentResult.success) {
+        logger.error('Failed to load student data after retries');
+        setNoCohort(true);
+        throw new Error('No linked cohort found for your account.');
       }
 
-      if (!studentResult?.success || !studentResult?.data) {
-        logger.error('Failed to load student data after retries');
-        throw new Error(
-          'Student data not found. Please ensure you have accepted your invitation and try again.'
-        );
+      if (!studentResult.data) {
+        // Definitive no cohort case
+        setNoCohort(true);
+        setStudentData(null);
+        setCohortData(null);
+        return; // Exit early; keep loading false in finally
       }
 
       const student = studentResult.data;
@@ -159,6 +138,7 @@ export const useStudentData = (): StudentData => {
       // Get cohort data using the correct service and method
       const cohortResult = await cohortsService.getById(student.cohort_id);
       if (!cohortResult.success || !cohortResult.data) {
+        setNoCohort(true);
         throw new Error('Failed to load cohort data');
       }
 
@@ -223,6 +203,10 @@ export const useStudentData = (): StudentData => {
       setError(
         err instanceof Error ? err.message : 'Failed to load student data'
       );
+      // If we couldn't resolve a student record/cohort, mark as noCohort
+      if (err instanceof Error && /No linked cohort|ensure you have accepted/i.test(err.message)) {
+        setNoCohort(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -244,7 +228,7 @@ export const useStudentData = (): StudentData => {
     const profileIdChanged = profile?.user_id !== lastProfileIdRef.current;
 
     // Check if this is a fresh page load (no data in state)
-    const isFreshPageLoad = !studentData && !cohortData;
+    const isFreshPageLoad = !studentData && !cohortData && !noCohort;
 
     // Check if we should load data
     const shouldLoadData =
@@ -282,7 +266,7 @@ export const useStudentData = (): StudentData => {
                   : 'unknown',
       });
     }
-  }, [profile?.user_id, authLoading, profileLoading]); // Simplified dependencies
+  }, [profile?.user_id, authLoading, profileLoading, noCohort]); // include noCohort to avoid reload loops
 
   return {
     studentData,
@@ -294,12 +278,13 @@ export const useStudentData = (): StudentData => {
     studentScholarship,
     loading,
     error,
+    noCohort,
     refetch: async () => {
-      console.log(
-        '🔄 [DEBUG] Refetching student data after payment submission'
-      );
-      // Force reload by temporarily setting dataLoaded to false
+      // If user just accepted an invite, force a fresh query cycle
       dataLoadedRef.current = false;
+      setStudentData(null);
+      setCohortData(null);
+      setNoCohort(false);
       await loadStudentData();
     },
   };

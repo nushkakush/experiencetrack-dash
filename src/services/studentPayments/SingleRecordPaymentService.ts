@@ -95,7 +95,7 @@ export class SingleRecordPaymentService {
             payment_schedule: paymentSchedule,
             total_amount_payable: totalAmountPayable,
             scholarship_id: scholarshipId,
-            payment_status: this.calculatePaymentStatus(existingRecord.total_amount_paid, totalAmountPayable),
+            payment_status: 'pending',
             next_due_date: paymentSchedule.summary.next_due_date,
             updated_at: new Date().toISOString()
           })
@@ -118,7 +118,7 @@ export class SingleRecordPaymentService {
             total_amount_payable: totalAmountPayable,
             total_amount_paid: admissionFee, // Include admission fee as already paid
             scholarship_id: scholarshipId,
-            payment_status: this.calculatePaymentStatus(admissionFee, totalAmountPayable),
+            payment_status: 'pending',
             next_due_date: paymentSchedule.summary.next_due_date
           })
           .select()
@@ -192,7 +192,7 @@ export class SingleRecordPaymentService {
 
       const record = currentRecord.data;
       const newTotalPaid = record.total_amount_paid + amount;
-      const newPaymentStatus = this.calculatePaymentStatus(newTotalPaid, record.total_amount_payable);
+      const newPaymentStatus = newTotalPaid >= record.total_amount_payable ? 'paid' : 'pending';
 
       // Update payment record
       const { data, error } = await supabase
@@ -322,15 +322,7 @@ export class SingleRecordPaymentService {
   /**
    * Calculate payment status based on amounts
    */
-  private calculatePaymentStatus(amountPaid: number, amountPayable: number): 'pending' | 'partially_paid' | 'paid' | 'overdue' {
-    if (amountPaid >= amountPayable) {
-      return 'paid';
-    } else if (amountPaid > 0) {
-      return 'partially_paid';
-    } else {
-      return 'pending';
-    }
-  }
+  // calculatePaymentStatus removed (deprecated)
 
   /**
    * Calculate next due date based on payment schedule and current amount paid

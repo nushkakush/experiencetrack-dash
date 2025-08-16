@@ -11,6 +11,7 @@ interface PasswordFormProps {
   onPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
   onSubmit: () => void;
+  onToggleMode?: () => void;
 }
 
 export const PasswordForm: React.FC<PasswordFormProps> = ({
@@ -20,7 +21,8 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({
   processing,
   onPasswordChange,
   onConfirmPasswordChange,
-  onSubmit
+  onSubmit,
+  onToggleMode
 }) => {
   return (
     <div className="space-y-4">
@@ -68,6 +70,20 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({
         <p className="text-sm text-gray-600 text-center">
           You already have an account. Please enter your password to join this cohort.
         </p>
+      )}
+
+      {onToggleMode && (
+        <div className="text-center">
+          {isExistingUser ? (
+            <button type="button" onClick={onToggleMode} className="text-sm text-blue-600 hover:underline">
+              Don't have an account? Create one
+            </button>
+          ) : (
+            <button type="button" onClick={onToggleMode} className="text-sm text-blue-600 hover:underline">
+              Already have an account? Sign in
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

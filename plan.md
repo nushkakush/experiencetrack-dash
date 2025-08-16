@@ -1,283 +1,216 @@
-## Edge Functions Plan: Single Source of Truth for Payment Calculations
+## Goal
 
-### Goals
-- **Unify logic**: Move both payment status calculation and payment structure/schedule calculation to a backend single source of truth.
-- **Consistency**: Ensure every surface (dashboards, details views, exports) uses the same calculations by calling an Edge Function.
-- **Performance & Security**: Compute close to the database with RLS enforced, minimize over-fetching, and support caching where safe.
-- **Low-risk rollout**: Ship behind a feature flag, verify parity with current in-app logic, then cut over.
+Consolidate payment breakdown (structure/schedule) calculation and payment status derivation into a single Supabase Edge Function so all clients request canonical data from one source of truth, avoiding duplicated logic across UI, services, and scripts.
 
-### Decision Overview
-- **Recommended**: A single Edge Function `payment-evaluator` with a `mode` input: `"status" | "structure" | "both"`. Internally, keep two modules: `statusEngine` and `structureEngine`.
-  - Pros: one endpoint to maintain, one auth and audit path, shared fetches, and fewer network trips when both are needed.
-  - Cons: slightly more complex handler. Mitigated with clear module boundaries.
-- Alternative: two functions `calculate-payment-status` and `calculate-payment-structure`. Keep this as a fallback if we see strong separation needs later.
+## Current State (as of this branch)
 
----
+- Payment breakdown generation (amounts, dates, GST, discounts, scholarship distribution):
+  - Implemented primarily via `generateFeeStructureReview` in `src/utils/fee-calculations/index.ts` (and supporting utilities like `payment-plans.ts`, `dateUtils.ts`).
+  - Consumed in multiple places:
+    - `src/components/fee-collection/hooks/useFeeReview.ts`
+    - `src/pages/dashboards/student/components/FeePaymentSection.tsx`
+    - `src/pages/StudentPaymentDetails/hooks/usePaymentDetails.ts`
+    - `src/components/fee-collection/components/student-details/FinancialSummary.tsx`
+  - There are also legacy schedule calculators duplicated in:
+    - `src/services/studentPayments/SingleRecordPaymentService.ts` (private `calculatePaymentSchedule`)
+    - `scripts/test-payment-consistency.ts`, `scripts/fix-payment-schedules-direct.ts`
 
-## API Design
+- Payment status derivation (pending/overdue/partially_paid/verification_pending, etc.):
+  - Canonical statuses and rules documented in `docs/Payment Status Documentation.md`.
+  - UI currently derives status at render time based on transactions and due dates:
+    - `src/pages/dashboards/student/components/SemesterBreakdown.tsx` (one-shot and per-installment logic)
+  - There is a simplified method in `src/services/payments/PaymentCalculations.ts` (`calculatePaymentStatus`) and another in `src/services/studentPayments/SingleRecordPaymentService.ts` (private `calculatePaymentStatus`) that are not fully aligned with the canonical statuses.
+  - DB constraint aligned to canonical statuses via migration `supabase/migrations/20250815123000_fix_payment_status_constraint.sql`.
 
-### Endpoint
-- Name: `payment-evaluator`
-- Runtime: Supabase Edge (Deno)
-- Method: `POST`
-- Auth: Pass the user's `Authorization` bearer token from the frontend. Enforce RLS.
+- Consumption summary:
+  - Student dashboard and StudentPaymentDetails use breakdown + derived statuses to render schedules and gate payment submission.
+  - Admin-facing fee collection components also use the same breakdown utilities for preview and reviews.
+  - No current usage of `supabase.functions.invoke` in the app; existing Edge Functions are unrelated (invitation, email confirmation).
 
-### Request
-- Content-Type: `application/json`
-- Body shape (Zod-like schema shown for clarity):
+## Target Architecture
 
-```ts
+- Introduce a single Edge Function: `payment-engine`.
+  - Purpose: Provide canonical payment breakdown and status derivation for both one-shot and semester/installment plans, returning a uniform shape the UI can consume directly.
+  - Modes (via `action` in request body):
+    - `breakdown`: compute and return amounts/dates/GST/discounts/scholarship breakdown.
+    - `status`: compute and return statuses using payment transactions and due dates.
+    - `full`: return breakdown enriched with computed statuses + aggregates (recommended default for most UIs).
+  - Authorization: validate caller JWT; read-only access should respect RLS. For admin-only cohort-wide reads, we can add an opt-in `adminMode` that requires elevated claims.
+
+### Data Contracts
+
+- Request (examples):
+
+```json
 {
-  mode: 'status' | 'structure' | 'both',
-  studentId: string,
-  cohortId?: string,
-  asOfDate?: string, // ISO date; defaults to now in project timezone
-  // If omitted, the function fetches from DB using studentId/cohortId
-  overrideContext?: {
-    feeStructureId?: string,
-    scholarships?: Array<{ id: string; type: 'amount' | 'percent'; value: number }>,
-    concessions?: Array<{ id: string; reason: string; amount: number }>,
-    taxes?: { gstPercent?: number },
-    paymentHistory?: Array<{
-      id: string
-      method: string
-      amount: number
-      date: string // ISO
-      status: 'success' | 'pending' | 'failed'
-    }>
+  "action": "full",
+  "studentId": "<uuid>",
+  "cohortId": "<uuid>",
+  "paymentPlan": "one_shot | sem_wise | instalment_wise",
+  "scholarshipId": "<uuid|null>",
+  "additionalDiscountPercentage": 0,
+  "startDate": "YYYY-MM-DD" // optional: defaults to cohort start_date
+}
+```
+
+- Response (core shape, aligned with `PaymentBreakdown` already used in UI):
+
+```json
+{
+  "success": true,
+  "breakdown": {
+    "admissionFee": { "baseAmount": 0, "scholarshipAmount": 0, "discountAmount": 0, "gstAmount": 0, "totalPayable": 0 },
+    "semesters": [
+      {
+        "semesterNumber": 1,
+        "instalments": [
+          {
+            "paymentDate": "YYYY-MM-DD",
+            "baseAmount": 0,
+            "scholarshipAmount": 0,
+            "discountAmount": 0,
+            "gstAmount": 0,
+            "amountPayable": 0,
+            "status": "pending|...",
+            "amountPaid": 0,
+            "amountPending": 0,
+            "installmentNumber": 1
+          }
+        ],
+        "total": { "baseAmount": 0, "scholarshipAmount": 0, "discountAmount": 0, "gstAmount": 0, "totalPayable": 0 }
+      }
+    ],
+    "oneShotPayment": { "paymentDate": "YYYY-MM-DD", "baseAmount": 0, "scholarshipAmount": 0, "discountAmount": 0, "gstAmount": 0, "amountPayable": 0 },
+    "overallSummary": { "totalProgramFee": 0, "admissionFee": 0, "totalGST": 0, "totalDiscount": 0, "totalScholarship": 0, "totalAmountPayable": 0 }
+  },
+  "aggregate": {
+    "totalPayable": 0,
+    "totalPaid": 0,
+    "totalPending": 0,
+    "nextDueDate": "YYYY-MM-DD|null",
+    "paymentStatus": "pending|paid|overdue|verification_pending|..."
   }
 }
 ```
 
-Notes:
-- `overrideContext` is optional for simulations or admin previews. For normal flows, the function loads canonical data from the database.
-- `asOfDate` ensures time-bound calculations (e.g., overdue as of a fixed date, consistent across clients).
-
-### Response
-- On `mode === 'status'`:
-
-```ts
-{
-  correlationId: string,
-  computedAt: string, // ISO
-  status: {
-    code: 'PAID' | 'PARTIALLY_PAID' | 'DUE' | 'OVERDUE' | 'ADVANCE',
-    totalPayable: number,
-    totalPaid: number,
-    outstanding: number,
-    overdueAmount: number,
-    nextDueDate?: string, // ISO
-    breakdown: Array<{
-      label: string
-      amount: number
-    }>,
-    reasons?: string[] // aligned to docs/Payment Status Documentation.md
-  },
-  meta?: { cache?: { hit: boolean; key?: string } }
-}
-```
-
-- On `mode === 'structure'`:
-
-```ts
-{
-  correlationId: string,
-  computedAt: string,
-  structure: {
-    planId: string,
-    currency: string,
-    installments: Array<{
-      number: number,
-      dueDate: string,
-      baseAmount: number,
-      gstAmount: number,
-      totalAmount: number,
-      paidAmount: number,
-      outstandingAmount: number,
-      status: 'PAID' | 'PARTIALLY_PAID' | 'DUE' | 'OVERDUE',
-    }>,
-    totals: {
-      base: number
-      gst: number
-      grand: number
-      paid: number
-      outstanding: number
-      overdue: number
-    }
-  },
-  meta?: { cache?: { hit: boolean; key?: string } }
-}
-```
-
-- On `mode === 'both'`, return both `status` and `structure` fields in one response.
-
-### Errors
-```ts
-{
-  correlationId: string,
-  error: {
-    code: string, // e.g., 'UNAUTHORIZED', 'VALIDATION_ERROR', 'NOT_FOUND', 'INTERNAL'
-    message: string,
-    details?: unknown
-  }
-}
-```
-
----
-
-## Data & Domain Sources
-
-We will consolidate data from the canonical tables already modeled in Supabase. From the codebase, the following modules and docs inform the logic and can be used to validate parity:
-- `docs/Payment Status Documentation.md`
-- `src/services/payments/PaymentCalculations.ts`
-- `src/utils/fee-calculations/payment-plans.ts`
-- `src/pages/dashboards/student/hooks/usePaymentSubmissions.ts`
-- `src/components/fee-collection/utils/feeValidation.ts`
-
-Inside the function, fetch minimal, well-indexed sets:
-- Student enrollment and cohort context
-- Fee structure (plan, n installments, dates)
-- Scholarships/concessions/waivers
-- Payment history and statuses (successful only for paid totals; optionally include pending for UI hints)
-- Tax/GST config used by the current cohort or global defaults
-
-Avoid N+1 queries by selecting with joins or by batching with `in` filters. Keep payload sizes small; compute aggregates server-side.
-
----
+- Status computation rules will exactly implement `docs/Payment Status Documentation.md` and the more detailed logic in `SemesterBreakdown.tsx` for verification-pending and partial cases.
 
 ## Implementation Plan
 
-### 1) Create the Edge Function skeleton
-- Path: `supabase/functions/payment-evaluator/`
-- Files:
-  - `index.ts`: request handler, routing by `mode`, error handling, auth, logging
-  - `deno.json`: import map and strict flags
-  - `_shared/` (within the function folder): pure TypeScript modules for `statusEngine`, `structureEngine`, `types`, `utils`
+1) Create Edge Function `supabase/functions/payment-engine/index.ts`.
+   - Handle CORS and JWT validation.
+   - Dispatch on `action` (`breakdown` | `status` | `full`).
+   - Use a Supabase client configured for RLS by default; optionally use service role for admin-only operations with explicit checks.
 
-Handler outline:
-- Parse JSON body; validate with a lightweight schema (Zod or hand-rolled)
-- Instantiate Supabase client with forwarded `Authorization` header so RLS applies
-- Fetch required data (guard for missing/unauthorized)
-- Branch to `statusEngine` / `structureEngine` / both
-- Return typed result with `correlationId`, `computedAt`
-- Add minimal, safe caching (see below)
+2) Port calculation utilities to the function:
+   - Re-implement or copy the minimal required logic from `src/utils/fee-calculations` to compute:
+     - Admission fee block
+     - Semester/installment breakdowns
+     - GST, discount, scholarship distribution
+     - Date generation (month/semester cadence)
+   - Match the `PaymentBreakdown` shape used by the UI to minimize client changes.
 
-### 2) Port and harden the calculation engines
-- Extract existing logic from:
-  - `PaymentCalculations.ts` (status & totals)
-  - `payment-plans.ts` (plan shaping)
-- Normalize rounding and currency handling.
-- Make all date math timezone-safe and deterministic using ISO strings.
-- Ensure partial payment application order is clearly defined and consistent (FIFO by due date unless business rules state otherwise).
+3) Implement status derivation inside the function:
+   - Load `payment_transactions` for the target `student_payment` record (approved and verification-pending semantics).
+   - Allocate paid amounts across installments in order (sequential fill), mirroring `SemesterBreakdown.tsx` allocation so statuses match UI expectations.
+   - Derive statuses per installment using the canonical rules and transaction verification conditions for:
+     - `verification_pending`
+     - `partially_paid_verification_pending`
+     - `paid`, `overdue`, `pending`, `pending_10_plus_days`, `partially_paid_days_left`, `partially_paid_overdue`
+   - Compute aggregates (`totalPaid`, `totalPending`, `nextDueDate`, overall `paymentStatus`).
 
-### 3) Validation and types
-- Define request/response types in a shared pattern and keep a mirrored copy in the frontend:
-  - Backend: `supabase/functions/payment-evaluator/_shared/types.ts`
-  - Frontend: `src/types/api/PaymentsEvaluator.ts`
-- Keep these in lockstep in PRs; add tests that assert shape compatibility.
+4) Optional DB writes (phase 2, behind a flag):
+   - Update `student_payments` with `payment_status`, `total_amount_paid`, `next_due_date` after computation for consistency.
+   - Persist a canonical schedule JSON in `student_payments.payment_schedule` (optional) to enable offline/quick reads.
 
-### 4) Auth & Security
-- Forward `Authorization` from the browser to the Edge Function and inject it into the Supabase client `global.headers`.
-- RLS remains enforced; no Service Role except for controlled admin-only flows.
-- Validate `studentId` access (e.g., user must belong to the same org/cohort and have permission via feature flags).
-- Log `userId`, `studentId`, and `correlationId` for traceability. Avoid logging PII.
+5) Client integration (incremental rollout):
+   - Add a thin client util: `src/services/payments/paymentEngineClient.ts` with:
+     - `getPaymentBreakdown(params)`: calls `supabase.functions.invoke('payment-engine', { body: { action: 'breakdown', ... }})`
+     - `getPaymentStatus(params)`: calls `action: 'status'`
+     - `getFullPaymentView(params)`: calls `action: 'full'`
+   - Replace direct uses of `generateFeeStructureReview` with `getPaymentBreakdown` or `getFullPaymentView` in:
+     - `src/components/fee-collection/hooks/useFeeReview.ts`
+     - `src/pages/dashboards/student/components/FeePaymentSection.tsx`
+     - `src/pages/StudentPaymentDetails/hooks/usePaymentDetails.ts`
+     - `src/components/fee-collection/components/student-details/FinancialSummary.tsx`
+   - Replace inline status derivation in `src/pages/dashboards/student/components/SemesterBreakdown.tsx` with response from `getFullPaymentView`. Keep a guarded fallback to current derivation for resiliency if function fails.
+   - Update `src/services/studentPayments/SingleRecordPaymentService.ts` to call the function for initial schedule calculation instead of its internal `calculatePaymentSchedule`.
 
-### 5) Caching & performance
-- Response is user-specific; use `Cache-Control: private, max-age=30` for short-term client caching.
-- Compute a cache key based on a hash of relevant `updated_at` timestamps (student, payments, plan). If unchanged, support a `conditional` fetch path to skip recomputation.
-- Keep response JSON small; include aggregate totals and only necessary installment fields.
+6) UX adjustments per project rules:
+   - Wrap all dynamic loads with Shad CN skeletons (existing patterns already present; ensure new calls also show skeletons).
+   - Use `sonner` toasts for error states when the Edge Function returns errors/timeouts.
 
-### 6) Observability
-- Structured logs with a `correlationId` in every response and error.
-- Surface severe mismatches (see rollout) to logs for quick triage.
+7) Security and RLS:
+   - For student-initiated calls: use JWT from `Authorization` header with an anon-key client in the function to respect RLS.
+   - For admin/cohort-wide operations: either restrict function to user roles with admin claim or use service role key with explicit authorization checks (e.g., verify the user is staff of the cohort).
 
-### 7) Local development & testing
-- Local serve: `supabase functions serve payment-evaluator --no-verify-jwt`
-- Unit tests (Deno): test engines in isolation with fixtures.
-- Integration tests: spin up `supabase start` and call the function with seeded data.
-- Contract tests: Validate request/response JSON schemas.
+8) Tests and verification:
+   - Unit tests for the Edge Function pure calculators (port critical test cases from `scripts/test-payment-consistency.ts`).
+   - Snapshot tests on response shape to guarantee stability of the contract.
+   - E2E/UI tests: verify gating of payment submission and correct statuses across due date boundaries and verification flows.
 
-### 8) Frontend integration
-- Call via the existing Supabase singleton client import (`@/lib/supabase/client`) and `supabase.functions.invoke('payment-evaluator', { body })`.
-- Wrap with TanStack Query; add ShadCN skeleton loaders where dynamic data is shown and Sonner toasts on error.
-- Replace in-app calculations progressively:
-  - `PaymentCalculations.ts` → delegate to Edge Function
-  - `payment-plans.ts` usages (previews can request `mode: 'structure'`)
-  - `usePaymentSubmissions.ts` downstream consumers
-- Keep a compatibility layer so existing components can consume the new shapes without large refactors.
+## Affected Files (initial pass)
 
-### 9) Rollout strategy (feature-flagged)
-- Use a feature flag (e.g., `payments.edge.enabled`) from the existing feature flag system.
-- Phase 1: Dual-run
-  - Compute locally and via Edge Function in parallel on key screens.
-  - Compare results in-memory; if mismatch above tolerance, log a `MISMATCH` event with inputs and deltas (no PII).
-- Phase 2: Shadow-write
-  - Use only Edge Function for user-facing values; keep local computation for diagnostics off-screen.
-- Phase 3: Remove local computation paths; keep small helpers for rendering only.
+- New:
+  - `supabase/functions/payment-engine/index.ts`
+  - `src/services/payments/paymentEngineClient.ts`
 
----
+- Updated (replace local calc/derivation with function calls):
+  - `src/components/fee-collection/hooks/useFeeReview.ts`
+  - `src/pages/dashboards/student/components/FeePaymentSection.tsx`
+  - `src/pages/StudentPaymentDetails/hooks/usePaymentDetails.ts`
+  - `src/components/fee-collection/components/student-details/FinancialSummary.tsx`
+  - `src/pages/dashboards/student/components/SemesterBreakdown.tsx` (consume statuses from API; keep fallback)
+  - `src/services/studentPayments/SingleRecordPaymentService.ts` (use function for schedule)
 
-## Example usage (frontend)
+- Later cleanup:
+  - Deprecate `PaymentCalculationsService.calculatePaymentStatus` and the private variant in `SingleRecordPaymentService.ts` once all consumers migrate.
+  - Remove duplicated schedule calculators from `scripts/*` if no longer needed.
 
-```ts
-const { data, error } = await supabase.functions.invoke('payment-evaluator', {
-  body: {
-    mode: 'both',
-    studentId,
-    cohortId,
-    asOfDate: new Date().toISOString()
-  }
-});
+## Rollout Strategy
 
-if (error) {
-  // Show Sonner toast
-}
-
-// Render with ShadCN; show skeletons while loading
-```
-
----
-
-## Timeline & Milestones
-- Week 1:
-  - Define request/response contracts; add types (frontend + function)
-  - Create Edge Function skeleton; wire auth; stub engines
-  - Implement structure engine (port from `payment-plans.ts`)
-- Week 2:
-  - Implement status engine (port from `PaymentCalculations.ts`)
-  - Unit tests with real fixtures; integration test locally
-  - Add caching and correlation IDs; structured logging
-- Week 3:
-  - Frontend integration behind feature flag with TanStack Query + ShadCN skeletons + Sonner errors
-  - Dual-run parity checks; fix divergences
-  - Prepare dashboards and exports to consume new API
-- Week 4:
-  - Enable for a cohort subset; monitor logs and performance
-  - Full cutover; remove old calculation paths
-
----
+1. Implement `payment-engine` with `breakdown` and `full` first; ship behind a feature flag (env or feature flag provider).
+2. Update student dashboard to consume `full` response with a fallback to current client-side derivation if the function errors.
+3. Update admin fee collection flows to use `breakdown` for previews.
+4. Migrate `SingleRecordPaymentService.ts` to use the function for setup; optionally persist the returned schedule.
+5. Once stable, remove fallback derivations; keep a minimal client-side sanity check only.
+6. Enforce the DB `payment_status` to be updated by server flows (admin approve/reject, reconciliation) with consistent codes.
 
 ## Risks & Mitigations
-- **Precision/rounding differences**: Lock rounding rules; add snapshot tests for edge cases.
-- **Timezone drift**: Require ISO inputs; centralize timezone conversion; test E2E over boundaries.
-- **Performance regressions**: Add tracing; set SLO for p95 < 200ms for status-only requests.
-- **Auth gaps**: Enforce RLS, guard cohort and org scopes explicitly in queries.
-- **Drift between front/back contracts**: Keep mirrored types and CI contract tests.
 
----
+- Divergence between UI fallback and server calculation:
+  - Mitigate by mirroring the exact allocation logic used today (sequential paid allocation, verification-pending semantics) and by adding snapshot tests.
+- Latency from Edge Function on hot paths:
+  - Cache recent responses per `(studentId, cohortId, plan, scholarshipId, discount)` combo. Consider short TTL or conditional persistence in `student_payments`.
+- RLS errors or permissions mismatch:
+  - Start with read-only RLS-respecting client; add admin-mode branch with explicit checks later.
 
-## Deliverables
-- `supabase/functions/payment-evaluator/` with:
-  - `index.ts`, `deno.json`, `_shared/{statusEngine,structureEngine,types,utils}.ts`
-- Frontend API types at `src/types/api/PaymentsEvaluator.ts`
-- Feature flag gate `payments.edge.enabled`
-- Tests: unit (engines), integration (function), parity checks during rollout
+## Example Client Usage (to be implemented)
 
----
+```ts
+import { supabase } from '@/integrations/supabase/client';
 
-## Notes
-- Use Yarn in the app; Edge Functions use Deno (no npm scripts required there).
-- Frontend must continue to use the singleton Supabase client import and display ShadCN skeletons during fetch. Use Sonner for errors.
-- Align statuses and semantics strictly with `docs/Payment Status Documentation.md`.
+export async function getFullPaymentView(params: {
+  studentId: string;
+  cohortId: string;
+  paymentPlan: 'one_shot' | 'sem_wise' | 'instalment_wise';
+  scholarshipId?: string;
+  additionalDiscountPercentage?: number;
+  startDate?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke('payment-engine', {
+    body: { action: 'full', ...params },
+  });
+  if (error) throw error;
+  return data;
+}
+```
+
+## Acceptance Criteria
+
+- One Supabase Edge Function returns the canonical payment breakdown and statuses with a stable contract.
+- All current UI surfaces that show payment breakdown or statuses consume this function (with Skeletons while loading and Sonner for errors).
+- Local duplicated calculators are removed or reduced to fallback-only code paths.
+- DB-level `payment_status` values match the canonical list and are updated consistently by server flows.
 
 

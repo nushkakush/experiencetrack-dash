@@ -3,7 +3,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
-import { generateFeeStructureReview } from '@/utils/fee-calculations';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -60,34 +60,58 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         .from('fee_structures')
         .select('*')
         .eq('cohort_id', student.student?.cohort_id)
-        .single();
+        .maybeSingle();
 
       if (!feeStructure) {
         throw new Error('Fee structure not found');
       }
 
-      // Fetch scholarships
-      const { data: scholarships } = await supabase
-        .from('scholarships')
-        .select('*')
-        .eq('cohort_id', student.student?.cohort_id);
+      // Scholarships not needed here (engine uses scholarshipId); remove fetch to avoid 404
 
       // Fetch cohort data for start date
       const { data: cohortData } = await supabase
         .from('cohorts')
         .select('start_date')
         .eq('id', student.student?.cohort_id)
-        .single();
+        .maybeSingle();
 
-      // Generate fee structure review to get payment breakdown
-      const feeReview = generateFeeStructureReview(
-        feeStructure,
-        scholarships || [],
-        student.payment_plan,
-        0, // test score
-        cohortData?.start_date || new Date().toISOString(),
-        student.scholarship_id
-      );
+      // Determine additional discount (admin-side) to keep parity with student view
+      let additionalDiscountPercentage = 0;
+      try {
+        const { data: sp } = await supabase
+          .from('student_payments')
+          .select('id, additional_discount_percentage, scholarship_id')
+          .eq('student_id', student.student_id)
+          .eq('cohort_id', student.student?.cohort_id)
+          .maybeSingle();
+        if (sp && typeof sp.additional_discount_percentage === 'number' && sp.additional_discount_percentage > 0) {
+          additionalDiscountPercentage = sp.additional_discount_percentage || 0;
+        }
+      } catch (_) {}
+
+      // Fallback: check student_scholarships table if not found on student_payments
+      if (additionalDiscountPercentage === 0) {
+        try {
+          const { data: ss } = await supabase
+            .from('student_scholarships')
+            .select('additional_discount_percentage')
+            .eq('student_id', student.student_id)
+            .maybeSingle();
+          if (ss && typeof ss.additional_discount_percentage === 'number') {
+            additionalDiscountPercentage = ss.additional_discount_percentage || 0;
+          }
+        } catch (_) {}
+      }
+
+      // Fetch canonical breakdown
+      const { breakdown: feeReview } = await getFullPaymentView({
+        studentId: String(student.student_id),
+        cohortId: String(student.student?.cohort_id),
+        paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        scholarshipId: student.scholarship_id || undefined,
+        additionalDiscountPercentage,
+        startDate: cohortData?.start_date || new Date().toISOString().split('T')[0],
+      });
 
       // Fetch payment transactions to check verification status
       let transactions: Array<{
@@ -104,7 +128,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           .select('id')
           .eq('student_id', student.student_id)
           .eq('cohort_id', student.student?.cohort_id)
-          .single();
+          .maybeSingle();
         paymentId = paymentRecord?.id;
       }
       if (paymentId) {
@@ -129,108 +153,66 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
       // Add program fee installments based on payment plan
       if (student.payment_plan === 'one_shot') {
+        const oneShot = feeReview.oneShotPayment;
         const programFeeAmount =
-          feeReview.overallSummary.totalAmountPayable -
-          feeStructure.admission_fee;
-
-        // Check for transactions and their verification status
-        const hasAnyTransaction = transactions.length > 0;
-        const hasApprovedTransaction = transactions.some(
-          t => t.verification_status === 'approved'
-        );
-        const hasVerificationPendingTransaction = transactions.some(
-          t => t.verification_status === 'verification_pending'
-        );
-
-        let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-        let verificationStatus: string | undefined = undefined;
-
-        if (hasApprovedTransaction) {
-          status = 'paid';
-        } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
-          status = 'verification_pending';
-          verificationStatus = 'verification_pending';
-        }
+          (oneShot?.amountPayable ?? 0) ||
+          (feeReview.overallSummary.totalAmountPayable - feeStructure.admission_fee);
+        const statusFromEngine = (oneShot as any)?.status as
+          | 'pending'
+          | 'verification_pending'
+          | 'paid'
+          | 'overdue'
+          | undefined;
 
         schedule.push({
           id: 'program_fee_one_shot',
           type: 'Program Fee (One-Shot)',
           amount: programFeeAmount,
-          dueDate: cohortData?.start_date || new Date().toISOString(),
-          status,
-          paymentDate: hasApprovedTransaction
-            ? new Date().toISOString()
-            : undefined,
-          verificationStatus,
+          dueDate: oneShot?.paymentDate || cohortData?.start_date || new Date().toISOString(),
+          status: statusFromEngine || 'pending',
+          paymentDate: undefined,
+          verificationStatus: statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
         });
       } else if (student.payment_plan === 'sem_wise') {
-        // Add semester-wise payments
+        // Use engine statuses for each semester (single installment per semester)
         feeReview.semesters.forEach((semester, index) => {
-          const semesterAmount = semester.total.totalPayable;
-          const hasAnyTransaction = transactions.length > 0;
-          const hasApprovedTransaction = transactions.some(
-            t => t.verification_status === 'approved'
-          );
-          const hasVerificationPendingTransaction = transactions.some(
-            t => t.verification_status === 'verification_pending'
-          );
-
-          let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-          let verificationStatus: string | undefined = undefined;
-
-          if (hasApprovedTransaction) {
-            status = 'paid';
-          } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
-            status = 'verification_pending';
-            verificationStatus = 'verification_pending';
-          }
-
+          const inst = semester.instalments[0];
+          const statusFromEngine = (inst as any)?.status as
+            | 'pending'
+            | 'verification_pending'
+            | 'paid'
+            | 'overdue'
+            | undefined;
           schedule.push({
             id: `semester_${index + 1}`,
             type: `Program Fee (Semester ${index + 1})`,
-            amount: semesterAmount,
-            dueDate:
-              semester.instalments[0]?.paymentDate || new Date().toISOString(),
-            status,
-            paymentDate: hasApprovedTransaction
-              ? new Date().toISOString()
-              : undefined,
-            verificationStatus,
+            amount: semester.total.totalPayable,
+            dueDate: inst?.paymentDate || new Date().toISOString(),
+            status: statusFromEngine || 'pending',
+            paymentDate: undefined,
+            verificationStatus: statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
           });
         });
       } else if (student.payment_plan === 'instalment_wise') {
-        // Add installment-wise payments
+        // Use engine statuses per installment
         let installmentIndex = 1;
         feeReview.semesters.forEach(semester => {
           semester.instalments.forEach(installment => {
-            const hasAnyTransaction = transactions.length > 0;
-            const hasApprovedTransaction = transactions.some(
-              t => t.verification_status === 'approved'
-            );
-            const hasVerificationPendingTransaction = transactions.some(
-              t => t.verification_status === 'verification_pending'
-            );
-
-            let status: 'pending' | 'verification_pending' | 'paid' = 'pending';
-            let verificationStatus: string | undefined = undefined;
-
-            if (hasApprovedTransaction) {
-              status = 'paid';
-            } else if (hasVerificationPendingTransaction || hasAnyTransaction) {
-              status = 'verification_pending';
-              verificationStatus = 'verification_pending';
-            }
-
+            const statusFromEngine = (installment as any)?.status as
+              | 'pending'
+              | 'verification_pending'
+              | 'paid'
+              | 'overdue'
+              | undefined;
             schedule.push({
               id: `installment_${installmentIndex}`,
               type: `Program Fee (Instalment ${installmentIndex})`,
               amount: installment.amountPayable,
               dueDate: installment.paymentDate,
-              status,
-              paymentDate: hasApprovedTransaction
-                ? new Date().toISOString()
-                : undefined,
-              verificationStatus,
+              status: statusFromEngine || 'pending',
+              paymentDate: undefined,
+              verificationStatus:
+                statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
             });
             installmentIndex++;
           });
@@ -240,6 +222,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       return schedule;
     } catch (error) {
       console.error('Error calculating payment schedule:', error);
+      try { (await import('sonner')).toast?.error?.('Failed to load payment schedule.'); } catch (_) {}
       return [];
     }
   };

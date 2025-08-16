@@ -5,9 +5,8 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar, ChevronUp, ChevronDown, CheckCircle } from 'lucide-react';
 import { PaymentPlan, PaymentStatus } from '@/types/fee';
 import { InstallmentCard } from './InstallmentCard';
-import { SemesterTable } from './SemesterTable';
-import { PaymentSubmissionData, StudentData } from '@/types/payments';
-import { PaymentBreakdown } from '@/types/payments/PaymentCalculationTypes';
+import { CohortStudent } from '@/types/cohort';
+import { PaymentSubmissionData } from '@/types/payments';
 import { Logger } from '@/lib/logging/Logger';
 import { StudentPaymentRow } from '@/types/payments/DatabaseAlignedTypes';
 
@@ -29,26 +28,42 @@ interface DatabaseInstallment {
   paymentDate: string | null;
 }
 
-// Define the semester type that matches our database structure
-interface DatabaseSemester {
+// Define the semester type close to engine output
+type EngineSemester = {
   semesterNumber: number;
-  total: {
-    totalPayable: number;
-    totalPaid: number;
-    totalPending: number;
+  total?: {
+    totalPayable?: number;
+    totalPaid?: number;
+    totalPending?: number;
   };
-  instalments: DatabaseInstallment[];
-}
+  totalPayable?: number;
+  instalments?: DatabaseInstallment[];
+};
+
+// Minimal engine breakdown shape consumed here
+type EnginePaymentBreakdown = {
+  admissionFee?: { totalPayable?: number } | null;
+  oneShotPayment?: {
+    amountPayable?: number;
+    baseAmount?: number;
+    discountAmount?: number;
+    scholarshipAmount?: number;
+    gstAmount?: number;
+    paymentDate?: string;
+  } | null;
+  semesters?: EngineSemester[];
+  overallSummary?: { totalAmountPayable?: number } | null;
+};
 
 export interface SemesterBreakdownProps {
-  paymentBreakdown: PaymentBreakdown;
+  paymentBreakdown: EnginePaymentBreakdown;
   selectedPaymentPlan: PaymentPlan;
   expandedSemesters: Set<number>;
   selectedInstallmentKey: string;
   showPaymentForm: boolean;
   paymentSubmissions?: Map<string, PaymentSubmissionData>;
   submittingPayments?: Set<string>;
-  studentData?: StudentData;
+  studentData?: CohortStudent;
   studentPayments?: StudentPaymentRow[];
   paymentTransactions?: any[];
   onToggleSemester: (semesterNumber: number) => void;
@@ -83,7 +98,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
   };
 
   // Check if all installments in a semester are completed
-  const isSemesterCompleted = (semester: DatabaseSemester) => {
+  const isSemesterCompleted = (semester: EngineSemester) => {
     if (!semester.instalments || semester.instalments.length === 0) {
       return false;
     }
@@ -251,7 +266,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
             paymentSubmissions={paymentSubmissions}
             submittingPayments={submittingPayments}
             studentData={studentData}
-            paymentBreakdown={paymentBreakdown}
+            paymentBreakdown={paymentBreakdown as unknown as any}
             onInstallmentClick={onInstallmentClick}
             onPaymentSubmission={onPaymentSubmission}
           />
@@ -317,7 +332,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
         // Don't subtract admission fee - the payment is for the semester fee
         let paidCursor = aggregatePaidAll;
 
-        return paymentBreakdown.semesters?.map((semester: DatabaseSemester) => {
+        return paymentBreakdown.semesters?.map((semester: EngineSemester) => {
         const isCompleted = isSemesterCompleted(semester);
 
         return (
@@ -349,9 +364,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                     </CardTitle>
                     <p className='text-sm text-muted-foreground'>
                       {formatCurrency(
-                        semester.total?.totalPayable ||
-                          semester.totalPayable ||
-                          0
+                        Number(semester.total?.totalPayable ?? semester.totalPayable ?? 0)
                       )}
                     </p>
                   </div>
@@ -390,7 +403,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                       // Allocate paid sequentially across installments from the paidCursor
                       const allocatedPaid = Math.min(paidCursor, totalPayable);
                       paidCursor = Math.max(0, paidCursor - allocatedPaid);
-                      const due = String(inst.paymentDate ?? inst.due_date ?? '');
+                      const due = String(inst.paymentDate ?? '');
 
                       // Derive a consistent status using payment_transactions as primary source of truth
                       const computeStatus = (): PaymentStatus => {
@@ -493,7 +506,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                           paymentSubmissions={paymentSubmissions}
                           submittingPayments={submittingPayments}
                           studentData={studentData}
-                          paymentBreakdown={paymentBreakdown}
+                          paymentBreakdown={paymentBreakdown as unknown as any}
                           onInstallmentClick={onInstallmentClick}
                           onPaymentSubmission={onPaymentSubmission}
                         />

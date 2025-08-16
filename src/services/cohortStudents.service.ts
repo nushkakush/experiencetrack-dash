@@ -132,16 +132,9 @@ class CohortStudentsService extends BaseService<CohortStudent> {
         .from("cohort_students")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        // Handle specific error cases
-        if (error.code === 'PGRST116') {
-          // No rows returned - student not found
-          throw new Error(`No student record found for user ID: ${userId}. Please ensure you have accepted your invitation.`);
-        }
-        throw error;
-      }
+      if (error) throw error;
       return { data, error: null };
     });
   }

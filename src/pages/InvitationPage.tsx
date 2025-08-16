@@ -20,7 +20,10 @@ export default function InvitationPage() {
     confirmPassword,
     setPassword,
     setConfirmPassword,
-    handleAcceptInvitation
+    handleAcceptInvitation,
+    isExistingUser: effectiveExistingUser,
+    canJoinWithoutPassword,
+    toggleExistingUserMode
   } = useInvitationAcceptance({
     token,
     student,
@@ -44,13 +47,15 @@ export default function InvitationPage() {
     <InvitationForm
       student={student}
       cohortName={cohortName}
-      isExistingUser={isExistingUser}
+      isExistingUser={effectiveExistingUser}
+      canJoinWithoutPassword={canJoinWithoutPassword}
       password={password}
       confirmPassword={confirmPassword}
       processing={processing}
       onPasswordChange={setPassword}
       onConfirmPasswordChange={setConfirmPassword}
       onSubmit={handleAcceptInvitation}
+      onToggleMode={toggleExistingUserMode}
     />
   );
 }

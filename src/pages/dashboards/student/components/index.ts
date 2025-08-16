@@ -8,3 +8,4 @@ export { SemesterBreakdown } from './SemesterBreakdown';
 
 // Payment Dashboard Hooks
 export { usePaymentDashboard } from './hooks/usePaymentDashboard';
+export { NoCohortState } from './NoCohortState';

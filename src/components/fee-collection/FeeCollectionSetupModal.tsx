@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { NewFeeStructureInput, Scholarship } from '@/types/fee';
 import Step1FeeStructure from './Step1FeeStructure';
 import Step2Scholarships from './Step2Scholarships';
@@ -131,6 +131,9 @@ export default function FeeCollectionSetupModal({
               : `Configure Fee Structure - Step ${currentStep} of 3`
             }
           </DialogTitle>
+          <DialogDescription>
+            Configure your cohort's fee structure, define scholarships, and preview the resulting payment plans.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Progress Bar Only */}

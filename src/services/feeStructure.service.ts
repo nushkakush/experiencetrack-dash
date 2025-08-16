@@ -11,7 +11,7 @@ export class FeeStructureService {
       .from('fee_structures')
       .select('*')
       .eq('cohort_id', cohortId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       Logger.getInstance().error('Error fetching fee structure', { error, cohortId });

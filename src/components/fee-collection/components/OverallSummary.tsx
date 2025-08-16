@@ -27,6 +27,18 @@ export const OverallSummary: React.FC<OverallSummaryProps> = ({
   scholarships,
   selectedScholarshipId
 }) => {
+  if (!overallSummary) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-orange-600">Overall Fee</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-24 bg-muted rounded animate-pulse" />
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardHeader>

@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
-import { generateFeeStructureReview } from '@/utils/fee-calculations';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -62,6 +62,11 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         setFinancialData(calculatedData);
       } catch (error) {
         console.error('Error fetching financial data:', error);
+        // Show a toast for better visibility in UI
+        // Using non-blocking toast to keep UX smooth
+        // If toast API is available globally, this will display an error message
+        // eslint-disable-next-line no-console
+        try { (await import('sonner')).toast?.error?.('Failed to load financial summary.'); } catch (_) {}
       } finally {
         setLoading(false);
       }
@@ -96,38 +101,33 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         .from('fee_structures')
         .select('*')
         .eq('cohort_id', student.student?.cohort_id)
-        .single();
+        .maybeSingle();
 
       if (!feeStructure) {
         throw new Error('Fee structure not found');
       }
 
-      // Fetch scholarships
-      const { data: scholarships } = await supabase
-        .from('scholarships')
-        .select('*')
-        .eq('cohort_id', student.student?.cohort_id);
+      // Scholarships list not required here; engine uses scholarshipId on the payment record
 
       // Fetch cohort data for start date
       const { data: cohortData } = await supabase
         .from('cohorts')
         .select('start_date')
         .eq('id', student.student?.cohort_id)
-        .single();
+        .maybeSingle();
 
-      // Generate fee structure review to get total amounts
-      const feeReview = generateFeeStructureReview(
-        feeStructure,
-        scholarships || [],
-        student.payment_plan,
-        0, // test score
-        cohortData?.start_date || new Date().toISOString(),
-        student.scholarship_id
-      );
+      // Fetch canonical breakdown from Edge Function
+      const { breakdown: feeReview } = await getFullPaymentView({
+        studentId: String(student.student_id),
+        cohortId: String(student.student?.cohort_id),
+        paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        scholarshipId: student.scholarship_id || undefined,
+        startDate: cohortData?.start_date || new Date().toISOString().split('T')[0],
+      });
 
       // Calculate total amount (program fee + admission fee)
-      const totalAmount = feeReview.overallSummary.totalAmountPayable;
-      const admissionFee = feeStructure.admission_fee;
+      const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
+      const admissionFee = feeReview?.admissionFee?.totalPayable || feeStructure.admission_fee;
 
       // Fetch verified payment transactions
       let verifiedPayments = 0;
@@ -162,7 +162,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           .from('student_payments')
           .select('total_amount_paid, payment_status')
           .eq('id', student.student_payment_id)
-          .single();
+          .maybeSingle();
 
         if (paymentRecord) {
           // If the payment record shows admission fee is already included in total_amount_paid

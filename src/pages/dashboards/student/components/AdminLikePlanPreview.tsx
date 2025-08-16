@@ -5,7 +5,7 @@ import { AdmissionFeeSection } from '@/components/fee-collection/components/Admi
 import { OneShotPaymentSection } from '@/components/fee-collection/components/OneShotPaymentSection';
 import { SemesterSection } from '@/components/fee-collection/components/SemesterSection';
 import { OverallSummary } from '@/components/fee-collection/components/OverallSummary';
-import { generateFeeStructureReview } from '@/utils/fee-calculations';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 
 // Type definitions for the fee structure review
 interface OneShotPaymentData {
@@ -63,6 +63,7 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
 }) => {
   const [scholarships, setScholarships] = React.useState<Scholarship[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [reviewLoading, setReviewLoading] = React.useState(false);
   const [effectiveScholarshipId, setEffectiveScholarshipId] =
     React.useState<string>('no_scholarship');
 
@@ -122,84 +123,71 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
     };
   }, [selectedScholarshipId, studentId]);
 
-  const feeReview = React.useMemo(() => {
-    // First generate the base fee review
-    const baseFeeReview = generateFeeStructureReview(
-      feeStructure,
-      scholarships,
-      selectedPlan,
-      0,
-      cohortStartDate,
-      effectiveScholarshipId === 'no_scholarship'
-        ? undefined
-        : effectiveScholarshipId,
-      // Ensure additional discount is included when present
-      studentScholarship?.additional_discount_percentage || 0
-    );
+  const [feeReview, setFeeReview] = React.useState<any | null>(null);
 
-    // If we have student scholarship data, calculate the total scholarship amount (base + additional)
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setReviewLoading(true);
+        const { breakdown } = await getFullPaymentView({
+          cohortId: String(cohortId),
+          paymentPlan: selectedPlan,
+          scholarshipId: effectiveScholarshipId === 'no_scholarship' ? undefined : effectiveScholarshipId,
+          additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+          startDate: cohortStartDate,
+        });
+        if (!cancelled) setFeeReview(breakdown);
+      } catch (err) {
+        console.error('payment-engine preview failed', err);
+        try { (await import('sonner')).toast?.error?.('Failed to load fee preview.'); } catch (_) {}
+        if (!cancelled) setFeeReview(null);
+      } finally {
+        if (!cancelled) setReviewLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [cohortId, selectedPlan, cohortStartDate, effectiveScholarshipId, studentScholarship?.additional_discount_percentage]);
+
+  const computedReview = React.useMemo(() => {
+    if (!feeReview) return null;
+    const review = JSON.parse(JSON.stringify(feeReview));
     if (studentScholarship && studentScholarship.scholarship) {
       const baseScholarshipPercentage = studentScholarship.scholarship.amount_percentage || 0;
       const additionalDiscountPercentage = studentScholarship.additional_discount_percentage || 0;
       const totalDiscountPercentage = baseScholarshipPercentage + additionalDiscountPercentage;
-      
       const totalScholarshipAmount = (Number(feeStructure.total_program_fee) * totalDiscountPercentage) / 100;
-
-      console.log('💰 AdminLikePlanPreview - Total Scholarship Calculation:', {
-        baseScholarshipPercentage,
-        additionalDiscountPercentage,
-        totalDiscountPercentage,
-        totalScholarshipAmount
-      });
-
-      // Override the scholarship amount in the breakdown
-      baseFeeReview.overallSummary.totalScholarship = totalScholarshipAmount;
-      
-      // Also override the one-shot payment scholarship amount if it exists
-      if (baseFeeReview.oneShotPayment) {
-        baseFeeReview.oneShotPayment.scholarshipAmount = totalScholarshipAmount;
-        
-        // Recalculate the one-shot payment amount payable
-        const baseAmount = baseFeeReview.oneShotPayment.baseAmount;
-        const discountAmount = baseFeeReview.oneShotPayment.discountAmount;
+      review.overallSummary.totalScholarship = totalScholarshipAmount;
+      if (review.oneShotPayment) {
+        review.oneShotPayment.scholarshipAmount = totalScholarshipAmount;
+        const baseAmount = review.oneShotPayment.baseAmount;
+        const discountAmount = review.oneShotPayment.discountAmount;
         const amountAfterDiscount = baseAmount - discountAmount;
         const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
-        const gstAmount = (amountAfterScholarship * 18) / 100; // 18% GST
-        baseFeeReview.oneShotPayment.amountPayable = Math.max(0, amountAfterScholarship + gstAmount);
-        baseFeeReview.oneShotPayment.gstAmount = gstAmount;
+        const gstAmount = (amountAfterScholarship * 18) / 100;
+        review.oneShotPayment.amountPayable = Math.max(0, amountAfterScholarship + gstAmount);
+        review.oneShotPayment.gstAmount = gstAmount;
       }
-      
-      // Recalculate the total amount payable with the correct scholarship amount
       const totalProgramFee = Number(feeStructure.total_program_fee);
-      const admissionFee = Number(feeStructure.admission_fee);
-      const totalDiscount = baseFeeReview.overallSummary.totalDiscount;
-      
-      // Calculate amount after discount and scholarship
+      const totalDiscount = review.overallSummary.totalDiscount;
       const amountAfterDiscount = totalProgramFee - totalDiscount;
       const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
-      
-      // Calculate GST on the amount after scholarship and discount
-      const totalBaseGST = (amountAfterScholarship * 18) / 100; // 18% GST
-      // Keep GST in overall summary in sync with recalculation
-      baseFeeReview.overallSummary.totalGST = totalBaseGST;
-      
-      // Calculate final payable amount
-      baseFeeReview.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);
+      const totalBaseGST = (amountAfterScholarship * 18) / 100;
+      review.overallSummary.totalGST = totalBaseGST;
+      review.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);
     }
-
-    return baseFeeReview;
-  }, [
-    feeStructure,
-    scholarships,
-    selectedPlan,
-    cohortStartDate,
-    effectiveScholarshipId,
-    studentScholarship,
-  ]);
+    return review;
+  }, [feeReview, studentScholarship, feeStructure]);
 
   const noop = () => {};
 
-  if (loading && !scholarships.length) {
+  // Ensure all hooks are called before any early returns
+  const reviewData = React.useMemo(() => (computedReview || feeReview), [computedReview, feeReview]);
+
+  if (loading && (!scholarships || scholarships.length === 0)) {
     return (
       <div className='space-y-4'>
         <div className='h-28 bg-gray-200 rounded animate-pulse' />
@@ -209,19 +197,29 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
     );
   }
 
+  if (reviewLoading || !reviewData) {
+    return (
+      <div className='space-y-4'>
+        <div className='h-24 bg-muted rounded animate-pulse' />
+        <div className='h-24 bg-muted rounded animate-pulse' />
+        <div className='h-24 bg-muted rounded animate-pulse' />
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
       <AdmissionFeeSection
-        admissionFee={feeReview.admissionFee}
+        admissionFee={reviewData?.admissionFee}
         cohortStartDate={cohortStartDate}
         editablePaymentDates={{}}
         onPaymentDateChange={noop}
         isReadOnly
       />
 
-      {selectedPlan === 'one_shot' && feeReview.oneShotPayment && (
+      {selectedPlan === 'one_shot' && reviewData?.oneShotPayment && (
         <OneShotPaymentSection
-          oneShotPayment={feeReview.oneShotPayment as OneShotPaymentData}
+          oneShotPayment={reviewData?.oneShotPayment as OneShotPaymentData}
           scholarships={scholarships}
           selectedScholarshipId={effectiveScholarshipId}
           cohortStartDate={cohortStartDate}
@@ -233,7 +231,7 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
 
       {(selectedPlan === 'sem_wise' || selectedPlan === 'instalment_wise') && (
         <>
-          {feeReview.semesters.map((semester: SemesterData) => (
+          {reviewData?.semesters.map((semester: SemesterData) => (
             <SemesterSection
               key={semester.semesterNumber}
               semester={semester}
@@ -248,7 +246,7 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
       )}
 
       <OverallSummary
-        overallSummary={feeReview.overallSummary as OverallSummaryData}
+        overallSummary={reviewData?.overallSummary as OverallSummaryData}
         feeStructure={feeStructure}
         selectedPaymentPlan={selectedPlan}
         scholarships={scholarships}
