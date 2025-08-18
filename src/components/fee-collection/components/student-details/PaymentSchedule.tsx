@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, DollarSign, Plus } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { supabase } from '@/integrations/supabase/client';
+import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
+import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
 
 interface PaymentScheduleProps {
   student: StudentPaymentSummary;
@@ -19,6 +22,8 @@ interface PaymentScheduleItem {
   status: 'pending' | 'verification_pending' | 'paid' | 'overdue';
   paymentDate?: string;
   verificationStatus?: string;
+  semesterNumber?: number;
+  installmentNumber?: number;
 }
 
 export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
@@ -28,22 +33,29 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     []
   );
   const [loading, setLoading] = useState(true);
+  const [recordingPayment, setRecordingPayment] = useState<string | null>(null); // Track which payment is being recorded
+  const [selectedPaymentItem, setSelectedPaymentItem] =
+    useState<PaymentScheduleItem | null>(null);
+  const [showRecordingDialog, setShowRecordingDialog] = useState(false);
+
+  // Check if user can record payments (admin/fee_collector permissions)
+  const { canCollectFees } = useFeaturePermissions();
+
+  const fetchPaymentSchedule = async () => {
+    try {
+      setLoading(true);
+      const schedule = await calculatePaymentSchedule();
+      setPaymentSchedule(schedule);
+    } catch (error) {
+      console.error('Error fetching payment schedule:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPaymentSchedule = async () => {
-      try {
-        setLoading(true);
-        const schedule = await calculatePaymentSchedule();
-        setPaymentSchedule(schedule);
-      } catch (error) {
-        console.error('Error fetching payment schedule:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPaymentSchedule();
-  }, [student]);
+  }, [student, fetchPaymentSchedule]);
 
   const calculatePaymentSchedule = async (): Promise<PaymentScheduleItem[]> => {
     if (
@@ -64,10 +76,16 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           .eq('student_id', student.student_id)
           .eq('cohort_id', student.student?.cohort_id)
           .maybeSingle();
-        if (sp && typeof sp.additional_discount_percentage === 'number' && sp.additional_discount_percentage > 0) {
+        if (
+          sp &&
+          typeof sp.additional_discount_percentage === 'number' &&
+          sp.additional_discount_percentage > 0
+        ) {
           additionalDiscountPercentage = sp.additional_discount_percentage || 0;
         }
-      } catch (_) {}
+      } catch (error) {
+        console.warn('Error in payment schedule calculation:', error);
+      }
 
       // Fallback: check student_scholarships table if not found on student_payments
       if (additionalDiscountPercentage === 0) {
@@ -78,16 +96,22 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
             .eq('student_id', student.student_id)
             .maybeSingle();
           if (ss && typeof ss.additional_discount_percentage === 'number') {
-            additionalDiscountPercentage = ss.additional_discount_percentage || 0;
+            additionalDiscountPercentage =
+              ss.additional_discount_percentage || 0;
           }
-        } catch (_) {}
+        } catch (error) {
+          console.warn('Error in payment schedule calculation:', error);
+        }
       }
 
       // Fetch canonical breakdown and fee structure from Edge Function
       const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
-        paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        paymentPlan: student.payment_plan as
+          | 'one_shot'
+          | 'sem_wise'
+          | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
         additionalDiscountPercentage,
       });
@@ -139,8 +163,10 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         const oneShot = feeReview.oneShotPayment;
         const programFeeAmount =
           (oneShot?.amountPayable ?? 0) ||
-          (feeReview.overallSummary.totalAmountPayable - feeStructure.admission_fee);
-        const statusFromEngine = (oneShot as any)?.status as
+          feeReview.overallSummary.totalAmountPayable -
+            feeStructure.admission_fee;
+        const statusFromEngine = (oneShot as Record<string, unknown>)
+          ?.status as
           | 'pending'
           | 'verification_pending'
           | 'paid'
@@ -151,16 +177,22 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           id: 'program_fee_one_shot',
           type: 'Program Fee (One-Shot)',
           amount: programFeeAmount,
-          dueDate: oneShot?.paymentDate || cohortData?.start_date || new Date().toISOString(),
+          dueDate:
+            oneShot?.paymentDate ||
+            cohortData?.start_date ||
+            new Date().toISOString(),
           status: statusFromEngine || 'pending',
           paymentDate: undefined,
-          verificationStatus: statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
+          verificationStatus:
+            statusFromEngine === 'verification_pending'
+              ? 'verification_pending'
+              : undefined,
         });
       } else if (student.payment_plan === 'sem_wise') {
         // Use engine statuses for each semester (single installment per semester)
         feeReview.semesters.forEach((semester, index) => {
           const inst = semester.instalments[0];
-          const statusFromEngine = (inst as any)?.status as
+          const statusFromEngine = (inst as Record<string, unknown>)?.status as
             | 'pending'
             | 'verification_pending'
             | 'paid'
@@ -173,7 +205,12 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
             dueDate: inst?.paymentDate || new Date().toISOString(),
             status: statusFromEngine || 'pending',
             paymentDate: undefined,
-            verificationStatus: statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
+            verificationStatus:
+              statusFromEngine === 'verification_pending'
+                ? 'verification_pending'
+                : undefined,
+            semesterNumber: semester.semesterNumber,
+            installmentNumber: 1, // sem_wise always has 1 installment per semester
           });
         });
       } else if (student.payment_plan === 'instalment_wise') {
@@ -181,7 +218,8 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         let installmentIndex = 1;
         feeReview.semesters.forEach(semester => {
           semester.instalments.forEach(installment => {
-            const statusFromEngine = (installment as any)?.status as
+            const statusFromEngine = (installment as Record<string, unknown>)
+              ?.status as
               | 'pending'
               | 'verification_pending'
               | 'paid'
@@ -195,7 +233,12 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
               status: statusFromEngine || 'pending',
               paymentDate: undefined,
               verificationStatus:
-                statusFromEngine === 'verification_pending' ? 'verification_pending' : undefined,
+                statusFromEngine === 'verification_pending'
+                  ? 'verification_pending'
+                  : undefined,
+              semesterNumber: semester.semesterNumber,
+              installmentNumber:
+                installment.installmentNumber || installmentIndex,
             });
             installmentIndex++;
           });
@@ -205,7 +248,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       return schedule;
     } catch (error) {
       console.error('Error calculating payment schedule:', error);
-      try { (await import('sonner')).toast?.error?.('Failed to load payment schedule.'); } catch (_) {}
+      try {
+        (await import('sonner')).toast?.error?.(
+          'Failed to load payment schedule.'
+        );
+      } catch (error) {
+        console.warn('Error showing toast:', error);
+      }
       return [];
     }
   };
@@ -256,6 +305,35 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           </Badge>
         );
     }
+  };
+
+  // Function to handle recording payment for an installment
+  const handleRecordPayment = async (paymentItem: PaymentScheduleItem) => {
+    setSelectedPaymentItem(paymentItem);
+    setShowRecordingDialog(true);
+  };
+
+  // Function to handle payment recording completion
+  const handlePaymentRecorded = () => {
+    // Refresh the payment schedule
+    fetchPaymentSchedule();
+  };
+
+  // Function to close the recording dialog
+  const handleCloseRecordingDialog = () => {
+    setShowRecordingDialog(false);
+    setSelectedPaymentItem(null);
+  };
+
+  // Helper to determine if a payment can be recorded by admin
+  const canRecordPayment = (status: string, verificationStatus?: string) => {
+    // Admin can record payments for pending/overdue payments only
+    // Don't allow recording for already paid or verification pending payments
+    return (
+      canCollectFees &&
+      (status === 'pending' || status === 'overdue') &&
+      !verificationStatus
+    );
   };
 
   // Check if payment plan is selected
@@ -340,7 +418,23 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
                   <span className='font-medium text-sm text-foreground'>
                     {item.type}
                   </span>
-                  {getStatusBadge(item.status, item.verificationStatus)}
+                  <div className='flex items-center gap-2'>
+                    {getStatusBadge(item.status, item.verificationStatus)}
+                    {canRecordPayment(item.status, item.verificationStatus) && (
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => handleRecordPayment(item)}
+                        disabled={recordingPayment === item.id}
+                        className='h-6 px-2 text-xs'
+                      >
+                        <Plus className='h-3 w-3 mr-1' />
+                        {recordingPayment === item.id
+                          ? 'Recording...'
+                          : 'Record Payment'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className='space-y-2 text-xs text-muted-foreground'>
@@ -388,6 +482,15 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         )}
       </div>
       <Separator className='bg-border' />
+
+      {/* Admin Payment Recording Dialog */}
+      <AdminPaymentRecordingDialog
+        open={showRecordingDialog}
+        onOpenChange={handleCloseRecordingDialog}
+        student={student}
+        paymentItem={selectedPaymentItem}
+        onPaymentRecorded={handlePaymentRecorded}
+      />
     </>
   );
 };

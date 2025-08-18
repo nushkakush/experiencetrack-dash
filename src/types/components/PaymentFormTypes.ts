@@ -13,7 +13,7 @@ export interface StudentData {
   avatar_url: string | null;
   cohort_id: string;
   user_id: string | null;
-  invite_status: "pending" | "sent" | "accepted" | "failed";
+  invite_status: 'pending' | 'sent' | 'accepted' | 'failed';
   invited_at: string | null;
   accepted_at: string | null;
   created_at: string;
@@ -92,6 +92,7 @@ export interface PaymentFormProps {
   selectedPaymentPlan?: PaymentPlan;
   paymentBreakdown?: PaymentBreakdown;
   selectedInstallment?: Instalment;
+  isAdminMode?: boolean; // Flag for admin mode to show additional fields
 }
 
 // Payment Mode Types
@@ -152,14 +153,19 @@ export interface PaymentFormState {
 export interface PaymentFormActions {
   handlePaymentModeChange: (mode: string) => void;
   handleAmountChange: (amount: number) => void;
-  handleFieldChange: (fieldName: string, value: string | number | boolean) => void;
+  handleFieldChange: (
+    fieldName: string,
+    value: string | number | boolean
+  ) => void;
   handleFileUpload: (fieldName: string, file: File | null) => void;
   handleSubmit: () => Promise<void>;
   getPaymentModeConfig: () => PaymentModeConfig | null;
 }
 
 // Payment Form Hook Return Types
-export interface UsePaymentFormReturn extends PaymentFormState, PaymentFormActions {}
+export interface UsePaymentFormReturn
+  extends PaymentFormState,
+    PaymentFormActions {}
 
 export interface UsePaymentFormProps {
   selectedInstallment?: Instalment;

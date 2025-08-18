@@ -282,14 +282,17 @@ export const usePaymentSubmissions = (
       }
 
       // 3. Create a single payment transaction record with all the enhanced fields
-      console.log('🔍 [DEBUG] Creating transaction record with FULL payment data:', paymentData);
+      console.log(
+        '🔍 [DEBUG] Creating transaction record with FULL payment data:',
+        paymentData
+      );
       console.log('🔍 [DEBUG] Specific installment fields:', {
         installmentId: paymentData.installmentId,
         semesterNumber: paymentData.semesterNumber,
         hasInstallmentId: 'installmentId' in paymentData,
         hasSemesterNumber: 'semesterNumber' in paymentData,
         installmentIdType: typeof paymentData.installmentId,
-        semesterNumberType: typeof paymentData.semesterNumber
+        semesterNumberType: typeof paymentData.semesterNumber,
       });
 
       // Normalize and strictly require installment targeting
@@ -300,7 +303,8 @@ export const usePaymentSubmissions = (
         return Number.isFinite(num) ? num : null;
       };
 
-      const normalizedInstallmentId: string | null = paymentData.installmentId ?? null;
+      const normalizedInstallmentId: string | null =
+        paymentData.installmentId ?? null;
       let normalizedSemesterNumber: number | null =
         typeof paymentData.semesterNumber === 'number'
           ? paymentData.semesterNumber
@@ -315,25 +319,36 @@ export const usePaymentSubmissions = (
       });
 
       if (!normalizedInstallmentId || !normalizedSemesterNumber) {
-        toast.error('Installment targeting is required. Please select a specific installment and try again.');
-        Logger.getInstance().error('Missing installment targeting on regular payment', {
-          paymentData,
-          normalizedInstallmentId,
-          normalizedSemesterNumber,
-        });
+        toast.error(
+          'Installment targeting is required. Please select a specific installment and try again.'
+        );
+        Logger.getInstance().error(
+          'Missing installment targeting on regular payment',
+          {
+            paymentData,
+            normalizedInstallmentId,
+            normalizedSemesterNumber,
+          }
+        );
         return { success: false, error: 'Missing installment targeting' };
       }
-      
+
+      // Determine if this is an admin-recorded payment
+      const isAdminRecorded = paymentData.isAdminRecorded === true;
+      const recordedByUserId = paymentData.recordedByUserId;
+
       const transactionRecord = {
         payment_id: studentPaymentId, // Use the UUID from student_payments
         transaction_type: 'payment',
         amount: paymentData.amount,
         payment_method: paymentData.paymentMethod,
         reference_number: paymentData.referenceNumber || '',
-        status: 'pending',
+        status: isAdminRecorded ? 'success' : 'pending', // Admin payments are immediately successful
         notes: paymentData.notes || '',
         created_by: studentData?.user_id,
-        verification_status: 'verification_pending',
+        verification_status: isAdminRecorded
+          ? 'approved'
+          : 'verification_pending', // Admin payments skip verification
         receipt_url: receiptUrl,
         proof_of_payment_url: proofOfPaymentUrl,
         transaction_screenshot_url: transactionScreenshotUrl,
@@ -344,12 +359,18 @@ export const usePaymentSubmissions = (
         razorpay_payment_id: paymentData.razorpayPaymentId || '',
         razorpay_order_id: paymentData.razorpayOrderId || '',
         payment_date:
-          paymentData.transferDate || new Date().toISOString().split('T')[0],
+          paymentData.paymentDate ||
+          paymentData.transferDate ||
+          new Date().toISOString().split('T')[0],
         transfer_date:
           paymentData.transferDate || new Date().toISOString().split('T')[0],
         // Add installment identification fields (normalized)
         installment_id: normalizedInstallmentId,
         semester_number: normalizedSemesterNumber,
+        // Add admin tracking fields
+        recorded_by_user_id: recordedByUserId || null,
+        verified_by: isAdminRecorded ? recordedByUserId : null, // Auto-verify admin payments
+        verified_at: isAdminRecorded ? new Date().toISOString() : null, // Auto-verify admin payments
       };
 
       const { data, error } = await supabase
@@ -396,7 +417,20 @@ export const usePaymentSubmissions = (
       Logger.getInstance().info('Payment submission completed successfully', {
         paymentId: data.id,
         amount: paymentData.amount,
+        isAdminRecorded,
+        recordedByUserId,
       });
+
+      // Show appropriate success message
+      if (isAdminRecorded) {
+        toast.success(
+          'Payment recorded successfully! The installment has been marked as paid.'
+        );
+      } else {
+        toast.success(
+          'Payment submitted for verification! You will be notified once verified.'
+        );
+      }
 
       return { success: true, error: null, paymentId: data.id };
     } catch (error) {
@@ -414,19 +448,30 @@ export const usePaymentSubmissions = (
 
   const handleRazorpayPayment = async (paymentData: PaymentSubmissionData) => {
     try {
-      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData:', studentData);
-      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData.id:', studentData?.id);
-      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData.cohort_id:', studentData?.cohort_id);
-      
+      console.log(
+        '🔍 [DEBUG] handleRazorpayPayment - studentData:',
+        studentData
+      );
+      console.log(
+        '🔍 [DEBUG] handleRazorpayPayment - studentData.id:',
+        studentData?.id
+      );
+      console.log(
+        '🔍 [DEBUG] handleRazorpayPayment - studentData.cohort_id:',
+        studentData?.cohort_id
+      );
+
       // Validate student data
       if (!studentData?.id || !studentData?.cohort_id) {
         console.error('❌ [DEBUG] Missing student data:', { studentData });
-        throw new Error('Student data is missing. Please refresh the page and try again.');
+        throw new Error(
+          'Student data is missing. Please refresh the page and try again.'
+        );
       }
-      
+
       // Get the actual payment plan from student data or use a default
       let paymentPlan = 'one_shot'; // default
-      
+
       // Try to get payment plan from student payments if available
       if (studentData?.id && studentData?.cohort_id) {
         try {
@@ -436,14 +481,23 @@ export const usePaymentSubmissions = (
             .eq('student_id', studentData.id)
             .eq('cohort_id', studentData.cohort_id)
             .maybeSingle();
-          
-          console.log('🔍 [DEBUG] handleRazorpayPayment - studentPayment:', studentPayment);
-          
-          if (studentPayment?.payment_plan && studentPayment.payment_plan !== 'not_selected') {
+
+          console.log(
+            '🔍 [DEBUG] handleRazorpayPayment - studentPayment:',
+            studentPayment
+          );
+
+          if (
+            studentPayment?.payment_plan &&
+            studentPayment.payment_plan !== 'not_selected'
+          ) {
             paymentPlan = studentPayment.payment_plan;
           }
         } catch (error) {
-          console.warn('Could not fetch student payment plan, using default:', error);
+          console.warn(
+            'Could not fetch student payment plan, using default:',
+            error
+          );
         }
       }
 
@@ -460,16 +514,19 @@ export const usePaymentSubmissions = (
             await onPaymentSuccess();
           }
         },
-        onError: (error) => {
+        onError: error => {
           Logger.getInstance().error('Razorpay payment error', {
             error,
             paymentData,
           });
-        }
+        },
       };
-      
-      console.log('🔍 [DEBUG] handleRazorpayPayment - calling razorpayService.initiatePayment with:', razorpayData);
-      
+
+      console.log(
+        '🔍 [DEBUG] handleRazorpayPayment - calling razorpayService.initiatePayment with:',
+        razorpayData
+      );
+
       await razorpayService.initiatePayment(razorpayData);
 
       return { success: true, error: null };

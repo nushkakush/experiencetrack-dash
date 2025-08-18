@@ -43,6 +43,7 @@ export interface PaymentSubmissionData {
   amount: number;
   paymentMethod: string;
   referenceNumber?: string;
+  paymentDate?: string;
   notes?: string;
   receiptFile?: File;
   proofOfPaymentFile?: File;
@@ -62,6 +63,9 @@ export interface PaymentSubmissionData {
   // Installment identification fields
   installmentId?: string;
   semesterNumber?: number;
+  // Admin recording fields
+  isAdminRecorded?: boolean;
+  recordedByUserId?: string;
 }
 
 export interface PaymentTransaction {
@@ -76,7 +80,12 @@ export interface PaymentTransaction {
   created_at: string | null;
   created_by?: string | null;
   updated_at: string | null;
-  verification_status?: 'pending' | 'verification_pending' | 'approved' | 'rejected' | null;
+  verification_status?:
+    | 'pending'
+    | 'verification_pending'
+    | 'approved'
+    | 'rejected'
+    | null;
   verified_by?: string | null;
   verified_at?: string | null;
   receipt_url?: string | null;
@@ -109,53 +118,55 @@ export const PAYMENT_METHOD_CONFIG = {
     icon: '💵',
     requiresReference: false,
     requiresFile: false,
-    requiresBankDetails: false
+    requiresBankDetails: false,
   },
   bank_transfer: {
     label: 'Bank Transfer',
     icon: '🏦',
     requiresReference: true,
     requiresFile: true,
-    requiresBankDetails: true
+    requiresBankDetails: true,
   },
   cheque: {
     label: 'Cheque',
     icon: '📄',
     requiresReference: true,
     requiresFile: true,
-    requiresBankDetails: false
+    requiresBankDetails: false,
   },
   online: {
     label: 'Online Payment',
     icon: '💳',
     requiresReference: false,
     requiresFile: false,
-    requiresBankDetails: false
+    requiresBankDetails: false,
   },
   scan_to_pay: {
     label: 'Scan to Pay',
     icon: '📱',
     requiresReference: false,
     requiresFile: false,
-    requiresBankDetails: false
+    requiresBankDetails: false,
   },
   razorpay: {
     label: 'Online Payment',
     icon: '🔗',
     requiresReference: false,
     requiresFile: false,
-    requiresBankDetails: false
-  }
+    requiresBankDetails: false,
+  },
 } as const;
 
 export const getPaymentMethodConfig = (method: string) => {
-  return PAYMENT_METHOD_CONFIG[method as keyof typeof PAYMENT_METHOD_CONFIG] || {
-    label: method,
-    icon: '❓',
-    requiresReference: false,
-    requiresFile: false,
-    requiresBankDetails: false
-  };
+  return (
+    PAYMENT_METHOD_CONFIG[method as keyof typeof PAYMENT_METHOD_CONFIG] || {
+      label: method,
+      icon: '❓',
+      requiresReference: false,
+      requiresFile: false,
+      requiresBankDetails: false,
+    }
+  );
 };
 
 export const isPaymentMethodEnabled = (
@@ -182,12 +193,12 @@ export const getAvailablePaymentMethods = (
   config: PaymentMethodConfiguration
 ): string[] => {
   const methods: string[] = [];
-  
+
   if (config.cash_enabled) methods.push('cash');
   if (config.bank_transfer_enabled) methods.push('bank_transfer');
   if (config.cheque_enabled) methods.push('cheque');
   if (config.scan_to_pay_enabled) methods.push('scan_to_pay');
   if (config.razorpay_enabled) methods.push('razorpay');
-  
+
   return methods;
 };

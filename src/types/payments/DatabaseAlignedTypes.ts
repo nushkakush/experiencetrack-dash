@@ -6,7 +6,7 @@ export interface StudentPaymentRow {
   student_id: string;
   cohort_id: string;
   payment_plan: string;
-  payment_schedule: any; // JSON object containing payment schedule
+  payment_schedule: Record<string, unknown> | null; // JSON object containing payment schedule
   total_amount_payable: number;
   scholarship_id?: string;
   next_due_date?: string;
@@ -28,7 +28,12 @@ export interface PaymentTransactionRow {
   created_at: string | null;
   created_by: string | null;
   updated_at: string | null;
-  verification_status: 'pending' | 'verification_pending' | 'approved' | 'rejected' | null;
+  verification_status:
+    | 'pending'
+    | 'verification_pending'
+    | 'approved'
+    | 'rejected'
+    | null;
   verified_by: string | null;
   verified_at: string | null;
   receipt_url: string | null;
@@ -50,6 +55,11 @@ export interface PaymentTransactionRow {
   rejection_reason: string | null;
   payment_date: string | null;
   transfer_date: string | null;
+  // Installment tracking fields (added for targeted payments)
+  installment_id: string | null;
+  semester_number: number | null;
+  // User tracking fields
+  recorded_by_user_id: string | null; // Who initiated/recorded the payment (student vs admin)
 }
 
 // Communication History Types (from CommunicationHistoryTable)
@@ -74,7 +84,7 @@ export interface CohortStudentRow {
   email: string;
   first_name: string | null;
   id: string;
-  invite_status: "pending" | "sent" | "accepted" | "failed";
+  invite_status: 'pending' | 'sent' | 'accepted' | 'failed';
   invited_at: string | null;
   last_name: string | null;
   phone: string | null;
@@ -99,7 +109,7 @@ export interface CohortScholarshipRow {
 // Database Query Result Types
 export interface DatabaseQueryResult<T> {
   data: T[] | null;
-  error: any;
+  error: Error | null;
 }
 
 // Student Payment Summary (aligned with actual database structure)
@@ -118,12 +128,32 @@ export interface StudentPaymentSummaryRow {
 }
 
 // Utility Types for Database Operations
-export type StudentPaymentInsert = Omit<StudentPaymentRow, 'id' | 'created_at' | 'updated_at'>;
-export type PaymentTransactionInsert = Omit<PaymentTransactionRow, 'id' | 'created_at' | 'updated_at'>;
-export type CommunicationHistoryInsert = Omit<CommunicationHistoryRow, 'id' | 'created_at'>;
-export type CohortStudentInsert = Omit<CohortStudentRow, 'id' | 'created_at' | 'updated_at'>;
+export type StudentPaymentInsert = Omit<
+  StudentPaymentRow,
+  'id' | 'created_at' | 'updated_at'
+>;
+export type PaymentTransactionInsert = Omit<
+  PaymentTransactionRow,
+  'id' | 'created_at' | 'updated_at'
+>;
+export type CommunicationHistoryInsert = Omit<
+  CommunicationHistoryRow,
+  'id' | 'created_at'
+>;
+export type CohortStudentInsert = Omit<
+  CohortStudentRow,
+  'id' | 'created_at' | 'updated_at'
+>;
 
-export type StudentPaymentUpdate = Partial<Omit<StudentPaymentRow, 'id' | 'created_at' | 'updated_at'>>;
-export type PaymentTransactionUpdate = Partial<Omit<PaymentTransactionRow, 'id' | 'created_at' | 'updated_at'>>;
-export type CommunicationHistoryUpdate = Partial<Omit<CommunicationHistoryRow, 'id' | 'created_at'>>;
-export type CohortStudentUpdate = Partial<Omit<CohortStudentRow, 'id' | 'created_at' | 'updated_at'>>;
+export type StudentPaymentUpdate = Partial<
+  Omit<StudentPaymentRow, 'id' | 'created_at' | 'updated_at'>
+>;
+export type PaymentTransactionUpdate = Partial<
+  Omit<PaymentTransactionRow, 'id' | 'created_at' | 'updated_at'>
+>;
+export type CommunicationHistoryUpdate = Partial<
+  Omit<CommunicationHistoryRow, 'id' | 'created_at'>
+>;
+export type CohortStudentUpdate = Partial<
+  Omit<CohortStudentRow, 'id' | 'created_at' | 'updated_at'>
+>;
