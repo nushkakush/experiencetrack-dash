@@ -8,7 +8,19 @@ import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { supabase } from '@/integrations/supabase/client';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
-import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
+import { PaymentForm } from '@/components/common/payments/PaymentForm';
+import { usePaymentSubmissions } from '@/pages/dashboards/student/hooks/usePaymentSubmissions';
+import { useAuth } from '@/hooks/useAuth';
+import { SemesterBreakdown } from '@/pages/dashboards/student/components/SemesterBreakdown';
+import type { PaymentBreakdown as StudentPaymentBreakdown } from '@/types/components/PaymentFormTypes';
+import type {
+  PaymentBreakdown,
+  Instalment,
+} from '@/types/components/PaymentFormTypes';
+import type {
+  PaymentSubmissionData,
+  StudentData,
+} from '@/types/components/PaymentFormTypes';
 
 interface PaymentScheduleProps {
   student: StudentPaymentSummary;
@@ -33,31 +45,28 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     []
   );
   const [loading, setLoading] = useState(true);
-  const [recordingPayment, setRecordingPayment] = useState<string | null>(null); // Track which payment is being recorded
+  const [recordingPayment, setRecordingPayment] = useState<string | null>(null); // Track which payment is being recorded inline
   const [selectedPaymentItem, setSelectedPaymentItem] =
     useState<PaymentScheduleItem | null>(null);
-  const [showRecordingDialog, setShowRecordingDialog] = useState(false);
+  const [showInlineForm, setShowInlineForm] = useState(false);
+  const [adminPaymentBreakdown, setAdminPaymentBreakdown] = useState<{
+    baseAmount: number;
+    gstAmount: number;
+    discountAmount: number;
+    scholarshipAmount: number;
+    totalAmount: number;
+  } | null>(null);
+  const [studentPaymentBreakdown, setStudentPaymentBreakdown] =
+    useState<StudentPaymentBreakdown | null>(null);
 
   // Check if user can record payments (admin/fee_collector permissions)
   const { canCollectFees } = useFeaturePermissions();
+  const { profile } = useAuth();
+  const paymentSubmissionsHook = usePaymentSubmissions();
 
-  const fetchPaymentSchedule = useCallback(async () => {
-    try {
-      setLoading(true);
-      const schedule = await calculatePaymentSchedule();
-      setPaymentSchedule(schedule);
-    } catch (error) {
-      console.error('Error fetching payment schedule:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [student]);
-
-  useEffect(() => {
-    fetchPaymentSchedule();
-  }, [fetchPaymentSchedule]);
-
-  const calculatePaymentSchedule = async (): Promise<PaymentScheduleItem[]> => {
+  const calculatePaymentSchedule = useCallback(async (): Promise<
+    PaymentScheduleItem[]
+  > => {
     if (
       !student.student_id ||
       !student.payment_plan ||
@@ -176,10 +185,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           id: 'program_fee_one_shot',
           type: 'Program Fee (One-Shot)',
           amount: programFeeAmount,
-          dueDate:
-            oneShot?.paymentDate ||
-            cohortData?.start_date ||
-            new Date().toISOString(),
+          dueDate: oneShot?.paymentDate || new Date().toISOString(),
           status: statusFromEngine || 'pending',
           paymentDate: undefined,
           verificationStatus:
@@ -256,7 +262,23 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       }
       return [];
     }
-  };
+  }, [student]);
+
+  const fetchPaymentSchedule = useCallback(async () => {
+    try {
+      setLoading(true);
+      const schedule = await calculatePaymentSchedule();
+      setPaymentSchedule(schedule);
+    } catch (error) {
+      console.error('Error fetching payment schedule:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [calculatePaymentSchedule]);
+
+  useEffect(() => {
+    fetchPaymentSchedule();
+  }, [fetchPaymentSchedule]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -316,20 +338,160 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       installmentNumber: paymentItem.installmentNumber,
       status: paymentItem.status,
     });
+
+    setRecordingPayment(paymentItem.id);
     setSelectedPaymentItem(paymentItem);
-    setShowRecordingDialog(true);
+
+    // Fetch payment breakdown for this specific item
+    await fetchPaymentBreakdownForItem(paymentItem);
+
+    setShowInlineForm(true);
+    setRecordingPayment(null);
+  };
+
+  // Function to fetch payment breakdown for a specific item
+  const fetchPaymentBreakdownForItem = async (
+    paymentItem: PaymentScheduleItem
+  ) => {
+    if (!student.student_id || !student.student?.cohort_id) return;
+
+    try {
+      console.log('🔍 [PaymentSchedule] Fetching payment breakdown for item:', {
+        studentId: student.student_id,
+        cohortId: student.student?.cohort_id,
+        paymentPlan: student.payment_plan,
+        paymentItemType: paymentItem.type,
+      });
+
+      // Get the full payment breakdown from the payment engine
+      const response = await getFullPaymentView({
+        studentId: student.student_id,
+        cohortId: student.student?.cohort_id,
+        paymentPlan: student.payment_plan,
+      });
+
+      if (response.success && response.breakdown) {
+        // Store the full payment breakdown for the SemesterBreakdown component
+        setStudentPaymentBreakdown(response.breakdown);
+
+        // Find the specific installment breakdown for the admin form
+        let breakdown: {
+          baseAmount: number;
+          gstAmount: number;
+          discountAmount: number;
+          scholarshipAmount: number;
+          totalAmount: number;
+        } | null = null;
+
+        if (paymentItem.type === 'Admission Fee') {
+          breakdown = {
+            baseAmount: response.breakdown.admissionFee.baseAmount || 0,
+            gstAmount: response.breakdown.admissionFee.gstAmount || 0,
+            discountAmount: response.breakdown.admissionFee.discountAmount || 0,
+            scholarshipAmount:
+              response.breakdown.admissionFee.scholarshipAmount || 0,
+            totalAmount: response.breakdown.admissionFee.totalPayable || 0,
+          };
+        } else if (paymentItem.type?.includes('One-Shot')) {
+          const oneShotPayment = response.breakdown.oneShotPayment;
+          if (oneShotPayment) {
+            breakdown = {
+              baseAmount: oneShotPayment.baseAmount || 0,
+              gstAmount: oneShotPayment.gstAmount || 0,
+              discountAmount: oneShotPayment.discountAmount || 0,
+              scholarshipAmount: oneShotPayment.scholarshipAmount || 0,
+              totalAmount: oneShotPayment.amountPayable || 0,
+            };
+          }
+        } else if (
+          paymentItem.semesterNumber &&
+          paymentItem.installmentNumber
+        ) {
+          // Find the specific semester and installment
+          const semester = response.breakdown.semesters?.find(
+            s => s.semesterNumber === paymentItem.semesterNumber
+          );
+          const installment = semester?.instalments?.find(
+            i => i.installmentNumber === paymentItem.installmentNumber
+          );
+
+          if (installment) {
+            breakdown = {
+              baseAmount: installment.baseAmount || 0,
+              gstAmount: installment.gstAmount || 0,
+              discountAmount: installment.discountAmount || 0,
+              scholarshipAmount: installment.scholarshipAmount || 0,
+              totalAmount: installment.amountPayable || 0,
+            };
+          }
+        }
+
+        setAdminPaymentBreakdown(breakdown);
+      }
+    } catch (error) {
+      console.error('Error fetching payment breakdown for item:', error);
+    }
   };
 
   // Function to handle payment recording completion
   const handlePaymentRecorded = () => {
-    // Refresh the payment schedule
+    // Refresh the payment schedule and close the form
     fetchPaymentSchedule();
+    setShowInlineForm(false);
+    setSelectedPaymentItem(null);
+    setAdminPaymentBreakdown(null);
+    setStudentPaymentBreakdown(null);
   };
 
-  // Function to close the recording dialog
-  const handleCloseRecordingDialog = () => {
-    setShowRecordingDialog(false);
+  // Function to close the inline form
+  const handleCloseInlineForm = () => {
+    setShowInlineForm(false);
     setSelectedPaymentItem(null);
+    setAdminPaymentBreakdown(null);
+    setStudentPaymentBreakdown(null);
+  };
+
+  // Function to handle payment submission from inline form
+  const handlePaymentSubmission = async (
+    paymentData: PaymentSubmissionData
+  ) => {
+    if (!selectedPaymentItem) return;
+
+    try {
+      // Transform student data for payment submission
+      const studentData: StudentData = {
+        id: student.student_id,
+        email: student.student?.email || '',
+        first_name: student.student?.first_name || null,
+        last_name: student.student?.last_name || null,
+        phone: student.student?.phone || null,
+        avatar_url: student.student?.avatar_url || null,
+        cohort_id: student.student?.cohort_id || '',
+        user_id: student.student?.user_id || null,
+        invite_status: 'accepted',
+        invited_at: null,
+        accepted_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add admin-specific fields - convert to PaymentMethods PaymentSubmissionData
+      const adminPaymentData = {
+        ...paymentData,
+        paymentId: selectedPaymentItem.id, // Required field for PaymentMethods
+        studentId: studentData.id,
+        cohortId: studentData.cohort_id,
+        installmentId: selectedPaymentItem.id,
+        semesterNumber: selectedPaymentItem.semesterNumber,
+        isAdminRecorded: true,
+        recordedByUserId: profile?.user_id,
+      };
+
+      await paymentSubmissionsHook.handlePaymentSubmission(adminPaymentData);
+      handlePaymentRecorded();
+    } catch (error) {
+      console.error('Error submitting admin payment:', error);
+    }
   };
 
   // Helper to determine if a payment can be recorded by admin
@@ -471,6 +633,114 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Inline Payment Form - Show when this specific item is selected for recording */}
+                {showInlineForm && selectedPaymentItem?.id === item.id && (
+                  <div className='mt-4 border-t border-border pt-4'>
+                    <div className='mb-4'>
+                      <h4 className='font-semibold text-sm text-foreground mb-2'>
+                        Record Payment for {selectedPaymentItem.type}
+                      </h4>
+                      <div className='text-xs text-muted-foreground'>
+                        Amount: {formatCurrency(selectedPaymentItem.amount)}
+                      </div>
+                    </div>
+
+                    {/* Payment Form */}
+                    {adminPaymentBreakdown && (
+                      <div className='space-y-4'>
+                        {/* Payment Form Component */}
+                        <PaymentForm
+                          paymentSubmissions={new Map()}
+                          submittingPayments={
+                            paymentSubmissionsHook.submittingPayments
+                          }
+                          onPaymentSubmission={handlePaymentSubmission}
+                          studentData={{
+                            id: student.student_id,
+                            email: student.student?.email || '',
+                            first_name: student.student?.first_name || null,
+                            last_name: student.student?.last_name || null,
+                            phone: student.student?.phone || null,
+                            avatar_url: student.student?.avatar_url || null,
+                            cohort_id: student.student?.cohort_id || '',
+                            user_id: student.student?.user_id || null,
+                            invite_status: 'accepted',
+                            invited_at: null,
+                            accepted_at: null,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }}
+                          selectedPaymentPlan={student.payment_plan}
+                          paymentBreakdown={{
+                            totalAmount: adminPaymentBreakdown.totalAmount,
+                            paidAmount: 0,
+                            pendingAmount: adminPaymentBreakdown.totalAmount,
+                            instalmentPayments: [
+                              {
+                                id: selectedPaymentItem.id,
+                                installmentNumber:
+                                  selectedPaymentItem.installmentNumber || 1,
+                                amount: adminPaymentBreakdown.totalAmount,
+                                dueDate: selectedPaymentItem.dueDate,
+                                status:
+                                  selectedPaymentItem.status ===
+                                  'verification_pending'
+                                    ? 'pending'
+                                    : (selectedPaymentItem.status as
+                                        | 'pending'
+                                        | 'paid'
+                                        | 'overdue'),
+                                paidAmount: 0,
+                              },
+                            ],
+                          }}
+                          selectedInstallment={{
+                            id: selectedPaymentItem.id,
+                            installmentNumber:
+                              selectedPaymentItem.installmentNumber || 1,
+                            amount: adminPaymentBreakdown.totalAmount,
+                            dueDate: selectedPaymentItem.dueDate,
+                            status:
+                              selectedPaymentItem.status ===
+                              'verification_pending'
+                                ? 'pending'
+                                : (selectedPaymentItem.status as
+                                    | 'pending'
+                                    | 'paid'
+                                    | 'overdue'),
+                            paidAmount: 0,
+                            paidDate: selectedPaymentItem.paymentDate,
+                          }}
+                          isAdminMode={true}
+                        />
+
+                        {/* Cancel Button */}
+                        <div className='flex justify-end pt-2'>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={handleCloseInlineForm}
+                            disabled={
+                              paymentSubmissionsHook.submittingPayments.size > 0
+                            }
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Loading state while fetching breakdown */}
+                    {!adminPaymentBreakdown && (
+                      <div className='flex items-center justify-center py-4'>
+                        <div className='text-sm text-muted-foreground'>
+                          Loading payment details...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -489,15 +759,6 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         )}
       </div>
       <Separator className='bg-border' />
-
-      {/* Admin Payment Recording Dialog */}
-      <AdminPaymentRecordingDialog
-        open={showRecordingDialog}
-        onOpenChange={handleCloseRecordingDialog}
-        student={student}
-        paymentItem={selectedPaymentItem}
-        onPaymentRecorded={handlePaymentRecorded}
-      />
     </>
   );
 };
