@@ -60,6 +60,7 @@ export interface PaymentSubmissionData {
   razorpaySignature?: string;
   studentId?: string;
   cohortId?: string;
+  studentUserId?: string; // Student's user_id for created_by field in admin context
   // Installment identification fields
   installmentId?: string;
   semesterNumber?: number;

@@ -155,6 +155,7 @@ export const AdminPaymentRecordingDialog: React.FC<
         ...paymentData,
         studentId: studentData.id,
         cohortId: studentData.cohort_id,
+        studentUserId: studentData.user_id, // Add student's user_id for created_by field
         installmentId: paymentItem?.id,
         semesterNumber: paymentItem?.semesterNumber,
         isAdminRecorded: true,

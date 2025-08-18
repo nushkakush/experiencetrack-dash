@@ -229,12 +229,25 @@ export const usePaymentSubmissions = (
       let studentPaymentId: string;
 
       // Check if student_payments record exists
+      // Use student data from paymentData if available (admin context), otherwise use studentData (student context)
+      const effectiveStudentId = paymentData.studentId || studentData?.id;
+      const effectiveCohortId = paymentData.cohortId || studentData?.cohort_id;
+
+      console.log('🔍 [DEBUG] handleRegularPayment - effective IDs:', {
+        effectiveStudentId,
+        effectiveCohortId,
+        paymentDataStudentId: paymentData.studentId,
+        paymentDataCohortId: paymentData.cohortId,
+        studentDataId: studentData?.id,
+        studentDataCohortId: studentData?.cohort_id,
+      });
+
       const { data: existingStudentPayment, error: studentPaymentError } =
         await supabase
           .from('student_payments')
           .select('id')
-          .eq('student_id', studentData?.id)
-          .eq('cohort_id', studentData?.cohort_id)
+          .eq('student_id', effectiveStudentId)
+          .eq('cohort_id', effectiveCohortId)
           .single();
 
       if (studentPaymentError && studentPaymentError.code !== 'PGRST116') {
@@ -258,8 +271,8 @@ export const usePaymentSubmissions = (
         const { data: newStudentPayment, error: createError } = await supabase
           .from('student_payments')
           .insert({
-            student_id: studentData?.id,
-            cohort_id: studentData?.cohort_id,
+            student_id: effectiveStudentId,
+            cohort_id: effectiveCohortId,
             payment_plan: 'instalment_wise', // Default to installment-wise for targeted payments
           })
           .select('id')
@@ -345,7 +358,7 @@ export const usePaymentSubmissions = (
         reference_number: paymentData.referenceNumber || '',
         status: isAdminRecorded ? 'success' : 'pending', // Admin payments are immediately successful
         notes: paymentData.notes || '',
-        created_by: studentData?.user_id,
+        created_by: paymentData.studentUserId || studentData?.user_id,
         verification_status: isAdminRecorded
           ? 'approved'
           : 'verification_pending', // Admin payments skip verification
