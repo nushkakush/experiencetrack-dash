@@ -37,7 +37,7 @@ export const PaymentMethodButtons: React.FC<PaymentMethodButtonsProps> = ({
       case 'bank_transfer': return 'Bank Transfer';
       case 'cheque': return 'Cheque';
       case 'scan_to_pay': return 'Scan to Pay';
-      case 'razorpay': return 'Razorpay';
+      case 'razorpay': return 'Online Payment';
       default: return method;
     }
   };

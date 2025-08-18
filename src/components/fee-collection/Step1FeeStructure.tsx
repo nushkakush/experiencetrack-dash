@@ -46,31 +46,11 @@ export default function Step1FeeStructure({ data, onChange, errors, isReadOnly =
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">
-          {isReadOnly ? 'Fee Structure Overview' : 'Step 1: Fee Structure'}
-        </h2>
-        <p className="text-muted-foreground">
-          {isReadOnly 
-            ? 'Current fee structure configuration for this cohort'
-            : 'Configure the basic fee structure for this cohort'
-          }
-        </p>
-      </div>
+      {/* Title and description removed to avoid duplication with modal header */}
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Fee Configuration</CardTitle>
-            <CardDescription>
-              {isReadOnly 
-                ? 'Current fee structure including admission fee and program fee'
-                : 'Set up the basic fee structure including admission fee and program fee'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid gap-8">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {isReadOnly ? (
                 <>
                   <ReadOnlyField 
@@ -115,22 +95,11 @@ export default function Step1FeeStructure({ data, onChange, errors, isReadOnly =
                   </div>
                 </>
               )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Semester Configuration</CardTitle>
-            <CardDescription>
-              {isReadOnly 
-                ? 'Current semester and instalment configuration'
-                : 'Configure the number of semesters and instalments per semester'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {isReadOnly ? (
                 <>
                   <ReadOnlyField 
@@ -182,22 +151,11 @@ export default function Step1FeeStructure({ data, onChange, errors, isReadOnly =
                   </div>
                 </>
               )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Discount</CardTitle>
-            <CardDescription>
-              {isReadOnly 
-                ? 'Current discount percentage for one-shot payments'
-                : 'Set the discount percentage for one-shot payments'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+        <div className="space-y-4">
+          <div className="space-y-2">
               {isReadOnly ? (
                 <ReadOnlyField 
                   label="One-Shot Payment Discount" 
@@ -225,9 +183,8 @@ export default function Step1FeeStructure({ data, onChange, errors, isReadOnly =
               <p className="text-sm text-muted-foreground">
                 This discount will be applied when students choose to pay the entire program fee upfront
               </p>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

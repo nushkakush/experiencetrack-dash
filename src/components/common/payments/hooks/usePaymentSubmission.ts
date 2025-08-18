@@ -153,17 +153,27 @@ export const usePaymentSubmission = ({
       paymentMethod: selectedPaymentMode,
       referenceNumber: paymentDetails.transactionId || paymentDetails.chequeNumber,
       notes: paymentDetails.notes,
-      receiptFile: uploadedFiles.cashReceipt,
+      receiptFile: uploadedFiles.cashAcknowledgment, // Fixed: was cashReceipt, should be cashAcknowledgment
       proofOfPaymentFile: uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
       transactionScreenshotFile: uploadedFiles.scanToPayScreenshot,
       bankName: paymentDetails.bankName,
       bankBranch: paymentDetails.bankBranch,
       transferDate: paymentDetails.transferDate || paymentDetails.chequeDate,
       studentId: studentData.id,
-      cohortId: studentData.cohort_id
+      cohortId: studentData.cohort_id,
+      // Add installment identification
+      installmentId: selectedInstallment?.id,
+      semesterNumber: selectedInstallment?.semesterNumber
     };
 
-    console.log('🔍 [DEBUG] paymentData:', paymentData);
+    console.log('🔍 [DEBUG] usePaymentSubmission - FULL paymentData:', paymentData);
+    console.log('🔍 [DEBUG] usePaymentSubmission - selectedInstallment:', selectedInstallment);
+    console.log('🔍 [DEBUG] usePaymentSubmission - installment breakdown:', {
+      installmentId: selectedInstallment?.id,
+      semesterNumber: selectedInstallment?.semesterNumber,
+      hasSelectedInstallment: !!selectedInstallment,
+      selectedInstallmentKeys: selectedInstallment ? Object.keys(selectedInstallment) : []
+    });
     console.log('🔍 [DEBUG] Calling onPaymentSubmission');
 
     onPaymentSubmission(paymentData);

@@ -8,7 +8,7 @@ import { FeeFeatureGate } from '@/components/common';
 
 interface CohortHeaderProps {
   cohortData: CohortWithCounts;
-  onSettingsClick: () => void;
+  onSettingsClick: (mode?: 'view' | 'edit') => void;
 }
 
 export const CohortHeader: React.FC<CohortHeaderProps> = ({ 
@@ -65,7 +65,7 @@ export const CohortHeader: React.FC<CohortHeaderProps> = ({
           </div>
           <FeeFeatureGate action="setup_structure">
             <Button
-              onClick={onSettingsClick}
+              onClick={() => onSettingsClick('view')}
               size="sm"
               className="gap-2"
             >

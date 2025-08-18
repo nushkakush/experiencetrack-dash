@@ -12,13 +12,13 @@ interface OneShotPaymentData {
   discountAmount: number;
   scholarshipAmount: number;
   amountPayable: number;
+  paymentDate?: string;
 }
 
 interface OneShotPaymentSectionProps {
   oneShotPayment: OneShotPaymentData;
   scholarships: Scholarship[];
   selectedScholarshipId: string;
-  cohortStartDate: string;
   editablePaymentDates: Record<string, string>;
   onPaymentDateChange: (key: string, value: string) => void;
   isReadOnly?: boolean;
@@ -28,7 +28,6 @@ export const OneShotPaymentSection: React.FC<OneShotPaymentSectionProps> = ({
   oneShotPayment,
   scholarships,
   selectedScholarshipId,
-  cohortStartDate,
   editablePaymentDates,
   onPaymentDateChange,
   isReadOnly = false
@@ -39,7 +38,11 @@ export const OneShotPaymentSection: React.FC<OneShotPaymentSectionProps> = ({
     ? null 
     : scholarships.find(s => s.id === selectedScholarshipId);
 
-  const oneShotDate = editablePaymentDates['one-shot'] || cohortStartDate;
+  const oneShotDate = isReadOnly
+    ? (oneShotPayment?.paymentDate || new Date().toISOString().split('T')[0])
+    : (Object.prototype.hasOwnProperty.call(editablePaymentDates, 'one-shot')
+        ? editablePaymentDates['one-shot']
+        : new Date().toISOString().split('T')[0]);
   
   return (
     <Card>

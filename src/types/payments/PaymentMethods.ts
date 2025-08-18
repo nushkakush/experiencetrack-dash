@@ -59,6 +59,9 @@ export interface PaymentSubmissionData {
   razorpaySignature?: string;
   studentId?: string;
   cohortId?: string;
+  // Installment identification fields
+  installmentId?: string;
+  semesterNumber?: number;
 }
 
 export interface PaymentTransaction {
@@ -137,7 +140,7 @@ export const PAYMENT_METHOD_CONFIG = {
     requiresBankDetails: false
   },
   razorpay: {
-    label: 'Razorpay',
+    label: 'Online Payment',
     icon: '🔗',
     requiresReference: false,
     requiresFile: false,

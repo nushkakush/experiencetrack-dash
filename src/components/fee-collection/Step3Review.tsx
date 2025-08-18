@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PaymentPlan, FeeStructure, Scholarship } from '@/types/fee';
 import { useFeeReview } from './hooks/useFeeReview';
@@ -11,29 +11,85 @@ import { OverallSummary } from './components/OverallSummary';
 interface Step3ReviewProps {
   feeStructure: FeeStructure;
   scholarships: Scholarship[];
-  cohortStartDate: string;
+
   isReadOnly?: boolean;
-  onDatesChange?: (dates: Record<string, string>) => void;
+  onDatesChange?: (datesByPlan: {
+    one_shot: Record<string, string>;
+    sem_wise: Record<string, string>;
+    instalment_wise: Record<string, string>;
+  }) => void;
+  onPaymentPlanChange?: (plan: PaymentPlan) => void;
+  selectedPaymentPlan?: PaymentPlan;
 }
 
-export default function Step3Review({ feeStructure, scholarships, cohortStartDate, isReadOnly = false, onDatesChange }: Step3ReviewProps) {
+const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isReadOnly = false, onDatesChange, onPaymentPlanChange, selectedPaymentPlan: propSelectedPaymentPlan }: Step3ReviewProps) {
   const {
-    selectedPaymentPlan,
+    selectedPaymentPlan: internalSelectedPaymentPlan,
     selectedScholarshipId,
     editablePaymentDates,
+    datesByPlan,
     feeReview,
     loading,
     handlePaymentDateChange,
     handleScholarshipSelect,
-    handlePaymentPlanChange
-  } = useFeeReview({ feeStructure, scholarships, cohortStartDate });
+    handlePaymentPlanChange: internalHandlePaymentPlanChange
+  } = useFeeReview({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan });
 
-  // Bubble up date edits to the setup layer so they can be saved as overrides
+  // Use prop value if provided, otherwise fall back to internal state
+  const selectedPaymentPlan = propSelectedPaymentPlan || internalSelectedPaymentPlan;
+
+  // Create a wrapper that calls both internal and external handlers
+  const handlePaymentPlanChange = React.useCallback((plan: PaymentPlan) => {
+    internalHandlePaymentPlanChange(plan);
+    onPaymentPlanChange?.(plan);
+  }, [internalHandlePaymentPlanChange, onPaymentPlanChange]);
+
+  // Use ref to track previous dates and only call onDatesChange when dates actually change
+  const prevDatesRef = React.useRef<{
+    one_shot: Record<string, string>;
+    sem_wise: Record<string, string>;
+    instalment_wise: Record<string, string>;
+  }>({ one_shot: {}, sem_wise: {}, instalment_wise: {} });
+
+  // Memoize the dates to prevent unnecessary re-renders
+  const memoizedDatesByPlan = React.useMemo(() => datesByPlan, [datesByPlan]);
+
+  // Bubble up all plans' date edits to the setup layer so they can be saved as overrides
   React.useEffect(() => {
-    onDatesChange?.(editablePaymentDates);
-  }, [editablePaymentDates, onDatesChange]);
+    // Only call onDatesChange if the dates have actually changed
+    const allDatesString = JSON.stringify(memoizedDatesByPlan);
+    const prevDatesString = JSON.stringify(prevDatesRef.current);
+    
+    if (allDatesString !== prevDatesString && onDatesChange) {
+      prevDatesRef.current = { ...memoizedDatesByPlan };
+      onDatesChange(memoizedDatesByPlan); // Pass all plans' dates instead of just current
+    }
+  }, [memoizedDatesByPlan, onDatesChange]);
 
-  if (loading || !feeReview) {
+  // Memoize common props to prevent unnecessary re-renders - MUST be before any early returns
+  const admissionFeeProps = React.useMemo(() => {
+    if (!feeReview) return null;
+    return {
+      admissionFee: feeReview.admissionFee,
+      editablePaymentDates,
+      onPaymentDateChange: handlePaymentDateChange,
+      isReadOnly
+    };
+  }, [feeReview, editablePaymentDates, handlePaymentDateChange, isReadOnly]);
+
+  const overallSummaryProps = React.useMemo(() => {
+    if (!feeReview) return null;
+    return {
+      overallSummary: feeReview.overallSummary,
+      feeStructure,
+      selectedPaymentPlan,
+      scholarships,
+      selectedScholarshipId
+    };
+  }, [feeReview, feeStructure, selectedPaymentPlan, scholarships, selectedScholarshipId]);
+
+  // Only show loading for initial load, not for cached transitions
+  if ((loading && !feeReview) || (!feeReview && !loading)) {
     return (
       <div className="space-y-6">
         <div className="h-6 w-48 bg-muted rounded animate-pulse" />
@@ -45,17 +101,7 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">
-          {isReadOnly ? 'Fee Structure Preview' : 'Fee Preview'}
-        </h2>
-        <p className="text-muted-foreground">
-          {isReadOnly 
-            ? 'Review the current fee structure across different payment plans and scholarship options'
-            : 'Review the fee structure across different payment plans and scholarship options'
-          }
-        </p>
-      </div>
+      {/* Title and helper removed to avoid duplication with modal header */}
 
       {/* Scholarship Selection */}
       <ScholarshipSelection
@@ -75,39 +121,20 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
 
         {/* Content based on payment plan */}
         <TabsContent value="one_shot" className="space-y-6">
-          <AdmissionFeeSection
-            admissionFee={feeReview.admissionFee}
-            cohortStartDate={cohortStartDate}
-            editablePaymentDates={editablePaymentDates}
-            onPaymentDateChange={handlePaymentDateChange}
-            isReadOnly={isReadOnly}
-          />
+          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
           <OneShotPaymentSection
             oneShotPayment={feeReview.oneShotPayment}
             scholarships={scholarships}
             selectedScholarshipId={selectedScholarshipId}
-            cohortStartDate={cohortStartDate}
             editablePaymentDates={editablePaymentDates}
             onPaymentDateChange={handlePaymentDateChange}
             isReadOnly={isReadOnly}
           />
-          <OverallSummary
-            overallSummary={feeReview.overallSummary}
-            feeStructure={feeStructure}
-            selectedPaymentPlan={selectedPaymentPlan}
-            scholarships={scholarships}
-            selectedScholarshipId={selectedScholarshipId}
-          />
+          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
         </TabsContent>
 
         <TabsContent value="sem_wise" className="space-y-6">
-          <AdmissionFeeSection
-            admissionFee={feeReview.admissionFee}
-            cohortStartDate={cohortStartDate}
-            editablePaymentDates={editablePaymentDates}
-            onPaymentDateChange={handlePaymentDateChange}
-            isReadOnly={isReadOnly}
-          />
+          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
           {feeReview.semesters.map((semester) => (
             <SemesterSection
               key={semester.semesterNumber}
@@ -119,23 +146,11 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
               isReadOnly={isReadOnly}
             />
           ))}
-          <OverallSummary
-            overallSummary={feeReview.overallSummary}
-            feeStructure={feeStructure}
-            selectedPaymentPlan={selectedPaymentPlan}
-            scholarships={scholarships}
-            selectedScholarshipId={selectedScholarshipId}
-          />
+          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
         </TabsContent>
 
         <TabsContent value="instalment_wise" className="space-y-6">
-          <AdmissionFeeSection
-            admissionFee={feeReview.admissionFee}
-            cohortStartDate={cohortStartDate}
-            editablePaymentDates={editablePaymentDates}
-            onPaymentDateChange={handlePaymentDateChange}
-            isReadOnly={isReadOnly}
-          />
+          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
           {feeReview.semesters.map((semester) => (
             <SemesterSection
               key={semester.semesterNumber}
@@ -147,15 +162,11 @@ export default function Step3Review({ feeStructure, scholarships, cohortStartDat
               isReadOnly={isReadOnly}
             />
           ))}
-          <OverallSummary
-            overallSummary={feeReview.overallSummary}
-            feeStructure={feeStructure}
-            selectedPaymentPlan={selectedPaymentPlan}
-            scholarships={scholarships}
-            selectedScholarshipId={selectedScholarshipId}
-          />
+          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+});
+
+export default Step3Review;

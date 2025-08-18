@@ -115,13 +115,16 @@ export const usePaymentSubmissions = (
         return;
       }
 
-      if (
-        !paymentData.receiptFile &&
-        !paymentData.proofOfPaymentFile &&
-        !paymentData.transactionScreenshotFile
-      ) {
-        toast.error('Please upload a receipt or payment proof');
-        return;
+      // Only require file uploads for non-online payment methods
+      if (paymentMethod !== 'razorpay') {
+        if (
+          !paymentData.receiptFile &&
+          !paymentData.proofOfPaymentFile &&
+          !paymentData.transactionScreenshotFile
+        ) {
+          toast.error('Please upload a receipt or payment proof');
+          return;
+        }
       }
 
       try {
@@ -251,18 +254,13 @@ export const usePaymentSubmissions = (
           studentPaymentId,
         });
       } else {
-        // Create new student payment record
+        // Create new student payment record with only existing fields
         const { data: newStudentPayment, error: createError } = await supabase
           .from('student_payments')
           .insert({
             student_id: studentData?.id,
             cohort_id: studentData?.cohort_id,
-            payment_plan: 'one_shot', // Default plan, can be updated later
-            total_amount_payable: paymentData.amount,
-            total_amount_paid: 0,
-            total_amount_pending: paymentData.amount,
-            payment_status: 'pending',
-            notes: 'Created during payment submission',
+            payment_plan: 'instalment_wise', // Default to installment-wise for targeted payments
           })
           .select('id')
           .single();
@@ -284,6 +282,48 @@ export const usePaymentSubmissions = (
       }
 
       // 3. Create a single payment transaction record with all the enhanced fields
+      console.log('🔍 [DEBUG] Creating transaction record with FULL payment data:', paymentData);
+      console.log('🔍 [DEBUG] Specific installment fields:', {
+        installmentId: paymentData.installmentId,
+        semesterNumber: paymentData.semesterNumber,
+        hasInstallmentId: 'installmentId' in paymentData,
+        hasSemesterNumber: 'semesterNumber' in paymentData,
+        installmentIdType: typeof paymentData.installmentId,
+        semesterNumberType: typeof paymentData.semesterNumber
+      });
+
+      // Normalize and strictly require installment targeting
+      const parseSemesterFromId = (id?: string | null): number | null => {
+        if (!id) return null;
+        const first = String(id).split('-')[0];
+        const num = Number(first);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      const normalizedInstallmentId: string | null = paymentData.installmentId ?? null;
+      let normalizedSemesterNumber: number | null =
+        typeof paymentData.semesterNumber === 'number'
+          ? paymentData.semesterNumber
+          : null;
+      if (!normalizedSemesterNumber) {
+        normalizedSemesterNumber = parseSemesterFromId(normalizedInstallmentId);
+      }
+
+      console.log('🔍 [DEBUG] Normalized targeting:', {
+        normalizedInstallmentId,
+        normalizedSemesterNumber,
+      });
+
+      if (!normalizedInstallmentId || !normalizedSemesterNumber) {
+        toast.error('Installment targeting is required. Please select a specific installment and try again.');
+        Logger.getInstance().error('Missing installment targeting on regular payment', {
+          paymentData,
+          normalizedInstallmentId,
+          normalizedSemesterNumber,
+        });
+        return { success: false, error: 'Missing installment targeting' };
+      }
+      
       const transactionRecord = {
         payment_id: studentPaymentId, // Use the UUID from student_payments
         transaction_type: 'payment',
@@ -307,6 +347,9 @@ export const usePaymentSubmissions = (
           paymentData.transferDate || new Date().toISOString().split('T')[0],
         transfer_date:
           paymentData.transferDate || new Date().toISOString().split('T')[0],
+        // Add installment identification fields (normalized)
+        installment_id: normalizedInstallmentId,
+        semester_number: normalizedSemesterNumber,
       };
 
       const { data, error } = await supabase
@@ -371,61 +414,63 @@ export const usePaymentSubmissions = (
 
   const handleRazorpayPayment = async (paymentData: PaymentSubmissionData) => {
     try {
-      // Create Razorpay order
-      const orderResult = await razorpayService.createOrder({
-        amount: paymentData.amount * 100, // Razorpay expects amount in paise
-        currency: 'INR',
-        receipt: `payment_${paymentData.paymentId}`,
-        notes: {
-          paymentId: paymentData.paymentId,
-          studentId: paymentData.studentId || '',
-        },
-      });
-
-      if (!orderResult.success) {
-        throw new Error(orderResult.error || 'Failed to create payment order');
+      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData:', studentData);
+      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData.id:', studentData?.id);
+      console.log('🔍 [DEBUG] handleRazorpayPayment - studentData.cohort_id:', studentData?.cohort_id);
+      
+      // Validate student data
+      if (!studentData?.id || !studentData?.cohort_id) {
+        console.error('❌ [DEBUG] Missing student data:', { studentData });
+        throw new Error('Student data is missing. Please refresh the page and try again.');
+      }
+      
+      // Get the actual payment plan from student data or use a default
+      let paymentPlan = 'one_shot'; // default
+      
+      // Try to get payment plan from student payments if available
+      if (studentData?.id && studentData?.cohort_id) {
+        try {
+          const { data: studentPayment } = await supabase
+            .from('student_payments')
+            .select('payment_plan')
+            .eq('student_id', studentData.id)
+            .eq('cohort_id', studentData.cohort_id)
+            .maybeSingle();
+          
+          console.log('🔍 [DEBUG] handleRazorpayPayment - studentPayment:', studentPayment);
+          
+          if (studentPayment?.payment_plan && studentPayment.payment_plan !== 'not_selected') {
+            paymentPlan = studentPayment.payment_plan;
+          }
+        } catch (error) {
+          console.warn('Could not fetch student payment plan, using default:', error);
+        }
       }
 
-      // Initialize Razorpay payment
-      const options = {
-        key: process.env.VITE_RAZORPAY_KEY_ID,
-        amount: paymentData.amount * 100,
-        currency: 'INR',
-        name: 'ExperienceTrack',
-        description: 'Fee Payment',
-        order_id: orderResult.data.id,
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          // Handle successful payment
-          const verificationResult = await razorpayService.verifyPayment({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-
-          if (verificationResult.success) {
-            // Update payment status in database
-            await paymentTransactionService.submitPayment(
-              paymentData,
-              paymentData.userId || ''
-            );
+      const razorpayData = {
+        amount: paymentData.amount,
+        studentId: studentData?.id || '',
+        cohortId: studentData?.cohort_id || '',
+        paymentPlan: paymentPlan,
+        installmentId: paymentData.installmentId,
+        semesterNumber: paymentData.semesterNumber,
+        onSuccess: async () => {
+          // Payment was successful, refresh data
+          if (onPaymentSuccess) {
+            await onPaymentSuccess();
           }
         },
-        prefill: {
-          email: paymentData.email || '',
-          contact: paymentData.phone || '',
-        },
-        theme: {
-          color: '#3B82F6',
-        },
+        onError: (error) => {
+          Logger.getInstance().error('Razorpay payment error', {
+            error,
+            paymentData,
+          });
+        }
       };
-
-      // @ts-expect-error - Razorpay types
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      
+      console.log('🔍 [DEBUG] handleRazorpayPayment - calling razorpayService.initiatePayment with:', razorpayData);
+      
+      await razorpayService.initiatePayment(razorpayData);
 
       return { success: true, error: null };
     } catch (error) {

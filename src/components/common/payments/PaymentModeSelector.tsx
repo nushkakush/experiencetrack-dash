@@ -68,7 +68,7 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
             <SelectItem value="razorpay">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
-                Online Payment (Razorpay)
+                Online Payment
               </div>
             </SelectItem>
           </SelectContent>

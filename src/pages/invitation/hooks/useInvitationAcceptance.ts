@@ -189,7 +189,12 @@ export const useInvitationAcceptance = ({
         // Add a small delay to ensure the database update is complete
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        navigate("/dashboard");
+        try {
+          // Hard reload to ensure AuthProvider remounts with fresh session
+          window.location.assign('/dashboard');
+        } catch {
+          navigate('/dashboard', { replace: true });
+        }
       } catch (error) {
         console.error("Error accepting invitation:", error);
         toast.error("Failed to join cohort. Please try again.");

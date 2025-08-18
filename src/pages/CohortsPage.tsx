@@ -31,6 +31,7 @@ const CohortsPage = () => {
   const [combinedLeaderboardOpen, setCombinedLeaderboardOpen] = useState(false);
   const [feeCollectionModalOpen, setFeeCollectionModalOpen] = useState(false);
   const [selectedCohortForFee, setSelectedCohortForFee] = useState<CohortWithCounts | null>(null);
+  const [feeModalMode, setFeeModalMode] = useState<'view' | 'edit'>('edit');
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [selectedCohortForDelete, setSelectedCohortForDelete] = useState<CohortWithCounts | null>(null);
   const { cohorts, isLoading, refetch } = useCohorts();
@@ -62,15 +63,22 @@ const CohortsPage = () => {
       if (feeStructure && feeStructure.is_setup_complete) {
         // Fee configuration is complete, navigate directly to dashboard
         navigate(`/cohorts/${cohort.id}/fee-payment`);
-      } else {
-        // Fee configuration is not complete, open the setup modal
+      } else if (feeStructure) {
+        // Fee structure exists but is not complete, open modal in view mode
         setSelectedCohortForFee(cohort);
+        setFeeModalMode('view');
+        setFeeCollectionModalOpen(true);
+      } else {
+        // No fee structure exists, open modal in edit mode for initial setup
+        setSelectedCohortForFee(cohort);
+        setFeeModalMode('edit');
         setFeeCollectionModalOpen(true);
       }
     } catch (error) {
       console.error('Error checking fee structure:', error);
-      // If there's an error, default to opening the setup modal
+      // If there's an error, default to opening the setup modal in edit mode
       setSelectedCohortForFee(cohort);
+      setFeeModalMode('edit');
       setFeeCollectionModalOpen(true);
     }
   };
@@ -280,6 +288,8 @@ const CohortsPage = () => {
               cohortId={selectedCohortForFee.id}
               cohortStartDate={selectedCohortForFee.start_date}
               onSetupComplete={handleFeeSetupComplete}
+              mode={feeModalMode}
+              onModeChange={setFeeModalMode}
             />
           </FeeFeatureGate>
         )}

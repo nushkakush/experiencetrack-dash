@@ -106,7 +106,7 @@ export const getPaymentMethods = (plan: PaymentPlan): Array<{
   // Add Razorpay for all plans
   if (plan !== 'not_selected') {
     baseMethods.push({
-      name: 'Razorpay',
+      name: 'Online Payment',
       description: 'Online payment gateway',
       icon: <CreditCard className="h-4 w-4" />
     });

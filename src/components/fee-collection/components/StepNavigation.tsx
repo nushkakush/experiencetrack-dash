@@ -89,6 +89,10 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                     Edit Configuration
                   </Button>
                 )}
+                <Button onClick={onNext} disabled={!canProceed}>
+                  {nextButtonText}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
                 {onClose && (
                   <Button onClick={onClose}>
                     Close

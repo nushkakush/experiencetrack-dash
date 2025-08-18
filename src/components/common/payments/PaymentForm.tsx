@@ -90,8 +90,8 @@ export const PaymentForm = React.memo<PaymentFormProps>(({
           errors={errors}
         />
 
-        {/* Payment Mode Specific Fields */}
-        {selectedPaymentMode && paymentModeConfig && (
+        {/* Payment Mode Specific Fields - Hide for online payments */}
+        {selectedPaymentMode && paymentModeConfig && selectedPaymentMode !== 'razorpay' && (
           <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium">Payment Details</h4>
             <PaymentFieldRenderer

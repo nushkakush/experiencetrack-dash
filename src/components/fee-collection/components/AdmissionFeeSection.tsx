@@ -13,7 +13,6 @@ interface AdmissionFeeData {
 
 interface AdmissionFeeSectionProps {
   admissionFee: AdmissionFeeData;
-  cohortStartDate: string;
   editablePaymentDates: Record<string, string>;
   onPaymentDateChange: (key: string, value: string) => void;
   isReadOnly?: boolean;
@@ -21,12 +20,11 @@ interface AdmissionFeeSectionProps {
 
 export const AdmissionFeeSection: React.FC<AdmissionFeeSectionProps> = ({
   admissionFee,
-  cohortStartDate,
   editablePaymentDates,
   onPaymentDateChange,
   isReadOnly = false
 }) => {
-  const admissionDate = editablePaymentDates['admission'] || cohortStartDate;
+  const admissionDate = editablePaymentDates['admission'] || new Date().toISOString().split('T')[0];
 
   if (!admissionFee) {
     return (

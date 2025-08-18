@@ -63,7 +63,11 @@ export const SemesterSection: React.FC<SemesterSectionProps> = ({
           <TableBody>
             {semester.instalments.map((instalment: SemesterInstalment, index: number) => {
               const dateKey = `semester-${semester.semesterNumber}-instalment-${index}`;
-              const currentDate = editablePaymentDates[dateKey] || instalment.paymentDate;
+              const currentDate = isReadOnly
+                ? instalment.paymentDate
+                : (Object.prototype.hasOwnProperty.call(editablePaymentDates, dateKey)
+                  ? editablePaymentDates[dateKey]
+                  : instalment.paymentDate);
               const scholarshipPercentage = instalment.scholarshipAmount > 0 
                 ? selectedScholarshipId !== 'no_scholarship' 
                   ? scholarships.find(s => s.id === selectedScholarshipId)?.amount_percentage || 0

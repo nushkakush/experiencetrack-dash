@@ -167,18 +167,37 @@ export const usePaymentForm = ({
       return;
     }
 
+    // Require explicit installment targeting for all non one-shot payments
+    const semesterNum: number | undefined = (selectedInstallment as any)?.semesterNumber;
+    const installNum: number | undefined = selectedInstallment?.installmentNumber as any;
+    const hasTargeting = typeof semesterNum === 'number' && typeof installNum === 'number';
+
+    if (!hasTargeting) {
+      // Block submission to avoid NULLs server-side
+      setErrors(prev => ({
+        ...prev,
+        paymentMode: prev.paymentMode || 'Please select a specific installment to pay'
+      }));
+      return;
+    }
+
+    const computedInstallmentId = `${semesterNum}-${installNum}`;
+
     const paymentData = {
       paymentId: `student-payment-${Date.now()}`,
       amount: amountToPay,
       paymentMethod: selectedPaymentMode,
       referenceNumber: paymentDetails.transactionId || paymentDetails.chequeNumber,
       notes: paymentDetails.notes,
-      receiptFile: uploadedFiles.cashReceipt,
+      receiptFile: uploadedFiles.cashAcknowledgment, // Fixed: was cashReceipt, should be cashAcknowledgment
       proofOfPaymentFile: uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
       transactionScreenshotFile: uploadedFiles.scanToPayScreenshot,
       bankName: paymentDetails.bankName,
       bankBranch: paymentDetails.bankBranch,
-      transferDate: paymentDetails.transferDate || paymentDetails.chequeDate
+      transferDate: paymentDetails.transferDate || paymentDetails.chequeDate,
+      // Installment targeting (strict)
+      installmentId: computedInstallmentId,
+      semesterNumber: semesterNum
     };
 
     onPaymentSubmission(paymentData);

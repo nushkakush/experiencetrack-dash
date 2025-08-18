@@ -267,6 +267,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
             submittingPayments={submittingPayments}
             studentData={studentData}
             paymentBreakdown={paymentBreakdown as unknown as any}
+            paymentTransactions={paymentTransactions}
             onInstallmentClick={onInstallmentClick}
             onPaymentSubmission={onPaymentSubmission}
           />
@@ -507,6 +508,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                           submittingPayments={submittingPayments}
                           studentData={studentData}
                           paymentBreakdown={paymentBreakdown as unknown as any}
+                          paymentTransactions={paymentTransactions}
                           onInstallmentClick={onInstallmentClick}
                           onPaymentSubmission={onPaymentSubmission}
                         />

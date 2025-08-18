@@ -40,9 +40,11 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
 
   const {
     settingsModalOpen,
+    settingsMode,
     selectedRows,
     activeTab,
     setSettingsModalOpen,
+    setSettingsMode,
     setActiveTab,
     handleSettingsComplete,
     handleBackClick,
@@ -80,7 +82,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
         {/* Cohort Header */}
         <CohortHeader 
           cohortData={cohortData} 
-          onSettingsClick={() => setSettingsModalOpen(true)} 
+          onSettingsClick={(mode) => { setSettingsMode(mode || 'view'); setSettingsModalOpen(true); }} 
         />
 
         {/* Navigation Tabs */}
@@ -117,6 +119,8 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
               cohortId={cohortData.id}
               cohortStartDate={cohortData.start_date}
               onSetupComplete={() => handleSettingsComplete(loadData)}
+              mode={settingsMode}
+              onModeChange={setSettingsMode}
             />
           </FeeFeatureGate>
         )}

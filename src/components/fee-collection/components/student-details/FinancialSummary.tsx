@@ -96,35 +96,17 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     }
 
     try {
-      // Fetch fee structure for the cohort
-      const { data: feeStructure } = await supabase
-        .from('fee_structures')
-        .select('*')
-        .eq('cohort_id', student.student?.cohort_id)
-        .eq('structure_type', 'cohort')
-        .maybeSingle();
-
-      if (!feeStructure) {
-        throw new Error('Fee structure not found');
-      }
-
-      // Scholarships list not required here; engine uses scholarshipId on the payment record
-
-      // Fetch cohort data for start date
-      const { data: cohortData } = await supabase
-        .from('cohorts')
-        .select('start_date')
-        .eq('id', student.student?.cohort_id)
-        .maybeSingle();
-
-      // Fetch canonical breakdown from Edge Function
-      const { breakdown: feeReview } = await getFullPaymentView({
+      // Fetch canonical breakdown and fee structure from Edge Function
+      const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
-        startDate: cohortData?.start_date || new Date().toISOString().split('T')[0],
       });
+
+      if (!feeStructure) {
+        throw new Error('Fee structure not found in edge function response');
+      }
 
       // Calculate total amount (program fee + admission fee)
       const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;

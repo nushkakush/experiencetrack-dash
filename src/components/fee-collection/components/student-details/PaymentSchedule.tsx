@@ -55,27 +55,6 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     }
 
     try {
-      // Fetch fee structure for the cohort (prefer custom if exists)
-      const { data: feeStructure } = await supabase
-        .from('fee_structures')
-        .select('*')
-        .eq('cohort_id', student.student?.cohort_id)
-        .eq('structure_type', 'cohort')
-        .maybeSingle();
-
-      if (!feeStructure) {
-        throw new Error('Fee structure not found');
-      }
-
-      // Scholarships not needed here (engine uses scholarshipId); remove fetch to avoid 404
-
-      // Fetch cohort data for start date
-      const { data: cohortData } = await supabase
-        .from('cohorts')
-        .select('start_date')
-        .eq('id', student.student?.cohort_id)
-        .maybeSingle();
-
       // Determine additional discount (admin-side) to keep parity with student view
       let additionalDiscountPercentage = 0;
       try {
@@ -104,15 +83,18 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         } catch (_) {}
       }
 
-      // Fetch canonical breakdown
-      const { breakdown: feeReview } = await getFullPaymentView({
+      // Fetch canonical breakdown and fee structure from Edge Function
+      const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
         additionalDiscountPercentage,
-        startDate: cohortData?.start_date || new Date().toISOString().split('T')[0],
       });
+
+      if (!feeStructure) {
+        throw new Error('Fee structure not found in edge function response');
+      }
 
       // Fetch payment transactions to check verification status
       let transactions: Array<{
@@ -147,7 +129,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         id: 'admission_fee',
         type: 'Admission Fee',
         amount: feeStructure.admission_fee,
-        dueDate: cohortData?.start_date || new Date().toISOString(),
+        dueDate: new Date().toISOString(),
         status: 'paid',
         paymentDate: new Date().toISOString(),
       });

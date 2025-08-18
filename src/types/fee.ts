@@ -9,6 +9,12 @@ export interface FeeStructure {
   instalments_per_semester: number;
   one_shot_discount_percentage: number;
   is_setup_complete: boolean;
+  structure_type: 'cohort' | 'custom';
+  student_id?: string | null;
+  custom_dates_enabled: boolean;
+  one_shot_dates: Record<string, any>; // Specific to one-shot plan
+  sem_wise_dates: Record<string, any>; // Specific to semester-wise plan
+  instalment_wise_dates: Record<string, any>; // Specific to installment-wise plan
   created_by?: string;
   created_at: string;
   updated_at: string;

@@ -18,8 +18,26 @@ type EdgeRequest = {
   cohortId?: string;
   paymentPlan?: PaymentPlan;
   scholarshipId?: string | null;
+  scholarshipData?: { // For temporary scholarships in preview mode
+    id: string;
+    amount_percentage: number;
+    name: string;
+  } | null;
   additionalDiscountPercentage?: number;
-  startDate?: string; // YYYY-MM-DD
+  // startDate removed - dates come from database only
+  customDates?: Record<string, string>; // For preview with custom dates
+  feeStructureData?: { // For preview mode when no saved structure exists
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    // Custom dates configuration (optional in preview mode)
+    custom_dates_enabled?: boolean;
+    one_shot_dates?: any; // JSON data for one-shot payment dates
+    sem_wise_dates?: any; // JSON data for semester-wise payment dates
+    instalment_wise_dates?: any; // JSON data for installment-wise payment dates
+  };
 };
 
 type InstallmentView = {
@@ -72,6 +90,25 @@ type EdgeResponse = {
   success: boolean;
   error?: string;
   breakdown?: Breakdown;
+  feeStructure?: {
+    id: string;
+    cohort_id: string;
+    student_id?: string | null;
+    structure_type: 'cohort' | 'custom';
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    is_setup_complete: boolean;
+    custom_dates_enabled: boolean;
+    one_shot_dates: any;
+    sem_wise_dates: any;
+    instalment_wise_dates: any;
+    created_by?: string | null;
+    created_at: string;
+    updated_at: string;
+  };
   aggregate?: {
     totalPayable: number;
     totalPaid: number;
@@ -79,6 +116,7 @@ type EdgeResponse = {
     nextDueDate: string | null;
     paymentStatus: string;
   };
+  debug?: any;
 };
 
 // Basic helpers copied from app logic (minimal subset)
@@ -122,30 +160,13 @@ const distributeScholarshipBackwards = (installmentAmounts: number[], totalSchol
   }
   return scholarshipDistribution;
 };
-const generateSemesterPaymentDates = (semesterNumber: number, instalmentsPerSemester: number, cohortStartDate: string): string[] => {
-  const startDate = new Date(cohortStartDate);
-  let semesterStartDate: Date;
-  if (semesterNumber === 1) {
-    semesterStartDate = new Date(startDate);
-  } else {
-    semesterStartDate = new Date(startDate);
-    semesterStartDate.setMonth(startDate.getMonth() + (semesterNumber - 1) * 6);
-  }
-  const paymentDates: string[] = [];
-  for (let i = 0; i < instalmentsPerSemester; i++) {
-    const paymentDate = new Date(semesterStartDate);
-    paymentDate.setMonth(semesterStartDate.getMonth() + i * 2); // 2 months apart
-    paymentDates.push(paymentDate.toISOString().split('T')[0]);
-  }
-  return paymentDates;
-};
+// Date generation removed - edge function only uses database dates
 
 const calculateOneShotPayment = (
   totalProgramFee: number,
   admissionFee: number,
   discountPercentage: number,
   scholarshipAmount: number,
-  cohortStartDate: string,
 ): InstallmentView => {
   const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
   const admissionFeeGST = extractGSTFromTotal(admissionFee);
@@ -157,7 +178,7 @@ const calculateOneShotPayment = (
   const baseFeeGST = calculateGST(amountAfterScholarship);
   const finalAmount = amountAfterScholarship + baseFeeGST;
   return {
-    paymentDate: cohortStartDate,
+    paymentDate: '', // Will be set from database dates only
     baseAmount,
     gstAmount: baseFeeGST,
     scholarshipAmount,
@@ -172,7 +193,6 @@ const calculateSemesterPayment = (
   admissionFee: number,
   numberOfSemesters: number,
   instalmentsPerSemester: number,
-  cohortStartDate: string,
   scholarshipAmount: number,
   oneShotDiscount: number,
 ): InstallmentView[] => {
@@ -186,7 +206,6 @@ const calculateSemesterPayment = (
   const scholarshipDistribution = isLastSemester ? distributeScholarshipBackwards(installmentAmounts, semesterScholarship) : new Array(installmentAmounts.length).fill(0);
   const semesterDiscount = oneShotDiscount / numberOfSemesters;
   const discountPerInstallment = semesterDiscount / instalmentsPerSemester;
-  const paymentDates = generateSemesterPaymentDates(semesterNumber, instalmentsPerSemester, cohortStartDate);
   const installments: InstallmentView[] = [];
   for (let i = 0; i < instalmentsPerSemester; i++) {
     const installmentAmount = installmentAmounts[i];
@@ -197,7 +216,7 @@ const calculateSemesterPayment = (
     const installmentGST = calculateGST(installmentAfterScholarship);
     const finalAmount = installmentAfterScholarship + installmentGST;
     installments.push({
-      paymentDate: paymentDates[i],
+      paymentDate: '', // Will be set from database dates only
       baseAmount: installmentAmount,
       gstAmount: installmentGST,
       scholarshipAmount: installmentScholarship,
@@ -209,6 +228,51 @@ const calculateSemesterPayment = (
   return installments;
 };
 
+// Convert database plan-specific JSON structure to UI date keys format
+function convertPlanSpecificJsonToDateKeys(
+  planJson: Record<string, any>, 
+  paymentPlan: PaymentPlan
+): Record<string, string> {
+  const editable: Record<string, string> = {};
+
+  if (paymentPlan === 'one_shot') {
+    // One-shot plan: extract program fee due date
+    if (planJson.program_fee_due_date) {
+      editable['one-shot'] = planJson.program_fee_due_date;
+    }
+  } else if (paymentPlan === 'sem_wise') {
+    // Semester-wise plan: extract semester dates
+    // Convert back to UI format "semester-1-instalment-0" 
+    const semesters = planJson.semesters || {};
+    
+    Object.keys(semesters).forEach(semesterKey => {
+      const semesterData = semesters[semesterKey];
+      if (semesterData.due_date) {
+        const semesterNum = semesterKey.replace('semester_', '');
+        editable[`semester-${semesterNum}-instalment-0`] = semesterData.due_date;
+      }
+    });
+  } else if (paymentPlan === 'instalment_wise') {
+    // Installment-wise plan: extract individual installment dates
+    const semesters = planJson.semesters || {};
+    
+    Object.keys(semesters).forEach(semesterKey => {
+      const semesterData = semesters[semesterKey];
+      const semesterNum = semesterKey.replace('semester_', '');
+      
+      if (semesterData.installments) {
+        Object.keys(semesterData.installments).forEach(installmentKey => {
+          const installmentNum = installmentKey.replace('installment_', '');
+          const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
+          editable[dateKey] = semesterData.installments[installmentKey];
+        });
+      }
+    });
+  }
+
+  return editable;
+}
+
 // Apply JSON overrides to dates (shallow merge by known keys)
 function applyDateOverrides(
   plan: PaymentPlan,
@@ -219,26 +283,155 @@ function applyDateOverrides(
 ) {
   try {
     if (!overrides || typeof overrides !== 'object') return;
+
+    // One-shot: only set program fee due date
     if (plan === 'one_shot' && oneShotPayment) {
-      const os = overrides?.one_shot;
-      if (os?.program_fee_due_date) oneShotPayment.paymentDate = os.program_fee_due_date;
-    }
-    if (plan === 'sem_wise' || plan === 'instalment_wise') {
-      const semJson = overrides?.sem_wise || overrides?.instalment_wise || overrides?.semesters;
-      if (semJson) {
-        semesters.forEach((s) => {
-          const key = `semester_${s.semesterNumber}`;
-          const semOverride = semJson[key] || semJson[s.semesterNumber] || semJson[`semester-${s.semesterNumber}`];
-          if (!semOverride) return;
-          s.instalments?.forEach((inst, idx) => {
-            const instKey = `installment_${idx + 1}`;
-            const value = semOverride[instKey] || semOverride[idx + 1] || semOverride[`installment-${idx + 1}`] || semOverride;
-            if (typeof value === 'string') inst.paymentDate = value;
-          });
+      // Handle nested structure (from UI custom dates): {one_shot: {program_fee_due_date: "..."}}
+      const os = overrides?.one_shot || (overrides as any)?.oneShot;
+      if (os?.program_fee_due_date) {
+        oneShotPayment.paymentDate = os.program_fee_due_date;
+        console.log('✅ Applied nested one-shot date:', os.program_fee_due_date);
+      }
+      // Handle flat structure (from database): {program_fee_due_date: "..."}
+      else if (overrides?.program_fee_due_date) {
+        console.log('🔥 CRITICAL: About to apply flat one-shot date from database:', {
+          originalDate: oneShotPayment.paymentDate,
+          newCustomDate: overrides.program_fee_due_date,
+          overridesStructure: overrides
         });
+        oneShotPayment.paymentDate = overrides.program_fee_due_date;
+        console.log('✅ Applied flat one-shot date - NEW DATE IS:', oneShotPayment.paymentDate);
+        // Force this to show up in browser console by throwing a temporary error we'll catch
+        try {
+          throw new Error(`CUSTOM_DATE_DEBUG: Applied custom date ${overrides.program_fee_due_date} to one-shot payment (was ${oneShotPayment.paymentDate})`);
+        } catch (debugError) {
+          console.log('🎯 DEBUG LOG FORCED:', debugError.message);
+        }
+      }
+      // Handle UI date keys format: {'one-shot': "..."}
+      else if (overrides?.['one-shot']) {
+        oneShotPayment.paymentDate = overrides['one-shot'];
+        console.log('✅ Applied UI key one-shot date:', overrides['one-shot']);
       }
     }
+
+    // Choose plan-specific mapping first; fall back to generic 'semesters'
+    let semJson: any = undefined;
+    if (plan === 'instalment_wise') {
+      semJson = overrides?.instalment_wise || overrides?.semesters;
+    } else if (plan === 'sem_wise') {
+      semJson = overrides?.sem_wise || overrides?.semesters;
+    } else {
+      semJson = overrides?.semesters || overrides?.sem_wise || overrides?.instalment_wise;
+    }
+
+    // If we didn't find a structured semesters object, check UI-key format
+    if (!semJson) {
+      const uiKeyEntries = Object.entries(overrides || {}).filter(([k]) =>
+        typeof k === 'string' && k.startsWith('semester-') && k.includes('instalment-')
+      );
+      if (uiKeyEntries.length > 0) {
+        semesters.forEach((s) => {
+          uiKeyEntries.forEach(([key, value]) => {
+            const match = /^semester-(\d+)-instalment-(\d+)$/.exec(String(key));
+            if (!match) return;
+            const semesterNum = Number(match[1]);
+            const instalmentIdx = Number(match[2]); // UI keys are zero-based
+            if (s.semesterNumber === semesterNum && s.instalments && s.instalments[instalmentIdx] && typeof value === 'string') {
+              s.instalments[instalmentIdx].paymentDate = value;
+            }
+          });
+        });
+        return;
+      }
+      // Nothing to apply
+      return;
+    }
+
+    semesters.forEach((s) => {
+      const key = `semester_${s.semesterNumber}`;
+      const semOverride = semJson[key] || semJson[s.semesterNumber] || semJson[`semester-${s.semesterNumber}`];
+      if (!semOverride) return;
+
+      s.instalments?.forEach((inst, idx) => {
+        const instKey = `installment_${idx + 1}`;
+        let value: any = undefined;
+        if (typeof semOverride === 'string') {
+          // Simple per-semester date (applies to all installments in that semester)
+          value = semOverride;
+        } else if (semOverride && typeof semOverride === 'object') {
+          value = semOverride[instKey] || semOverride[idx + 1] || semOverride[`installment-${idx + 1}`];
+        }
+        if (typeof value === 'string') inst.paymentDate = value;
+      });
+    });
   } catch (_) {}
+}
+
+// Convert UI-format custom dates to plan-specific JSON structure
+function convertCustomDatesToPlanSpecific(
+  customDates: Record<string, string>,
+  paymentPlan: PaymentPlan
+): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  if (paymentPlan === 'one_shot') {
+    // One-shot plan: store program fee due date
+    if (customDates['one-shot']) {
+      result.program_fee_due_date = customDates['one-shot'];
+    }
+  } else if (paymentPlan === 'sem_wise') {
+    // Semester-wise plan: store semester dates
+    // UI generates keys like "semester-1-instalment-0" even for sem_wise (only instalment-0 exists)
+    const semesters: Record<string, any> = {};
+    
+    Object.keys(customDates).forEach(key => {
+      if (key.startsWith('semester-') && key.includes('instalment-0')) {
+        const parts = key.split('-');
+        const semesterNum = parts[1];
+        const semesterKey = `semester_${semesterNum}`;
+        
+        if (!semesters[semesterKey]) {
+          semesters[semesterKey] = {};
+        }
+        
+        // For semester-wise, store as due_date (there's only one payment per semester)
+        semesters[semesterKey].due_date = customDates[key];
+      }
+    });
+    
+    if (Object.keys(semesters).length > 0) {
+      result.semesters = semesters;
+    }
+  } else if (paymentPlan === 'instalment_wise') {
+    // Installment-wise plan: store individual installment dates
+    const semesters: Record<string, any> = {};
+    
+    Object.keys(customDates).forEach(key => {
+      if (key.startsWith('semester-') && key.includes('instalment-')) {
+        const parts = key.split('-');
+        const semesterNum = parts[1];
+        const installmentNum = parts[3];
+        const semesterKey = `semester_${semesterNum}`;
+        
+        if (!semesters[semesterKey]) {
+          semesters[semesterKey] = {};
+        }
+        
+        if (!semesters[semesterKey].installments) {
+          semesters[semesterKey].installments = {};
+        }
+        
+        semesters[semesterKey].installments[`installment_${installmentNum}`] = customDates[key];
+      }
+    });
+    
+    if (Object.keys(semesters).length > 0) {
+      result.semesters = semesters;
+    }
+  }
+
+  return result;
 }
 
 const generateFeeStructureReview = async (
@@ -247,54 +440,76 @@ const generateFeeStructureReview = async (
   paymentPlan: PaymentPlan,
   selectedScholarshipId: string | null | undefined,
   additionalScholarshipPercentage: number,
-  cohortStartDateOverride?: string,
   studentId?: string,
-): Promise<Breakdown> => {
+  customDates?: Record<string, string>,
+  previewFeeStructureData?: any,
+  scholarshipData?: { id: string; amount_percentage: number; name: string } | null,
+): Promise<{breakdown: Breakdown; feeStructure: any}> => {
   // Load fee structure and scholarships
-  // Prefer a custom structure if one exists for this cohort (simple heuristic; client can pass student later)
   let feeStructure: any | null = null;
-  if (studentId) {
-    const { data: customFsExact } = await supabase
-      .from('fee_structures')
-      .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type,student_id')
-      .eq('cohort_id', cohortId)
-      .eq('structure_type', 'custom')
-      .eq('student_id', studentId)
-      .maybeSingle();
-    if (customFsExact) feeStructure = customFsExact;
-  }
-  if (!feeStructure) {
-    const { data: cohortFs, error: fsErr2 } = await supabase
-      .from('fee_structures')
-      .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,payment_schedule_dates,structure_type')
-      .eq('cohort_id', cohortId)
-      .eq('structure_type', 'cohort')
-      .single();
-    if (fsErr2 || !cohortFs) throw new Error('Fee structure not found');
-    feeStructure = cohortFs;
+  
+  // If preview data is provided, use it instead of querying database
+  if (previewFeeStructureData) {
+    feeStructure = {
+      cohort_id: cohortId,
+      ...previewFeeStructureData,
+      structure_type: 'cohort',
+      // Preserve any provided custom date configuration in preview data
+      custom_dates_enabled: previewFeeStructureData?.custom_dates_enabled ?? false,
+      one_shot_dates: previewFeeStructureData?.one_shot_dates ?? {},
+      sem_wise_dates: previewFeeStructureData?.sem_wise_dates ?? {},
+      instalment_wise_dates: previewFeeStructureData?.instalment_wise_dates ?? {},
+    };
+  } else {
+    // Original database lookup logic
+    if (studentId) {
+      const { data: customFsExact } = await supabase
+        .from('fee_structures')
+        .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type,student_id')
+        .eq('cohort_id', cohortId)
+        .eq('structure_type', 'custom')
+        .eq('student_id', studentId)
+        .maybeSingle();
+      if (customFsExact) feeStructure = customFsExact;
+    }
+    if (!feeStructure) {
+      const { data: cohortFs, error: fsErr2 } = await supabase
+        .from('fee_structures')
+        .select('cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type')
+        .eq('cohort_id', cohortId)
+        .eq('structure_type', 'cohort')
+        .single();
+      if (fsErr2 || !cohortFs) throw new Error('Fee structure not found');
+      feeStructure = cohortFs;
+    }
   }
 
-  // Load cohort for start_date
-  const { data: cohort, error: cohErr } = await supabase
-    .from("cohorts")
-    .select("start_date")
-    .eq("id", cohortId)
-    .single();
-  if (cohErr || !cohort) throw new Error("Cohort not found");
-  const startDate: string = (cohortStartDateOverride && cohortStartDateOverride.length > 0) ? cohortStartDateOverride : (cohort.start_date as string);
+  // No longer need cohort start date - dates come from database only
 
   // Load scholarships to resolve percentage
   let scholarshipAmount = 0;
   if (selectedScholarshipId) {
-    const { data: sch, error: schErr } = await supabase
-      .from("cohort_scholarships")
-      .select("id, amount_percentage")
-      .eq("id", selectedScholarshipId)
-      .single();
-    if (!schErr && sch && typeof sch.amount_percentage === "number") {
-      const basePct = sch.amount_percentage;
+    // Check if we have temporary scholarship data (for preview mode)
+    if (scholarshipData && selectedScholarshipId.startsWith('temp-')) {
+      const basePct = scholarshipData.amount_percentage;
       const totalPct = basePct + (additionalScholarshipPercentage || 0);
       scholarshipAmount = Math.round(feeStructure.total_program_fee * (totalPct / 100) * 100) / 100;
+      console.log(`Using temporary scholarship: ${scholarshipData.name} (${basePct}%) = ₹${scholarshipAmount}`);
+    } else {
+      // Fetch from database for saved scholarships
+      const { data: sch, error: schErr } = await supabase
+        .from("cohort_scholarships")
+        .select("id, amount_percentage")
+        .eq("id", selectedScholarshipId)
+        .single();
+      if (!schErr && sch && typeof sch.amount_percentage === "number") {
+        const basePct = sch.amount_percentage;
+        const totalPct = basePct + (additionalScholarshipPercentage || 0);
+        scholarshipAmount = Math.round(feeStructure.total_program_fee * (totalPct / 100) * 100) / 100;
+        console.log(`Using saved scholarship: ID ${selectedScholarshipId} (${basePct}%) = ₹${scholarshipAmount}`);
+      } else {
+        console.log(`Scholarship not found in database: ${selectedScholarshipId}`);
+      }
     }
   } else if (additionalScholarshipPercentage && additionalScholarshipPercentage > 0) {
     const totalPct = additionalScholarshipPercentage;
@@ -317,7 +532,6 @@ const generateFeeStructureReview = async (
         feeStructure.admission_fee,
         feeStructure.number_of_semesters,
         installmentsPerSemester,
-        startDate,
         scholarshipAmount,
         0,
       );
@@ -338,13 +552,51 @@ const generateFeeStructureReview = async (
       feeStructure.admission_fee,
       feeStructure.one_shot_discount_percentage,
       scholarshipAmount,
-      startDate,
     );
   }
 
-  // Apply overrides if enabled
-  if (feeStructure?.custom_dates_enabled) {
-    applyDateOverrides(paymentPlan, startDate, semesters, oneShotPayment, feeStructure?.payment_schedule_dates);
+  // Apply overrides if enabled - use plan-specific fields
+  // Apply database dates only - no calculations or fallbacks
+  console.log('🎯 Payment engine using database dates only:', {
+    paymentPlan,
+    customDatesEnabled: feeStructure?.custom_dates_enabled,
+    hasOneShotDates: !!feeStructure?.one_shot_dates,
+    hasSemWiseDates: !!feeStructure?.sem_wise_dates,
+    hasInstalmentWiseDates: !!feeStructure?.instalment_wise_dates,
+    hasCustomDatesParam: !!(customDates && Object.keys(customDates).length > 0)
+  });
+  
+  let databaseDates: Record<string, string> = {};
+  
+  // Use custom dates for preview mode only
+  if (customDates && Object.keys(customDates).length > 0) {
+    databaseDates = customDates;
+    console.log('✅ Using custom dates from preview parameter:', databaseDates);
+  } 
+  // Otherwise use dates from database
+  else if (feeStructure?.custom_dates_enabled) {
+    let planSpecificDates: any = null;
+    
+    if (paymentPlan === 'one_shot' && feeStructure.one_shot_dates) {
+      planSpecificDates = feeStructure.one_shot_dates;
+    } else if (paymentPlan === 'sem_wise' && feeStructure.sem_wise_dates) {
+      planSpecificDates = feeStructure.sem_wise_dates;
+    } else if (paymentPlan === 'instalment_wise' && feeStructure.instalment_wise_dates) {
+      planSpecificDates = feeStructure.instalment_wise_dates;
+    }
+    
+    if (planSpecificDates) {
+      databaseDates = convertPlanSpecificJsonToDateKeys(planSpecificDates, paymentPlan);
+      console.log('✅ Using dates from database:', databaseDates);
+    }
+  }
+  
+  // Apply dates to payment structure (simplified)
+  if (databaseDates && Object.keys(databaseDates).length > 0) {
+    applyDateOverrides(paymentPlan, '', semesters, oneShotPayment, databaseDates);
+    console.log('✅ Database dates applied successfully');
+  } else {
+    console.log('⚠️ No dates found in database - payment dates will be empty');
   }
 
   const totalSemesterAmount = semesters.reduce((sum, s) => sum + (s.total?.totalPayable || 0), 0);
@@ -372,7 +624,37 @@ const generateFeeStructureReview = async (
       totalAmountPayable: Math.max(0, totalAmountPayable),
     },
   };
-  return breakdown;
+  
+  console.log('🏁 FINAL BREAKDOWN being returned to frontend:', {
+    paymentPlan,
+    oneShotPaymentDate: breakdown.oneShotPayment?.paymentDate,
+    firstSemesterFirstInstallmentDate: breakdown.semesters?.[0]?.instalments?.[0]?.paymentDate,
+    admissionFeeStructure: breakdown.admissionFee,
+    totalBreakdown: breakdown
+  });
+  
+  return {
+    breakdown,
+    feeStructure: {
+      id: feeStructure.id || '',
+      cohort_id: feeStructure.cohort_id,
+      student_id: feeStructure.student_id || null,
+      structure_type: feeStructure.structure_type || 'cohort',
+      total_program_fee: feeStructure.total_program_fee,
+      admission_fee: feeStructure.admission_fee,
+      number_of_semesters: feeStructure.number_of_semesters,
+      instalments_per_semester: feeStructure.instalments_per_semester,
+      one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+      is_setup_complete: feeStructure.is_setup_complete || false,
+      custom_dates_enabled: feeStructure.custom_dates_enabled || false,
+      one_shot_dates: feeStructure.one_shot_dates || {},
+      sem_wise_dates: feeStructure.sem_wise_dates || {},
+      instalment_wise_dates: feeStructure.instalment_wise_dates || {},
+      created_by: feeStructure.created_by || null,
+      created_at: feeStructure.created_at || new Date().toISOString(),
+      updated_at: feeStructure.updated_at || new Date().toISOString(),
+    },
+  };
 };
 
 // Status derivation helpers
@@ -410,7 +692,7 @@ const deriveInstallmentStatus = (
 
 const enrichWithStatuses = (
   breakdown: Breakdown,
-  transactions: Array<{ amount: number; verification_status: string | null }>,
+  transactions: Array<{ amount: number; verification_status: string | null; installment_id: string | null; semester_number: number | null }>,
   plan: PaymentPlan,
 ): { breakdown: Breakdown; aggregate: { totalPayable: number; totalPaid: number; totalPending: number; nextDueDate: string | null; paymentStatus: string } } => {
   const relevantPaid = Array.isArray(transactions)
@@ -433,12 +715,65 @@ const enrichWithStatuses = (
 
   let totalPayableSchedule = 0;
   const dueItems: Array<{ dueDate: string; pending: number; status: string }> = [];
-  let paidCursor = relevantPaid;
+
+  // Separate installment-specific and general payments
+  const installmentSpecificPayments = Array.isArray(transactions) 
+    ? transactions.filter(t => t && (t.verification_status === "approved" || t.verification_status === "verification_pending") && (t.installment_id || t.semester_number))
+    : [];
+  
+  const generalPayments = Array.isArray(transactions)
+    ? transactions.filter(t => t && (t.verification_status === "approved" || t.verification_status === "verification_pending") && !t.installment_id && !t.semester_number)
+    : [];
+
+  const generalPaidAmount = generalPayments.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  // Initialize installment-specific payment tracking per installment
+  type InstallmentAlloc = { amount: number; hasVerificationPending: boolean; hasApproved: boolean };
+  const installmentPayments = new Map<string, InstallmentAlloc>(); // key: semesterNumber-installmentNumber
+  
+  const parseInstallmentNumberFromId = (raw: string | null): number | null => {
+    if (!raw) return null;
+    // Accept formats like "3" or "1-3" or any non-digit separator; pick the last numeric token as installment number
+    const tokens = String(raw).split(/[^0-9]+/).filter(Boolean);
+    if (tokens.length === 0) return null;
+    const last = Number(tokens[tokens.length - 1]);
+    return Number.isFinite(last) ? last : null;
+  };
+
+  installmentSpecificPayments.forEach(payment => {
+    if (payment.semester_number && payment.installment_id) {
+      const installmentNumber = parseInstallmentNumberFromId(payment.installment_id);
+      if (installmentNumber) {
+        const key = `${payment.semester_number}-${installmentNumber}`;
+        const prev = installmentPayments.get(key) || { amount: 0, hasVerificationPending: false, hasApproved: false };
+        const next: InstallmentAlloc = {
+          amount: prev.amount + (Number(payment.amount) || 0),
+          hasVerificationPending: prev.hasVerificationPending || payment.verification_status === "verification_pending",
+          hasApproved: prev.hasApproved || payment.verification_status === "approved",
+        };
+        installmentPayments.set(key, next);
+      } else {
+        console.log('⚠️ [WARN] Could not parse installment number from installment_id', {
+          installment_id: payment.installment_id
+        });
+      }
+    }
+  });
+
+  console.log('🔍 [DEBUG] Payment allocation:', {
+    totalRelevantPaid: relevantPaid,
+    installmentSpecificPayments: installmentSpecificPayments.length,
+    generalPayments: generalPayments.length,
+    generalPaidAmount,
+    installmentPayments: Object.fromEntries(Array.from(installmentPayments.entries()).map(([k,v]) => [k, { amount: v.amount, vp: v.hasVerificationPending, ap: v.hasApproved }]))
+  });
 
   if (plan === "one_shot" && breakdown.oneShotPayment) {
     const total = Number(breakdown.oneShotPayment.amountPayable || 0);
-    const allocated = Math.min(paidCursor, total);
-    paidCursor = Math.max(0, paidCursor - allocated);
+    
+    // For one-shot payments, we don't expect installment-specific payments, so use general payments
+    const allocated = Math.min(generalPaidAmount, total);
+    
     const status = deriveInstallmentStatus(
       String(breakdown.oneShotPayment.paymentDate || new Date().toISOString().split("T")[0]),
       total,
@@ -453,25 +788,62 @@ const enrichWithStatuses = (
     dueItems.push({ dueDate: breakdown.oneShotPayment.paymentDate, pending: breakdown.oneShotPayment.amountPending, status });
   }
 
+  // Apply installment-specific payments first
   breakdown.semesters?.forEach((sem) => {
     sem.instalments?.forEach((inst) => {
       const total = Number(inst.amountPayable || 0);
-      const allocated = Math.min(paidCursor, total);
-      paidCursor = Math.max(0, paidCursor - allocated);
+      
+      // Check for installment-specific payments
+      const installmentKey = `${sem.semesterNumber}-${inst.installmentNumber}`;
+      const alloc = installmentPayments.get(installmentKey);
+      const installmentSpecificAmount = alloc?.amount || 0;
+      
+      // ONLY apply installment-specific payments - NO fallback to general payments
+      let allocated = installmentSpecificAmount;
+      
       const status = deriveInstallmentStatus(
         String(inst.paymentDate || new Date().toISOString().split("T")[0]),
         total,
         allocated,
-        hasVerificationPendingTx,
-        hasApprovedTx,
+        alloc?.hasVerificationPending || false,
+        alloc?.hasApproved || false,
       );
+      
       inst.status = status;
       inst.amountPaid = allocated;
       inst.amountPending = Math.max(0, total - allocated);
       totalPayableSchedule += total;
       dueItems.push({ dueDate: inst.paymentDate, pending: inst.amountPending, status });
+      
+      console.log('🔍 [DEBUG] Installment allocation (installment-specific only):', {
+        semester: sem.semesterNumber,
+        installment: inst.installmentNumber,
+        total,
+        installmentSpecificAmount,
+        allocated,
+        status,
+        hasGeneralPayments: generalPayments.length > 0
+      });
     });
   });
+
+  // Emit a compact summary for quick visual verification
+  try {
+    const summary = breakdown.semesters?.map(sem => ({
+      sem: sem.semesterNumber,
+      items: (sem.instalments || []).map(inst => ({ i: inst.installmentNumber, paid: inst.amountPaid, pending: inst.amountPending, status: inst.status }))
+    }));
+    console.log('🧾 [SUMMARY] Per-installment allocation and status:', JSON.stringify(summary));
+  } catch (_) {
+    // ignore log errors
+  }
+
+  // If there are general payments (without installment targeting), throw an error
+  if (generalPayments.length > 0) {
+    console.log('🚨 [ERROR] General payments detected - all payments must target specific installments');
+    console.log('🚨 [ERROR] General payments found:', generalPayments);
+    throw new Error(`Payment system requires installment targeting. Found ${generalPayments.length} general payments without installment/semester identification. All payments must specify which installment they are for.`);
+  }
 
   const totalPayable = admissionFeePayable + totalPayableSchedule;
   const totalPaid = Math.min(relevantPaid, totalPayableSchedule); // do not count admission fee here
@@ -520,9 +892,22 @@ serve(async (req) => {
   }
 
   try {
-    const { action = "full", studentId, cohortId, paymentPlan, scholarshipId, additionalDiscountPercentage = 0, startDate }: EdgeRequest = await req.json();
+    const { action = "full", studentId, cohortId, paymentPlan, scholarshipId, scholarshipData, additionalDiscountPercentage = 0, customDates, feeStructureData }: EdgeRequest = await req.json();
+
+    console.log('🚀 Edge function called with:', { action, studentId, cohortId, paymentPlan, scholarshipId, scholarshipData, additionalDiscountPercentage, customDates });
+    console.log('🏗️ Fee structure data received:', {
+      hasFeeStructureData: !!feeStructureData,
+      customDatesEnabled: feeStructureData?.custom_dates_enabled,
+      hasOneShotDates: !!feeStructureData?.one_shot_dates,
+      hasSemWiseDates: !!feeStructureData?.sem_wise_dates,
+      hasInstalmentWiseDates: !!feeStructureData?.instalment_wise_dates,
+      oneShotDatesValue: feeStructureData?.one_shot_dates,
+      semWiseDatesValue: feeStructureData?.sem_wise_dates,
+      instalmentWiseDatesValue: feeStructureData?.instalment_wise_dates,
+    });
 
     if (!cohortId) throw new Error("cohortId is required");
+    if (!paymentPlan) throw new Error("paymentPlan is required for preview mode");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -549,28 +934,30 @@ serve(async (req) => {
 
     if (!resolvedPlan) throw new Error("paymentPlan is required when no student payment record exists");
 
-    // Build breakdown
-    const breakdown = await generateFeeStructureReview(
+    // Build breakdown and fee structure
+    const { breakdown, feeStructure } = await generateFeeStructureReview(
       supabase,
       cohortId,
       resolvedPlan,
       effectiveScholarshipId,
       additionalDiscountPercentage || 0,
-      startDate,
       studentId,
+      customDates,
+      feeStructureData,
+      scholarshipData,
     );
 
     if (action === "breakdown") {
-      const response: EdgeResponse = { success: true, breakdown };
+      const response: EdgeResponse = { success: true, breakdown, feeStructure };
       return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
     // Load transactions if we need statuses/aggregates
-    let transactions: Array<{ amount: number; verification_status: string | null }> = [];
+    let transactions: Array<{ amount: number; verification_status: string | null; installment_id: string | null; semester_number: number | null }> = [];
     if (studentPaymentId) {
       const { data: tx } = await supabase
         .from("payment_transactions")
-        .select("amount, verification_status")
+        .select("amount, verification_status, installment_id, semester_number")
         .eq("payment_id", studentPaymentId);
       transactions = Array.isArray(tx) ? tx as any : [];
     }
@@ -578,15 +965,32 @@ serve(async (req) => {
     const { breakdown: enriched, aggregate } = enrichWithStatuses(breakdown, transactions, resolvedPlan);
 
     if (action === "status") {
-      const response: EdgeResponse = { success: true, aggregate };
+      const response: EdgeResponse = { success: true, aggregate, feeStructure };
       return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
-    const response: EdgeResponse = { success: true, breakdown: enriched, aggregate };
+    // Add debug info to response to see what's happening
+    const response: EdgeResponse = { 
+      success: true, 
+      breakdown: enriched, 
+      feeStructure,
+      aggregate,
+      debug: {
+        receivedFeeStructureData: !!feeStructureData,
+        customDatesEnabled: feeStructureData?.custom_dates_enabled,
+        oneShotDatesFromRequest: feeStructureData?.one_shot_dates,
+        paymentPlan: resolvedPlan,
+        finalOneShotDate: enriched?.oneShotPayment?.paymentDate
+      }
+    };
     return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
   } catch (error: any) {
     console.error("payment-engine error:", error);
-    const response: EdgeResponse = { success: false, error: error?.message || "Unknown error" };
+    console.error("Error stack:", error.stack);
+    const response: EdgeResponse = { 
+      success: false, 
+      error: error?.message || "Unknown error"
+    };
     return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
   }
 });

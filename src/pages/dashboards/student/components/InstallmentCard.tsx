@@ -37,6 +37,7 @@ export interface InstallmentCardProps {
   submittingPayments?: Set<string>;
   studentData?: CohortStudent;
   paymentBreakdown?: PaymentBreakdown;
+  paymentTransactions?: any[]; // Add payment transactions
   onInstallmentClick: (
     installment: DatabaseInstallment,
     semesterNumber: number,
@@ -56,6 +57,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   submittingPayments,
   studentData,
   paymentBreakdown,
+  paymentTransactions,
   onInstallmentClick,
   onPaymentSubmission,
 }) => {
@@ -74,11 +76,45 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     });
   };
 
+  // Get relevant payment transactions for this installment
+  const getRelevantTransactions = () => {
+    if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
+    
+    // Filter transactions that are verification pending for this installment
+    return paymentTransactions.filter(tx => 
+      tx.verification_status === 'verification_pending' || 
+      tx.verification_status === 'pending'
+    );
+  };
+
+  const relevantTransactions = getRelevantTransactions();
+
+  // Helper function to format payment method names
+  const formatPaymentMethod = (method: string) => {
+    switch (method?.toLowerCase()) {
+      case 'razorpay':
+        return 'Online Payment';
+      case 'bank_transfer':
+        return 'Bank Transfer';
+      case 'cash':
+        return 'Cash';
+      case 'cheque':
+        return 'Cheque';
+      case 'upi':
+        return 'UPI';
+      case 'credit_card':
+        return 'Credit Card';
+      case 'debit_card':
+        return 'Debit Card';
+      default:
+        return method ? method.replace('_', ' ').toUpperCase() : 'Unknown';
+    }
+  };
+
   const currentKey = `${semesterNumber}-${installmentIndex}`;
   const isSelected = selectedInstallmentKey === currentKey;
-  const isPaid =
-    installment.status === 'paid' ||
-    installment.amountPaid >= installment.amount;
+  // Treat installment as paid only if engine says so. Avoid numeric fallbacks.
+  const isPaid = installment.status === 'paid';
   
   // Check if payment is in verification pending status
   const isVerificationPending = 
@@ -86,9 +122,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     installment.status === 'partially_paid_verification_pending';
   
   // Check if payment is fully verified and complete
-  const isFullyVerified = 
-    installment.status === 'paid' ||
-    (installment.amountPaid >= installment.amount && !isVerificationPending);
+  const isFullyVerified = installment.status === 'paid';
 
   // Determine if payment form should be shown automatically
   const shouldShowPaymentForm = () => {
@@ -322,6 +356,62 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                     : 'This installment has been fully paid. Thank you for your payment!'
                   }
                 </p>
+                
+                {/* Payment Method and Proof Details for Verification Pending */}
+                {isVerificationPending && relevantTransactions.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {relevantTransactions.map((tx, index) => (
+                      <div key={tx.id || index} className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                              Payment Method: {formatPaymentMethod(tx.payment_method)}
+                            </span>
+                            <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                              ₹{formatCurrency(tx.amount || 0)}
+                            </span>
+                          </div>
+                          {tx.reference_number && (
+                            <span className="text-xs text-yellow-700 dark:text-yellow-300">
+                              Ref: {tx.reference_number}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Proof Upload Status */}
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-yellow-700 dark:text-yellow-300">Proof:</span>
+                          {tx.receipt_url || tx.proof_of_payment_url || tx.transaction_screenshot_url ? (
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                              ✅ Uploaded
+                            </span>
+                          ) : (
+                            <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                              ❌ Not uploaded
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Additional Payment Details */}
+                        {tx.razorpay_order_id && (
+                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Order ID: {tx.razorpay_order_id}
+                          </div>
+                        )}
+                        {tx.utr_number && (
+                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            UTR: {tx.utr_number}
+                          </div>
+                        )}
+                        {tx.bank_name && (
+                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Bank: {tx.bank_name}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {installment.paymentDate && (
                   <p className={`text-xs mt-1 ${
                     isFullyVerified

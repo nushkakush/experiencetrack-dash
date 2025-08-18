@@ -114,8 +114,6 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
           scholarshipId = String(studentPayments[0].scholarship_id);
         }
 
-        const startDate = cohortData?.start_date || new Date().toISOString().split('T')[0];
-
         try {
           const toEnginePlan = (p: PaymentPlan): EnginePaymentPlan | undefined => {
             if (p === 'one_shot' || p === 'sem_wise' || p === 'instalment_wise') return p as EnginePaymentPlan;
@@ -129,7 +127,6 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
             paymentPlan: enginePlan,
             scholarshipId,
             additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
-            startDate,
           });
           if (!cancelled) setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
         } catch (err) {
@@ -150,7 +147,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
       studentScholarship,
       selectedPaymentPlan,
       studentPayments,
-      cohortData?.start_date,
+
       hasSelectedPlan,
       studentData?.id,
       cohortData?.id,

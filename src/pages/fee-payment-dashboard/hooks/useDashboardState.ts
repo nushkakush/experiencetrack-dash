@@ -8,11 +8,13 @@ import { exportPaymentData } from '@/utils/exportUtils';
 export const useDashboardState = () => {
   const navigate = useNavigate();
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsMode, setSettingsMode] = useState<'view' | 'edit'>('view');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('payments');
 
   const handleSettingsComplete = (loadData: () => void) => {
     loadData(); // Refresh data after settings are updated
+    setSettingsMode('view');
   };
 
   const handleBackClick = () => {
@@ -63,9 +65,11 @@ export const useDashboardState = () => {
 
   return {
     settingsModalOpen,
+    settingsMode,
     selectedRows,
     activeTab,
     setSettingsModalOpen,
+    setSettingsMode,
     setActiveTab,
     handleSettingsComplete,
     handleBackClick,

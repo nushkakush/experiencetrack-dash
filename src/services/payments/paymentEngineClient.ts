@@ -9,7 +9,20 @@ export interface PaymentEngineParams {
   paymentPlan?: PaymentPlan;
   scholarshipId?: string | null;
   additionalDiscountPercentage?: number;
-  startDate?: string; // YYYY-MM-DD
+  // startDate removed - dates come from database only
+  customDates?: Record<string, string>; // For preview with custom dates
+  feeStructureData?: { // For preview mode when no saved structure exists
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    // Custom dates configuration
+    custom_dates_enabled?: boolean;
+    one_shot_dates?: any; // JSON data for one-shot payment dates
+    sem_wise_dates?: any; // JSON data for semester-wise payment dates
+    instalment_wise_dates?: any; // JSON data for installment-wise payment dates
+  };
 }
 
 export async function getPaymentBreakdown(params: PaymentEngineParams) {
@@ -17,7 +30,7 @@ export async function getPaymentBreakdown(params: PaymentEngineParams) {
     body: { action: 'breakdown', ...params },
   });
   if (error) throw error;
-  return data;
+  return data; // Now includes both breakdown and feeStructure
 }
 
 export async function getPaymentStatus(params: PaymentEngineParams) {
@@ -25,7 +38,7 @@ export async function getPaymentStatus(params: PaymentEngineParams) {
     body: { action: 'status', ...params },
   });
   if (error) throw error;
-  return data;
+  return data; // Now includes aggregate and feeStructure
 }
 
 export async function getFullPaymentView(params: PaymentEngineParams) {
@@ -33,7 +46,7 @@ export async function getFullPaymentView(params: PaymentEngineParams) {
     body: { action: 'full', ...params },
   });
   if (error) throw error;
-  return data;
+  return data; // Now includes breakdown, feeStructure, and aggregate
 }
 
 

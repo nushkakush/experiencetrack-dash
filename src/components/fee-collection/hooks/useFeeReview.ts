@@ -1,63 +1,324 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { PaymentScheduleOverrides } from '@/services/payments/PaymentScheduleOverrides';
 import { PaymentPlan, FeeStructure, Scholarship } from '@/types/fee';
+import { getPaymentBreakdown } from '@/services/payments/paymentEngineClient';
 //
 
 interface UseFeeReviewProps {
   feeStructure: FeeStructure;
   scholarships: Scholarship[];
-  cohortStartDate: string;
+  selectedPaymentPlan?: PaymentPlan;
 }
 
-export const useFeeReview = ({ feeStructure, scholarships, cohortStartDate }: UseFeeReviewProps) => {
-  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan>('one_shot');
+export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan }: UseFeeReviewProps) => {
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan>(propSelectedPaymentPlan || 'one_shot');
   const [selectedScholarshipId, setSelectedScholarshipId] = useState<string>('no_scholarship');
-  const [editablePaymentDates, setEditablePaymentDates] = useState<Record<string, string>>({});
+  const [isPreloaded, setIsPreloaded] = useState(false);
+  // Keep dates isolated per plan to avoid cross-plan contamination
+  const [datesByPlan, setDatesByPlan] = useState<{
+    one_shot: Record<string, string>;
+    sem_wise: Record<string, string>;
+    instalment_wise: Record<string, string>;
+  }>({ one_shot: {}, sem_wise: {}, instalment_wise: {} });
   const [engineReview, setEngineReview] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const cachedReviewsRef = useRef<Record<string, any>>({});
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const feeReview = useMemo(() => engineReview, [engineReview]);
+  // Memoized function to generate cache key
+  const getCacheKey = useCallback((plan: PaymentPlan, scholarshipId: string, customDates: Record<string, string>) => {
+    return `${plan}-${scholarshipId}-${JSON.stringify(customDates)}`;
+  }, []);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      try {
-        setLoading(true);
-        const breakdown = await generateLocalPreviewBreakdown(
-          feeStructure,
-          selectedPaymentPlan,
-          selectedScholarshipId,
-          scholarships,
-          cohortStartDate,
-        );
-        if (!cancelled) setEngineReview(breakdown as any);
-      } catch (err) {
+  // Debounced function to fetch fee review
+  const fetchFeeReview = useCallback(async (plan: PaymentPlan, scholarshipId: string, customDates: Record<string, string>) => {
+        // Skip if payment plan is not selected yet
+    if (plan === 'not_selected') {
+      return;
+    }
+
+    const cacheKey = getCacheKey(plan, scholarshipId, customDates);
+    
+    // Check cache first
+    if (cachedReviewsRef.current[cacheKey]) {
+      console.log('Using cached result for key:', cacheKey);
+      setEngineReview(cachedReviewsRef.current[cacheKey]);
+      setLoading(false); // Ensure loading is false for cached results
+          return;
+        }
+        
+    try {
+      setLoading(true);
+        
+        // Find the scholarship ID
+      let scholarshipIdParam: string | null = null;
+      if (scholarshipId && scholarshipId !== 'no_scholarship') {
+        scholarshipIdParam = scholarshipId;
+      }
+      
+      // Find scholarship data for temporary scholarships
+      let scholarshipData = null;
+      if (scholarshipIdParam && scholarshipIdParam.startsWith('temp-')) {
+        const tempScholarship = scholarships.find(s => s.id === scholarshipIdParam);
+        if (tempScholarship) {
+          scholarshipData = {
+            id: tempScholarship.id,
+            amount_percentage: tempScholarship.amount_percentage,
+            name: tempScholarship.name
+          };
+        }
+        }
+        
+        const params = {
+          cohortId: feeStructure.cohort_id,
+        paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        scholarshipId: scholarshipIdParam,
+        scholarshipData, // Pass scholarship data for temporary scholarships
+        customDates: Object.keys(customDates).length > 0 ? customDates : undefined,
+          feeStructureData: {
+            total_program_fee: feeStructure.total_program_fee,
+            admission_fee: feeStructure.admission_fee,
+            number_of_semesters: feeStructure.number_of_semesters,
+            instalments_per_semester: feeStructure.instalments_per_semester,
+            one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+          },
+        };
+        
+        console.log('Calling payment engine with params:', params);
+        const result = await getPaymentBreakdown(params);
+        
+      // Cache the result
+      console.log('Caching result for key:', cacheKey);
+      cachedReviewsRef.current[cacheKey] = result.breakdown;
+      setEngineReview(result.breakdown);
+      } catch (err: any) {
         console.error('fee preview calculation failed', err);
+        console.error('Error details:', err.response?.data || err.message);
         (async () => { try { (await import('sonner')).toast?.error?.('Failed to load fee preview.'); } catch (_) {} })();
-        if (!cancelled) setEngineReview(null);
+      setEngineReview(null);
       } finally {
-        if (!cancelled) setLoading(false);
+      setLoading(false);
+    }
+  }, [feeStructure, getCacheKey, scholarships]);
+
+  // Track previous values to determine if this is just a date change
+  const prevValuesRef = useRef({
+    selectedPaymentPlan,
+    selectedScholarshipId,
+    datesByPlan: JSON.stringify(datesByPlan)
+  });
+
+  // Main effect that handles all changes with appropriate debouncing
+  React.useEffect(() => {
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Get current plan's custom dates
+    const currentPlanDates = datesByPlan[selectedPaymentPlan] || {};
+
+    // Check cache immediately and synchronously to prevent loading flicker
+    const cacheKey = getCacheKey(selectedPaymentPlan, selectedScholarshipId, currentPlanDates);
+    if (cachedReviewsRef.current[cacheKey]) {
+      console.log('Immediate cache hit for key:', cacheKey);
+      setEngineReview(cachedReviewsRef.current[cacheKey]);
+      setLoading(false);
+      return; // Exit early for cached data - no need for async operations
+    }
+
+    // Determine if only dates changed (not plan or scholarship)
+    const planChanged = prevValuesRef.current.selectedPaymentPlan !== selectedPaymentPlan;
+    const scholarshipChanged = prevValuesRef.current.selectedScholarshipId !== selectedScholarshipId;
+    const datesChanged = prevValuesRef.current.datesByPlan !== JSON.stringify(datesByPlan);
+    
+    const isOnlyDateChange = datesChanged && !planChanged && !scholarshipChanged;
+
+    // Update the ref
+    prevValuesRef.current = {
+      selectedPaymentPlan,
+      selectedScholarshipId,
+      datesByPlan: JSON.stringify(datesByPlan)
+    };
+
+    // Use debouncing only for date-only changes
+    const delay = isOnlyDateChange ? 500 : 0; // 500ms debounce for date changes, immediate for plan/scholarship changes
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchFeeReview(selectedPaymentPlan, selectedScholarshipId, currentPlanDates);
+    }, delay);
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-    run();
-    return () => { cancelled = true; };
-  }, [feeStructure, selectedPaymentPlan, selectedScholarshipId, scholarships, cohortStartDate]);
+  }, [selectedPaymentPlan, selectedScholarshipId, datesByPlan, fetchFeeReview, getCacheKey]);
 
-  const handlePaymentDateChange = (key: string, value: string) => {
-    setEditablePaymentDates(prev => ({ ...prev, [key]: value }));
+  // Preload all payment plans for instant tab switching
+  React.useEffect(() => {
+    if (!isPreloaded && feeStructure) {
+      const preloadPlans = async () => {
+        const plans: PaymentPlan[] = ['one_shot', 'sem_wise', 'instalment_wise'];
+        const emptyDates = {};
+        
+        // Preload all plans with no scholarship and with temporary scholarships for instant switching
+        for (const plan of plans) {
+          // Preload with no scholarship
+          const noScholarshipCacheKey = getCacheKey(plan, 'no_scholarship', emptyDates);
+          if (!cachedReviewsRef.current[noScholarshipCacheKey]) {
+            try {
+              const params = {
+                cohortId: feeStructure.cohort_id,
+                paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+                scholarshipId: null,
+                scholarshipData: null,
+                customDates: undefined,
+                feeStructureData: {
+                  total_program_fee: feeStructure.total_program_fee,
+                  admission_fee: feeStructure.admission_fee,
+                  number_of_semesters: feeStructure.number_of_semesters,
+                  instalments_per_semester: feeStructure.instalments_per_semester,
+                  one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+                },
+              };
+              
+              const result = await getPaymentBreakdown(params);
+              cachedReviewsRef.current[noScholarshipCacheKey] = result.breakdown;
+              console.log('Preloaded plan (no scholarship):', plan);
+            } catch (err) {
+              console.warn('Failed to preload plan (no scholarship):', plan, err);
+            }
+          }
+          
+          // Preload with temporary scholarships
+          for (const scholarship of scholarships) {
+            const scholarshipCacheKey = getCacheKey(plan, scholarship.id, emptyDates);
+            if (!cachedReviewsRef.current[scholarshipCacheKey]) {
+              try {
+                let scholarshipData = null;
+                if (scholarship.id.startsWith('temp-')) {
+                  scholarshipData = {
+                    id: scholarship.id,
+                    amount_percentage: scholarship.amount_percentage,
+                    name: scholarship.name
+                  };
+                }
+                
+                const params = {
+                  cohortId: feeStructure.cohort_id,
+                  paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+                  scholarshipId: scholarship.id,
+                  scholarshipData,
+                  customDates: undefined,
+                  feeStructureData: {
+                    total_program_fee: feeStructure.total_program_fee,
+                    admission_fee: feeStructure.admission_fee,
+                    number_of_semesters: feeStructure.number_of_semesters,
+                    instalments_per_semester: feeStructure.instalments_per_semester,
+                    one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+                  },
+                };
+                
+                const result = await getPaymentBreakdown(params);
+                cachedReviewsRef.current[scholarshipCacheKey] = result.breakdown;
+                console.log('Preloaded plan with scholarship:', plan, scholarship.name);
+              } catch (err) {
+                console.warn('Failed to preload plan with scholarship:', plan, scholarship.name, err);
+              }
+            }
+          }
+        }
+        setIsPreloaded(true);
+      };
+      
+      preloadPlans();
+    }
+  }, [feeStructure, isPreloaded, getCacheKey, scholarships]);
+
+  // Sync external prop with internal state
+  React.useEffect(() => {
+    if (propSelectedPaymentPlan && propSelectedPaymentPlan !== selectedPaymentPlan) {
+      setSelectedPaymentPlan(propSelectedPaymentPlan);
+    }
+  }, [propSelectedPaymentPlan, selectedPaymentPlan]);
+
+  // Load dates for all plans when fee structure changes to prevent data loss
+  React.useEffect(() => {
+    try {
+      if ((feeStructure as any)?.custom_dates_enabled) {
+        const allPlanDates: {
+          one_shot: Record<string, string>;
+          sem_wise: Record<string, string>;
+          instalment_wise: Record<string, string>;
+        } = { one_shot: {}, sem_wise: {}, instalment_wise: {} };
+
+        // Load dates for all plans to prevent data loss during editing
+        if ((feeStructure as any)?.one_shot_dates) {
+          allPlanDates.one_shot = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).one_shot_dates, 'one_shot');
+        }
+        if ((feeStructure as any)?.sem_wise_dates) {
+          allPlanDates.sem_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).sem_wise_dates, 'sem_wise');
+        }
+        if ((feeStructure as any)?.instalment_wise_dates) {
+          allPlanDates.instalment_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).instalment_wise_dates, 'instalment_wise');
+        }
+
+        // Only update state if we have dates to load
+        const hasAnyDates = Object.keys(allPlanDates.one_shot).length > 0 || 
+                           Object.keys(allPlanDates.sem_wise).length > 0 || 
+                           Object.keys(allPlanDates.instalment_wise).length > 0;
+
+        if (hasAnyDates) {
+          console.log('Loading saved dates for all plans:', allPlanDates);
+          setDatesByPlan(prev => ({
+            one_shot: { ...prev.one_shot, ...allPlanDates.one_shot },
+            sem_wise: { ...prev.sem_wise, ...allPlanDates.sem_wise },
+            instalment_wise: { ...prev.instalment_wise, ...allPlanDates.instalment_wise },
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error loading dates:', err);
+    }
+  }, [feeStructure]);
+
+  // The edge function already applies date overrides, so we can use the result directly
+  const feeReview = useMemo(() => {
+    return engineReview;
+  }, [engineReview]);
+
+  const handlePaymentDateChange = useCallback((key: string, value: string) => {
+    // Skip if payment plan is not selected yet
+    if (selectedPaymentPlan === 'not_selected') return;
+    
+    setDatesByPlan(prev => {
+      const currentPlanDates = prev[selectedPaymentPlan] || {};
+      // Only update if the value actually changed
+      if (currentPlanDates[key] === value) return prev;
+      
+      return {
+      ...prev,
+        [selectedPaymentPlan]: { ...currentPlanDates, [key]: value },
   };
+    });
+  }, [selectedPaymentPlan]);
 
-  const handleScholarshipSelect = (scholarshipId: string) => {
+  const handleScholarshipSelect = useCallback((scholarshipId: string) => {
     setSelectedScholarshipId(scholarshipId);
-  };
+  }, []);
 
-  const handlePaymentPlanChange = (plan: PaymentPlan) => {
+  const handlePaymentPlanChange = useCallback((plan: PaymentPlan) => {
     setSelectedPaymentPlan(plan);
-  };
+  }, []);
+
+  const currentPlanDates = selectedPaymentPlan !== 'not_selected' ? (datesByPlan[selectedPaymentPlan] || {}) : {};
 
   return {
     selectedPaymentPlan,
     selectedScholarshipId,
-    editablePaymentDates,
+    editablePaymentDates: currentPlanDates,
+    datesByPlan, // Expose all plans' dates
     feeReview,
     loading,
     handlePaymentDateChange,
@@ -65,252 +326,3 @@ export const useFeeReview = ({ feeStructure, scholarships, cohortStartDate }: Us
     handlePaymentPlanChange
   };
 };
-
-// ----- Local preview calculator (pure, client-side) -----
-const GST_RATE = 18;
-const calculateGST = (baseAmount: number): number => {
-  return Math.round(baseAmount * (GST_RATE / 100) * 100) / 100;
-};
-const extractGSTFromTotal = (totalAmount: number): number => {
-  const baseAmount = totalAmount / (1 + GST_RATE / 100);
-  const gstAmount = totalAmount - baseAmount;
-  return Math.round(gstAmount * 100) / 100;
-};
-const extractBaseAmountFromTotal = (totalAmount: number): number => {
-  return Math.round((totalAmount / (1 + GST_RATE / 100)) * 100) / 100;
-};
-const calculateOneShotDiscount = (baseAmount: number, discountPercentage: number): number => {
-  return Math.round(baseAmount * (discountPercentage / 100) * 100) / 100;
-};
-const getInstalmentDistribution = (instalmentsPerSemester: number): number[] => {
-  switch (instalmentsPerSemester) {
-    case 2:
-      return [60, 40];
-    case 3:
-      return [40, 40, 20];
-    case 4:
-      return [30, 30, 30, 10];
-    default: {
-      const percentage = 100 / Math.max(1, instalmentsPerSemester);
-      return Array(instalmentsPerSemester).fill(percentage);
-    }
-  }
-};
-const distributeScholarshipBackwards = (installmentAmounts: number[], totalScholarshipAmount: number): number[] => {
-  const scholarshipDistribution = new Array(installmentAmounts.length).fill(0);
-  let remainingScholarship = totalScholarshipAmount;
-  for (let i = installmentAmounts.length - 1; i >= 0 && remainingScholarship > 0; i--) {
-    const installmentAmount = installmentAmounts[i];
-    const scholarshipForThisInstallment = Math.min(remainingScholarship, installmentAmount);
-    scholarshipDistribution[i] = scholarshipForThisInstallment;
-    remainingScholarship -= scholarshipForThisInstallment;
-  }
-  return scholarshipDistribution;
-};
-const generateSemesterPaymentDates = (semesterNumber: number, instalmentsPerSemester: number, cohortStartDate: string): string[] => {
-  const startDate = new Date(cohortStartDate);
-  let semesterStartDate: Date;
-  if (semesterNumber === 1) {
-    semesterStartDate = new Date(startDate);
-  } else {
-    semesterStartDate = new Date(startDate);
-    semesterStartDate.setMonth(startDate.getMonth() + (semesterNumber - 1) * 6);
-  }
-  const paymentDates: string[] = [];
-  for (let i = 0; i < instalmentsPerSemester; i++) {
-    const paymentDate = new Date(semesterStartDate);
-    paymentDate.setMonth(semesterStartDate.getMonth() + i * 2); // 2 months apart
-    paymentDates.push(paymentDate.toISOString().split('T')[0]);
-  }
-  return paymentDates;
-};
-
-type LocalInstallmentView = {
-  paymentDate: string;
-  baseAmount: number;
-  scholarshipAmount: number;
-  discountAmount: number;
-  gstAmount: number;
-  amountPayable: number;
-  installmentNumber?: number;
-};
-
-type LocalSemesterView = {
-  semesterNumber: number;
-  instalments: LocalInstallmentView[];
-  total: {
-    baseAmount: number;
-    scholarshipAmount: number;
-    discountAmount: number;
-    gstAmount: number;
-    totalPayable: number;
-  };
-};
-
-type LocalBreakdown = {
-  admissionFee: {
-    baseAmount: number;
-    scholarshipAmount: number;
-    discountAmount: number;
-    gstAmount: number;
-    totalPayable: number;
-  };
-  semesters: LocalSemesterView[];
-  oneShotPayment?: LocalInstallmentView;
-  overallSummary: {
-    totalProgramFee: number;
-    admissionFee: number;
-    totalGST: number;
-    totalDiscount: number;
-    totalScholarship: number;
-    totalAmountPayable: number;
-  };
-};
-
-const calculateOneShotPaymentLocal = (
-  totalProgramFee: number,
-  admissionFee: number,
-  discountPercentage: number,
-  scholarshipAmount: number,
-  cohortStartDate: string,
-): LocalInstallmentView => {
-  const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
-  const remainingBaseFee = totalProgramFee - admissionFeeBase;
-  const baseAmount = remainingBaseFee;
-  const oneShotDiscount = calculateOneShotDiscount(totalProgramFee, discountPercentage);
-  const amountAfterDiscount = baseAmount - oneShotDiscount;
-  const amountAfterScholarship = amountAfterDiscount - scholarshipAmount;
-  const baseFeeGST = calculateGST(amountAfterScholarship);
-  const finalAmount = amountAfterScholarship + baseFeeGST;
-  return {
-    paymentDate: cohortStartDate,
-    baseAmount,
-    gstAmount: baseFeeGST,
-    scholarshipAmount,
-    discountAmount: oneShotDiscount,
-    amountPayable: Math.max(0, finalAmount),
-  };
-};
-
-const calculateSemesterPaymentLocal = (
-  semesterNumber: number,
-  totalProgramFee: number,
-  admissionFee: number,
-  numberOfSemesters: number,
-  instalmentsPerSemester: number,
-  cohortStartDate: string,
-  scholarshipAmount: number,
-): LocalInstallmentView[] => {
-  const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
-  const remainingBaseFee = totalProgramFee - admissionFeeBase;
-  const semesterFee = remainingBaseFee / numberOfSemesters;
-  const installmentPercentages = getInstalmentDistribution(instalmentsPerSemester);
-  const installmentAmounts = installmentPercentages.map((percentage) => Math.round(semesterFee * (percentage / 100) * 100) / 100);
-  const isLastSemester = semesterNumber === numberOfSemesters;
-  const semesterScholarship = isLastSemester ? scholarshipAmount : 0;
-  const scholarshipDistribution = isLastSemester ? distributeScholarshipBackwards(installmentAmounts, semesterScholarship) : new Array(installmentAmounts.length).fill(0);
-  const discountPerInstallment = 0; // one-shot discount does not apply in sem/instalment wise
-  const paymentDates = generateSemesterPaymentDates(semesterNumber, instalmentsPerSemester, cohortStartDate);
-  const installments: LocalInstallmentView[] = [];
-  for (let i = 0; i < instalmentsPerSemester; i++) {
-    const installmentAmount = installmentAmounts[i];
-    const installmentScholarship = scholarshipDistribution[i];
-    const installmentDiscount = discountPerInstallment;
-    const installmentAfterDiscount = installmentAmount - installmentDiscount;
-    const installmentAfterScholarship = installmentAfterDiscount - installmentScholarship;
-    const installmentGST = calculateGST(installmentAfterScholarship);
-    const finalAmount = installmentAfterScholarship + installmentGST;
-    installments.push({
-      paymentDate: paymentDates[i],
-      baseAmount: installmentAmount,
-      gstAmount: installmentGST,
-      scholarshipAmount: installmentScholarship,
-      discountAmount: installmentDiscount,
-      amountPayable: Math.max(0, finalAmount),
-      installmentNumber: i + 1,
-    });
-  }
-  return installments;
-};
-
-async function generateLocalPreviewBreakdown(
-  feeStructure: FeeStructure,
-  paymentPlan: PaymentPlan,
-  selectedScholarshipId: string,
-  scholarships: Scholarship[],
-  cohortStartDate: string,
-): Promise<LocalBreakdown> {
-  // Resolve scholarship amount
-  let scholarshipAmount = 0;
-  const scholarship = scholarships?.find((s) => s.id === selectedScholarshipId);
-  if (selectedScholarshipId && selectedScholarshipId !== 'no_scholarship' && scholarship && typeof scholarship.amount_percentage === 'number') {
-    scholarshipAmount = Math.round(feeStructure.total_program_fee * (scholarship.amount_percentage / 100) * 100) / 100;
-  }
-
-  // Admission fee block
-  const admissionFeeBase = extractBaseAmountFromTotal(feeStructure.admission_fee);
-  const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
-
-  const semesters: LocalSemesterView[] = [];
-  let oneShotPayment: LocalInstallmentView | undefined = undefined;
-
-  if (paymentPlan === 'sem_wise' || paymentPlan === 'instalment_wise') {
-    const installmentsPerSemester = paymentPlan === 'sem_wise' ? 1 : feeStructure.instalments_per_semester;
-    for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
-      const semesterInstallments = calculateSemesterPaymentLocal(
-        sem,
-        feeStructure.total_program_fee,
-        feeStructure.admission_fee,
-        feeStructure.number_of_semesters,
-        installmentsPerSemester,
-        cohortStartDate,
-        scholarshipAmount,
-      );
-      const semesterTotal = {
-        scholarshipAmount: semesterInstallments.reduce((sum, inst) => sum + (inst.scholarshipAmount || 0), 0),
-        baseAmount: semesterInstallments.reduce((sum, inst) => sum + (inst.baseAmount || 0), 0),
-        gstAmount: semesterInstallments.reduce((sum, inst) => sum + (inst.gstAmount || 0), 0),
-        discountAmount: semesterInstallments.reduce((sum, inst) => sum + (inst.discountAmount || 0), 0),
-        totalPayable: semesterInstallments.reduce((sum, inst) => sum + (inst.amountPayable || 0), 0),
-      };
-      semesters.push({ semesterNumber: sem, instalments: semesterInstallments, total: semesterTotal });
-    }
-  }
-
-  if (paymentPlan === 'one_shot') {
-    oneShotPayment = calculateOneShotPaymentLocal(
-      feeStructure.total_program_fee,
-      feeStructure.admission_fee,
-      feeStructure.one_shot_discount_percentage,
-      scholarshipAmount,
-      cohortStartDate,
-    );
-  }
-
-  const totalSemesterAmount = semesters.reduce((sum, s) => sum + (s.total?.totalPayable || 0), 0);
-  const totalSemesterGST = semesters.reduce((sum, s) => sum + (s.total?.gstAmount || 0), 0);
-  const totalSemesterScholarship = semesters.reduce((sum, s) => sum + (s.total?.scholarshipAmount || 0), 0);
-  const totalSemesterDiscount = semesters.reduce((sum, s) => sum + (s.total?.discountAmount || 0), 0);
-  const totalAmountPayable = feeStructure.admission_fee + totalSemesterAmount + (oneShotPayment?.amountPayable || 0);
-
-  const breakdown: LocalBreakdown = {
-    admissionFee: {
-      baseAmount: admissionFeeBase,
-      scholarshipAmount: 0,
-      discountAmount: 0,
-      gstAmount: admissionFeeGST,
-      totalPayable: feeStructure.admission_fee,
-    },
-    semesters,
-    oneShotPayment,
-    overallSummary: {
-      totalProgramFee: feeStructure.total_program_fee,
-      admissionFee: feeStructure.admission_fee,
-      totalGST: totalSemesterGST + admissionFeeGST + (oneShotPayment?.gstAmount || 0),
-      totalDiscount: totalSemesterDiscount + (oneShotPayment?.discountAmount || 0),
-      totalScholarship: totalSemesterScholarship + (oneShotPayment?.scholarshipAmount || 0),
-      totalAmountPayable: Math.max(0, totalAmountPayable),
-    },
-  };
-  return breakdown;
-}

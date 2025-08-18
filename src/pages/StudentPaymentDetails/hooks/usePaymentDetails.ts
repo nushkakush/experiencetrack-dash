@@ -97,7 +97,6 @@ export const usePaymentDetails = () => {
           studentId: String(studentData.id),
           cohortId: String(cohortData.cohort_id || cohortData.id),
           paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
-          startDate: cohortData?.start_date,
         });
         setEngineBreakdown(breakdown || null);
       } catch (error) {
@@ -106,7 +105,7 @@ export const usePaymentDetails = () => {
       }
     };
     fetchBreakdown();
-  }, [studentData?.id, cohortData?.cohort_id, cohortData?.id, cohortData?.start_date, selectedPaymentPlan]);
+  }, [studentData?.id, cohortData?.cohort_id, cohortData?.id, selectedPaymentPlan]);
 
   const loadStudentData = async () => {
     try {

@@ -33,17 +33,7 @@ export default function Step2Scholarships({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">
-          {isReadOnly ? 'Scholarships Overview' : 'Step 2: Scholarships'}
-        </h2>
-        <p className="text-muted-foreground">
-          {isReadOnly 
-            ? 'Current scholarship configuration for this cohort'
-            : 'Configure scholarships and discounts for students'
-          }
-        </p>
-      </div>
+      {/* Title and helper removed here to avoid duplication with modal header */}
 
       <ScholarshipHeader hasOverlappingScholarships={hasOverlappingScholarships} />
 

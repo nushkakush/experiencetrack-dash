@@ -1,304 +1,206 @@
 import { supabase } from '@/integrations/supabase/client';
-import { FeeStructure, Scholarship, NewFeeStructureInput, NewScholarshipInput } from '@/types/fee';
-import { Logger } from '@/lib/logging/Logger';
+import { FeeStructure, FeeStructureInsert, FeeStructureUpdate } from '@/types/payments/FeeStructureTypes';
+import { PaymentScheduleOverrides } from './payments/PaymentScheduleOverrides';
 
 export class FeeStructureService {
-  /**
-   * Resolve fee structure for a cohort/student with override-awareness
-   * - If studentId provided, prefer custom row for that student; else fallback to cohort row
-   */
-  static async resolveFeeStructure(cohortId: string, studentId?: string): Promise<FeeStructure | null> {
-    try {
-      if (studentId) {
-        const { data: customFs, error: customErr } = await supabase
-          .from('fee_structures')
-          .select('*')
-          .eq('cohort_id', cohortId)
-          .eq('structure_type', 'custom')
-          .eq('student_id', studentId)
-          .maybeSingle();
-        if (!customErr && customFs) return customFs as FeeStructure;
-      }
-      const { data: cohortFs } = await supabase
-        .from('fee_structures')
-        .select('*')
-        .eq('cohort_id', cohortId)
-        .eq('structure_type', 'cohort')
-        .maybeSingle();
-      return (cohortFs as FeeStructure) || null;
-    } catch (error) {
-      Logger.getInstance().error('resolveFeeStructure failed', { error, cohortId, studentId });
+  static async upsertFeeStructure(feeStructure: FeeStructureInsert): Promise<FeeStructure | null> {
+    const { data, error } = await supabase
+      .from('fee_structures')
+      .upsert(feeStructure, {
+        onConflict: 'cohort_id,structure_type',
+        ignoreDuplicates: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error upserting fee structure:', error);
       return null;
     }
+
+    return data;
   }
-  /**
-   * Get fee structure for a cohort
-   */
-  static async getFeeStructure(cohortId: string): Promise<FeeStructure | null> {
+
+  static async createCustomPlanFromCohort(
+    cohortId: string,
+    studentId: string,
+    customDates: Record<string, string>,
+    paymentPlan: 'one_shot' | 'sem_wise' | 'instalment_wise'
+  ): Promise<FeeStructure | null> {
+    // First, get the cohort fee structure
+    const { data: cohortStructure, error: fetchError } = await supabase
+      .from('fee_structures')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort')
+      .single();
+
+    if (fetchError || !cohortStructure) {
+      console.error('Error fetching cohort fee structure:', fetchError);
+      return null;
+    }
+
+    // Convert custom dates to plan-specific JSON
+    const planSpecificDates = PaymentScheduleOverrides.toPlanSpecificJson(customDates, paymentPlan);
+
+    // Create custom plan with plan-specific dates
+    const customPlan: FeeStructureInsert = {
+      ...cohortStructure,
+      id: undefined, // Let it generate a new ID
+      student_id: studentId,
+      structure_type: 'custom',
+      custom_dates_enabled: true,
+      // Set the appropriate plan-specific field
+      one_shot_dates: paymentPlan === 'one_shot' ? planSpecificDates : {},
+      sem_wise_dates: paymentPlan === 'sem_wise' ? planSpecificDates : {},
+      instalment_wise_dates: paymentPlan === 'instalment_wise' ? planSpecificDates : {},
+    };
+
     const { data, error } = await supabase
+      .from('fee_structures')
+      .upsert(customPlan, {
+        onConflict: 'cohort_id,student_id,structure_type',
+        ignoreDuplicates: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating custom plan:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  static async updateCohortPlanDates(
+    cohortId: string,
+    customDates: Record<string, string>,
+    paymentPlan: 'one_shot' | 'sem_wise' | 'instalment_wise'
+  ): Promise<boolean> {
+    // Convert custom dates to plan-specific JSON
+    const planSpecificDates = PaymentScheduleOverrides.toPlanSpecificJson(customDates, paymentPlan);
+
+    // Update only the specific plan field, don't touch the others
+    const updateData: Partial<FeeStructureUpdate> = {
+      custom_dates_enabled: true,
+    };
+
+    // Set only the specific plan field
+    if (paymentPlan === 'one_shot') {
+      updateData.one_shot_dates = planSpecificDates;
+    } else if (paymentPlan === 'sem_wise') {
+      updateData.sem_wise_dates = planSpecificDates;
+    } else if (paymentPlan === 'instalment_wise') {
+      updateData.instalment_wise_dates = planSpecificDates;
+    }
+
+    const { error } = await supabase
+      .from('fee_structures')
+      .update(updateData)
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort');
+
+    if (error) {
+      console.error('Error updating cohort plan dates:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  static async markFeeStructureComplete(cohortId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('fee_structures')
+      .update({ is_setup_complete: true })
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort');
+
+    if (error) {
+      console.error('Error marking fee structure complete:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  static async getFeeStructure(cohortId: string, studentId?: string): Promise<FeeStructure | null> {
+    let query = supabase
+      .from('fee_structures')
+      .select('*')
+      .eq('cohort_id', cohortId);
+
+    if (studentId) {
+      // Try to get custom plan first
+      query = query.eq('student_id', studentId).eq('structure_type', 'custom');
+    } else {
+      // Get cohort plan
+      query = query.eq('structure_type', 'cohort');
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    // When no fee structure exists yet, return null without logging an error
+    if (error) {
+      // PGRST116 (406): Cannot coerce the result to a single JSON object (0 rows)
+      const code = (error as any)?.code || '';
+      if (code === 'PGRST116') {
+        return null;
+      }
+      console.error('Error fetching fee structure:', error);
+      return null;
+    }
+
+    return (data as any) || null;
+  }
+
+  static async deleteFeeStructure(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('fee_structures')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting fee structure:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Load cohort-level fee structure along with cohort scholarships
+   * Used by dashboards and setup flows that need both pieces together
+   */
+  static async getCompleteFeeStructure(cohortId: string): Promise<{
+    feeStructure: FeeStructure | null;
+    scholarships: Array<any>;
+  }> {
+    // Load cohort-level fee structure
+    const { data: feeStructure, error: fsError } = await supabase
       .from('fee_structures')
       .select('*')
       .eq('cohort_id', cohortId)
       .eq('structure_type', 'cohort')
       .maybeSingle();
 
-    if (error) {
-      Logger.getInstance().error('Error fetching fee structure', { error, cohortId });
-      return null;
-    }
-
-    return data;
-  }
-
-  /**
-   * Create or update fee structure
-   */
-  static async upsertFeeStructure(input: NewFeeStructureInput): Promise<FeeStructure | null> {
-    const { data, error } = await supabase
-      .from('fee_structures')
-      .upsert({
-        ...input,
-        // default to cohort scope for existing calls
-        structure_type: 'cohort' as any,
-        created_by: (await supabase.auth.getUser()).data.user?.id
-      }, {
-        onConflict: 'cohort_id'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      Logger.getInstance().error('Error upserting fee structure', { error, input });
-      return null;
-    }
-
-    return data;
-  }
-
-  /**
-   * Create or replace a custom plan for a specific student by cloning the cohort plan
-   */
-  static async createCustomPlanFromCohort(cohortId: string, studentId: string): Promise<FeeStructure | null> {
-    try {
-      const { data: cohortFs, error: fsErr } = await supabase
-        .from('fee_structures')
-        .select('cohort_id, admission_fee, total_program_fee, number_of_semesters, instalments_per_semester, one_shot_discount_percentage')
-        .eq('cohort_id', cohortId)
-        .eq('structure_type', 'cohort')
-        .single();
-      if (fsErr || !cohortFs) {
-        Logger.getInstance().error('No cohort fee structure found to clone', { fsErr, cohortId, studentId });
-        return null;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('fee_structures')
-        .upsert({
-          cohort_id: cohortId,
-          student_id: studentId,
-          structure_type: 'custom' as any,
-          admission_fee: cohortFs.admission_fee,
-          total_program_fee: cohortFs.total_program_fee,
-          number_of_semesters: cohortFs.number_of_semesters,
-          instalments_per_semester: cohortFs.instalments_per_semester,
-          one_shot_discount_percentage: cohortFs.one_shot_discount_percentage,
-          custom_dates_enabled: false,
-          payment_schedule_dates: {},
-          created_by: user?.id,
-        }, { onConflict: 'cohort_id,student_id' })
-        .select()
-        .single();
-
-      if (error) {
-        Logger.getInstance().error('Error upserting custom plan', { error, cohortId, studentId });
-        return null;
-      }
-      return data as FeeStructure;
-    } catch (error) {
-      Logger.getInstance().error('createCustomPlanFromCohort failed', { error, cohortId, studentId });
-      return null;
-    }
-  }
-
-  /** Update custom plan dates (and toggle enabled flag) */
-  static async updateCustomPlanDates(
-    cohortId: string,
-    studentId: string,
-    paymentScheduleDates: Record<string, unknown>,
-    enabled = true,
-  ): Promise<boolean> {
-    const { error } = await supabase
-      .from('fee_structures')
-      .update({
-        custom_dates_enabled: enabled,
-        payment_schedule_dates: paymentScheduleDates as any,
-      })
-      .eq('cohort_id', cohortId)
-      .eq('structure_type', 'custom')
-      .eq('student_id', studentId);
-    if (error) {
-      Logger.getInstance().error('updateCustomPlanDates failed', { error, cohortId, studentId });
-      return false;
-    }
-    return true;
-  }
-
-  /** Update cohort plan dates (and toggle enabled flag) */
-  static async updateCohortPlanDates(
-    cohortId: string,
-    paymentScheduleDates: Record<string, unknown>,
-    enabled = true,
-  ): Promise<boolean> {
-    const { error } = await supabase
-      .from('fee_structures')
-      .update({
-        custom_dates_enabled: enabled,
-        payment_schedule_dates: paymentScheduleDates as any,
-      })
-      .eq('cohort_id', cohortId)
-      .eq('structure_type', 'cohort');
-    if (error) {
-      Logger.getInstance().error('updateCohortPlanDates failed', { error, cohortId });
-      return false;
-    }
-    return true;
-  }
-
-  /** Delete a custom plan so student falls back to cohort plan */
-  static async deleteCustomPlan(cohortId: string, studentId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('fee_structures')
-      .delete()
-      .eq('cohort_id', cohortId)
-      .eq('structure_type', 'custom')
-      .eq('student_id', studentId);
-    if (error) {
-      Logger.getInstance().error('deleteCustomPlan failed', { error, cohortId, studentId });
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * Mark fee structure as complete
-   */
-  static async markFeeStructureComplete(cohortId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('fee_structures')
-      .update({ is_setup_complete: true })
-      .eq('cohort_id', cohortId);
-
-    if (error) {
-      Logger.getInstance().error('Error marking fee structure complete', { error, cohortId });
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Get scholarships for a cohort
-   */
-  static async getScholarships(cohortId: string): Promise<Scholarship[]> {
-    const { data, error } = await supabase
+    // Load scholarships for the cohort (visible to authenticated users per policy)
+    const { data: scholarships, error: schError } = await supabase
       .from('cohort_scholarships')
       .select('*')
       .eq('cohort_id', cohortId)
       .order('start_percentage', { ascending: true });
 
-    if (error) {
-      Logger.getInstance().error('Error fetching scholarships', { error, cohortId });
-      return [];
+    if (fsError) {
+      console.error('Error fetching cohort fee structure (complete):', fsError);
     }
-
-    return data || [];
-  }
-
-  /**
-   * Create scholarship
-   */
-  static async createScholarship(input: NewScholarshipInput): Promise<Scholarship | null> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        Logger.getInstance().error('No authenticated user found when creating scholarship');
-        return null;
-      }
-
-      const { data, error } = await supabase
-        .from('cohort_scholarships')
-        .insert({
-          ...input,
-          created_by: user.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        Logger.getInstance().error('Error creating scholarship', { error, input });
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      Logger.getInstance().error('Error in createScholarship', { error, input });
-      return null;
+    if (schError) {
+      console.error('Error fetching cohort scholarships:', schError);
     }
-  }
-
-  /**
-   * Update scholarship
-   */
-  static async updateScholarship(id: string, input: Partial<NewScholarshipInput>): Promise<Scholarship | null> {
-    const { data, error } = await supabase
-      .from('cohort_scholarships')
-      .update(input)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      Logger.getInstance().error('Error updating scholarship', { error, id, input });
-      return null;
-    }
-
-    return data;
-  }
-
-  /**
-   * Delete scholarship
-   */
-  static async deleteScholarship(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('cohort_scholarships')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      Logger.getInstance().error('Error deleting scholarship', { error, id });
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Get complete fee structure with scholarships
-   */
-  static async getCompleteFeeStructure(cohortId: string): Promise<{
-    feeStructure: FeeStructure | null;
-    scholarships: Scholarship[];
-  }> {
-    const [feeStructure, scholarships] = await Promise.all([
-      this.getFeeStructure(cohortId),
-      this.getScholarships(cohortId)
-    ]);
 
     return {
-      feeStructure,
-      scholarships
+      feeStructure: (feeStructure as any) || null,
+      scholarships: scholarships || [],
     };
   }
 }

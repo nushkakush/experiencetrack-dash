@@ -140,7 +140,7 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
     return [
       ...baseMethods,
       { value: 'scan_to_pay', label: 'Scan to Pay', icon: '📱' },
-      { value: 'razorpay', label: 'Online Payment (Razorpay)', icon: '💳' },
+              { value: 'razorpay', label: 'Online Payment', icon: '💳' },
     ];
   };
 
