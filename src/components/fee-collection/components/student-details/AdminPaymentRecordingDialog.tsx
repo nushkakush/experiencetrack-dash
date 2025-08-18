@@ -64,6 +64,7 @@ export const AdminPaymentRecordingDialog: React.FC<
   const { handleRegularPayment, isSubmitting } = usePaymentSubmissions();
 
   // 🔍 DEBUG LOGGING - Track initial props (only on dialog open)
+
   useEffect(() => {
     if (open) {
       console.log('🔍 [AdminPaymentDialog] Dialog opened with props:', {
@@ -117,6 +118,7 @@ export const AdminPaymentRecordingDialog: React.FC<
       id: paymentItem.id,
       installmentNumber: paymentItem.installmentNumber || 1,
       amount: calculatedAmount,
+      amountPayable: calculatedAmount, // Add this property for usePaymentForm compatibility
       dueDate: paymentItem.dueDate,
       status: paymentItem.status as 'pending' | 'paid' | 'overdue',
       paidAmount: 0,
@@ -511,6 +513,16 @@ export const AdminPaymentRecordingDialog: React.FC<
 
           {/* Payment Form */}
           <div className='space-y-4'>
+            {/* DEBUG: Log data being passed to PaymentForm */}
+            {console.log(
+              '🔍 [AdminPaymentDialog] Data passed to PaymentForm:',
+              {
+                selectedInstallment,
+                paymentBreakdownForForm,
+                hasAmount: selectedInstallment?.amount,
+                hasAmountPayable: selectedInstallment?.amountPayable,
+              }
+            )}
             <PaymentForm
               paymentSubmissions={paymentSubmissions}
               submittingPayments={submittingPayments}
