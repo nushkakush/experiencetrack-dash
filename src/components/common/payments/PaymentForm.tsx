@@ -111,75 +111,32 @@ export const PaymentForm = React.memo<PaymentFormProps>(
               </div>
             )}
 
-          {/* Admin Mode: Online Payment Fields - Show payment ID fields for Razorpay when in admin mode */}
+          {/* Admin Mode: Online Payment Fields - Show payment ID field for Razorpay when in admin mode */}
           {isAdminMode && selectedPaymentMode === 'razorpay' && (
-            <div className='space-y-4 p-4 border rounded-lg bg-blue-50 border-blue-200'>
-              <div className='flex items-center gap-2'>
-                <Info className='h-4 w-4 text-blue-600' />
-                <h4 className='font-medium text-blue-800'>
-                  Online Payment Details
-                </h4>
-              </div>
-              <p className='text-sm text-blue-700 mb-4'>
-                Enter the payment gateway transaction details for this completed
-                online payment.
-              </p>
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-sm font-medium mb-1'>
-                    Payment ID <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    type='text'
-                    placeholder='pay_xxxxxxxxx'
-                    value={paymentDetails.razorpayPaymentId || ''}
-                    onChange={e =>
-                      handleFieldChange('razorpayPaymentId', e.target.value)
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                  />
-                  {errors.razorpayPaymentId && (
-                    <p className='text-red-500 text-xs mt-1'>
-                      {errors.razorpayPaymentId}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium mb-1'>
-                    Order ID <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    type='text'
-                    placeholder='order_xxxxxxxxx'
-                    value={paymentDetails.razorpayOrderId || ''}
-                    onChange={e =>
-                      handleFieldChange('razorpayOrderId', e.target.value)
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                  />
-                  {errors.razorpayOrderId && (
-                    <p className='text-red-500 text-xs mt-1'>
-                      {errors.razorpayOrderId}
-                    </p>
-                  )}
-                </div>
-
-                <div className='md:col-span-2'>
-                  <label className='block text-sm font-medium mb-1'>
-                    Transaction Signature
-                  </label>
-                  <input
-                    type='text'
-                    placeholder='signature_xxxxxxxxx (optional)'
-                    value={paymentDetails.razorpaySignature || ''}
-                    onChange={e =>
-                      handleFieldChange('razorpaySignature', e.target.value)
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                  />
-                </div>
+            <div className='space-y-4 p-4 border rounded-lg bg-muted/50'>
+              <h4 className='font-medium'>Online Payment Details</h4>
+              <div>
+                <label className='block text-sm font-medium mb-2'>
+                  Payment ID <span className='text-red-500'>*</span>
+                </label>
+                <input
+                  type='text'
+                  placeholder='pay_xxxxxxxxx'
+                  value={paymentDetails.razorpayPaymentId || ''}
+                  onChange={e =>
+                    handleFieldChange('razorpayPaymentId', e.target.value)
+                  }
+                  className='w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-background'
+                />
+                {errors.razorpayPaymentId && (
+                  <p className='text-destructive text-xs mt-1'>
+                    {errors.razorpayPaymentId}
+                  </p>
+                )}
+                <p className='text-sm text-muted-foreground mt-1'>
+                  Enter the payment gateway transaction ID for this completed
+                  online payment.
+                </p>
               </div>
             </div>
           )}

@@ -81,18 +81,17 @@ export const AdminPaymentRecordingDialog: React.FC<
   };
 
   // Transform payment item for PaymentForm
-  const selectedInstallment: Instalment | undefined =
-    paymentItem && adminPaymentBreakdown
-      ? {
-          id: paymentItem.id,
-          installmentNumber: paymentItem.installmentNumber || 1,
-          amount: adminPaymentBreakdown.totalAmount, // Use the calculated total amount
-          dueDate: paymentItem.dueDate,
-          status: paymentItem.status as 'pending' | 'paid' | 'overdue',
-          paidAmount: 0,
-          paidDate: paymentItem.paymentDate,
-        }
-      : undefined;
+  const selectedInstallment: Instalment | undefined = paymentItem
+    ? {
+        id: paymentItem.id,
+        installmentNumber: paymentItem.installmentNumber || 1,
+        amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount, // Use breakdown amount or fallback to paymentItem amount
+        dueDate: paymentItem.dueDate,
+        status: paymentItem.status as 'pending' | 'paid' | 'overdue',
+        paidAmount: 0,
+        paidDate: paymentItem.paymentDate,
+      }
+    : undefined;
 
   // Payment form props
   const paymentSubmissions = new Map<string, PaymentSubmissionData>();
@@ -244,17 +243,18 @@ export const AdminPaymentRecordingDialog: React.FC<
 
   // Create PaymentBreakdown for PaymentForm component
   const paymentBreakdownForForm: PaymentBreakdown | undefined =
-    paymentItem && adminPaymentBreakdown && selectedInstallment
+    paymentItem && selectedInstallment
       ? {
-          totalAmount: adminPaymentBreakdown.totalAmount,
+          totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem.amount,
           paidAmount: 0,
-          pendingAmount: adminPaymentBreakdown.totalAmount,
+          pendingAmount:
+            adminPaymentBreakdown?.totalAmount || paymentItem.amount,
           // Create a basic semester structure if needed
           instalmentPayments: [
             {
               id: selectedInstallment.id,
               installmentNumber: selectedInstallment.installmentNumber,
-              amount: adminPaymentBreakdown.totalAmount,
+              amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount,
               dueDate: selectedInstallment.dueDate,
               status: selectedInstallment.status,
               paidAmount: 0,
