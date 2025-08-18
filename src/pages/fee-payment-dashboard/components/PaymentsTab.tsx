@@ -14,6 +14,7 @@ interface PaymentsTabProps {
   onRowSelection: (studentId: string, isSelected: boolean) => void;
   onSelectAll: (isSelected: boolean) => void;
   onExportSelected: (students: StudentPaymentSummary[]) => void;
+  onVerificationUpdate?: () => void;
 }
 
 export const PaymentsTab: React.FC<PaymentsTabProps> = ({
@@ -24,29 +25,32 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   onCloseStudentDetails,
   onRowSelection,
   onSelectAll,
-  onExportSelected
+  onExportSelected,
+  onVerificationUpdate,
 }) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Payments</h2>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
+      <div className='flex items-center justify-between mb-4'>
+        <div className='flex items-center gap-3'>
+          <h2 className='text-2xl font-bold'>Payments</h2>
+        </div>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
             onClick={() => setExportDialogOpen(true)}
             disabled={students.length === 0}
           >
-            <Download className="h-4 w-4 mr-2" />
+            <Download className='h-4 w-4 mr-2' />
             Export Data
           </Button>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full">
+      <div className='w-full'>
         <PaymentsTable
           students={students}
           onStudentSelect={onStudentSelect}
@@ -54,6 +58,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
           selectedRows={selectedRows}
           onRowSelection={onRowSelection}
           onSelectAll={onSelectAll}
+          onVerificationUpdate={onVerificationUpdate}
         />
       </div>
 

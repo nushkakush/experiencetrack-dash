@@ -1,28 +1,27 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useFeaturePermissions } from "@/hooks/useFeaturePermissions";
-import DashboardShell from "@/components/DashboardShell";
-import { FeeCollectionSetupModal } from "@/components/fee-collection";
-import { FeeFeatureGate } from "@/components/common";
-import { 
-  useDashboardData, 
-  useDashboardState 
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
+import DashboardShell from '@/components/DashboardShell';
+import { FeeCollectionSetupModal } from '@/components/fee-collection';
+import { FeeFeatureGate } from '@/components/common';
+import {
+  useDashboardData,
+  useDashboardState,
+  usePendingVerifications,
 } from './fee-payment-dashboard/hooks';
-import { 
-  LoadingState, 
-  ErrorState, 
-  CohortHeader, 
-  PaymentsTab, 
-  CommunicationTab 
+import {
+  LoadingState,
+  ErrorState,
+  CohortHeader,
+  PaymentsTab,
+  CommunicationTab,
 } from './fee-payment-dashboard/components';
 
-interface FeePaymentDashboardProps {
-  // Add properties if needed in the future
-}
+type FeePaymentDashboardProps = Record<string, never>;
 
 const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -35,7 +34,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     students,
     feeStructure,
     scholarships,
-    loadData
+    loadData,
   } = useDashboardData({ cohortId });
 
   const {
@@ -52,8 +51,19 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     handleCloseStudentDetails,
     handleRowSelection,
     handleSelectAll,
-    handleExportSelected
+    handleExportSelected,
   } = useDashboardState();
+
+  const {
+    pendingCount: pendingVerificationCount,
+    refetch: refetchPendingCount,
+  } = usePendingVerifications(cohortId);
+
+  const handleVerificationClick = () => {
+    // Switch to payments tab and trigger a refetch
+    setActiveTab('payments');
+    refetchPendingCount();
+  };
 
   if (isLoading) {
     return <LoadingState />;
@@ -65,34 +75,37 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
 
   return (
     <DashboardShell>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {/* Back Button */}
-        <div className="flex items-center gap-4">
+        <div className='flex items-center gap-4'>
           <Button
-            variant="outline"
-            size="sm"
+            variant='outline'
+            size='sm'
             onClick={handleBackClick}
-            className="gap-2"
+            className='gap-2'
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className='h-4 w-4' />
             Back to Cohorts
           </Button>
         </div>
 
         {/* Cohort Header */}
-        <CohortHeader 
-          cohortData={cohortData} 
-          onSettingsClick={(mode) => { setSettingsMode(mode || 'view'); setSettingsModalOpen(true); }} 
+        <CohortHeader
+          cohortData={cohortData}
+          onSettingsClick={mode => {
+            setSettingsMode(mode || 'view');
+            setSettingsModalOpen(true);
+          }}
         />
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="communication">Communication</TabsTrigger>
+          <TabsList className='grid w-full grid-cols-2'>
+            <TabsTrigger value='payments'>Payments</TabsTrigger>
+            <TabsTrigger value='communication'>Communication</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="payments" className="mt-6">
+          <TabsContent value='payments' className='mt-6'>
             <PaymentsTab
               students={students}
               selectedRows={selectedRows}
@@ -100,19 +113,20 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
               onStudentSelect={handleStudentSelect}
               onCloseStudentDetails={handleCloseStudentDetails}
               onRowSelection={handleRowSelection}
-              onSelectAll={(isSelected) => handleSelectAll(isSelected, students)}
-              onExportSelected={(students) => handleExportSelected(students)}
+              onSelectAll={isSelected => handleSelectAll(isSelected, students)}
+              onExportSelected={students => handleExportSelected(students)}
+              onVerificationUpdate={refetchPendingCount}
             />
           </TabsContent>
 
-          <TabsContent value="communication" className="mt-6">
+          <TabsContent value='communication' className='mt-6'>
             <CommunicationTab students={students} />
           </TabsContent>
         </Tabs>
 
         {/* Settings Modal */}
         {cohortData && (
-          <FeeFeatureGate action="setup_structure">
+          <FeeFeatureGate action='setup_structure'>
             <FeeCollectionSetupModal
               open={settingsModalOpen}
               onOpenChange={setSettingsModalOpen}

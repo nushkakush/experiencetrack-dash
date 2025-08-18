@@ -29,15 +29,19 @@ import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
 import { StudentDetailsModal } from '@/components/fee-collection/StudentDetailsModal';
 import { useAuth } from '@/hooks/useAuth';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { useStudentPendingVerifications } from '@/pages/fee-payment-dashboard/hooks/useStudentPendingVerifications';
+import { cn } from '@/lib/utils';
 
 interface ActionsCellProps {
   student: StudentPaymentSummary;
   onStudentSelect: (student: StudentPaymentSummary) => void;
+  onVerificationUpdate?: () => void;
 }
 
 export const ActionsCell: React.FC<ActionsCellProps> = ({
   student,
   onStudentSelect,
+  onVerificationUpdate,
 }) => {
   const { profile } = useAuth();
   const [studentDetailsOpen, setStudentDetailsOpen] = React.useState(false);
@@ -50,10 +54,20 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = React.useState('');
   const [showRejectDialog, setShowRejectDialog] = React.useState(false);
-  const [currentTransaction, setCurrentTransaction] = React.useState<PaymentTransactionRow | null>(null);
+  const [currentTransaction, setCurrentTransaction] =
+    React.useState<PaymentTransactionRow | null>(null);
   const [customPlanOpen, setCustomPlanOpen] = React.useState(false);
   const [savingCustom, setSavingCustom] = React.useState(false);
-  const [customDates, setCustomDates] = React.useState<Record<string, string>>({});
+  const [customDates, setCustomDates] = React.useState<Record<string, string>>(
+    {}
+  );
+
+  // Get student-specific pending verification count
+  const studentPaymentId = (
+    student as StudentPaymentSummary & { student_payment_id?: string }
+  )?.student_payment_id;
+  const { pendingCount: studentPendingCount } =
+    useStudentPendingVerifications(studentPaymentId);
 
   const fetchTransactions = async () => {
     if (!student || !student.student_id) return;
@@ -103,6 +117,8 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
         setShowRejectDialog(false);
         setRejectionReason('');
         setCurrentTransaction(null);
+        // Call the callback to refresh pending verification count
+        onVerificationUpdate?.();
       } else {
         toast.error('Verification failed');
       }
@@ -125,7 +141,10 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       return;
     }
     if (currentTransaction) {
-      const action = currentTransaction.verification_status === 'approved' ? 'rejected' : 'rejected';
+      const action =
+        currentTransaction.verification_status === 'approved'
+          ? 'rejected'
+          : 'rejected';
       handleVerify(currentTransaction.id, action, rejectionReason);
     }
   };
@@ -160,14 +179,8 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
           onClick={async e => {
             e.stopPropagation();
             try {
-              const cohortId = String(student.student?.cohort_id);
-              const studentId = String(student.student_id);
-              const ok = await FeeStructureService.deleteCustomPlan(cohortId, studentId);
-              if (ok) {
-                toast.success('Reverted to cohort plan for this student');
-              } else {
-                toast.error('No custom plan found or failed to revert');
-              }
+              // TODO: Implement revert to cohort plan functionality
+              toast.info('Revert to cohort plan functionality coming soon');
             } catch {
               toast.error('Failed to revert to cohort plan');
             }
@@ -175,18 +188,28 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
         >
           Revert to Cohort Plan
         </Button>
-        <Button
-          variant='ghost'
-          size='sm'
-          onClick={async e => {
-            e.stopPropagation();
-            await fetchTransactions();
-            setTransactionsOpen(true);
-          }}
-          title='View Transactions'
-        >
-          <FileText className='h-4 w-4' />
-        </Button>
+        <div className='relative'>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={async e => {
+              e.stopPropagation();
+              await fetchTransactions();
+              setTransactionsOpen(true);
+            }}
+            title='View Transactions'
+          >
+            <FileText className='h-4 w-4' />
+          </Button>
+          {studentPendingCount > 0 && (
+            <Badge
+              variant='destructive'
+              className='absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold'
+            >
+              {studentPendingCount > 99 ? '99+' : studentPendingCount}
+            </Badge>
+          )}
+        </div>
         <Button
           variant='ghost'
           size='sm'
@@ -203,40 +226,74 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       {/* Student Details Modal */}
       {/* Placeholder Custom Plan Dialog (UI only; save wired later) */}
       <Dialog open={customPlanOpen} onOpenChange={setCustomPlanOpen}>
-        <DialogContent className='max-w-2xl' aria-describedby='custom-plan-description'>
+        <DialogContent
+          className='max-w-2xl'
+          aria-describedby='custom-plan-description'
+        >
           <DialogHeader>
             <DialogTitle>Set Custom Payment Plan</DialogTitle>
           </DialogHeader>
-          <div id='custom-plan-description' className='sr-only'>Create a custom payment plan for this student</div>
+          <div id='custom-plan-description' className='sr-only'>
+            Create a custom payment plan for this student
+          </div>
           <div className='text-sm text-muted-foreground space-y-2'>
-            <p>This will create a custom fee structure for this student in this cohort.</p>
+            <p>
+              This will create a custom fee structure for this student in this
+              cohort.
+            </p>
             <div className='grid grid-cols-1 gap-2'>
               {/* Minimal date editor (flat keys) */}
               <div className='flex items-center gap-2'>
                 <Label className='w-40'>One-shot date</Label>
-                <input type='date' className='border rounded px-2 py-1'
+                <input
+                  type='date'
+                  className='border rounded px-2 py-1'
                   value={customDates['one-shot'] || ''}
-                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['one-shot']: e.target.value }))}
+                  onChange={e =>
+                    setCustomDates(prev => ({
+                      ...prev,
+                      ['one-shot']: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div className='flex items-center gap-2'>
                 <Label className='w-40'>Semester 1 - Installment 1</Label>
-                <input type='date' className='border rounded px-2 py-1'
+                <input
+                  type='date'
+                  className='border rounded px-2 py-1'
                   value={customDates['semester-1-instalment-0'] || ''}
-                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['semester-1-instalment-0']: e.target.value }))}
+                  onChange={e =>
+                    setCustomDates(prev => ({
+                      ...prev,
+                      ['semester-1-instalment-0']: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div className='flex items-center gap-2'>
                 <Label className='w-40'>Semester 1 - Installment 2</Label>
-                <input type='date' className='border rounded px-2 py-1'
+                <input
+                  type='date'
+                  className='border rounded px-2 py-1'
                   value={customDates['semester-1-instalment-1'] || ''}
-                  onChange={(e) => setCustomDates(prev => ({ ...prev, ['semester-1-instalment-1']: e.target.value }))}
+                  onChange={e =>
+                    setCustomDates(prev => ({
+                      ...prev,
+                      ['semester-1-instalment-1']: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant='secondary' onClick={() => setCustomPlanOpen(false)}>Close</Button>
+            <Button
+              variant='secondary'
+              onClick={() => setCustomPlanOpen(false)}
+            >
+              Close
+            </Button>
             <Button
               disabled={savingCustom}
               onClick={async () => {
@@ -244,18 +301,10 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
                   setSavingCustom(true);
                   const cohortId = String(student.student?.cohort_id);
                   const studentId = String(student.student_id);
-                  const res = await FeeStructureService.createCustomPlanFromCohort(cohortId, studentId);
-                  if (res) {
-                    // Save dates if provided
-                    if (Object.keys(customDates).length > 0) {
-                      await FeeStructureService.updateCustomPlanDates(cohortId, studentId, customDates as any, true);
-                    }
-                    toast.success('Custom plan created for the student');
-                    setCustomPlanOpen(false);
-                    setCustomDates({});
-                  } else {
-                    toast.error('Failed to create custom plan');
-                  }
+                  // TODO: Implement proper custom plan creation with dates
+                  toast.info('Custom plan creation functionality coming soon');
+                  setCustomPlanOpen(false);
+                  setCustomDates({});
                 } catch (e) {
                   toast.error('Failed to create custom plan');
                 } finally {
@@ -276,15 +325,23 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
 
       {/* Payment Transactions Dialog */}
       <Dialog open={transactionsOpen} onOpenChange={setTransactionsOpen}>
-        <DialogContent className='max-w-4xl max-h-[85vh] overflow-y-auto' aria-describedby='transactions-description'>
+        <DialogContent
+          className='max-w-6xl max-h-[85vh] overflow-y-auto'
+          aria-describedby='transactions-description'
+        >
           <DialogHeader>
-            <DialogTitle className='text-xl font-semibold'>Payment Transactions</DialogTitle>
+            <DialogTitle className='text-xl font-semibold'>
+              Payment Transactions
+            </DialogTitle>
             <p className='text-sm text-muted-foreground'>
-              Review and verify payment submissions for {student.student?.first_name} {student.student?.last_name}
+              Review and verify payment submissions for{' '}
+              {student.student?.first_name} {student.student?.last_name}
             </p>
           </DialogHeader>
-          <div id='transactions-description' className='sr-only'>Payment transactions list with verification actions</div>
-          
+          <div id='transactions-description' className='sr-only'>
+            Payment transactions table with verification actions
+          </div>
+
           <div className='space-y-6'>
             {loading ? (
               <div className='flex items-center justify-center py-12'>
@@ -298,249 +355,251 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
                 <div className='text-muted-foreground mb-2'>
                   <FileText className='h-12 w-12 mx-auto opacity-50' />
                 </div>
-                <h3 className='font-medium text-foreground mb-1'>No transactions found</h3>
+                <h3 className='font-medium text-foreground mb-1'>
+                  No transactions found
+                </h3>
                 <p className='text-sm text-muted-foreground'>
                   This student hasn't submitted any payment transactions yet.
                 </p>
               </div>
             ) : (
-              <div className='space-y-6'>
-                {transactions.map(t => (
-                  <div key={t.id} className='space-y-4'>
-                    {/* Header Section */}
-                    <div className='flex items-start justify-between'>
-                      <div className='flex items-center gap-3'>
-                        <div className='flex items-center gap-2'>
-                          <Badge variant='secondary' className='font-medium'>
-                            {t.payment_method?.replace('_', ' ').toUpperCase()}
-                          </Badge>
-                          <Badge variant='outline' className='font-semibold text-base'>
-                            ₹{Number(t.amount).toLocaleString('en-IN')}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <Badge
-                          variant={
-                            t.verification_status === 'approved'
-                              ? 'default'
-                              : t.verification_status === 'rejected'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                          className='font-medium'
-                        >
-                          {t.verification_status === 'verification_pending' 
-                            ? 'Verification Pending' 
-                            : t.verification_status === 'approved'
-                              ? '✅ Approved'
-                              : t.verification_status || 'Pending'}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Transaction Details Grid */}
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                      {t.reference_number && (
-                        <div className='flex items-center gap-2 text-sm'>
-                          <FileText className='h-4 w-4 text-muted-foreground' />
-                          <span className='font-medium'>Reference:</span>
-                          <span className='font-mono text-muted-foreground'>{t.reference_number}</span>
-                        </div>
-                      )}
-                      
-                      {t.bank_name && (
-                        <div className='flex items-center gap-2 text-sm'>
-                          <div className='h-4 w-4 text-muted-foreground'>🏦</div>
-                          <span className='font-medium'>Bank:</span>
-                          <span className='text-muted-foreground'>
-                            {t.bank_name}
-                            {t.bank_branch && <span className='text-xs ml-1'>({t.bank_branch})</span>}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {t.payer_upi_id && (
-                        <div className='flex items-center gap-2 text-sm'>
-                          <div className='h-4 w-4 text-muted-foreground'>📱</div>
-                          <span className='font-medium'>UPI ID:</span>
-                          <span className='font-mono text-muted-foreground'>{t.payer_upi_id}</span>
-                        </div>
-                      )}
-                      
-                      {t.payment_date && (
-                        <div className='flex items-center gap-2 text-sm'>
-                          <Clock className='h-4 w-4 text-muted-foreground' />
-                          <span className='font-medium'>Payment Date:</span>
-                          <span className='text-muted-foreground'>{t.payment_date}</span>
-                        </div>
-                      )}
-                      
-                      <div className='flex items-center gap-2 text-sm'>
-                        <Clock className='h-4 w-4 text-muted-foreground' />
-                        <span className='font-medium'>Submitted:</span>
-                        <span className='text-muted-foreground'>
-                          {new Date(t.created_at).toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Payment Proof Images */}
-                    {(t.transaction_screenshot_url || t.proof_of_payment_url || t.receipt_url) && (
-                      <div className='space-y-3'>
-                        <h4 className='text-sm font-medium text-muted-foreground'>Payment Proof</h4>
-                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                          {t.transaction_screenshot_url && (
-                            <div className='space-y-2'>
-                              <p className='text-xs font-medium text-muted-foreground'>Transaction Screenshot</p>
-                              <div className='relative group'>
-                                <img
-                                  src={t.transaction_screenshot_url}
-                                  alt='Transaction Screenshot'
-                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
-                                  onClick={() => window.open(t.transaction_screenshot_url, '_blank')}
-                                />
-                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
-                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+              <div className='space-y-4'>
+                {/* Transactions Table */}
+                <div className='border rounded-lg overflow-hidden'>
+                  <table className='w-full'>
+                    <thead className='bg-muted/50'>
+                      <tr>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Payment Details
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Reference
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Bank Info
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Dates
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Status
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Proof
+                        </th>
+                        <th className='text-left p-3 font-medium text-sm'>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y'>
+                      {transactions.map(t => (
+                        <tr key={t.id} className='hover:bg-muted/30'>
+                          <td className='p-3'>
+                            <div className='space-y-1'>
+                              <div className='flex items-center gap-2'>
+                                <Badge
+                                  variant='secondary'
+                                  className='font-medium text-xs'
+                                >
+                                  {t.payment_method
+                                    ?.replace('_', ' ')
+                                    .toUpperCase()}
+                                </Badge>
+                                <Badge
+                                  variant='outline'
+                                  className='font-semibold text-sm'
+                                >
+                                  ₹{Number(t.amount).toLocaleString('en-IN')}
+                                </Badge>
+                              </div>
+                            </div>
+                          </td>
+                          <td className='p-3'>
+                            {t.reference_number && (
+                              <div className='text-sm'>
+                                <span className='font-mono text-muted-foreground'>
+                                  {t.reference_number}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                          <td className='p-3'>
+                            {t.bank_name && (
+                              <div className='text-sm'>
+                                <div className='font-medium'>{t.bank_name}</div>
+                                {t.bank_branch && (
+                                  <div className='text-xs text-muted-foreground'>
+                                    {t.bank_branch}
+                                  </div>
+                                )}
+                                {t.payer_upi_id && (
+                                  <div className='text-xs text-muted-foreground font-mono'>
+                                    UPI: {t.payer_upi_id}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className='p-3'>
+                            <div className='text-sm space-y-1'>
+                              {t.payment_date && (
+                                <div>
+                                  <span className='text-muted-foreground'>
+                                    Payment:
+                                  </span>
+                                  <div className='font-medium'>
+                                    {t.payment_date}
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <span className='text-muted-foreground'>
+                                  Submitted:
+                                </span>
+                                <div className='font-medium'>
+                                  {new Date(t.created_at).toLocaleDateString(
+                                    'en-IN',
+                                    {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    }
+                                  )}
                                 </div>
                               </div>
                             </div>
-                          )}
-                          
-                          {t.proof_of_payment_url && (
-                            <div className='space-y-2'>
-                              <p className='text-xs font-medium text-muted-foreground'>Payment Proof</p>
-                              <div className='relative group'>
-                                <img
-                                  src={t.proof_of_payment_url}
-                                  alt='Payment Proof'
-                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
-                                  onClick={() => window.open(t.proof_of_payment_url, '_blank')}
-                                />
-                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
-                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {t.receipt_url && (
-                            <div className='space-y-2'>
-                              <p className='text-xs font-medium text-muted-foreground'>Receipt</p>
-                              <div className='relative group'>
-                                <img
-                                  src={t.receipt_url}
-                                  alt='Receipt'
-                                  className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
-                                  onClick={() => window.open(t.receipt_url, '_blank')}
-                                />
-                                <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center'>
-                                  <ExternalLink className='h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className='flex items-center gap-3'>
-                      {t.transaction_screenshot_url && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='flex-1'
-                          onClick={() => window.open(t.transaction_screenshot_url, '_blank')}
-                        >
-                          <ExternalLink className='h-4 w-4 mr-2' />
-                          View Screenshot
-                        </Button>
-                      )}
-                      
-                      {t.proof_of_payment_url && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='flex-1'
-                          onClick={() => window.open(t.proof_of_payment_url, '_blank')}
-                        >
-                          <ExternalLink className='h-4 w-4 mr-2' />
-                          View Payment Proof
-                        </Button>
-                      )}
-                      
-                      {t.receipt_url && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => window.open(t.receipt_url, '_blank')}
-                        >
-                          <FileText className='h-4 w-4 mr-2' />
-                          View Receipt
-                        </Button>
-                      )}
-                      
-                      <div className='flex items-center gap-2 ml-auto'>
-                        {t.verification_status === 'approved' ? (
-                          <div className='flex items-center gap-2'>
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              onClick={() => handleRejectClick(t)}
-                              className='min-w-[100px]'
+                          </td>
+                          <td className='p-3'>
+                            <Badge
+                              variant={
+                                t.verification_status === 'approved'
+                                  ? 'default'
+                                  : t.verification_status === 'rejected'
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                              className='font-medium'
                             >
-                              <XCircle className='h-4 w-4 mr-2' />
-                              Reset to Pending
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <Button
-                              size='sm'
-                              variant='default'
-                              disabled={verifyingId === t.id}
-                              onClick={() => handleVerify(t.id, 'approved')}
-                              className='min-w-[100px]'
-                            >
-                              {verifyingId === t.id ? (
-                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
+                              {t.verification_status === 'verification_pending'
+                                ? 'Verification Pending'
+                                : t.verification_status === 'approved'
+                                  ? '✅ Approved'
+                                  : t.verification_status || 'Pending'}
+                            </Badge>
+                          </td>
+                          <td className='p-3'>
+                            <div className='flex items-center gap-2'>
+                              {t.transaction_screenshot_url && (
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  onClick={() =>
+                                    window.open(
+                                      t.transaction_screenshot_url,
+                                      '_blank'
+                                    )
+                                  }
+                                  className='h-8 px-2 text-xs'
+                                >
+                                  <ExternalLink className='h-3 w-3 mr-1' />
+                                  Screenshot
+                                </Button>
+                              )}
+                              {t.proof_of_payment_url && (
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  onClick={() =>
+                                    window.open(
+                                      t.proof_of_payment_url,
+                                      '_blank'
+                                    )
+                                  }
+                                  className='h-8 px-2 text-xs'
+                                >
+                                  <ExternalLink className='h-3 w-3 mr-1' />
+                                  Proof
+                                </Button>
+                              )}
+                              {t.receipt_url && (
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  onClick={() =>
+                                    window.open(t.receipt_url, '_blank')
+                                  }
+                                  className='h-8 px-2 text-xs'
+                                >
+                                  <FileText className='h-3 w-3 mr-1' />
+                                  Receipt
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                          <td className='p-3'>
+                            <div className='flex items-center gap-2'>
+                              {t.verification_status === 'approved' ? (
+                                <Button
+                                  size='sm'
+                                  variant='outline'
+                                  onClick={() => handleRejectClick(t)}
+                                  className='min-w-[80px] h-8 text-xs'
+                                >
+                                  <XCircle className='h-3 w-3 mr-1' />
+                                  Reset
+                                </Button>
                               ) : (
                                 <>
-                                  <CheckCircle2 className='h-4 w-4 mr-2' />
-                                  Approve
+                                  <Button
+                                    size='sm'
+                                    variant='default'
+                                    disabled={verifyingId === t.id}
+                                    onClick={() =>
+                                      handleVerify(t.id, 'approved')
+                                    }
+                                    className='min-w-[80px] h-8 text-xs'
+                                  >
+                                    {verifyingId === t.id ? (
+                                      <div className='animate-spin rounded-full h-3 w-3 border-b-2 border-white'></div>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className='h-3 w-3 mr-1' />
+                                        Approve
+                                      </>
+                                    )}
+                                  </Button>
+
+                                  <Button
+                                    size='sm'
+                                    variant='destructive'
+                                    disabled={
+                                      verifyingId === t.id ||
+                                      rejectingId === t.id
+                                    }
+                                    onClick={() => handleRejectClick(t)}
+                                    className='min-w-[80px] h-8 text-xs'
+                                  >
+                                    {rejectingId === t.id ? (
+                                      <div className='animate-spin rounded-full h-3 w-3 border-b-2 border-white'></div>
+                                    ) : (
+                                      <>
+                                        <XCircle className='h-3 w-3 mr-1' />
+                                        Reject
+                                      </>
+                                    )}
+                                  </Button>
                                 </>
                               )}
-                            </Button>
-                            
-                            <Button
-                              size='sm'
-                              variant='destructive'
-                              disabled={verifyingId === t.id || rejectingId === t.id}
-                              onClick={() => handleRejectClick(t)}
-                              className='min-w-[100px]'
-                            >
-                              {rejectingId === t.id ? (
-                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-                              ) : (
-                                <>
-                                  <XCircle className='h-4 w-4 mr-2' />
-                                  Reject
-                                </>
-                              )}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -549,10 +608,15 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
 
       {/* Rejection Reason Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent className='max-w-md' aria-describedby='rejection-dialog-description'>
+        <DialogContent
+          className='max-w-md'
+          aria-describedby='rejection-dialog-description'
+        >
           <DialogHeader>
             <DialogTitle>
-              {currentTransaction?.verification_status === 'approved' ? 'Reset Payment Status' : 'Reject Payment'}
+              {currentTransaction?.verification_status === 'approved'
+                ? 'Reset Payment Status'
+                : 'Reject Payment'}
             </DialogTitle>
           </DialogHeader>
           <div id='rejection-dialog-description' className='sr-only'>
@@ -561,10 +625,9 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
           <div className='space-y-4'>
             <div>
               <Label htmlFor='rejection-reason'>
-                {currentTransaction?.verification_status === 'approved' 
-                  ? 'Reason for Reset *' 
-                  : 'Reason for Rejection *'
-                }
+                {currentTransaction?.verification_status === 'approved'
+                  ? 'Reason for Reset *'
+                  : 'Reason for Rejection *'}
               </Label>
               <Textarea
                 id='rejection-reason'
@@ -574,7 +637,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
                     : 'Please provide a reason for rejecting this payment...'
                 }
                 value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
+                onChange={e => setRejectionReason(e.target.value)}
                 className='mt-2'
                 rows={4}
               />
@@ -594,9 +657,14 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
             <Button
               variant='destructive'
               onClick={handleRejectSubmit}
-              disabled={!rejectionReason.trim() || rejectingId === currentTransaction?.id}
+              disabled={
+                !rejectionReason.trim() ||
+                rejectingId === currentTransaction?.id
+              }
             >
-              {currentTransaction?.verification_status === 'approved' ? 'Reset to Pending' : 'Reject Payment'}
+              {currentTransaction?.verification_status === 'approved'
+                ? 'Reset to Pending'
+                : 'Reject Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>

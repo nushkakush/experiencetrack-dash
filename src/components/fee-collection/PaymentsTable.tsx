@@ -1,11 +1,17 @@
 import React from 'react';
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StudentPaymentSummary } from '@/types/fee';
-import { 
-  TableFilters, 
-  TableRow as PaymentsTableRow, 
-  usePaymentsTable 
+import {
+  TableFilters,
+  TableRow as PaymentsTableRow,
+  usePaymentsTable,
 } from './components/payments-table';
 
 interface FeeStructureData {
@@ -30,6 +36,7 @@ interface PaymentsTableProps {
   onRowSelection?: (studentId: string, isSelected: boolean) => void;
   onSelectAll?: (isSelected: boolean) => void;
   onExportSelected?: () => void;
+  onVerificationUpdate?: () => void;
 }
 
 export const PaymentsTable: React.FC<PaymentsTableProps> = ({
@@ -39,7 +46,8 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   selectedRows = new Set(),
   onRowSelection,
   onSelectAll,
-  onExportSelected
+  onExportSelected,
+  onVerificationUpdate,
 }) => {
   const {
     searchTerm,
@@ -50,11 +58,11 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
     setSearchTerm,
     setStatusFilter,
     setPlanFilter,
-    setScholarshipFilter
+    setScholarshipFilter,
   } = usePaymentsTable({ students });
 
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {/* Filters */}
       <TableFilters
         searchTerm={searchTerm}
@@ -68,16 +76,19 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
       />
 
       {/* Table */}
-      <div className="border rounded-lg">
+      <div className='border rounded-lg'>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
+              <TableHead className='w-12'>
                 {onSelectAll && (
                   <Checkbox
-                    checked={selectedRows.size === filteredStudents.length && filteredStudents.length > 0}
-                    onCheckedChange={(checked) => onSelectAll(checked as boolean)}
-                    aria-label="Select all students"
+                    checked={
+                      selectedRows.size === filteredStudents.length &&
+                      filteredStudents.length > 0
+                    }
+                    onCheckedChange={checked => onSelectAll(checked as boolean)}
+                    aria-label='Select all students'
                   />
                 )}
               </TableHead>
@@ -90,7 +101,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStudents.map((student) => (
+            {filteredStudents.map(student => (
               <PaymentsTableRow
                 key={student.student_id}
                 student={student}
@@ -98,6 +109,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                 onStudentSelect={onStudentSelect}
                 onRowSelection={onRowSelection}
                 feeStructure={feeStructure}
+                onVerificationUpdate={onVerificationUpdate}
               />
             ))}
           </TableBody>
@@ -105,8 +117,10 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
       </div>
 
       {filteredStudents.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No students found matching the criteria</p>
+        <div className='text-center py-8'>
+          <p className='text-muted-foreground'>
+            No students found matching the criteria
+          </p>
         </div>
       )}
     </div>

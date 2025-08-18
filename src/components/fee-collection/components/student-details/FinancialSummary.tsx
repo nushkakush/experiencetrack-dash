@@ -65,8 +65,13 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         // Show a toast for better visibility in UI
         // Using non-blocking toast to keep UX smooth
         // If toast API is available globally, this will display an error message
-        // eslint-disable-next-line no-console
-        try { (await import('sonner')).toast?.error?.('Failed to load financial summary.'); } catch (_) {}
+        try {
+          (await import('sonner')).toast?.error?.(
+            'Failed to load financial summary.'
+          );
+        } catch (_) {
+          void 0; // deliberate no-op to satisfy no-empty rule
+        }
       } finally {
         setLoading(false);
       }
@@ -100,7 +105,10 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
-        paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        paymentPlan: student.payment_plan as
+          | 'one_shot'
+          | 'sem_wise'
+          | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
       });
 
@@ -110,7 +118,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
 
       // Calculate total amount (program fee + admission fee)
       const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
-      const admissionFee = feeReview?.admissionFee?.totalPayable || feeStructure.admission_fee;
+      const admissionFee =
+        feeReview?.admissionFee?.totalPayable || feeStructure.admission_fee;
 
       // Fetch verified payment transactions
       let verifiedPayments = 0;
@@ -119,58 +128,37 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       let admissionFeePaid = false;
 
       if (student.student_payment_id) {
-        const transactions = await paymentTransactionService.getByPaymentId(
+        const txResponse = await paymentTransactionService.getByPaymentId(
           student.student_payment_id
         );
 
-        if (transactions && Array.isArray(transactions)) {
-          // Only count verified payments
-          const approvedTransactions = transactions.filter(
-            t => t.verification_status === 'approved'
+        const txs =
+          txResponse?.success && Array.isArray(txResponse.data)
+            ? txResponse.data
+            : [];
+
+        if (txs.length > 0) {
+          // Count both approved and verification pending payments (to match Payment Schedule logic)
+          const relevantTransactions = txs.filter(
+            t =>
+              t?.verification_status === 'approved' ||
+              t?.verification_status === 'verification_pending'
           );
-          verifiedPayments = approvedTransactions.reduce(
-            (sum, t) => sum + Number(t.amount),
+          verifiedPayments = relevantTransactions.reduce(
+            (sum, t) => sum + Number(t?.amount || 0),
             0
           );
         }
       }
 
-      // Check if admission fee is paid
-      // First check if token_fee_paid is explicitly set in student data
-      if (student.token_fee_paid) {
-        admissionFeePaid = true;
-      } else if (student.student_payment_id) {
-        // Check the payment record for total_amount_paid
-        const { data: paymentRecord } = await supabase
-          .from('student_payments')
-          .select('total_amount_paid, payment_status')
-          .eq('id', student.student_payment_id)
-          .maybeSingle();
+      // For the Financial Summary modal ONLY:
+      // Treat admission fee as already paid since students have registered
+      // This logic only affects this specific modal display and no other calculations
+      admissionFeePaid = true;
 
-        if (paymentRecord) {
-          // If the payment record shows admission fee is already included in total_amount_paid
-          // or if verified payments cover the admission fee
-          admissionFeePaid =
-            paymentRecord.total_amount_paid >= admissionFee ||
-            verifiedPayments >= admissionFee;
-        } else {
-          // Fallback: check if verified payments cover admission fee
-          admissionFeePaid = verifiedPayments >= admissionFee;
-        }
-      } else {
-        // Fallback: check if verified payments cover admission fee
-        admissionFeePaid = verifiedPayments >= admissionFee;
-      }
-
-      // Calculate paid amount (include admission fee if it's been paid)
-      let paidAmount = verifiedPayments;
-
-      // If admission fee is considered paid (either through transactions or system logic), include it
-      if (admissionFeePaid && verifiedPayments < admissionFee) {
-        // If admission fee is marked as paid but not enough transactions,
-        // assume admission fee is paid and add the difference
-        paidAmount = Math.max(paidAmount, admissionFee);
-      }
+      // Calculate paid amount including admission fee (since students are registered)
+      // This is specific to this Financial Summary view only
+      const paidAmount = verifiedPayments + admissionFee;
 
       const pendingAmount = Math.max(0, totalAmount - paidAmount);
       const progressPercentage =

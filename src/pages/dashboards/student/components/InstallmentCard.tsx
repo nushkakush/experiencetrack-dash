@@ -7,6 +7,7 @@ import { FeeBreakdown } from './FeeBreakdown';
 import { PaymentSubmissionData, PaymentBreakdown } from '@/types/payments';
 import { PaymentStatusBadge } from '@/components/fee-collection/PaymentStatusBadge';
 import { CohortStudent } from '@/types/cohort';
+import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
 
 // Define the installment type that includes scholarship amounts
 interface DatabaseInstallment {
@@ -37,7 +38,7 @@ export interface InstallmentCardProps {
   submittingPayments?: Set<string>;
   studentData?: CohortStudent;
   paymentBreakdown?: PaymentBreakdown;
-  paymentTransactions?: any[]; // Add payment transactions
+  paymentTransactions?: PaymentTransactionRow[]; // Add payment transactions
   onInstallmentClick: (
     installment: DatabaseInstallment,
     semesterNumber: number,
@@ -79,12 +80,20 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   // Get relevant payment transactions for this installment
   const getRelevantTransactions = () => {
     if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
-    
-    // Filter transactions that are verification pending for this installment
-    return paymentTransactions.filter(tx => 
-      tx.verification_status === 'verification_pending' || 
-      tx.verification_status === 'pending'
-    );
+    const instKey = `${semesterNumber}-${installment.installmentNumber}`;
+    // Filter transactions relevant to this installment only
+    return paymentTransactions.filter(tx => {
+      const statusOk =
+        tx?.verification_status === 'verification_pending' ||
+        tx?.verification_status === 'pending';
+      if (!statusOk) return false;
+      const txKey =
+        typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+      const matchesKey = txKey === instKey;
+      const matchesSemester =
+        Number(tx?.semester_number) === Number(semesterNumber);
+      return matchesKey || (!!txKey === false && matchesSemester);
+    });
   };
 
   const relevantTransactions = getRelevantTransactions();
@@ -115,12 +124,12 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   const isSelected = selectedInstallmentKey === currentKey;
   // Treat installment as paid only if engine says so. Avoid numeric fallbacks.
   const isPaid = installment.status === 'paid';
-  
+
   // Check if payment is in verification pending status
-  const isVerificationPending = 
+  const isVerificationPending =
     installment.status === 'verification_pending' ||
     installment.status === 'partially_paid_verification_pending';
-  
+
   // Check if payment is fully verified and complete
   const isFullyVerified = installment.status === 'paid';
 
@@ -193,11 +202,21 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     dueDate: installment.dueDate,
     status: (() => {
       // Map PaymentStatus to the expected Installment status format
-      if (installment.status === 'paid' || installment.status === 'complete' || installment.status === 'on_time') {
+      if (
+        installment.status === 'paid' ||
+        installment.status === 'complete' ||
+        installment.status === 'on_time'
+      ) {
         return 'paid' as const;
-      } else if (installment.status === 'overdue' || installment.status === 'partially_paid_overdue') {
+      } else if (
+        installment.status === 'overdue' ||
+        installment.status === 'partially_paid_overdue'
+      ) {
         return 'overdue' as const;
-      } else if (installment.status === 'partially_paid_days_left' || installment.status === 'partially_paid_verification_pending') {
+      } else if (
+        installment.status === 'partially_paid_days_left' ||
+        installment.status === 'partially_paid_verification_pending'
+      ) {
         return 'partial' as const;
       } else {
         return 'pending' as const;
@@ -223,8 +242,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
           isFullyVerified
             ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 dark:from-green-950/30 dark:to-emerald-950/30 dark:border-green-800/50'
             : isVerificationPending
-            ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200 dark:from-yellow-950/30 dark:to-amber-950/30 dark:border-yellow-800/50'
-            : 'bg-card'
+              ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200 dark:from-yellow-950/30 dark:to-amber-950/30 dark:border-yellow-800/50'
+              : 'bg-card'
         }`}
       >
         <div className='flex items-center justify-between mb-3'>
@@ -234,8 +253,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 isFullyVerified
                   ? 'text-green-700 dark:text-green-300'
                   : isVerificationPending
-                  ? 'text-yellow-700 dark:text-yellow-300'
-                  : 'text-muted-foreground'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : 'text-muted-foreground'
               }`}
             >
               {getInstallmentLabel()} • {formatCurrency(installment.amount)} •{' '}
@@ -245,7 +264,9 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
               <CheckCircle className='h-5 w-5 text-green-600 dark:text-green-400' />
             )}
             {isVerificationPending && (
-              <div className='h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-pulse'>⏳</div>
+              <div className='h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-pulse'>
+                ⏳
+              </div>
             )}
           </div>
           <PaymentStatusBadge status={installment.status} />
@@ -256,8 +277,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
             isFullyVerified
               ? 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50'
               : isVerificationPending
-              ? 'bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50'
-              : 'bg-muted/50'
+                ? 'bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50'
+                : 'bg-muted/50'
           }`}
         >
           <div>
@@ -266,19 +287,19 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 isFullyVerified
                   ? 'text-green-700 dark:text-green-300'
                   : isVerificationPending
-                  ? 'text-yellow-700 dark:text-yellow-300'
-                  : 'text-muted-foreground'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : 'text-muted-foreground'
               }`}
             >
               Amount Paid
             </p>
             <p
               className={`text-sm font-semibold ${
-                isFullyVerified 
-                  ? 'text-green-700 dark:text-green-300' 
+                isFullyVerified
+                  ? 'text-green-700 dark:text-green-300'
                   : isVerificationPending
-                  ? 'text-yellow-700 dark:text-yellow-300'
-                  : 'text-green-600'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : 'text-green-600'
               }`}
             >
               {formatCurrency(installment.amountPaid)}
@@ -290,8 +311,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 isFullyVerified
                   ? 'text-green-700 dark:text-green-300'
                   : isVerificationPending
-                  ? 'text-yellow-700 dark:text-yellow-300'
-                  : 'text-muted-foreground'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : 'text-muted-foreground'
               }`}
             >
               Amount Pending
@@ -301,8 +322,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 isFullyVerified
                   ? 'text-green-600 dark:text-green-400'
                   : isVerificationPending
-                  ? 'text-yellow-600 dark:text-yellow-400'
-                  : 'text-orange-600'
+                    ? 'text-yellow-600 dark:text-yellow-400'
+                    : 'text-orange-600'
               }`}
             >
               {formatCurrency(installment.amountPending)}
@@ -312,99 +333,113 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
 
         {/* Completion Message - Show when paid */}
         {isPaid && (
-          <div className={`mt-4 p-4 rounded-lg ${
-            isFullyVerified
-              ? 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50'
-              : isVerificationPending
-              ? 'bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50'
-              : 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50'
-          }`}>
+          <div
+            className={`mt-4 p-4 rounded-lg ${
+              isFullyVerified
+                ? 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50'
+                : isVerificationPending
+                  ? 'bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50'
+                  : 'bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50'
+            }`}
+          >
             <div className='flex items-center gap-3'>
               {isFullyVerified ? (
                 <CheckCircle className='h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0' />
               ) : isVerificationPending ? (
-                <div className='h-6 w-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 animate-pulse'>⏳</div>
+                <div className='h-6 w-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 animate-pulse'>
+                  ⏳
+                </div>
               ) : (
                 <CheckCircle className='h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0' />
               )}
               <div>
-                <h4 className={`font-semibold ${
-                  isFullyVerified
-                    ? 'text-green-800 dark:text-green-200'
+                <h4
+                  className={`font-semibold ${
+                    isFullyVerified
+                      ? 'text-green-800 dark:text-green-200'
+                      : isVerificationPending
+                        ? 'text-yellow-800 dark:text-yellow-200'
+                        : 'text-green-800 dark:text-green-200'
+                  }`}
+                >
+                  {isFullyVerified
+                    ? 'Payment Completed'
                     : isVerificationPending
-                    ? 'text-yellow-800 dark:text-yellow-200'
-                    : 'text-green-800 dark:text-green-200'
-                }`}>
-                  {isFullyVerified 
-                    ? 'Payment Completed' 
-                    : isVerificationPending 
-                    ? 'Payment Submitted - Verification Pending'
-                    : 'Payment Completed'
-                  }
+                      ? 'Payment Submitted - Verification Pending'
+                      : 'Payment Completed'}
                 </h4>
-                <p className={`text-sm ${
-                  isFullyVerified
-                    ? 'text-green-700 dark:text-green-300'
-                    : isVerificationPending
-                    ? 'text-yellow-700 dark:text-yellow-300'
-                    : 'text-green-700 dark:text-green-300'
-                }`}>
-                  {isFullyVerified 
+                <p
+                  className={`text-sm ${
+                    isFullyVerified
+                      ? 'text-green-700 dark:text-green-300'
+                      : isVerificationPending
+                        ? 'text-yellow-700 dark:text-yellow-300'
+                        : 'text-green-700 dark:text-green-300'
+                  }`}
+                >
+                  {isFullyVerified
                     ? 'This installment has been fully paid. Thank you for your payment!'
                     : isVerificationPending
-                    ? 'Your payment has been submitted and is awaiting verification. You will be notified once it is approved.'
-                    : 'This installment has been fully paid. Thank you for your payment!'
-                  }
+                      ? 'Your payment has been submitted and is awaiting verification. You will be notified once it is approved.'
+                      : 'This installment has been fully paid. Thank you for your payment!'}
                 </p>
-                
+
                 {/* Payment Method and Proof Details for Verification Pending */}
                 {isVerificationPending && relevantTransactions.length > 0 && (
-                  <div className="mt-3 space-y-2">
+                  <div className='mt-3 space-y-2'>
                     {relevantTransactions.map((tx, index) => (
-                      <div key={tx.id || index} className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
-                              Payment Method: {formatPaymentMethod(tx.payment_method)}
+                      <div
+                        key={tx.id || index}
+                        className='bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3'
+                      >
+                        <div className='flex items-center justify-between mb-2'>
+                          <div className='flex items-center gap-2'>
+                            <span className='text-xs font-medium text-yellow-800 dark:text-yellow-200'>
+                              Payment Method:{' '}
+                              {formatPaymentMethod(tx.payment_method)}
                             </span>
-                            <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                            <span className='text-xs text-yellow-600 dark:text-yellow-400 font-medium'>
                               ₹{formatCurrency(tx.amount || 0)}
                             </span>
                           </div>
                           {tx.reference_number && (
-                            <span className="text-xs text-yellow-700 dark:text-yellow-300">
+                            <span className='text-xs text-yellow-700 dark:text-yellow-300'>
                               Ref: {tx.reference_number}
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Proof Upload Status */}
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-yellow-700 dark:text-yellow-300">Proof:</span>
-                          {tx.receipt_url || tx.proof_of_payment_url || tx.transaction_screenshot_url ? (
-                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <div className='flex items-center gap-2 text-xs'>
+                          <span className='text-yellow-700 dark:text-yellow-300'>
+                            Proof:
+                          </span>
+                          {tx.receipt_url ||
+                          tx.proof_of_payment_url ||
+                          tx.transaction_screenshot_url ? (
+                            <span className='text-green-600 dark:text-green-400 flex items-center gap-1'>
                               ✅ Uploaded
                             </span>
                           ) : (
-                            <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                            <span className='text-red-600 dark:text-red-400 flex items-center gap-1'>
                               ❌ Not uploaded
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Additional Payment Details */}
                         {tx.razorpay_order_id && (
-                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                          <div className='text-xs text-yellow-700 dark:text-yellow-300 mt-1'>
                             Order ID: {tx.razorpay_order_id}
                           </div>
                         )}
                         {tx.utr_number && (
-                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                          <div className='text-xs text-yellow-700 dark:text-yellow-300 mt-1'>
                             UTR: {tx.utr_number}
                           </div>
                         )}
                         {tx.bank_name && (
-                          <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                          <div className='text-xs text-yellow-700 dark:text-yellow-300 mt-1'>
                             Bank: {tx.bank_name}
                           </div>
                         )}
@@ -413,13 +448,15 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                   </div>
                 )}
                 {installment.paymentDate && (
-                  <p className={`text-xs mt-1 ${
-                    isFullyVerified
-                      ? 'text-green-600 dark:text-green-400'
-                      : isVerificationPending
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-green-600 dark:text-green-400'
-                  }`}>
+                  <p
+                    className={`text-xs mt-1 ${
+                      isFullyVerified
+                        ? 'text-green-600 dark:text-green-400'
+                        : isVerificationPending
+                          ? 'text-yellow-600 dark:text-yellow-400'
+                          : 'text-green-600 dark:text-green-400'
+                    }`}
+                  >
                     Paid on {formatDate(installment.paymentDate)}
                   </p>
                 )}
