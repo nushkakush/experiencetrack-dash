@@ -308,6 +308,14 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
   // Function to handle recording payment for an installment
   const handleRecordPayment = async (paymentItem: PaymentScheduleItem) => {
+    console.log('🔍 [PaymentSchedule] handleRecordPayment called with:', {
+      paymentItem,
+      amount: paymentItem.amount,
+      type: paymentItem.type,
+      semesterNumber: paymentItem.semesterNumber,
+      installmentNumber: paymentItem.installmentNumber,
+      status: paymentItem.status,
+    });
     setSelectedPaymentItem(paymentItem);
     setShowRecordingDialog(true);
   };

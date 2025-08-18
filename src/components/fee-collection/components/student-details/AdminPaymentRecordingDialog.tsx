@@ -63,6 +63,19 @@ export const AdminPaymentRecordingDialog: React.FC<
   const { profile } = useAuth();
   const { handleRegularPayment, isSubmitting } = usePaymentSubmissions();
 
+  // 🔍 DEBUG LOGGING - Track initial props
+  useEffect(() => {
+    console.log('🔍 [AdminPaymentDialog] Props received:', {
+      paymentItem,
+      paymentItemAmount: paymentItem?.amount,
+      studentData: {
+        student_id: student.student_id,
+        cohort_id: student.student?.cohort_id,
+        payment_plan: student.payment_plan,
+      },
+    });
+  }, [paymentItem, student]);
+
   // Transform student data for PaymentForm
   const studentData: StudentData = {
     id: student.student_id,
@@ -92,6 +105,17 @@ export const AdminPaymentRecordingDialog: React.FC<
         paidDate: paymentItem.paymentDate,
       }
     : undefined;
+
+  // 🔍 DEBUG LOGGING - Track selectedInstallment creation
+  useEffect(() => {
+    console.log('🔍 [AdminPaymentDialog] selectedInstallment created:', {
+      selectedInstallment,
+      breakdown: adminPaymentBreakdown,
+      paymentItemAmount: paymentItem?.amount,
+      calculatedAmount:
+        adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
+    });
+  }, [selectedInstallment, adminPaymentBreakdown, paymentItem]);
 
   // Payment form props
   const paymentSubmissions = new Map<string, PaymentSubmissionData>();
@@ -125,10 +149,26 @@ export const AdminPaymentRecordingDialog: React.FC<
   };
 
   const fetchPaymentBreakdown = async () => {
-    if (!paymentItem || !student.student_id || !student.cohort_id) return;
+    if (!paymentItem || !student.student_id || !student.cohort_id) {
+      console.log(
+        '🔍 [AdminPaymentDialog] fetchPaymentBreakdown skipped - missing data:',
+        {
+          paymentItem: !!paymentItem,
+          student_id: student.student_id,
+          cohort_id: student.cohort_id,
+        }
+      );
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('🔍 [AdminPaymentDialog] Fetching payment breakdown:', {
+        studentId: student.student_id,
+        cohortId: student.cohort_id,
+        paymentPlan: student.payment_plan,
+        paymentItemType: paymentItem.type,
+      });
 
       // Get the full payment breakdown from the payment engine
       const response = await getFullPaymentView({
@@ -137,11 +177,26 @@ export const AdminPaymentRecordingDialog: React.FC<
         paymentPlan: student.payment_plan,
       });
 
+      console.log('🔍 [AdminPaymentDialog] Payment engine response:', {
+        success: response.success,
+        hasBreakdown: !!response.breakdown,
+        breakdown: response.breakdown,
+      });
+
       if (response.success && response.breakdown) {
         // Find the specific installment breakdown
         let breakdown: AdminPaymentBreakdown | null = null;
 
+        console.log('🔍 [AdminPaymentDialog] Determining breakdown type:', {
+          type: paymentItem.type,
+          semesterNumber: paymentItem.semesterNumber,
+          installmentNumber: paymentItem.installmentNumber,
+        });
+
         if (paymentItem.type === 'Admission Fee') {
+          console.log('🔍 [AdminPaymentDialog] Processing Admission Fee:', {
+            admissionFee: response.breakdown.admissionFee,
+          });
           breakdown = {
             baseAmount: response.breakdown.admissionFee.baseAmount || 0,
             gstAmount: response.breakdown.admissionFee.gstAmount || 0,
@@ -152,6 +207,9 @@ export const AdminPaymentRecordingDialog: React.FC<
           };
         } else if (paymentItem.type === 'One-Shot Payment') {
           const oneShotPayment = response.breakdown.oneShotPayment;
+          console.log('🔍 [AdminPaymentDialog] Processing One-Shot Payment:', {
+            oneShotPayment,
+          });
           if (oneShotPayment) {
             breakdown = {
               baseAmount: oneShotPayment.baseAmount || 0,
@@ -173,6 +231,21 @@ export const AdminPaymentRecordingDialog: React.FC<
             i => i.installmentNumber === paymentItem.installmentNumber
           );
 
+          console.log(
+            '🔍 [AdminPaymentDialog] Processing Installment Payment:',
+            {
+              targetSemester: paymentItem.semesterNumber,
+              targetInstallment: paymentItem.installmentNumber,
+              foundSemester: !!semester,
+              foundInstallment: !!installment,
+              availableSemesters: response.breakdown.semesters?.map(s => ({
+                semesterNumber: s.semesterNumber,
+                installmentCount: s.instalments?.length,
+              })),
+              installment,
+            }
+          );
+
           if (installment) {
             breakdown = {
               baseAmount: installment.baseAmount || 0,
@@ -183,6 +256,11 @@ export const AdminPaymentRecordingDialog: React.FC<
             };
           }
         }
+
+        console.log('🔍 [AdminPaymentDialog] Final breakdown calculated:', {
+          breakdown,
+          totalAmount: breakdown?.totalAmount,
+        });
 
         setAdminPaymentBreakdown(breakdown);
         // Also store the full payment breakdown for the SemesterBreakdown component
@@ -262,6 +340,21 @@ export const AdminPaymentRecordingDialog: React.FC<
           ],
         }
       : undefined;
+
+  // 🔍 DEBUG LOGGING - Track paymentBreakdownForForm creation
+  useEffect(() => {
+    console.log('🔍 [AdminPaymentDialog] paymentBreakdownForForm created:', {
+      paymentBreakdownForForm,
+      hasPaymentItem: !!paymentItem,
+      hasSelectedInstallment: !!selectedInstallment,
+      totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
+    });
+  }, [
+    paymentBreakdownForForm,
+    adminPaymentBreakdown,
+    paymentItem,
+    selectedInstallment,
+  ]);
 
   const handlePaymentSuccess = () => {
     // Close the dialog and refresh the payment schedule
