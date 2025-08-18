@@ -149,13 +149,13 @@ export const AdminPaymentRecordingDialog: React.FC<
   };
 
   const fetchPaymentBreakdown = async () => {
-    if (!paymentItem || !student.student_id || !student.cohort_id) {
+    if (!paymentItem || !student.student_id || !student.student?.cohort_id) {
       console.log(
         '🔍 [AdminPaymentDialog] fetchPaymentBreakdown skipped - missing data:',
         {
           paymentItem: !!paymentItem,
           student_id: student.student_id,
-          cohort_id: student.cohort_id,
+          cohort_id: student.student?.cohort_id,
         }
       );
       return;
@@ -165,7 +165,7 @@ export const AdminPaymentRecordingDialog: React.FC<
       setLoading(true);
       console.log('🔍 [AdminPaymentDialog] Fetching payment breakdown:', {
         studentId: student.student_id,
-        cohortId: student.cohort_id,
+        cohortId: student.student?.cohort_id,
         paymentPlan: student.payment_plan,
         paymentItemType: paymentItem.type,
       });
@@ -173,7 +173,7 @@ export const AdminPaymentRecordingDialog: React.FC<
       // Get the full payment breakdown from the payment engine
       const response = await getFullPaymentView({
         studentId: student.student_id,
-        cohortId: student.cohort_id,
+        cohortId: student.student?.cohort_id,
         paymentPlan: student.payment_plan,
       });
 
