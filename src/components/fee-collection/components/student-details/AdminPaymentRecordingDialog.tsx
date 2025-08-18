@@ -61,7 +61,8 @@ export const AdminPaymentRecordingDialog: React.FC<
     useState<StudentPaymentBreakdown | null>(null);
   const [loading, setLoading] = useState(false);
   const { profile } = useAuth();
-  const { handleRegularPayment, isSubmitting } = usePaymentSubmissions();
+  const { handlePaymentSubmission: handleRegularPayment, submittingPayments } =
+    usePaymentSubmissions();
 
   // 🔍 DEBUG LOGGING - Track initial props (only on dialog open)
 
@@ -142,10 +143,7 @@ export const AdminPaymentRecordingDialog: React.FC<
 
   // Payment form props
   const paymentSubmissions = new Map<string, PaymentSubmissionData>();
-  const submittingPayments = new Set<string>();
-  if (isSubmitting) {
-    submittingPayments.add('admin-payment');
-  }
+  // submittingPayments comes from usePaymentSubmissions hook
 
   // Handle payment submission with admin context
   const handlePaymentSubmission = async (
