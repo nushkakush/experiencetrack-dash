@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
   // Check if user can record payments (admin/fee_collector permissions)
   const { canCollectFees } = useFeaturePermissions();
 
-  const fetchPaymentSchedule = async () => {
+  const fetchPaymentSchedule = useCallback(async () => {
     try {
       setLoading(true);
       const schedule = await calculatePaymentSchedule();
@@ -51,11 +51,11 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [student]);
 
   useEffect(() => {
     fetchPaymentSchedule();
-  }, [student, fetchPaymentSchedule]);
+  }, [fetchPaymentSchedule]);
 
   const calculatePaymentSchedule = async (): Promise<PaymentScheduleItem[]> => {
     if (
