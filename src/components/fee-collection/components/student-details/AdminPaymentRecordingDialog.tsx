@@ -111,12 +111,15 @@ export const AdminPaymentRecordingDialog: React.FC<
         paymentItemAmount: paymentItem.amount,
         calculatedAmount,
         isNaN: isNaN(calculatedAmount),
+        paymentItemSemesterNumber: paymentItem.semesterNumber,
+        paymentItemInstallmentNumber: paymentItem.installmentNumber,
       }
     );
 
     return {
       id: paymentItem.id,
       installmentNumber: paymentItem.installmentNumber || 1,
+      semesterNumber: paymentItem.semesterNumber || 1, // Add semesterNumber for targeting validation
       amount: calculatedAmount,
       amountPayable: calculatedAmount, // Add this property for usePaymentForm compatibility
       dueDate: paymentItem.dueDate,
