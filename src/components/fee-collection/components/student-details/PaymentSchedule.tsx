@@ -69,39 +69,38 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     try {
       // Determine additional discount (admin-side) to keep parity with student view
       let additionalDiscountPercentage = 0;
+      let scholarshipId = null;
       try {
+        // Get payment record for scholarship_id
         const { data: sp } = await supabase
           .from('student_payments')
-          .select('id, additional_discount_percentage, scholarship_id')
+          .select('id, scholarship_id')
           .eq('student_id', student.student_id)
           .eq('cohort_id', student.student?.cohort_id)
           .maybeSingle();
-        if (
-          sp &&
-          typeof sp.additional_discount_percentage === 'number' &&
-          sp.additional_discount_percentage > 0
-        ) {
-          additionalDiscountPercentage = sp.additional_discount_percentage || 0;
-        }
-      } catch (error) {
-        console.warn('Error in payment schedule calculation:', error);
-      }
 
-      // Fallback: check student_scholarships table if not found on student_payments
-      if (additionalDiscountPercentage === 0) {
-        try {
-          const { data: ss } = await supabase
+        scholarshipId = sp?.scholarship_id || null;
+
+        // Get additional discount from student_scholarships if scholarship exists
+        if (scholarshipId) {
+          const { data: scholarship } = await supabase
             .from('student_scholarships')
             .select('additional_discount_percentage')
             .eq('student_id', student.student_id)
+            .eq('scholarship_id', scholarshipId)
             .maybeSingle();
-          if (ss && typeof ss.additional_discount_percentage === 'number') {
+
+          if (
+            scholarship &&
+            typeof scholarship.additional_discount_percentage === 'number' &&
+            scholarship.additional_discount_percentage > 0
+          ) {
             additionalDiscountPercentage =
-              ss.additional_discount_percentage || 0;
+              scholarship.additional_discount_percentage || 0;
           }
-        } catch (error) {
-          console.warn('Error in payment schedule calculation:', error);
         }
+      } catch (error) {
+        console.warn('Error fetching student payment/scholarship data:', error);
       }
 
       // Fetch canonical breakdown and fee structure from Edge Function
@@ -112,7 +111,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           | 'one_shot'
           | 'sem_wise'
           | 'instalment_wise',
-        scholarshipId: student.scholarship_id || undefined,
+        scholarshipId: scholarshipId || undefined,
         additionalDiscountPercentage,
       });
 
