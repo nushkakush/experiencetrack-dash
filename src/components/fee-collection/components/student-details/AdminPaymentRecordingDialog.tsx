@@ -97,17 +97,31 @@ export const AdminPaymentRecordingDialog: React.FC<
 
   // Transform payment item for PaymentForm - MEMOIZED to prevent infinite re-renders
   const selectedInstallment: Instalment | undefined = useMemo(() => {
-    return paymentItem
-      ? {
-          id: paymentItem.id,
-          installmentNumber: paymentItem.installmentNumber || 1,
-          amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount, // Use breakdown amount or fallback to paymentItem amount
-          dueDate: paymentItem.dueDate,
-          status: paymentItem.status as 'pending' | 'paid' | 'overdue',
-          paidAmount: 0,
-          paidDate: paymentItem.paymentDate,
-        }
-      : undefined;
+    if (!paymentItem) return undefined;
+
+    // Calculate the amount - prefer breakdown total, fallback to paymentItem amount
+    const calculatedAmount =
+      adminPaymentBreakdown?.totalAmount ?? paymentItem.amount;
+
+    console.log(
+      '🔍 [AdminPaymentDialog] selectedInstallment amount calculation:',
+      {
+        adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
+        paymentItemAmount: paymentItem.amount,
+        calculatedAmount,
+        isNaN: isNaN(calculatedAmount),
+      }
+    );
+
+    return {
+      id: paymentItem.id,
+      installmentNumber: paymentItem.installmentNumber || 1,
+      amount: calculatedAmount,
+      dueDate: paymentItem.dueDate,
+      status: paymentItem.status as 'pending' | 'paid' | 'overdue',
+      paidAmount: 0,
+      paidDate: paymentItem.paymentDate,
+    };
   }, [paymentItem, adminPaymentBreakdown?.totalAmount]);
 
   // 🔍 DEBUG LOGGING - Track selectedInstallment creation (DISABLED to prevent infinite loop)
@@ -330,25 +344,38 @@ export const AdminPaymentRecordingDialog: React.FC<
 
   // Create PaymentBreakdown for PaymentForm component - MEMOIZED to prevent infinite re-renders
   const paymentBreakdownForForm: PaymentBreakdown | undefined = useMemo(() => {
-    return paymentItem && selectedInstallment
-      ? {
-          totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem.amount,
+    if (!paymentItem || !selectedInstallment) return undefined;
+
+    // Use the same amount calculation as selectedInstallment
+    const calculatedAmount =
+      adminPaymentBreakdown?.totalAmount ?? paymentItem.amount;
+
+    console.log(
+      '🔍 [AdminPaymentDialog] paymentBreakdownForForm amount calculation:',
+      {
+        adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
+        paymentItemAmount: paymentItem.amount,
+        calculatedAmount,
+        selectedInstallmentAmount: selectedInstallment.amount,
+      }
+    );
+
+    return {
+      totalAmount: calculatedAmount,
+      paidAmount: 0,
+      pendingAmount: calculatedAmount,
+      // Create a basic semester structure if needed
+      instalmentPayments: [
+        {
+          id: selectedInstallment.id,
+          installmentNumber: selectedInstallment.installmentNumber,
+          amount: calculatedAmount,
+          dueDate: selectedInstallment.dueDate,
+          status: selectedInstallment.status,
           paidAmount: 0,
-          pendingAmount:
-            adminPaymentBreakdown?.totalAmount || paymentItem.amount,
-          // Create a basic semester structure if needed
-          instalmentPayments: [
-            {
-              id: selectedInstallment.id,
-              installmentNumber: selectedInstallment.installmentNumber,
-              amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount,
-              dueDate: selectedInstallment.dueDate,
-              status: selectedInstallment.status,
-              paidAmount: 0,
-            },
-          ],
-        }
-      : undefined;
+        },
+      ],
+    };
   }, [paymentItem, selectedInstallment, adminPaymentBreakdown?.totalAmount]);
 
   // 🔍 DEBUG LOGGING - Track paymentBreakdownForForm creation (DISABLED to prevent infinite loop)
