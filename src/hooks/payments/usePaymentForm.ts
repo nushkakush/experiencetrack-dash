@@ -87,6 +87,13 @@ export const usePaymentForm = ({
     setAmountToPay(maxAmount);
   }, [maxAmount]);
 
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  }, []);
+
   const validateAmount = useCallback(
     (amount: number) => {
       if (amount <= 0) {
@@ -99,13 +106,6 @@ export const usePaymentForm = ({
     },
     [maxAmount, formatCurrency]
   );
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amount);
-  }, []);
 
   const handleAmountChange = useCallback(
     (value: string) => {
