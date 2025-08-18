@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -63,18 +63,20 @@ export const AdminPaymentRecordingDialog: React.FC<
   const { profile } = useAuth();
   const { handleRegularPayment, isSubmitting } = usePaymentSubmissions();
 
-  // 🔍 DEBUG LOGGING - Track initial props
+  // 🔍 DEBUG LOGGING - Track initial props (only on dialog open)
   useEffect(() => {
-    console.log('🔍 [AdminPaymentDialog] Props received:', {
-      paymentItem,
-      paymentItemAmount: paymentItem?.amount,
-      studentData: {
-        student_id: student.student_id,
-        cohort_id: student.student?.cohort_id,
-        payment_plan: student.payment_plan,
-      },
-    });
-  }, [paymentItem, student]);
+    if (open) {
+      console.log('🔍 [AdminPaymentDialog] Dialog opened with props:', {
+        paymentItem,
+        paymentItemAmount: paymentItem?.amount,
+        studentData: {
+          student_id: student.student_id,
+          cohort_id: student.student?.cohort_id,
+          payment_plan: student.payment_plan,
+        },
+      });
+    }
+  }, [open]); // Only run when dialog opens/closes
 
   // Transform student data for PaymentForm
   const studentData: StudentData = {
@@ -93,29 +95,31 @@ export const AdminPaymentRecordingDialog: React.FC<
     updated_at: new Date().toISOString(),
   };
 
-  // Transform payment item for PaymentForm
-  const selectedInstallment: Instalment | undefined = paymentItem
-    ? {
-        id: paymentItem.id,
-        installmentNumber: paymentItem.installmentNumber || 1,
-        amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount, // Use breakdown amount or fallback to paymentItem amount
-        dueDate: paymentItem.dueDate,
-        status: paymentItem.status as 'pending' | 'paid' | 'overdue',
-        paidAmount: 0,
-        paidDate: paymentItem.paymentDate,
-      }
-    : undefined;
+  // Transform payment item for PaymentForm - MEMOIZED to prevent infinite re-renders
+  const selectedInstallment: Instalment | undefined = useMemo(() => {
+    return paymentItem
+      ? {
+          id: paymentItem.id,
+          installmentNumber: paymentItem.installmentNumber || 1,
+          amount: adminPaymentBreakdown?.totalAmount || paymentItem.amount, // Use breakdown amount or fallback to paymentItem amount
+          dueDate: paymentItem.dueDate,
+          status: paymentItem.status as 'pending' | 'paid' | 'overdue',
+          paidAmount: 0,
+          paidDate: paymentItem.paymentDate,
+        }
+      : undefined;
+  }, [paymentItem, adminPaymentBreakdown?.totalAmount]);
 
-  // 🔍 DEBUG LOGGING - Track selectedInstallment creation
-  useEffect(() => {
-    console.log('🔍 [AdminPaymentDialog] selectedInstallment created:', {
-      selectedInstallment,
-      breakdown: adminPaymentBreakdown,
-      paymentItemAmount: paymentItem?.amount,
-      calculatedAmount:
-        adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
-    });
-  }, [selectedInstallment, adminPaymentBreakdown, paymentItem]);
+  // 🔍 DEBUG LOGGING - Track selectedInstallment creation (DISABLED to prevent infinite loop)
+  // useEffect(() => {
+  //   console.log('🔍 [AdminPaymentDialog] selectedInstallment created:', {
+  //     selectedInstallment,
+  //     breakdown: adminPaymentBreakdown,
+  //     paymentItemAmount: paymentItem?.amount,
+  //     calculatedAmount:
+  //       adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
+  //   });
+  // }, [selectedInstallment, adminPaymentBreakdown, paymentItem]);
 
   // Payment form props
   const paymentSubmissions = new Map<string, PaymentSubmissionData>();
@@ -148,7 +152,7 @@ export const AdminPaymentRecordingDialog: React.FC<
     }
   };
 
-  const fetchPaymentBreakdown = async () => {
+  const fetchPaymentBreakdown = useCallback(async () => {
     if (!paymentItem || !student.student_id || !student.student?.cohort_id) {
       console.log(
         '🔍 [AdminPaymentDialog] fetchPaymentBreakdown skipped - missing data:',
@@ -271,7 +275,12 @@ export const AdminPaymentRecordingDialog: React.FC<
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    paymentItem,
+    student.student_id,
+    student.student?.cohort_id,
+    student.payment_plan,
+  ]);
 
   useEffect(() => {
     if (open && paymentItem && student) {
@@ -319,9 +328,9 @@ export const AdminPaymentRecordingDialog: React.FC<
     }
   };
 
-  // Create PaymentBreakdown for PaymentForm component
-  const paymentBreakdownForForm: PaymentBreakdown | undefined =
-    paymentItem && selectedInstallment
+  // Create PaymentBreakdown for PaymentForm component - MEMOIZED to prevent infinite re-renders
+  const paymentBreakdownForForm: PaymentBreakdown | undefined = useMemo(() => {
+    return paymentItem && selectedInstallment
       ? {
           totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem.amount,
           paidAmount: 0,
@@ -340,21 +349,22 @@ export const AdminPaymentRecordingDialog: React.FC<
           ],
         }
       : undefined;
+  }, [paymentItem, selectedInstallment, adminPaymentBreakdown?.totalAmount]);
 
-  // 🔍 DEBUG LOGGING - Track paymentBreakdownForForm creation
-  useEffect(() => {
-    console.log('🔍 [AdminPaymentDialog] paymentBreakdownForForm created:', {
-      paymentBreakdownForForm,
-      hasPaymentItem: !!paymentItem,
-      hasSelectedInstallment: !!selectedInstallment,
-      totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
-    });
-  }, [
-    paymentBreakdownForForm,
-    adminPaymentBreakdown,
-    paymentItem,
-    selectedInstallment,
-  ]);
+  // 🔍 DEBUG LOGGING - Track paymentBreakdownForForm creation (DISABLED to prevent infinite loop)
+  // useEffect(() => {
+  //   console.log('🔍 [AdminPaymentDialog] paymentBreakdownForForm created:', {
+  //     paymentBreakdownForForm,
+  //     hasPaymentItem: !!paymentItem,
+  //     hasSelectedInstallment: !!selectedInstallment,
+  //     totalAmount: adminPaymentBreakdown?.totalAmount || paymentItem?.amount,
+  //   });
+  // }, [
+  //   paymentBreakdownForForm,
+  //   adminPaymentBreakdown,
+  //   paymentItem,
+  //   selectedInstallment,
+  // ]);
 
   const handlePaymentSuccess = () => {
     // Close the dialog and refresh the payment schedule
