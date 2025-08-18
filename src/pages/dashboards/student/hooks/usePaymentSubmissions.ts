@@ -461,22 +461,27 @@ export const usePaymentSubmissions = (
 
   const handleRazorpayPayment = async (paymentData: PaymentSubmissionData) => {
     try {
-      console.log(
-        '🔍 [DEBUG] handleRazorpayPayment - studentData:',
-        studentData
-      );
-      console.log(
-        '🔍 [DEBUG] handleRazorpayPayment - studentData.id:',
-        studentData?.id
-      );
-      console.log(
-        '🔍 [DEBUG] handleRazorpayPayment - studentData.cohort_id:',
-        studentData?.cohort_id
-      );
+      // Use student data from paymentData if available (admin context), otherwise use studentData (student context)
+      const effectiveStudentId = paymentData.studentId || studentData?.id;
+      const effectiveCohortId = paymentData.cohortId || studentData?.cohort_id;
 
-      // Validate student data
-      if (!studentData?.id || !studentData?.cohort_id) {
-        console.error('❌ [DEBUG] Missing student data:', { studentData });
+      console.log('🔍 [DEBUG] handleRazorpayPayment - effective IDs:', {
+        effectiveStudentId,
+        effectiveCohortId,
+        paymentDataStudentId: paymentData.studentId,
+        paymentDataCohortId: paymentData.cohortId,
+        studentDataId: studentData?.id,
+        studentDataCohortId: studentData?.cohort_id,
+      });
+
+      // Validate effective student data
+      if (!effectiveStudentId || !effectiveCohortId) {
+        console.error('❌ [DEBUG] Missing effective student data:', {
+          effectiveStudentId,
+          effectiveCohortId,
+          paymentData,
+          studentData,
+        });
         throw new Error(
           'Student data is missing. Please refresh the page and try again.'
         );
@@ -486,13 +491,13 @@ export const usePaymentSubmissions = (
       let paymentPlan = 'one_shot'; // default
 
       // Try to get payment plan from student payments if available
-      if (studentData?.id && studentData?.cohort_id) {
+      if (effectiveStudentId && effectiveCohortId) {
         try {
           const { data: studentPayment } = await supabase
             .from('student_payments')
             .select('payment_plan')
-            .eq('student_id', studentData.id)
-            .eq('cohort_id', studentData.cohort_id)
+            .eq('student_id', effectiveStudentId)
+            .eq('cohort_id', effectiveCohortId)
             .maybeSingle();
 
           console.log(
@@ -516,8 +521,8 @@ export const usePaymentSubmissions = (
 
       const razorpayData = {
         amount: paymentData.amount,
-        studentId: studentData?.id || '',
-        cohortId: studentData?.cohort_id || '',
+        studentId: effectiveStudentId || '',
+        cohortId: effectiveCohortId || '',
         paymentPlan: paymentPlan,
         installmentId: paymentData.installmentId,
         semesterNumber: paymentData.semesterNumber,
