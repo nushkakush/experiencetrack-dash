@@ -116,7 +116,8 @@ export const usePaymentSubmissions = (
       }
 
       // Only require file uploads for non-online payment methods
-      if (paymentMethod !== 'razorpay') {
+      // Admin Razorpay payments are treated as offline payments (require files)
+      if (paymentMethod !== 'razorpay' || paymentData.isAdminRecorded) {
         if (
           !paymentData.receiptFile &&
           !paymentData.proofOfPaymentFile &&
@@ -132,9 +133,21 @@ export const usePaymentSubmissions = (
 
         let result;
 
-        if (paymentMethod === 'razorpay') {
+        // Admin-recorded payments (including Razorpay) go straight to "Paid" status
+        // Only student-initiated Razorpay payments use the online gateway
+        if (paymentMethod === 'razorpay' && !paymentData.isAdminRecorded) {
+          console.log(
+            '🔍 [DEBUG] Student Razorpay payment - using online gateway'
+          );
           result = await handleRazorpayPayment(paymentData);
         } else {
+          console.log(
+            '🔍 [DEBUG] Regular payment flow - direct to paid status',
+            {
+              paymentMethod,
+              isAdminRecorded: paymentData.isAdminRecorded,
+            }
+          );
           result = await handleRegularPayment(paymentData);
         }
 
