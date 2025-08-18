@@ -125,12 +125,6 @@ export const AdminPaymentRecordingDialog: React.FC<
     }
   };
 
-  useEffect(() => {
-    if (open && paymentItem && student) {
-      fetchPaymentBreakdown();
-    }
-  }, [open, paymentItem, student, fetchPaymentBreakdown]);
-
   const fetchPaymentBreakdown = async () => {
     if (!paymentItem || !student.student_id || !student.cohort_id) return;
 
@@ -201,6 +195,12 @@ export const AdminPaymentRecordingDialog: React.FC<
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open && paymentItem && student) {
+      fetchPaymentBreakdown();
+    }
+  }, [open, paymentItem, student, fetchPaymentBreakdown]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
