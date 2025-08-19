@@ -8,22 +8,25 @@ interface StatusCellProps {
 }
 
 export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
-  const getPaymentTypeDisplay = (paymentType: PaymentType, paymentPlan?: string) => {
+  const getPaymentTypeDisplay = (
+    paymentType: PaymentType,
+    paymentPlan?: string
+  ) => {
     // For one-shot payments, show "Program Fee"
     if (paymentPlan === 'one_shot') {
       return 'Program Fee';
     }
-    
+
     // For installment-wise payments
     if (paymentPlan === 'instalment_wise') {
       return 'Installment';
     }
-    
+
     // For semester-wise payments
     if (paymentPlan === 'sem_wise') {
       return 'Semester Fee';
     }
-    
+
     // Default cases
     switch (paymentType) {
       case 'admission_fee':
@@ -59,8 +62,12 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
 
     const expectedPayments = getExpectedPaymentCount();
     const actualPayments = student.payments || [];
-    const completedPayments = actualPayments.filter(p => p.status === 'paid').length;
-    const pendingPayments = actualPayments.filter(p => p.status === 'pending').length;
+    const completedPayments = actualPayments.filter(
+      p => p.status === 'paid'
+    ).length;
+    const pendingPayments = actualPayments.filter(
+      p => p.status === 'pending'
+    ).length;
 
     // If no payments exist yet, show pending
     if (actualPayments.length === 0) {
@@ -71,7 +78,11 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
     if (completedPayments >= expectedPayments) {
       return { status: 'paid' as const, text: 'All Payments Complete' };
     } else if (completedPayments > 0) {
-      return { status: 'verification_pending' as const, text: `${completedPayments}/${expectedPayments} Paid` };
+      // Partially paid: show pending badge with progress text
+      return {
+        status: 'pending' as const,
+        text: `${completedPayments}/${expectedPayments} Paid`,
+      };
     } else {
       return { status: 'pending' as const, text: `${pendingPayments} Pending` };
     }
@@ -81,10 +92,10 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
 
   return (
     <TableCell>
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
+      <div className='space-y-1'>
+        <div className='flex items-center gap-2'>
           <PaymentStatusBadge status={overallStatus.status} />
-          <span className="text-xs text-muted-foreground">
+          <span className='text-xs text-muted-foreground'>
             {overallStatus.text}
           </span>
         </div>
