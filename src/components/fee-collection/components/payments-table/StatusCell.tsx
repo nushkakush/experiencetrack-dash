@@ -68,6 +68,10 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
     const pendingPayments = actualPayments.filter(
       p => p.status === 'pending'
     ).length;
+    const hasOverdue = actualPayments.some(p => {
+      const status = p.status as unknown as string;
+      return status === 'overdue' || status.endsWith('_overdue');
+    });
 
     // If no payments exist yet, show pending
     if (actualPayments.length === 0) {
@@ -75,7 +79,13 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
     }
 
     // Calculate status based on expected vs completed payments
-    if (completedPayments >= expectedPayments) {
+    if (hasOverdue) {
+      // Overdue supersedes pending
+      return {
+        status: 'overdue' as const,
+        text: `${completedPayments}/${expectedPayments} Paid`,
+      };
+    } else if (completedPayments >= expectedPayments) {
       return { status: 'paid' as const, text: 'All Payments Complete' };
     } else if (completedPayments > 0) {
       // Partially paid: show pending badge with progress text
