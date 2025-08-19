@@ -42,9 +42,9 @@ interface ActionsCellProps {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
-    one_shot_dates?: any;
-    sem_wise_dates?: any;
-    instalment_wise_dates?: any;
+    one_shot_dates?: Record<string, string>;
+    sem_wise_dates?: Record<string, unknown>;
+    instalment_wise_dates?: Record<string, unknown>;
   };
 }
 
@@ -67,11 +67,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
   const [showRejectDialog, setShowRejectDialog] = React.useState(false);
   const [currentTransaction, setCurrentTransaction] =
     React.useState<PaymentTransactionRow | null>(null);
-  const [customPlanOpen, setCustomPlanOpen] = React.useState(false);
-  const [savingCustom, setSavingCustom] = React.useState(false);
-  const [customDates, setCustomDates] = React.useState<Record<string, string>>(
-    {}
-  );
+  // Custom plan functionality temporarily removed
 
   // Get student-specific pending verification count
   const studentPaymentId = (
@@ -174,31 +170,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
         >
           <Eye className='h-4 w-4' />
         </Button>
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={e => {
-            e.stopPropagation();
-            setCustomPlanOpen(true);
-          }}
-        >
-          Set Custom Plan
-        </Button>
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={async e => {
-            e.stopPropagation();
-            try {
-              // TODO: Implement revert to cohort plan functionality
-              toast.info('Revert to cohort plan functionality coming soon');
-            } catch {
-              toast.error('Failed to revert to cohort plan');
-            }
-          }}
-        >
-          Revert to Cohort Plan
-        </Button>
+        {/* Custom plan and revert actions temporarily removed */}
         <div className='relative'>
           <Button
             variant='ghost'
@@ -235,99 +207,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       </div>
 
       {/* Student Details Modal */}
-      {/* Placeholder Custom Plan Dialog (UI only; save wired later) */}
-      <Dialog open={customPlanOpen} onOpenChange={setCustomPlanOpen}>
-        <DialogContent
-          className='max-w-2xl'
-          aria-describedby='custom-plan-description'
-        >
-          <DialogHeader>
-            <DialogTitle>Set Custom Payment Plan</DialogTitle>
-          </DialogHeader>
-          <div id='custom-plan-description' className='sr-only'>
-            Create a custom payment plan for this student
-          </div>
-          <div className='text-sm text-muted-foreground space-y-2'>
-            <p>
-              This will create a custom fee structure for this student in this
-              cohort.
-            </p>
-            <div className='grid grid-cols-1 gap-2'>
-              {/* Minimal date editor (flat keys) */}
-              <div className='flex items-center gap-2'>
-                <Label className='w-40'>One-shot date</Label>
-                <input
-                  type='date'
-                  className='border rounded px-2 py-1'
-                  value={customDates['one-shot'] || ''}
-                  onChange={e =>
-                    setCustomDates(prev => ({
-                      ...prev,
-                      ['one-shot']: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className='flex items-center gap-2'>
-                <Label className='w-40'>Semester 1 - Installment 1</Label>
-                <input
-                  type='date'
-                  className='border rounded px-2 py-1'
-                  value={customDates['semester-1-instalment-0'] || ''}
-                  onChange={e =>
-                    setCustomDates(prev => ({
-                      ...prev,
-                      ['semester-1-instalment-0']: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className='flex items-center gap-2'>
-                <Label className='w-40'>Semester 1 - Installment 2</Label>
-                <input
-                  type='date'
-                  className='border rounded px-2 py-1'
-                  value={customDates['semester-1-instalment-1'] || ''}
-                  onChange={e =>
-                    setCustomDates(prev => ({
-                      ...prev,
-                      ['semester-1-instalment-1']: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant='secondary'
-              onClick={() => setCustomPlanOpen(false)}
-            >
-              Close
-            </Button>
-            <Button
-              disabled={savingCustom}
-              onClick={async () => {
-                try {
-                  setSavingCustom(true);
-                  const cohortId = String(student.student?.cohort_id);
-                  const studentId = String(student.student_id);
-                  // TODO: Implement proper custom plan creation with dates
-                  toast.info('Custom plan creation functionality coming soon');
-                  setCustomPlanOpen(false);
-                  setCustomDates({});
-                } catch (e) {
-                  toast.error('Failed to create custom plan');
-                } finally {
-                  setSavingCustom(false);
-                }
-              }}
-            >
-              {savingCustom ? 'Saving…' : 'Create Custom Plan'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Custom plan dialog temporarily removed */}
       <StudentDetailsModal
         student={student}
         open={studentDetailsOpen}
