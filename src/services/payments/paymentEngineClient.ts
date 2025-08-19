@@ -11,7 +11,8 @@ export interface PaymentEngineParams {
   additionalDiscountPercentage?: number;
   // startDate removed - dates come from database only
   customDates?: Record<string, string>; // For preview with custom dates
-  feeStructureData?: { // For preview mode when no saved structure exists
+  feeStructureData?: {
+    // For preview mode when no saved structure exists
     total_program_fee: number;
     admission_fee: number;
     number_of_semesters: number;
@@ -19,9 +20,9 @@ export interface PaymentEngineParams {
     one_shot_discount_percentage: number;
     // Custom dates configuration
 
-    one_shot_dates?: any; // JSON data for one-shot payment dates
-    sem_wise_dates?: any; // JSON data for semester-wise payment dates
-    instalment_wise_dates?: any; // JSON data for installment-wise payment dates
+    one_shot_dates?: Record<string, string>; // JSON data for one-shot payment dates
+    sem_wise_dates?: Record<string, unknown>; // JSON data for semester-wise payment dates
+    instalment_wise_dates?: Record<string, unknown>; // JSON data for installment-wise payment dates
   };
 }
 
@@ -48,5 +49,3 @@ export async function getFullPaymentView(params: PaymentEngineParams) {
   if (error) throw error;
   return data; // Now includes breakdown, feeStructure, and aggregate
 }
-
-

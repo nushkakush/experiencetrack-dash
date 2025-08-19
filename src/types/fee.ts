@@ -12,9 +12,9 @@ export interface FeeStructure {
   structure_type: 'cohort' | 'custom';
   student_id?: string | null;
   // custom_dates_enabled removed from DB; engine relies solely on presence of plan-specific date JSON
-  one_shot_dates: Record<string, any>; // Custom dates for one-shot payment plan (jsonb)
-  sem_wise_dates: Record<string, any>; // Custom dates for semester-wise payment plan (jsonb)
-  instalment_wise_dates: Record<string, any>; // Custom dates for installment-wise payment plan (jsonb)
+  one_shot_dates: Record<string, string>; // Custom dates for one-shot payment plan (jsonb)
+  sem_wise_dates: Record<string, string | { [key: string]: unknown }>; // Custom dates for semester-wise payment plan (jsonb)
+  instalment_wise_dates: Record<string, string | { [key: string]: unknown }>; // Custom dates for installment-wise payment plan (jsonb)
   created_by?: string;
   created_at: string;
   updated_at: string;
