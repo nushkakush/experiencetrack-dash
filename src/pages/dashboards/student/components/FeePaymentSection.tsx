@@ -127,6 +127,18 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
             paymentPlan: enginePlan,
             scholarshipId,
             additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+            // Pass complete fee structure data including saved dates to payment engine
+            feeStructureData: {
+              total_program_fee: Number(feeStructure.total_program_fee),
+              admission_fee: Number(feeStructure.admission_fee),
+              number_of_semesters: (feeStructure as any).number_of_semesters,
+              instalments_per_semester: (feeStructure as any).instalments_per_semester,
+              one_shot_discount_percentage: (feeStructure as any).one_shot_discount_percentage,
+
+              one_shot_dates: (feeStructure as any).one_shot_dates,
+              sem_wise_dates: (feeStructure as any).sem_wise_dates,
+              instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
+            }
           });
           if (!cancelled) setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
         } catch (err) {

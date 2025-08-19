@@ -1,7 +1,7 @@
 import React from 'react';
 import { TableCell } from '@/components/ui/table';
 import { PaymentStatusBadge } from '../../PaymentStatusBadge';
-import { StudentPaymentSummary, PaymentType } from '@/types/fee';
+import { StudentPaymentSummary, PaymentType, PaymentStatus } from '@/types/fee';
 
 interface StatusCellProps {
   student: StudentPaymentSummary;
@@ -35,21 +35,45 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
     }
   };
 
-  const getOverallStatus = () => {
-    if (!student.payments || student.payments.length === 0) {
+  const getOverallStatus = (): { status: PaymentStatus; text: string } => {
+    // Check if student has selected a payment plan
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
       return { status: 'pending', text: 'Payment Setup Required' };
     }
 
-    const totalPayments = student.payments.length;
-    const completedPayments = student.payments.filter(p => p.status === 'paid').length;
-    const pendingPayments = student.payments.filter(p => p.status === 'pending').length;
+    // Calculate expected number of payments based on payment plan
+    // Note: This is a simplified calculation - the actual payment engine has more complex logic
+    const getExpectedPaymentCount = () => {
+      if (student.payment_plan === 'one_shot') {
+        return 1;
+      } else if (student.payment_plan === 'sem_wise') {
+        // Assuming 4 semesters (should ideally get from fee structure)
+        return 4;
+      } else if (student.payment_plan === 'instalment_wise') {
+        // Assuming 4 semesters × 3 installments = 12 (should ideally get from fee structure)
+        return 12;
+      }
+      // Fallback to actual payments count if plan is unknown
+      return student.payments?.length || 0;
+    };
 
-    if (completedPayments === totalPayments) {
-      return { status: 'complete', text: 'All Payments Complete' };
+    const expectedPayments = getExpectedPaymentCount();
+    const actualPayments = student.payments || [];
+    const completedPayments = actualPayments.filter(p => p.status === 'paid').length;
+    const pendingPayments = actualPayments.filter(p => p.status === 'pending').length;
+
+    // If no payments exist yet, show pending
+    if (actualPayments.length === 0) {
+      return { status: 'pending', text: 'Payments Pending' };
+    }
+
+    // Calculate status based on expected vs completed payments
+    if (completedPayments >= expectedPayments) {
+      return { status: 'paid' as const, text: 'All Payments Complete' };
     } else if (completedPayments > 0) {
-      return { status: 'partially_paid', text: `${completedPayments}/${totalPayments} Paid` };
+      return { status: 'verification_pending' as const, text: `${completedPayments}/${expectedPayments} Paid` };
     } else {
-      return { status: 'pending', text: `${pendingPayments} Pending` };
+      return { status: 'pending' as const, text: `${pendingPayments} Pending` };
     }
   };
 

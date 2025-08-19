@@ -116,8 +116,8 @@ export const usePaymentSubmissions = (
       }
 
       // Only require file uploads for non-online payment methods
-      // Admin Razorpay payments are treated as offline payments (require files)
-      if (paymentMethod !== 'razorpay' || paymentData.isAdminRecorded) {
+      // Skip file requirement for admin-recorded online payments (when Payment ID is provided)
+      if (paymentMethod !== 'razorpay' && !paymentData.isAdminRecorded) {
         if (
           !paymentData.receiptFile &&
           !paymentData.proofOfPaymentFile &&

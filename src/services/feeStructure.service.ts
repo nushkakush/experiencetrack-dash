@@ -49,7 +49,6 @@ export class FeeStructureService {
       id: undefined, // Let it generate a new ID
       student_id: studentId,
       structure_type: 'custom',
-      custom_dates_enabled: true,
       // Set the appropriate plan-specific field
       one_shot_dates: paymentPlan === 'one_shot' ? planSpecificDates : {},
       sem_wise_dates: paymentPlan === 'sem_wise' ? planSpecificDates : {},
@@ -82,9 +81,7 @@ export class FeeStructureService {
     const planSpecificDates = PaymentScheduleOverrides.toPlanSpecificJson(customDates, paymentPlan);
 
     // Update only the specific plan field, don't touch the others
-    const updateData: Partial<FeeStructureUpdate> = {
-      custom_dates_enabled: true,
-    };
+    const updateData: Partial<FeeStructureUpdate> = {};
 
     // Set only the specific plan field
     if (paymentPlan === 'one_shot') {

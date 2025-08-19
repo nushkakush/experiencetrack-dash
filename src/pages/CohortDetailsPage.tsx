@@ -111,6 +111,7 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
           onStudentDeleted={loadData}
           onStudentUpdated={handleStudentUpdated}
           loading={loading}
+          cohortName={cohort?.name}
         />
       </div>
     </DashboardShell>

@@ -75,7 +75,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
       one_shot_discount_percentage: feeStructureData.one_shot_discount_percentage || 0,
       is_setup_complete: false,
       structure_type: 'cohort' as const,
-      custom_dates_enabled: false,
+
       one_shot_dates: {},
       sem_wise_dates: {},
       instalment_wise_dates: {},

@@ -173,6 +173,7 @@ export interface UsePaymentFormProps {
   selectedPaymentPlan?: PaymentPlan;
   onPaymentSubmission: (paymentData: PaymentSubmissionData) => void;
   studentData: StudentData;
+  isAdminMode?: boolean;
 }
 
 // Payment Form Validation Types

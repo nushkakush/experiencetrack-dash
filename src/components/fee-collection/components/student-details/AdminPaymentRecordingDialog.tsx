@@ -42,6 +42,16 @@ interface AdminPaymentRecordingDialogProps {
   student: StudentPaymentSummary;
   paymentItem: PaymentScheduleItem | null;
   onPaymentRecorded?: () => void; // Callback to refresh the payment schedule
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 interface AdminPaymentBreakdown {
@@ -54,7 +64,7 @@ interface AdminPaymentBreakdown {
 
 export const AdminPaymentRecordingDialog: React.FC<
   AdminPaymentRecordingDialogProps
-> = ({ open, onOpenChange, student, paymentItem, onPaymentRecorded }) => {
+> = ({ open, onOpenChange, student, paymentItem, onPaymentRecorded, feeStructure }) => {
   const [adminPaymentBreakdown, setAdminPaymentBreakdown] =
     useState<AdminPaymentBreakdown | null>(null);
   const [studentPaymentBreakdown, setStudentPaymentBreakdown] =
@@ -197,6 +207,17 @@ export const AdminPaymentRecordingDialog: React.FC<
         studentId: student.student_id,
         cohortId: student.student?.cohort_id,
         paymentPlan: student.payment_plan,
+        // Pass fee structure data if available to ensure correct dates are used
+        feeStructureData: feeStructure ? {
+          total_program_fee: feeStructure.total_program_fee,
+          admission_fee: feeStructure.admission_fee,
+          number_of_semesters: feeStructure.number_of_semesters,
+          instalments_per_semester: feeStructure.instalments_per_semester,
+          one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+          one_shot_dates: feeStructure.one_shot_dates,
+          sem_wise_dates: feeStructure.sem_wise_dates,
+          instalment_wise_dates: feeStructure.instalment_wise_dates,
+        } : undefined,
       });
 
       console.log('🔍 [AdminPaymentDialog] Payment engine response:', {

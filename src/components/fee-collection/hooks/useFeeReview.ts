@@ -161,6 +161,12 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
       const preloadPlans = async () => {
         const plans: PaymentPlan[] = ['one_shot', 'sem_wise', 'instalment_wise'];
         const emptyDates = {};
+        // Accumulate seed dates for all plans from engine
+        const seeds: {
+          one_shot: Record<string, string>;
+          sem_wise: Record<string, string>;
+          instalment_wise: Record<string, string>;
+        } = { one_shot: {}, sem_wise: {}, instalment_wise: {} };
         
         // Preload all plans with no scholarship and with temporary scholarships for instant switching
         for (const plan of plans) {
@@ -185,6 +191,24 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
               
               const result = await getPaymentBreakdown(params);
               cachedReviewsRef.current[noScholarshipCacheKey] = result.breakdown;
+              // Extract dates for seeding
+              const b = result.breakdown;
+              if (plan === 'one_shot') {
+                const d = b?.oneShotPayment?.paymentDate;
+                if (typeof d === 'string' && d) seeds.one_shot['one-shot'] = d;
+              } else if (plan === 'sem_wise') {
+                (b?.semesters || []).forEach((s: any) => {
+                  const v = s?.instalments?.[0]?.paymentDate;
+                  if (typeof v === 'string' && v) seeds.sem_wise[`semester-${s.semesterNumber}-instalment-0`] = v;
+                });
+              } else {
+                (b?.semesters || []).forEach((s: any) => {
+                  (s?.instalments || []).forEach((inst: any, idx: number) => {
+                    const v = inst?.paymentDate;
+                    if (typeof v === 'string' && v) seeds.instalment_wise[`semester-${s.semesterNumber}-instalment-${idx}`] = v;
+                  });
+                });
+              }
               console.log('Preloaded plan (no scholarship):', plan);
             } catch (err) {
               console.warn('Failed to preload plan (no scholarship):', plan, err);
@@ -229,6 +253,24 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
             }
           }
         }
+        // Seed dates once after preloading to avoid flicker; preserve any user edits
+        setDatesByPlan(prev => {
+          // Only seed if we don't already have saved dates
+          const hasSavedDates = Object.keys(prev.one_shot).length > 0 || 
+                               Object.keys(prev.sem_wise).length > 0 || 
+                               Object.keys(prev.instalment_wise).length > 0;
+          
+          if (hasSavedDates) {
+            console.log('Skipping engine seeding - saved dates already exist');
+            return prev;
+          }
+          
+          return {
+            one_shot: { ...seeds.one_shot, ...prev.one_shot },
+            sem_wise: { ...seeds.sem_wise, ...prev.sem_wise },
+            instalment_wise: { ...seeds.instalment_wise, ...prev.instalment_wise },
+          };
+        });
         setIsPreloaded(true);
       };
       
@@ -246,37 +288,35 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
   // Load dates for all plans when fee structure changes to prevent data loss
   React.useEffect(() => {
     try {
-      if ((feeStructure as any)?.custom_dates_enabled) {
-        const allPlanDates: {
-          one_shot: Record<string, string>;
-          sem_wise: Record<string, string>;
-          instalment_wise: Record<string, string>;
-        } = { one_shot: {}, sem_wise: {}, instalment_wise: {} };
+      const allPlanDates: {
+        one_shot: Record<string, string>;
+        sem_wise: Record<string, string>;
+        instalment_wise: Record<string, string>;
+      } = { one_shot: {}, sem_wise: {}, instalment_wise: {} };
 
-        // Load dates for all plans to prevent data loss during editing
-        if ((feeStructure as any)?.one_shot_dates) {
-          allPlanDates.one_shot = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).one_shot_dates, 'one_shot');
-        }
-        if ((feeStructure as any)?.sem_wise_dates) {
-          allPlanDates.sem_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).sem_wise_dates, 'sem_wise');
-        }
-        if ((feeStructure as any)?.instalment_wise_dates) {
-          allPlanDates.instalment_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).instalment_wise_dates, 'instalment_wise');
-        }
+      // Always load saved dates from database (not just when custom_dates_enabled)
+      if ((feeStructure as any)?.one_shot_dates && Object.keys((feeStructure as any).one_shot_dates).length > 0) {
+        allPlanDates.one_shot = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).one_shot_dates, 'one_shot');
+      }
+      if ((feeStructure as any)?.sem_wise_dates && Object.keys((feeStructure as any).sem_wise_dates).length > 0) {
+        allPlanDates.sem_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).sem_wise_dates, 'sem_wise');
+      }
+      if ((feeStructure as any)?.instalment_wise_dates && Object.keys((feeStructure as any).instalment_wise_dates).length > 0) {
+        allPlanDates.instalment_wise = PaymentScheduleOverrides.fromPlanSpecificJson((feeStructure as any).instalment_wise_dates, 'instalment_wise');
+      }
 
-        // Only update state if we have dates to load
-        const hasAnyDates = Object.keys(allPlanDates.one_shot).length > 0 || 
-                           Object.keys(allPlanDates.sem_wise).length > 0 || 
-                           Object.keys(allPlanDates.instalment_wise).length > 0;
+      // Only update state if we have dates to load
+      const hasAnyDates = Object.keys(allPlanDates.one_shot).length > 0 || 
+                         Object.keys(allPlanDates.sem_wise).length > 0 || 
+                         Object.keys(allPlanDates.instalment_wise).length > 0;
 
-        if (hasAnyDates) {
-          console.log('Loading saved dates for all plans:', allPlanDates);
-          setDatesByPlan(prev => ({
-            one_shot: { ...prev.one_shot, ...allPlanDates.one_shot },
-            sem_wise: { ...prev.sem_wise, ...allPlanDates.sem_wise },
-            instalment_wise: { ...prev.instalment_wise, ...allPlanDates.instalment_wise },
-          }));
-        }
+      if (hasAnyDates) {
+        console.log('Loading saved dates for all plans:', allPlanDates);
+        setDatesByPlan(prev => ({
+          one_shot: { ...prev.one_shot, ...allPlanDates.one_shot },
+          sem_wise: { ...prev.sem_wise, ...allPlanDates.sem_wise },
+          instalment_wise: { ...prev.instalment_wise, ...allPlanDates.instalment_wise },
+        }));
       }
     } catch (err) {
       console.error('Error loading dates:', err);
@@ -287,6 +327,54 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
   const feeReview = useMemo(() => {
     return engineReview;
   }, [engineReview]);
+
+  // Only seed from engine if no saved dates exist for the current plan
+  React.useEffect(() => {
+    if (!engineReview) return;
+    
+    // Check if we already have saved dates for this plan
+    const currentPlanDates = datesByPlan[selectedPaymentPlan] || {};
+    const hasSavedDates = Object.keys(currentPlanDates).length > 0;
+    
+    // If we have saved dates, don't overwrite with engine results
+    if (hasSavedDates) {
+      console.log('Using saved dates, skipping engine seeding for plan:', selectedPaymentPlan);
+      return;
+    }
+    
+    const seed: Record<string, string> = {};
+    if (selectedPaymentPlan === 'one_shot') {
+      const d = engineReview?.oneShotPayment?.paymentDate;
+      if (typeof d === 'string' && d) seed['one-shot'] = d;
+    } else if (selectedPaymentPlan === 'sem_wise') {
+      const semesters = engineReview?.semesters || [];
+      semesters.forEach((s: any) => {
+        const v = s?.instalments?.[0]?.paymentDate;
+        if (typeof v === 'string' && v)
+          seed[`semester-${s.semesterNumber}-instalment-0`] = v;
+      });
+    } else if (selectedPaymentPlan === 'instalment_wise') {
+      const semesters = engineReview?.semesters || [];
+      semesters.forEach((s: any) => {
+        (s?.instalments || []).forEach((inst: any, idx: number) => {
+          const v = inst?.paymentDate;
+          if (typeof v === 'string' && v)
+            seed[`semester-${s.semesterNumber}-instalment-${idx}`] = v;
+        });
+      });
+    }
+    // Only seed if we have engine dates and no saved dates
+    if (Object.keys(seed).length > 0) {
+      console.log('Seeding dates from engine for plan:', selectedPaymentPlan, seed);
+      setDatesByPlan(prev => {
+        const currentPlanDates = prev[selectedPaymentPlan] || {};
+        return {
+          ...prev,
+          [selectedPaymentPlan]: { ...currentPlanDates, ...seed },
+        };
+      });
+    }
+  }, [engineReview, selectedPaymentPlan, datesByPlan]);
 
   const handlePaymentDateChange = useCallback((key: string, value: string) => {
     // Skip if payment plan is not selected yet

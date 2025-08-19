@@ -16,12 +16,23 @@ interface StudentDetailsModalProps {
   student: StudentPaymentSummary | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ 
   student, 
   open, 
-  onOpenChange 
+  onOpenChange,
+  feeStructure
 }) => {
   const { communications, loading } = useStudentDetails({ student });
 
@@ -73,11 +84,11 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
             </TabsList>
             
             <TabsContent value="financial" className="mt-4">
-              <FinancialSummary student={student} />
+              <FinancialSummary student={student} feeStructure={feeStructure} />
             </TabsContent>
             
             <TabsContent value="schedule" className="mt-4">
-              <PaymentSchedule student={student} />
+              <PaymentSchedule student={student} feeStructure={feeStructure} />
             </TabsContent>
             
             <TabsContent value="communication" className="mt-4">

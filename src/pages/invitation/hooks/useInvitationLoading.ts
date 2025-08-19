@@ -107,14 +107,22 @@ export const useInvitationLoading = ({ token }: UseInvitationLoadingProps) => {
 
         if (checkResp.ok) {
           const checkJson = await checkResp.json();
-          setIsExistingUser(!!checkJson.exists);
+          if (checkJson.success) {
+            setIsExistingUser(!!checkJson.exists);
+          } else {
+            console.warn("User existence check failed:", checkJson.error);
+            // Default to false (new user) to show signup form
+            setIsExistingUser(false);
+          }
         } else {
-          // If the function errors, default to assuming existing user to reduce friction
-          setIsExistingUser(true);
+          console.warn("User existence check failed with status:", checkResp.status);
+          // Default to false (new user) to show signup form
+          setIsExistingUser(false);
         }
-      } catch {
-        // Network or other error – assume existing user to avoid double password friction
-        setIsExistingUser(true);
+      } catch (error) {
+        console.error("Error checking user existence:", error);
+        // Default to false (new user) to show signup form
+        setIsExistingUser(false);
       }
       
       setLoading(false);

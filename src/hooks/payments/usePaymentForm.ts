@@ -22,6 +22,7 @@ export const usePaymentForm = ({
   selectedPaymentPlan,
   onPaymentSubmission,
   studentData,
+  isAdminMode = false,
 }: UsePaymentFormProps) => {
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>('');
   const [amountToPay, setAmountToPay] = useState<number>(0);
@@ -196,11 +197,20 @@ export const usePaymentForm = ({
       }
     }
 
-    // Validate file uploads
-    const requiredFiles = getRequiredFilesForMode(selectedPaymentMode);
-    for (const fileField of requiredFiles) {
-      if (!uploadedFiles[fileField]) {
-        newErrors[fileField] = 'Please upload the required file';
+    // Validate file uploads (skip for admin mode with razorpay)
+    if (!(isAdminMode && selectedPaymentMode === 'razorpay')) {
+      const requiredFiles = getRequiredFilesForMode(selectedPaymentMode);
+      for (const fileField of requiredFiles) {
+        if (!uploadedFiles[fileField]) {
+          newErrors[fileField] = 'Please upload the required file';
+        }
+      }
+    }
+
+    // For admin mode with razorpay, validate payment ID instead
+    if (isAdminMode && selectedPaymentMode === 'razorpay') {
+      if (!paymentDetails.razorpayPaymentId) {
+        newErrors.razorpayPaymentId = 'Payment ID is required';
       }
     }
 
@@ -212,6 +222,7 @@ export const usePaymentForm = ({
     paymentDetails,
     uploadedFiles,
     validateAmount,
+    isAdminMode,
   ]);
 
   const handleSubmit = useCallback(() => {

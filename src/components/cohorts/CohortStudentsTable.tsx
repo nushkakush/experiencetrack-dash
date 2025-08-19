@@ -24,11 +24,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import EditStudentDialog from './EditStudentDialog';
 import StudentScholarshipDialog from './StudentScholarshipDialog';
+import PaymentPlanDialog from './PaymentPlanDialog';
 import AvatarUpload from './AvatarUpload';
 import { CohortStudent } from '@/types/cohort';
 import { Scholarship } from '@/types/fee';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
+import { studentPaymentPlanService, StudentPaymentPlan } from '@/services/studentPaymentPlan.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { toast } from 'sonner';
@@ -39,6 +41,7 @@ import {
   Trash2,
   UserPlus,
   CheckCircle,
+  CreditCard,
 } from 'lucide-react';
 
 interface CohortStudentsTableProps {
@@ -50,6 +53,7 @@ interface CohortStudentsTableProps {
     updates: Partial<CohortStudent>
   ) => void;
   loading?: boolean;
+  cohortName?: string;
 }
 
 export default function CohortStudentsTable({
@@ -58,6 +62,7 @@ export default function CohortStudentsTable({
   onStudentDeleted,
   onStudentUpdated,
   loading = false,
+  cohortName,
 }: CohortStudentsTableProps) {
   const { profile } = useAuth();
   const { hasPermission } = useFeaturePermissions();
@@ -74,6 +79,13 @@ export default function CohortStudentsTable({
     Record<string, StudentScholarshipWithDetails>
   >({});
   const [loadingScholarships, setLoadingScholarships] = useState(false);
+  const [paymentPlanAssignments, setPaymentPlanAssignments] = useState<
+    Record<string, boolean>
+  >({});
+  const [paymentPlanDetails, setPaymentPlanDetails] = useState<
+    Record<string, StudentPaymentPlan>
+  >({});
+  const [loadingPaymentPlans, setLoadingPaymentPlans] = useState(false);
 
   const canManageStudents = hasPermission('cohorts.manage_students');
   const canEditStudents = hasPermission('cohorts.edit_students');
@@ -88,12 +100,23 @@ export default function CohortStudentsTable({
       );
 
       if (invitationResult.success) {
-        // TODO: Send email via Edge Function or SendGrid
-        // For now, just show success message
-        toast.success('Invitation prepared successfully!');
-        Logger.getInstance().info('Invitation URL generated', {
-          url: invitationResult.data?.invitationUrl,
-        });
+        // Send email via Edge Function
+        const emailResult = await cohortStudentsService.sendInvitationEmail(
+          student.id,
+          student.email,
+          student.first_name || '',
+          student.last_name || '',
+          cohortName || 'Your Cohort'
+        );
+        
+        if (emailResult.success && emailResult.data?.emailSent) {
+          toast.success('Invitation email sent successfully!');
+        } else {
+          toast.success('Invitation prepared successfully!');
+          Logger.getInstance().info('Invitation URL generated', {
+            url: invitationResult.data?.invitationUrl,
+          });
+        }
 
         // Update the student's status locally
         if (onStudentUpdated) {
@@ -181,6 +204,54 @@ export default function CohortStudentsTable({
     }
   }, [students, canAssignScholarships]);
 
+  const loadPaymentPlanAssignments = useCallback(async () => {
+    if (!students.length || !canAssignScholarships) return;
+
+    setLoadingPaymentPlans(true);
+    try {
+      const studentIds = students.map(s => s.id);
+      const assignments: Record<string, boolean> = {};
+
+      // Use Promise.all for parallel requests to improve performance
+      const results = await Promise.all(
+        studentIds.map(studentId =>
+          studentPaymentPlanService
+            .getByStudent(studentId)
+            .then(result => ({
+              studentId,
+              hasPaymentPlan: result.success && !!result.data,
+              paymentPlanData: result.data,
+            }))
+            .catch(() => ({
+              studentId,
+              hasPaymentPlan: false,
+              paymentPlanData: null,
+            }))
+        )
+      );
+
+      // Convert results to assignments object and store details
+      const details: Record<string, StudentPaymentPlan> = {};
+      results.forEach(({ studentId, hasPaymentPlan, paymentPlanData }) => {
+        assignments[studentId] = hasPaymentPlan && !!paymentPlanData?.payment_plan;
+        if (paymentPlanData) {
+          details[studentId] = paymentPlanData;
+        }
+      });
+
+      setPaymentPlanAssignments(assignments);
+      setPaymentPlanDetails(details);
+
+      // Log the results for debugging
+      console.log('Payment plan assignments loaded:', results);
+      console.log('Payment plan details:', details);
+    } catch (error) {
+      console.error('Error loading payment plan assignments:', error);
+    } finally {
+      setLoadingPaymentPlans(false);
+    }
+  }, [students, canAssignScholarships]);
+
   const handleScholarshipAssigned = () => {
     console.log('handleScholarshipAssigned called - refreshing data');
     // Force immediate refresh of scholarship assignments
@@ -193,10 +264,27 @@ export default function CohortStudentsTable({
     }, 200);
   };
 
+  const handlePaymentPlanUpdated = () => {
+    console.log('handlePaymentPlanUpdated called - refreshing data');
+    // Force immediate refresh of payment plan assignments
+    loadPaymentPlanAssignments();
+    // Also refresh the table to show updated payment plan information
+    // Use a small delay to ensure the database update is complete
+    setTimeout(() => {
+      console.log('Triggering full table reload');
+      onStudentDeleted(); // This will trigger a reload
+    }, 200);
+  };
+
   // Load scholarship assignments when students change
   useEffect(() => {
     loadScholarshipAssignments();
   }, [students, canAssignScholarships, loadScholarshipAssignments]);
+
+  // Load payment plan assignments when students change
+  useEffect(() => {
+    loadPaymentPlanAssignments();
+  }, [students, canAssignScholarships, loadPaymentPlanAssignments]);
 
   if (loading) {
     return (
@@ -242,7 +330,7 @@ export default function CohortStudentsTable({
             <TableHead>Email</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Status</TableHead>
-            {canAssignScholarships && <TableHead>Scholarship</TableHead>}
+            {canAssignScholarships && <TableHead>Scholarship & Payment Plan</TableHead>}
             {canManageStudents && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
@@ -295,56 +383,106 @@ export default function CohortStudentsTable({
               </TableCell>
               {canAssignScholarships && (
                 <TableCell>
-                  <div className='flex items-center gap-2'>
-                    {scholarshipAssignments[student.id] ? (
-                      <div className='flex-1 min-w-0'>
-                        <div className='text-sm font-medium text-green-700 dark:text-green-300'>
-                          {scholarshipDetails[student.id]?.scholarship?.name ||
-                            'Scholarship'}
+                  <div className='space-y-3'>
+                    {/* Scholarship Section */}
+                    <div className='flex items-center gap-2'>
+                      {scholarshipAssignments[student.id] ? (
+                        <div className='flex-1 min-w-0'>
+                          <div className='text-sm font-medium text-green-700 dark:text-green-300'>
+                            {scholarshipDetails[student.id]?.scholarship?.name ||
+                              'Scholarship'}
+                          </div>
+                          <div className='text-xs text-muted-foreground'>
+                            {
+                              scholarshipDetails[student.id]?.scholarship
+                                ?.amount_percentage
+                            }
+                            %
+                            {scholarshipDetails[student.id]
+                              ?.additional_discount_percentage > 0 &&
+                              ` + ${scholarshipDetails[student.id]?.additional_discount_percentage}% additional`}
+                          </div>
                         </div>
-                        <div className='text-xs text-muted-foreground'>
-                          {
-                            scholarshipDetails[student.id]?.scholarship
-                              ?.amount_percentage
-                          }
-                          %
-                          {scholarshipDetails[student.id]
-                            ?.additional_discount_percentage > 0 &&
-                            ` + ${scholarshipDetails[student.id]?.additional_discount_percentage}% additional`}
+                      ) : (
+                        <div className='text-sm text-muted-foreground'>
+                          No scholarship
                         </div>
-                      </div>
-                    ) : (
-                      <div className='text-sm text-muted-foreground'>
-                        No scholarship
-                      </div>
-                    )}
-                    <StudentScholarshipDialog
-                      student={student}
-                      scholarships={scholarships}
-                      onScholarshipAssigned={handleScholarshipAssigned}
-                    >
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        className={`h-8 w-8 p-0 hover:bg-primary/10 ${
-                          scholarshipAssignments[student.id]
-                            ? 'text-green-600 hover:text-green-700'
-                            : 'text-primary hover:text-primary/80'
-                        }`}
-                        title={
-                          scholarshipAssignments[student.id]
-                            ? 'Edit scholarship'
-                            : 'Assign scholarship'
-                        }
-                        disabled={loadingScholarships}
+                      )}
+                      <StudentScholarshipDialog
+                        student={student}
+                        scholarships={scholarships}
+                        onScholarshipAssigned={handleScholarshipAssigned}
                       >
-                        {scholarshipAssignments[student.id] ? (
-                          <CheckCircle className='h-4 w-4' />
-                        ) : (
-                          <Award className='h-4 w-4' />
-                        )}
-                      </Button>
-                    </StudentScholarshipDialog>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className={`h-8 w-8 p-0 hover:bg-primary/10 ${
+                            scholarshipAssignments[student.id]
+                              ? 'text-green-600 hover:text-green-700'
+                              : 'text-primary hover:text-primary/80'
+                          }`}
+                          title={
+                            scholarshipAssignments[student.id]
+                              ? 'Edit scholarship'
+                              : 'Assign scholarship'
+                          }
+                          disabled={loadingScholarships}
+                        >
+                          {scholarshipAssignments[student.id] ? (
+                            <CheckCircle className='h-4 w-4' />
+                          ) : (
+                            <Award className='h-4 w-4' />
+                          )}
+                        </Button>
+                      </StudentScholarshipDialog>
+                    </div>
+
+                    {/* Payment Plan Section */}
+                    <div className='flex items-center gap-2'>
+                      {paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan ? (
+                        <div className='flex-1 min-w-0'>
+                          <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
+                            {paymentPlanDetails[student.id]?.payment_plan === 'one_shot' && 'One Shot Payment'}
+                            {paymentPlanDetails[student.id]?.payment_plan === 'sem_wise' && 'Semester Wise'}
+                            {paymentPlanDetails[student.id]?.payment_plan === 'instalment_wise' && 'Instalment Wise'}
+                            {paymentPlanDetails[student.id]?.payment_plan === 'not_selected' && 'Not Selected'}
+                          </div>
+                          <div className='text-xs text-muted-foreground'>
+                            Payment plan set
+                          </div>
+                        </div>
+                      ) : (
+                        <div className='text-sm text-muted-foreground'>
+                          No payment plan
+                        </div>
+                      )}
+                      <PaymentPlanDialog
+                        student={student}
+                        onPaymentPlanUpdated={handlePaymentPlanUpdated}
+                      >
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className={`h-8 w-8 p-0 hover:bg-primary/10 ${
+                            paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan
+                              ? 'text-blue-600 hover:text-blue-700'
+                              : 'text-primary hover:text-primary/80'
+                          }`}
+                          title={
+                            paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan
+                              ? 'Edit payment plan'
+                              : 'Select payment plan'
+                          }
+                          disabled={loadingPaymentPlans}
+                        >
+                          {paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan ? (
+                            <CheckCircle className='h-4 w-4' />
+                          ) : (
+                            <CreditCard className='h-4 w-4' />
+                          )}
+                        </Button>
+                      </PaymentPlanDialog>
+                    </div>
                   </div>
                 </TableCell>
               )}

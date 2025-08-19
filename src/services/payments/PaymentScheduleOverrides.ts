@@ -83,37 +83,64 @@ export class PaymentScheduleOverrides {
 
     if (paymentPlan === 'one_shot') {
       // One-shot plan: extract program fee due date
+      // Handle both nested format: {"program_fee_due_date": "..."} 
+      // and flat UI format: {"one-shot": "..."}
       if (planJson.program_fee_due_date) {
         editable['one-shot'] = planJson.program_fee_due_date;
+      } else if (planJson['one-shot']) {
+        editable['one-shot'] = planJson['one-shot'];
       }
     } else if (paymentPlan === 'sem_wise') {
       // Semester-wise plan: extract semester dates
-      // Convert back to UI format "semester-1-instalment-0" 
+      // Handle both nested format: {"semesters": {"semester_1": {"due_date": "..."}}}
+      // and flat UI format: {"semester-1-instalment-0": "..."}
       const semesters = planJson.semesters || {};
       
-      Object.keys(semesters).forEach(semesterKey => {
-        const semesterData = semesters[semesterKey];
-        if (semesterData.due_date) {
-          const semesterNum = semesterKey.replace('semester_', '');
-          editable[`semester-${semesterNum}-instalment-0`] = semesterData.due_date;
-        }
-      });
+      if (Object.keys(semesters).length > 0) {
+        // Nested format
+        Object.keys(semesters).forEach(semesterKey => {
+          const semesterData = semesters[semesterKey];
+          if (semesterData.due_date) {
+            const semesterNum = semesterKey.replace('semester_', '');
+            editable[`semester-${semesterNum}-instalment-0`] = semesterData.due_date;
+          }
+        });
+      } else {
+        // Flat UI format - check for semester-*-instalment-0 keys
+        Object.keys(planJson).forEach(key => {
+          if (key.startsWith('semester-') && key.includes('-instalment-0')) {
+            editable[key] = planJson[key];
+          }
+        });
+      }
     } else if (paymentPlan === 'instalment_wise') {
       // Installment-wise plan: extract individual installment dates
+      // Handle both nested format: {"semesters": {"semester_1": {"installments": {"installment_1": "..."}}}}
+      // and flat UI format: {"semester-1-instalment-0": "..."}
       const semesters = planJson.semesters || {};
       
-      Object.keys(semesters).forEach(semesterKey => {
-        const semesterData = semesters[semesterKey];
-        const semesterNum = semesterKey.replace('semester_', '');
-        
-        if (semesterData.installments) {
-          Object.keys(semesterData.installments).forEach(installmentKey => {
-            const installmentNum = installmentKey.replace('installment_', '');
-            const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
-            editable[dateKey] = semesterData.installments[installmentKey];
-          });
-        }
-      });
+      if (Object.keys(semesters).length > 0) {
+        // Nested format
+        Object.keys(semesters).forEach(semesterKey => {
+          const semesterData = semesters[semesterKey];
+          const semesterNum = semesterKey.replace('semester_', '');
+          
+          if (semesterData.installments) {
+            Object.keys(semesterData.installments).forEach(installmentKey => {
+              const installmentNum = installmentKey.replace('installment_', '');
+              const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
+              editable[dateKey] = semesterData.installments[installmentKey];
+            });
+          }
+        });
+      } else {
+        // Flat UI format - check for semester-*-instalment-* keys
+        Object.keys(planJson).forEach(key => {
+          if (key.startsWith('semester-') && key.includes('-instalment-')) {
+            editable[key] = planJson[key];
+          }
+        });
+      }
     }
 
     return editable;

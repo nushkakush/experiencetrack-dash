@@ -11,10 +11,10 @@ export interface FeeStructure {
   is_setup_complete: boolean;
   structure_type: 'cohort' | 'custom';
   student_id?: string | null;
-  custom_dates_enabled: boolean;
-  one_shot_dates: Record<string, any>; // Specific to one-shot plan
-  sem_wise_dates: Record<string, any>; // Specific to semester-wise plan
-  instalment_wise_dates: Record<string, any>; // Specific to installment-wise plan
+  // custom_dates_enabled removed from DB; engine relies solely on presence of plan-specific date JSON
+  one_shot_dates: Record<string, any>; // Custom dates for one-shot payment plan (jsonb)
+  sem_wise_dates: Record<string, any>; // Custom dates for semester-wise payment plan (jsonb)
+  instalment_wise_dates: Record<string, any>; // Custom dates for installment-wise payment plan (jsonb)
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -183,7 +183,9 @@ export interface StudentPaymentSummary {
   // Joined fields
   student?: CohortStudent;
   payments?: StudentPayment[];
-  payment_schedule?: Record<string, unknown>; // Payment schedule data from database
+  // Installment tracking (includes ₹0 scholarship installments)
+  total_installments?: number;
+  completed_installments?: number;
 }
 
 export interface PaymentTransaction {

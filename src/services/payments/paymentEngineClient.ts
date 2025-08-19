@@ -18,7 +18,7 @@ export interface PaymentEngineParams {
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
     // Custom dates configuration
-    custom_dates_enabled?: boolean;
+
     one_shot_dates?: any; // JSON data for one-shot payment dates
     sem_wise_dates?: any; // JSON data for semester-wise payment dates
     instalment_wise_dates?: any; // JSON data for installment-wise payment dates

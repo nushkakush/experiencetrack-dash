@@ -59,6 +59,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -87,6 +88,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={[]}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -100,6 +102,7 @@ describe('CohortStudentsTable', () => {
           students={[]}
           onStudentDeleted={mockOnStudentDeleted}
           loading={true}
+          cohortName="Test Cohort"
         />
       );
 
@@ -120,6 +123,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={studentsWithDifferentStatuses}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -138,6 +142,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={[studentWithDate]}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -157,6 +162,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={[studentWithMissingData]}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -174,6 +180,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -201,6 +208,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -233,6 +241,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -263,6 +272,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -285,6 +295,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -309,6 +320,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 
@@ -332,6 +344,7 @@ describe('CohortStudentsTable', () => {
         <CohortStudentsTable
           students={mockStudents}
           onStudentDeleted={mockOnStudentDeleted}
+          cohortName="Test Cohort"
         />
       );
 

@@ -11,6 +11,16 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 interface CalculatedFinancialData {
@@ -28,6 +38,7 @@ interface CalculatedFinancialData {
 
 export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   student,
+  feeStructure,
 }) => {
   const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
   const [financialData, setFinancialData] = useState<CalculatedFinancialData>({
@@ -102,7 +113,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
 
     try {
       // Fetch canonical breakdown and fee structure from Edge Function
-      const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
+      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as
@@ -110,16 +121,27 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           | 'sem_wise'
           | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
+        // Pass fee structure data if available to ensure correct dates are used
+        feeStructureData: feeStructure ? {
+          total_program_fee: feeStructure.total_program_fee,
+          admission_fee: feeStructure.admission_fee,
+          number_of_semesters: feeStructure.number_of_semesters,
+          instalments_per_semester: feeStructure.instalments_per_semester,
+          one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+          one_shot_dates: feeStructure.one_shot_dates,
+          sem_wise_dates: feeStructure.sem_wise_dates,
+          instalment_wise_dates: feeStructure.instalment_wise_dates,
+        } : undefined,
       });
 
-      if (!feeStructure) {
+      if (!responseFeeStructure) {
         throw new Error('Fee structure not found in edge function response');
       }
 
       // Calculate total amount (program fee + admission fee)
       const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
       const admissionFee =
-        feeReview?.admissionFee?.totalPayable || feeStructure.admission_fee;
+        feeReview?.admissionFee?.totalPayable || responseFeeStructure.admission_fee;
 
       // Fetch verified payment transactions
       let verifiedPayments = 0;

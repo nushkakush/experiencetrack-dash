@@ -133,7 +133,6 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
         
         console.log('🎯 Student preview - Full fee structure received:', {
           feeStructure: feeStructure,
-          customDatesEnabled: feeStructure?.custom_dates_enabled,
           hasOneShotDates: !!(feeStructure as any)?.one_shot_dates,
           hasSemWiseDates: !!(feeStructure as any)?.sem_wise_dates,
           hasInstalmentWiseDates: !!(feeStructure as any)?.instalment_wise_dates,
@@ -142,20 +141,17 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
           instalmentWiseDatesValue: (feeStructure as any)?.instalment_wise_dates,
         });
         
-        console.log('🎯 Student preview calling payment engine with custom dates:', {
+        console.log('🎯 Student preview calling payment engine with saved database dates:', {
           cohortId: String(cohortId),
           paymentPlan: selectedPlan,
           scholarshipId: effectiveScholarshipId === 'no_scholarship' ? undefined : effectiveScholarshipId,
           additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
-          startDate: cohortStartDate,
-          customDatesEnabled: feeStructure?.custom_dates_enabled,
           feeStructureData: {
             total_program_fee: feeStructure.total_program_fee,
             admission_fee: feeStructure.admission_fee,
             number_of_semesters: feeStructure.number_of_semesters,
             instalments_per_semester: feeStructure.instalments_per_semester,
             one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-            custom_dates_enabled: feeStructure.custom_dates_enabled,
             one_shot_dates: (feeStructure as any).one_shot_dates,
             sem_wise_dates: (feeStructure as any).sem_wise_dates,
             instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
@@ -167,14 +163,13 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
           paymentPlan: selectedPlan,
           scholarshipId: effectiveScholarshipId === 'no_scholarship' ? undefined : effectiveScholarshipId,
           additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
-          // Pass complete fee structure data including custom dates to payment engine
+          // Pass complete fee structure data including saved dates to payment engine
           feeStructureData: {
             total_program_fee: feeStructure.total_program_fee,
             admission_fee: feeStructure.admission_fee,
             number_of_semesters: feeStructure.number_of_semesters,
             instalments_per_semester: feeStructure.instalments_per_semester,
             one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-            custom_dates_enabled: feeStructure.custom_dates_enabled,
             one_shot_dates: (feeStructure as any).one_shot_dates,
             sem_wise_dates: (feeStructure as any).sem_wise_dates,
             instalment_wise_dates: (feeStructure as any).instalment_wise_dates,

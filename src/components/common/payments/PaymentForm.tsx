@@ -46,6 +46,7 @@ export const PaymentForm = React.memo<PaymentFormProps>(
       selectedPaymentPlan,
       onPaymentSubmission,
       studentData,
+      isAdminMode,
     });
 
     const paymentModeConfig = getPaymentModeConfig();

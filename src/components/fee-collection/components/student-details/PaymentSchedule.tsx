@@ -12,6 +12,16 @@ import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
 
 interface PaymentScheduleProps {
   student: StudentPaymentSummary;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 interface PaymentScheduleItem {
@@ -28,6 +38,7 @@ interface PaymentScheduleItem {
 
 export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
   student,
+  feeStructure,
 }) => {
   const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleItem[]>(
     []
@@ -104,7 +115,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       }
 
       // Fetch canonical breakdown and fee structure from Edge Function
-      const { breakdown: feeReview, feeStructure } = await getFullPaymentView({
+      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as
@@ -113,9 +124,20 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           | 'instalment_wise',
         scholarshipId: scholarshipId || undefined,
         additionalDiscountPercentage,
+        // Pass fee structure data if available to ensure correct dates are used
+        feeStructureData: feeStructure ? {
+          total_program_fee: feeStructure.total_program_fee,
+          admission_fee: feeStructure.admission_fee,
+          number_of_semesters: feeStructure.number_of_semesters,
+          instalments_per_semester: feeStructure.instalments_per_semester,
+          one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+          one_shot_dates: feeStructure.one_shot_dates,
+          sem_wise_dates: feeStructure.sem_wise_dates,
+          instalment_wise_dates: feeStructure.instalment_wise_dates,
+        } : undefined,
       });
 
-      if (!feeStructure) {
+      if (!responseFeeStructure) {
         throw new Error('Fee structure not found in edge function response');
       }
 
@@ -151,7 +173,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       schedule.push({
         id: 'admission_fee',
         type: 'Admission Fee',
-        amount: feeStructure.admission_fee,
+        amount: responseFeeStructure.admission_fee,
         dueDate: new Date().toISOString(),
         status: 'paid',
         paymentDate: new Date().toISOString(),
@@ -497,6 +519,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         student={student}
         paymentItem={selectedPaymentItem}
         onPaymentRecorded={handlePaymentRecorded}
+        feeStructure={feeStructure}
       />
     </>
   );

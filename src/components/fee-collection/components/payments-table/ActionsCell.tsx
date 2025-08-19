@@ -36,12 +36,23 @@ interface ActionsCellProps {
   student: StudentPaymentSummary;
   onStudentSelect: (student: StudentPaymentSummary) => void;
   onVerificationUpdate?: () => void;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 export const ActionsCell: React.FC<ActionsCellProps> = ({
   student,
   onStudentSelect,
   onVerificationUpdate,
+  feeStructure,
 }) => {
   const { profile } = useAuth();
   const [studentDetailsOpen, setStudentDetailsOpen] = React.useState(false);
@@ -321,6 +332,7 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
         student={student}
         open={studentDetailsOpen}
         onOpenChange={setStudentDetailsOpen}
+        feeStructure={feeStructure}
       />
 
       {/* Payment Transactions Dialog */}

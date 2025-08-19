@@ -25,36 +25,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Prefer the direct admin API to check user existence reliably
-    const { data, error } = await supabase.auth.admin.getUserByEmail(email);
+    // Check if user exists by looking for the email in the users list
+    const { data, error } = await supabase.auth.admin.listUsers();
 
     if (error) {
-      const message = (error as any)?.message?.toLowerCase?.() || "";
-      const code = (error as any)?.status || (error as any)?.code;
-
-      // If user is not found, treat as non-existent
-      if (
-        message.includes("user not found") ||
-        message.includes("no user found") ||
-        code === 404 ||
-        code === "user_not_found"
-      ) {
-        return new Response(
-          JSON.stringify({ success: true, exists: false }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-        );
-      }
-
-      // Other errors
       return new Response(
         JSON.stringify({ success: false, error: (error as any)?.message || "Unknown error" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // If we got a user back, the user exists
+    // Check if the email exists in the users list
+    const userExists = data.users.some(user => user.email === email);
+
     return new Response(
-      JSON.stringify({ success: true, exists: !!data?.user }),
+      JSON.stringify({ success: true, exists: userExists }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (err) {

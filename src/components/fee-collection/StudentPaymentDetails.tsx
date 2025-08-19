@@ -15,11 +15,22 @@ import {
 interface StudentPaymentDetailsProps {
   student: StudentPaymentSummary;
   onClose: () => void;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: any;
+    sem_wise_dates?: any;
+    instalment_wise_dates?: any;
+  };
 }
 
 export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({ 
   student, 
-  onClose 
+  onClose,
+  feeStructure
 }) => {
   const { communications, loading } = useStudentDetails({ student });
 
@@ -52,13 +63,13 @@ export const StudentPaymentDetails: React.FC<StudentPaymentDetailsProps> = ({
         <StudentInfo student={student} />
 
         {/* Financial Summary */}
-        <FinancialSummary student={student} />
+        <FinancialSummary student={student} feeStructure={feeStructure} />
 
         {/* Quick Actions */}
         <QuickActions />
 
         {/* Payment Schedule */}
-        <PaymentSchedule student={student} />
+        <PaymentSchedule student={student} feeStructure={feeStructure} />
 
         {/* Communication History */}
         <CommunicationHistory communications={communications} />

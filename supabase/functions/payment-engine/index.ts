@@ -263,52 +263,122 @@ function convertPlanSpecificJsonToDateKeys(
 ): Record<string, string> {
   const editable: Record<string, string> = {};
 
+  console.log('🔍 Converting plan-specific JSON to date keys:', { planJson, paymentPlan });
+
   if (paymentPlan === 'one_shot') {
-    // One-shot plan: extract program fee due date
-    const due = (planJson as { program_fee_due_date?: string })
-      .program_fee_due_date;
+    // Handle both nested and flat formats for one-shot
+    // Nested: {"program_fee_due_date": "2025-08-20"}
+    // Flat: {"one-shot": "2025-08-20"}
+    const due = (planJson as { program_fee_due_date?: string }).program_fee_due_date;
+    const flatDue = (planJson as { 'one-shot'?: string })['one-shot'];
+    
     if (due) {
       editable['one-shot'] = due;
+      console.log('✅ Converted nested one-shot date:', due);
+    } else if (flatDue) {
+      editable['one-shot'] = flatDue;
+      console.log('✅ Converted flat one-shot date:', flatDue);
     }
   } else if (paymentPlan === 'sem_wise') {
-    // Semester-wise plan: extract semester dates
-    // Convert back to UI format "semester-1-instalment-0"
-    const semesters =
-      (planJson as { semesters?: Record<string, { due_date?: string }> })
-        .semesters || {};
-
-    Object.keys(semesters).forEach(semesterKey => {
-      const semesterData = semesters[semesterKey];
-      if (semesterData?.due_date) {
-        const semesterNum = semesterKey.replace('semester_', '');
-        editable[`semester-${semesterNum}-instalment-0`] =
-          semesterData.due_date;
-      }
-    });
-  } else if (paymentPlan === 'instalment_wise') {
-    // Installment-wise plan: extract individual installment dates
-    const semesters =
-      (
-        planJson as {
-          semesters?: Record<string, { installments?: Record<string, string> }>;
+    // Check for nested format first
+    const semesters = (planJson as { semesters?: Record<string, { due_date?: string }> }).semesters;
+    
+    if (semesters) {
+      // Nested format: {"semesters": {"semester_1": {"due_date": "..."}}}
+      Object.keys(semesters).forEach(semesterKey => {
+        const semesterData = semesters[semesterKey];
+        if (semesterData?.due_date) {
+          const semesterNum = semesterKey.replace('semester_', '');
+          editable[`semester-${semesterNum}-instalment-0`] = semesterData.due_date;
+          console.log(`✅ Converted nested sem-wise date for semester ${semesterNum}:`, semesterData.due_date);
         }
-      ).semesters || {};
+      });
+    } else {
+      // Flat format: {"semester-1-instalment-0": "2025-09-02", ...}
+      Object.keys(planJson).forEach(key => {
+        if (typeof planJson[key] === 'string' && key.includes('semester-') && key.includes('instalment-0')) {
+          editable[key] = planJson[key] as string;
+          console.log(`✅ Converted flat sem-wise date for ${key}:`, planJson[key]);
+        }
+      });
+    }
+  } else if (paymentPlan === 'instalment_wise') {
+    // Check for nested format first
+    const semesters = (planJson as { semesters?: Record<string, { installments?: Record<string, string> }> }).semesters;
+    
+    if (semesters) {
+      // Nested format: {"semesters": {"semester_1": {"installments": {"installment_1": "..."}}}}
+      Object.keys(semesters).forEach(semesterKey => {
+        const semesterData = semesters[semesterKey];
+        const semesterNum = semesterKey.replace('semester_', '');
 
-    Object.keys(semesters).forEach(semesterKey => {
-      const semesterData = semesters[semesterKey];
-      const semesterNum = semesterKey.replace('semester_', '');
-
-      if (semesterData?.installments) {
-        Object.keys(semesterData.installments).forEach(installmentKey => {
-          const installmentNum = installmentKey.replace('installment_', '');
-          const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
-          editable[dateKey] = semesterData.installments![installmentKey];
-        });
-      }
-    });
+        if (semesterData?.installments) {
+          Object.keys(semesterData.installments).forEach(installmentKey => {
+            const installmentNum = installmentKey.replace('installment_', '');
+            const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
+            editable[dateKey] = semesterData.installments![installmentKey];
+            console.log(`✅ Converted nested instalment-wise date for ${dateKey}:`, semesterData.installments![installmentKey]);
+          });
+        }
+      });
+    } else {
+      // Flat format: {"semester-1-instalment-0": "2025-08-19", ...}
+      Object.keys(planJson).forEach(key => {
+        if (typeof planJson[key] === 'string' && key.includes('semester-') && key.includes('instalment-')) {
+          editable[key] = planJson[key] as string;
+          console.log(`✅ Converted flat instalment-wise date for ${key}:`, planJson[key]);
+        }
+      });
+    }
   }
 
+  console.log('🏁 Final converted date keys:', editable);
   return editable;
+}
+
+// Utility to safely add months to a YYYY-MM-DD date string
+function addMonths(dateIso: string, monthsToAdd: number): string {
+  try {
+    const d = new Date(dateIso);
+    d.setHours(12, 0, 0, 0); // avoid DST issues
+    d.setMonth(d.getMonth() + monthsToAdd);
+    return d.toISOString().split('T')[0];
+  } catch (_) {
+    return dateIso;
+  }
+}
+
+// Generate default date keys in the same UI format used by the app
+function generateDefaultUiDateKeys(
+  plan: PaymentPlan,
+  startDate: string,
+  numberOfSemesters: number,
+  instalmentsPerSemester: number
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!startDate) return out;
+
+  if (plan === 'one_shot') {
+    out['one-shot'] = startDate;
+    return out;
+  }
+
+  if (plan === 'sem_wise') {
+    for (let sem = 1; sem <= numberOfSemesters; sem++) {
+      const offset = (sem - 1) * 6; // 6 months per semester
+      out[`semester-${sem}-instalment-0`] = addMonths(startDate, offset);
+    }
+    return out;
+  }
+
+  // instalment_wise → monthly installments within each semester
+  for (let sem = 1; sem <= numberOfSemesters; sem++) {
+    for (let i = 0; i < instalmentsPerSemester; i++) {
+      const offset = (sem - 1) * 6 + i;
+      out[`semester-${sem}-instalment-${i}`] = addMonths(startDate, offset);
+    }
+  }
+  return out;
 }
 
 // Apply JSON overrides to dates (shallow merge by known keys)
@@ -360,6 +430,39 @@ function applyDateOverrides(
           oneShotPayment.paymentDate
         );
       }
+      // Handle UI flat key: { 'one-shot': 'YYYY-MM-DD' }
+      else if ((overrides as Record<string, unknown>)['one-shot']) {
+        const v = String((overrides as Record<string, unknown>)['one-shot']);
+        oneShotPayment.paymentDate = v;
+        console.log('✅ Applied UI key one-shot date:', v);
+      }
+    }
+
+    // For sem-wise: single date per semester
+    if (plan === 'sem_wise') {
+      const semNested = (overrides as {
+        semesters?: Record<string, { due_date?: string }>;
+      }).semesters;
+      if (semNested) {
+        semesters.forEach(s => {
+          const k = `semester_${s.semesterNumber}`;
+          const v = semNested[k]?.due_date;
+          if (typeof v === 'string' && s.instalments?.[0]) {
+            s.instalments[0].paymentDate = v;
+          }
+        });
+      }
+      // UI flat keys like semester-1-instalment-0
+      const keys = Object.keys(overrides as Record<string, unknown>);
+      if (keys.some(k => k.startsWith('semester-'))) {
+        semesters.forEach(s => {
+          const key = `semester-${s.semesterNumber}-instalment-0`;
+          const v = (overrides as Record<string, unknown>)[key];
+          if (typeof v === 'string' && s.instalments?.[0]) {
+            s.instalments[0].paymentDate = v as string;
+          }
+        });
+      }
     }
 
     // For instalment-wise: set per-installment dates within each semester
@@ -406,6 +509,19 @@ function applyDateOverrides(
             }
             if (typeof value === 'string') inst.paymentDate = value;
           });
+        });
+      } else {
+        // Handle UI flat keys like 'semester-2-instalment-1'
+        Object.entries(overrides as Record<string, unknown>).forEach(([k, v]) => {
+          if (typeof v !== 'string') return;
+          const m = k.match(/^semester-(\d+)-instalment-(\d+)$/);
+          if (!m) return;
+          const semNum = Number(m[1]);
+          const instIdx = Number(m[2]);
+          const sem = semesters.find(s => s.semesterNumber === semNum);
+          if (sem && sem.instalments?.[instIdx]) {
+            sem.instalments[instIdx].paymentDate = v;
+          }
         });
       }
     }
@@ -655,45 +771,73 @@ const generateFeeStructureReview = async (
     );
   }
 
-  // Apply overrides if enabled - use plan-specific fields
-  // Apply database dates only - no calculations or fallbacks
-  console.log('🎯 Payment engine using database dates only:', {
+  // Apply database dates - prioritize saved dates first, fallback to auto-generation
+  console.log('🎯 Payment engine checking database dates:', {
     paymentPlan,
-    customDatesEnabled: feeStructure?.custom_dates_enabled,
     hasOneShotDates: !!feeStructure?.one_shot_dates,
     hasSemWiseDates: !!feeStructure?.sem_wise_dates,
     hasInstalmentWiseDates: !!feeStructure?.instalment_wise_dates,
-    hasCustomDatesParam: !!(customDates && Object.keys(customDates).length > 0),
+    oneShotDatesValue: feeStructure?.one_shot_dates,
+    semWiseDatesValue: feeStructure?.sem_wise_dates,
+    instalmentWiseDatesValue: feeStructure?.instalment_wise_dates,
   });
 
   let databaseDates: Record<string, string> = {};
 
-  // Use custom dates for preview mode only
+  // PRIORITY 1: Use custom dates for preview mode
   if (customDates && Object.keys(customDates).length > 0) {
     databaseDates = customDates;
-    console.log('✅ Using custom dates from preview parameter:', databaseDates);
+    console.log('✅ PRIORITY 1: Using custom dates from preview parameter:', databaseDates);
   }
-  // Otherwise use dates from database
-  else if (feeStructure?.custom_dates_enabled) {
+  // PRIORITY 2: Use saved dates from database
+  else {
     let planSpecificDates: Record<string, unknown> | null = null;
 
     if (paymentPlan === 'one_shot' && feeStructure.one_shot_dates) {
       planSpecificDates = feeStructure.one_shot_dates;
+      console.log('🔍 Found one_shot_dates in database:', planSpecificDates);
     } else if (paymentPlan === 'sem_wise' && feeStructure.sem_wise_dates) {
       planSpecificDates = feeStructure.sem_wise_dates;
+      console.log('🔍 Found sem_wise_dates in database:', planSpecificDates);
     } else if (
       paymentPlan === 'instalment_wise' &&
       feeStructure.instalment_wise_dates
     ) {
       planSpecificDates = feeStructure.instalment_wise_dates;
+      console.log('🔍 Found instalment_wise_dates in database:', planSpecificDates);
     }
 
-    if (planSpecificDates) {
+    if (planSpecificDates && Object.keys(planSpecificDates).length > 0) {
       databaseDates = convertPlanSpecificJsonToDateKeys(
         planSpecificDates,
         paymentPlan
       );
-      console.log('✅ Using dates from database:', databaseDates);
+      console.log('✅ PRIORITY 2: Using saved dates from database:', databaseDates);
+    }
+  }
+
+  // PRIORITY 3: Fallback to auto-generation only if no saved dates exist
+  if (!databaseDates || Object.keys(databaseDates).length === 0) {
+    console.log('🔄 PRIORITY 3: No saved dates found, generating defaults from cohort start_date');
+    try {
+      const { data: cohortRow } = await supabase
+        .from('cohorts')
+        .select('start_date')
+        .eq('id', cohortId)
+        .maybeSingle();
+      const cohortStart = (cohortRow as any)?.start_date || new Date().toISOString().split('T')[0];
+      databaseDates = generateDefaultUiDateKeys(
+        paymentPlan,
+        cohortStart,
+        feeStructure.number_of_semesters,
+        feeStructure.instalments_per_semester
+      );
+      console.log('✅ PRIORITY 3: Generated default dates from cohort start_date:', {
+        cohortStart,
+        databaseDates,
+      });
+    } catch (e) {
+      console.log('⚠️ Could not generate default dates:', e);
     }
   }
 

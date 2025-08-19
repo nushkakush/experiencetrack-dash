@@ -64,6 +64,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         student={student}
         onStudentSelect={onStudentSelect}
         onVerificationUpdate={onVerificationUpdate}
+        feeStructure={feeStructure}
       />
     </UITableRow>
   );

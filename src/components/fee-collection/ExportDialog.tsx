@@ -68,18 +68,41 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   };
 
   const getStudentStatus = (student: StudentPaymentSummary): string => {
-    if (!student.payments || student.payments.length === 0) {
+    // Check if student has selected a payment plan
+    if (!student.payment_plan || student.payment_plan === 'not_selected') {
       return 'Payment Setup Required';
     }
 
-    const totalPayments = student.payments.length;
-    const completedPayments = student.payments.filter(p => p.status === 'paid').length;
-    const pendingPayments = student.payments.filter(p => p.status === 'pending').length;
+    // Calculate expected number of payments based on payment plan
+    const getExpectedPaymentCount = () => {
+      if (student.payment_plan === 'one_shot') {
+        return 1;
+      } else if (student.payment_plan === 'sem_wise') {
+        // Assuming 4 semesters
+        return 4;
+      } else if (student.payment_plan === 'instalment_wise') {
+        // Assuming 4 semesters × 3 installments = 12
+        return 12;
+      }
+      // Fallback to actual payments count if plan is unknown
+      return student.payments?.length || 0;
+    };
 
-    if (completedPayments === totalPayments) {
+    const expectedPayments = getExpectedPaymentCount();
+    const actualPayments = student.payments || [];
+    const completedPayments = actualPayments.filter(p => p.status === 'paid').length;
+    const pendingPayments = actualPayments.filter(p => p.status === 'pending').length;
+
+    // If no payments exist yet, show pending
+    if (actualPayments.length === 0) {
+      return 'Payments Pending';
+    }
+
+    // Calculate status based on expected vs completed payments
+    if (completedPayments >= expectedPayments) {
       return 'All Payments Complete';
     } else if (completedPayments > 0) {
-      return `${completedPayments}/${totalPayments} Paid`;
+      return `${completedPayments}/${expectedPayments} Paid`;
     } else {
       return `${pendingPayments} Pending`;
     }
