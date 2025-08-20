@@ -161,8 +161,7 @@ export class PaymentQueryService {
           if (!studentPayment) {
             return {
               student_id: student.id,
-              // No payment record yet, so no linked id
-              student_payment_id: undefined as unknown as string,
+              student_payment_id: '',
               total_amount: 0,
               paid_amount: 0,
               pending_amount: 0,
@@ -173,30 +172,19 @@ export class PaymentQueryService {
               payment_plan: 'not_selected',
               student: student,
               payments: [],
+              total_installments: 0,
+              completed_installments: 0,
+              aggregate_status: 'not_setup',
             };
           }
 
-          // Get transactions for this student's payment
           const studentTransactions =
             transactions?.filter(t => t.payment_id === studentPayment.id) || [];
 
-          // Convert payment transactions to a format that matches StudentPayment interface
           const convertedPayments = studentTransactions.map(transaction => ({
             id: transaction.id,
-            student_id: student.id,
-            cohort_id: cohortId,
-            payment_type: 'program_fee' as const,
-            payment_plan: studentPayment.payment_plan,
-            base_amount: parseFloat(transaction.amount || '0'),
-            scholarship_amount: 0,
-            discount_amount: 0,
-            gst_amount: 0,
-            amount_payable: parseFloat(transaction.amount || '0'),
-            amount_paid:
-              transaction.status === 'success'
-                ? parseFloat(transaction.amount || '0')
-                : 0,
-            due_date: transaction.payment_date || transaction.created_at,
+            payment_id: transaction.payment_id,
+            amount: transaction.amount,
             payment_date: transaction.payment_date,
             status: transaction.status === 'success' ? 'paid' : 'pending',
             receipt_url:
@@ -216,6 +204,15 @@ export class PaymentQueryService {
 
           try {
             if (studentPayment.payment_plan && studentPayment.payment_plan !== 'not_selected') {
+              // First, try to get the student's custom fee structure (like FinancialSummary does)
+              const customFeeStructure = await FeeStructureService.getFeeStructure(
+                cohortId,
+                student.id
+              );
+              
+              // Use custom structure if it exists, otherwise use the cohort structure
+              const feeStructureToUse = customFeeStructure || feeStructure;
+
               const paymentEngineResult = await getFullPaymentView({
                 studentId: student.id,
                 cohortId: cohortId,
@@ -223,14 +220,31 @@ export class PaymentQueryService {
                 scholarshipId: studentScholarship?.scholarship_id,
                 additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
                 feeStructureData: {
-                  total_program_fee: Number(feeStructure.total_program_fee),
-                  admission_fee: Number(feeStructure.admission_fee),
-                  number_of_semesters: (feeStructure as any).number_of_semesters,
-                  instalments_per_semester: (feeStructure as any).instalments_per_semester,
-                  one_shot_discount_percentage: (feeStructure as any).one_shot_discount_percentage,
-                  one_shot_dates: (feeStructure as any).one_shot_dates,
-                  sem_wise_dates: (feeStructure as any).sem_wise_dates,
-                  instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
+                  total_program_fee: Number(feeStructureToUse.total_program_fee),
+                  admission_fee: Number(feeStructureToUse.admission_fee),
+                  number_of_semesters: (feeStructureToUse as any).number_of_semesters,
+                  instalments_per_semester: (feeStructureToUse as any).instalments_per_semester,
+                  one_shot_discount_percentage: (feeStructureToUse as any).one_shot_discount_percentage,
+                  one_shot_dates: (feeStructureToUse as any).one_shot_dates,
+                  sem_wise_dates: (feeStructureToUse as any).sem_wise_dates,
+                  instalment_wise_dates: (feeStructureToUse as any).instalment_wise_dates,
+                }
+              });
+
+              // Debug logging to track fee structure data being sent
+              console.log('🔍 [PaymentQueryService] Fee structure data sent to payment engine:', {
+                student_id: student.id,
+                cohort_id: cohortId,
+                payment_plan: studentPayment.payment_plan,
+                scholarship_id: studentScholarship?.scholarship_id,
+                additional_discount_percentage: studentScholarship?.additional_discount_percentage || 0,
+                using_custom_fee_structure: !!customFeeStructure,
+                fee_structure: {
+                  total_program_fee: Number(feeStructureToUse.total_program_fee),
+                  admission_fee: Number(feeStructureToUse.admission_fee),
+                  number_of_semesters: (feeStructureToUse as any).number_of_semesters,
+                  instalments_per_semester: (feeStructureToUse as any).instalments_per_semester,
+                  one_shot_discount_percentage: (feeStructureToUse as any).one_shot_discount_percentage,
                 }
               });
 
@@ -412,15 +426,5 @@ export class PaymentQueryService {
         success: false,
       };
     }
-  }
-
-  private calculateOverallStatus(payments: StudentPayment[]): string {
-    if (payments.length === 0) return 'no_payments';
-
-    // With single record approach, we only have one payment record per student
-    const payment = payments[0];
-    if (!payment) return 'unknown';
-
-    return payment.payment_status || 'unknown';
   }
 }
