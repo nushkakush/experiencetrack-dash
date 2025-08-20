@@ -86,10 +86,6 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: UsersRound,
       },
-      { title: 'Programs', url: '#', icon: BookOpen },
-      { title: 'Students', url: '#', icon: GraduationCap },
-      { title: 'Schedule', url: '#', icon: FileText },
-      { title: 'Analytics', url: '#', icon: BarChart3 },
     ],
     fee_collector: [
       {

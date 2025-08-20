@@ -115,7 +115,7 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
               <SelectContent>
                 {epics.map(epic => (
                   <SelectItem key={epic.id} value={epic.id}>
-                    {epic.name}
+                    {epic.epic?.name || epic.name}
                   </SelectItem>
                 ))}
               </SelectContent>

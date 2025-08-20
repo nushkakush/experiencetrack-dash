@@ -1,9 +1,12 @@
 import type { Database } from '@/integrations/supabase/types';
 
 // Database types
-export type CohortStudent = Database['public']['Tables']['cohort_students']['Row'];
-export type AttendanceRecord = Database['public']['Tables']['attendance_records']['Row'];
+export type CohortStudent =
+  Database['public']['Tables']['cohort_students']['Row'];
+export type AttendanceRecord =
+  Database['public']['Tables']['attendance_records']['Row'];
 export type CohortEpic = Database['public']['Tables']['cohort_epics']['Row'];
+export type Epic = Database['public']['Tables']['epics']['Row'];
 export type Cohort = Database['public']['Tables']['cohorts']['Row'];
 
 // Attendance specific types

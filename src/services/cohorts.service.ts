@@ -1,21 +1,26 @@
-
-import { supabase } from "@/integrations/supabase/client";
-import { BaseService } from "./base.service";
-import { ApiResponse } from "@/types/common";
-import { Cohort, CohortEpic, NewCohortInput, NewEpicInput, CohortWithCounts } from "@/types/cohort";
-import { Logger } from "@/lib/logging/Logger";
+import { supabase } from '@/integrations/supabase/client';
+import { BaseService } from './base.service';
+import { ApiResponse } from '@/types/common';
+import {
+  Cohort,
+  CohortEpic,
+  NewCohortInput,
+  NewEpicInput,
+  CohortWithCounts,
+} from '@/types/cohort';
+import { Logger } from '@/lib/logging/Logger';
 
 class CohortsService extends BaseService<Cohort> {
   constructor() {
-    super("cohorts");
+    super('cohorts');
   }
 
   async listAll(): Promise<ApiResponse<Cohort[]>> {
-    return this["executeQuery"](async () => {
+    return this['executeQuery'](async () => {
       return await supabase
-        .from("cohorts")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .from('cohorts')
+        .select('*')
+        .order('created_at', { ascending: false });
     });
   }
 
@@ -23,12 +28,14 @@ class CohortsService extends BaseService<Cohort> {
     try {
       // First get all cohorts
       const { data: cohorts, error: cohortsError } = await supabase
-        .from("cohorts")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .from('cohorts')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (cohortsError) {
-        Logger.getInstance().error('listAllWithCounts: Cohorts query error', { error: cohortsError });
+        Logger.getInstance().error('listAllWithCounts: Cohorts query error', {
+          error: cohortsError,
+        });
         throw cohortsError;
       }
 
@@ -44,30 +51,33 @@ class CohortsService extends BaseService<Cohort> {
       const cohortIds = cohorts.map(c => c.id);
 
       const { data: studentCounts, error: countsError } = await supabase
-        .from("cohort_students")
-        .select("cohort_id")
-        .in("cohort_id", cohortIds);
+        .from('cohort_students')
+        .select('cohort_id')
+        .in('cohort_id', cohortIds);
 
       if (countsError) {
-        Logger.getInstance().error('listAllWithCounts: Student counts query error', { error: countsError });
+        Logger.getInstance().error(
+          'listAllWithCounts: Student counts query error',
+          { error: countsError }
+        );
         throw countsError;
       }
 
       // Count students per cohort
       const countMap = new Map<string, number>();
-      
-      studentCounts?.forEach((student) => {
+
+      studentCounts?.forEach(student => {
         const currentCount = countMap.get(student.cohort_id) || 0;
         const newCount = currentCount + 1;
         countMap.set(student.cohort_id, newCount);
       });
 
       // Transform the data to include students_count
-      const cohortsWithCounts: CohortWithCounts[] = cohorts.map((cohort) => {
+      const cohortsWithCounts: CohortWithCounts[] = cohorts.map(cohort => {
         const students_count = countMap.get(cohort.id) || 0;
         return {
           ...cohort,
-          students_count
+          students_count,
         };
       });
 
@@ -80,36 +90,35 @@ class CohortsService extends BaseService<Cohort> {
       Logger.getInstance().error('listAllWithCounts: Caught error', { error });
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch cohorts with counts',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch cohorts with counts',
         success: false,
       };
     }
   }
 
   async getById(id: string): Promise<ApiResponse<Cohort>> {
-    return this["executeQuery"](async () => {
-      return await supabase
-        .from("cohorts")
-        .select("*")
-        .eq("id", id)
-        .single();
+    return this['executeQuery'](async () => {
+      return await supabase.from('cohorts').select('*').eq('id', id).single();
     });
   }
 
   async getByIdWithCounts(id: string): Promise<ApiResponse<CohortWithCounts>> {
     try {
       const { data: cohort, error: cohortError } = await supabase
-        .from("cohorts")
-        .select("*")
-        .eq("id", id)
+        .from('cohorts')
+        .select('*')
+        .eq('id', id)
         .single();
 
       if (cohortError) throw cohortError;
 
       const { data: students, error: studentsError } = await supabase
-        .from("cohort_students")
-        .select("id")
-        .eq("cohort_id", id);
+        .from('cohort_students')
+        .select('id')
+        .eq('cohort_id', id);
 
       if (studentsError) throw studentsError;
 
@@ -126,21 +135,27 @@ class CohortsService extends BaseService<Cohort> {
     } catch (error) {
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch cohort with counts',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch cohort with counts',
         success: false,
       };
     }
   }
 
-  async isCohortIdUnique(cohort_id: string, excludeId?: string): Promise<boolean> {
+  async isCohortIdUnique(
+    cohort_id: string,
+    excludeId?: string
+  ): Promise<boolean> {
     try {
       let query = supabase
-        .from("cohorts")
-        .select("id")
-        .eq("cohort_id", cohort_id);
+        .from('cohorts')
+        .select('id')
+        .eq('cohort_id', cohort_id);
 
       if (excludeId) {
-        query = query.neq("id", excludeId);
+        query = query.neq('id', excludeId);
       }
 
       const { data, error } = await query;
@@ -149,104 +164,156 @@ class CohortsService extends BaseService<Cohort> {
 
       return !data || data.length === 0;
     } catch (error) {
-      Logger.getInstance().error('Error checking cohort ID uniqueness', { error, cohort_id, excludeId });
+      Logger.getInstance().error('Error checking cohort ID uniqueness', {
+        error,
+        cohort_id,
+        excludeId,
+      });
       return false;
     }
   }
 
-  async createWithEpics(input: NewCohortInput, epics: NewEpicInput[]): Promise<ApiResponse<{ cohort: Cohort; epics: CohortEpic[] }>> {
-    return this["executeQuery"](async () => {
+  async createWithEpics(
+    input: NewCohortInput,
+    epics: NewEpicInput[]
+  ): Promise<ApiResponse<{ cohort: Cohort; epics: CohortEpic[] }>> {
+    return this['executeQuery'](async () => {
       // Create cohort first
       const { data: cohort, error: cohortError } = await supabase
-        .from("cohorts")
+        .from('cohorts')
         .insert(input)
         .select()
         .single();
 
       if (cohortError) throw cohortError;
 
-      // Create epics
-      const epicsWithCohortId = epics.map(epic => ({
-        ...epic,
-        cohort_id: cohort.id
-      }));
+      // Process epics - create new ones or use existing ones
+      const cohortEpics = [];
 
-      const { data: createdEpics, error: epicsError } = await supabase
-        .from("cohort_epics")
-        .insert(epicsWithCohortId)
-        .select();
+      for (const epic of epics) {
+        if (epic.epic_id) {
+          // Use existing epic
+          const { data: cohortEpic, error: cohortEpicError } = await supabase
+            .from('cohort_epics')
+            .insert({
+              cohort_id: cohort.id,
+              epic_id: epic.epic_id,
+              duration_months: epic.duration_months,
+              position: cohortEpics.length + 1,
+            })
+            .select(
+              `
+              *,
+              epic:epics(*)
+            `
+            )
+            .single();
 
-      if (epicsError) throw epicsError;
+          if (cohortEpicError) throw cohortEpicError;
+          cohortEpics.push(cohortEpic);
+        } else if (epic.name) {
+          // Create new epic first
+          const { data: newEpic, error: epicError } = await supabase
+            .from('epics')
+            .insert({ name: epic.name })
+            .select()
+            .single();
+
+          if (epicError) throw epicError;
+
+          // Then create cohort epic
+          const { data: cohortEpic, error: cohortEpicError } = await supabase
+            .from('cohort_epics')
+            .insert({
+              cohort_id: cohort.id,
+              epic_id: newEpic.id,
+              duration_months: epic.duration_months,
+              position: cohortEpics.length + 1,
+            })
+            .select(
+              `
+              *,
+              epic:epics(*)
+            `
+            )
+            .single();
+
+          if (cohortEpicError) throw cohortEpicError;
+          cohortEpics.push(cohortEpic);
+        }
+      }
 
       return {
         data: {
           cohort,
-          epics: createdEpics || []
+          epics: cohortEpics,
         },
-        error: null
+        error: null,
       };
     });
   }
 
   async getEpics(cohortId: string): Promise<ApiResponse<CohortEpic[]>> {
-    return this["executeQuery"](async () => {
+    return this['executeQuery'](async () => {
       return await supabase
-        .from("cohort_epics")
-        .select("*")
-        .eq("cohort_id", cohortId)
-        .order("created_at", { ascending: true });
+        .from('cohort_epics')
+        .select(
+          `
+          *,
+          epic:epics(*)
+        `
+        )
+        .eq('cohort_id', cohortId)
+        .order('position', { ascending: true });
+    });
+  }
+
+  async getAllEpics(): Promise<ApiResponse<{ id: string; name: string }[]>> {
+    return this['executeQuery'](async () => {
+      return await supabase
+        .from('epics')
+        .select('id, name')
+        .order('name', { ascending: true });
     });
   }
 
   async countStudents(cohortId: string): Promise<number> {
     try {
       const { count, error } = await supabase
-        .from("cohort_students")
-        .select("*", { count: "exact", head: true })
-        .eq("cohort_id", cohortId);
+        .from('cohort_students')
+        .select('*', { count: 'exact', head: true })
+        .eq('cohort_id', cohortId);
 
       if (error) throw error;
       return count || 0;
     } catch (error) {
-      Logger.getInstance().error('Error counting students', { error, cohortId });
+      Logger.getInstance().error('Error counting students', {
+        error,
+        cohortId,
+      });
       return 0;
     }
   }
 
   async deleteCohort(id: string): Promise<ApiResponse<null>> {
-    return this["executeQuery"](async () => {
+    return this['executeQuery'](async () => {
       // Delete related data first (cohort_epics, cohort_students, etc.)
       // Note: This should be handled by database cascade deletes, but we'll be explicit here
-      
+
       // Delete cohort epics
-      await supabase
-        .from("cohort_epics")
-        .delete()
-        .eq("cohort_id", id);
+      await supabase.from('cohort_epics').delete().eq('cohort_id', id);
 
       // Delete cohort students
-      await supabase
-        .from("cohort_students")
-        .delete()
-        .eq("cohort_id", id);
+      await supabase.from('cohort_students').delete().eq('cohort_id', id);
 
       // Delete attendance records
-      await supabase
-        .from("attendance_records")
-        .delete()
-        .eq("cohort_id", id);
+      await supabase.from('attendance_records').delete().eq('cohort_id', id);
 
       // Delete cancelled sessions
-      await supabase
-        .from("cancelled_sessions")
-        .delete()
-        .eq("cohort_id", id);
+      await supabase.from('cancelled_sessions').delete().eq('cohort_id', id);
 
       // Finally delete the cohort
-      return await supabase
-        .from("cohorts")
-        .delete()
-        .eq("id", id);
+      return await supabase.from('cohorts').delete().eq('id', id);
     });
   }
 }

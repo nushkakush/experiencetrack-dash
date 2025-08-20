@@ -1,4 +1,3 @@
-
 export interface Cohort {
   id: string;
   cohort_id: string;
@@ -13,12 +12,22 @@ export interface Cohort {
   updated_at: string;
 }
 
+export interface Epic {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CohortEpic {
   id: string;
   cohort_id: string;
-  name: string;
+  epic_id: string;
+  epic: Epic;
   duration_months: number;
   position: number;
+  description?: string | null;
+  is_active?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,13 +37,14 @@ export interface NewCohortInput {
   cohort_id: string;
   start_date: string; // YYYY-MM-DD
   duration_months: number;
-  end_date: string;   // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
   description?: string;
   sessions_per_day: number;
 }
 
 export interface NewEpicInput {
-  name: string;
+  epic_id?: string; // For existing epics
+  name?: string; // For new epics
   duration_months: number;
 }
 

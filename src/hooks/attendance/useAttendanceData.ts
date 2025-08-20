@@ -3,18 +3,21 @@ import { format } from 'date-fns';
 import { supabase, connectionManager } from '@/integrations/supabase/client';
 import { AttendanceService } from '@/services/attendance.service';
 import { toast } from 'sonner';
-import type { 
-  AttendanceData, 
-  AttendanceContext, 
-  CohortStudent, 
-  CohortEpic, 
-  SessionInfo, 
+import type {
+  AttendanceData,
+  AttendanceContext,
+  CohortStudent,
+  CohortEpic,
+  SessionInfo,
   AttendanceRecord,
-  Cohort
+  Cohort,
 } from '@/types/attendance';
 import { Logger } from '@/lib/logging/Logger';
 
-export const useAttendanceData = (cohortId: string | undefined, context: Partial<AttendanceContext>) => {
+export const useAttendanceData = (
+  cohortId: string | undefined,
+  context: Partial<AttendanceContext>
+) => {
   const [data, setData] = useState<AttendanceData>({
     cohort: null,
     students: [],
@@ -44,7 +47,7 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
 
         // Load epics
         const epicsData = await AttendanceService.getCohortEpics(cohortId);
-        
+
         // Load students
         const { data: studentsData, error: studentsError } = await supabase
           .from('cohort_students')
@@ -61,12 +64,16 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           loading: false,
         }));
 
-        // Set the first epic as selected if available
+        // Set the active epic as selected if available, otherwise the first epic
         if (epicsData.length > 0 && !selectedEpic) {
-          setSelectedEpic(epicsData[0].id);
+          const activeEpic = epicsData.find(epic => epic.is_active);
+          setSelectedEpic(activeEpic ? activeEpic.id : epicsData[0].id);
         }
       } catch (error) {
-        Logger.getInstance().error('Error loading initial data', { error, cohortId });
+        Logger.getInstance().error('Error loading initial data', {
+          error,
+          cohortId,
+        });
         setData(prev => ({
           ...prev,
           error: 'Failed to load cohort data',
@@ -81,18 +88,27 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
   // Load sessions when epic or date changes
   useEffect(() => {
     if (!selectedEpic || !cohortId || !context.selectedDate) return;
-    
+
     const loadSessions = async () => {
       const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       try {
-        const sessionInfos = await AttendanceService.getSessionsForDate(cohortId, selectedEpic, sessionDate);
-        
+        const sessionInfos = await AttendanceService.getSessionsForDate(
+          cohortId,
+          selectedEpic,
+          sessionDate
+        );
+
         setData(prev => ({
           ...prev,
           sessions: sessionInfos,
         }));
       } catch (error) {
-        Logger.getInstance().error('Error loading sessions', { error, cohortId, selectedEpic, sessionDate });
+        Logger.getInstance().error('Error loading sessions', {
+          error,
+          cohortId,
+          selectedEpic,
+          sessionDate,
+        });
         toast.error('Failed to load session data');
       }
     };
@@ -102,26 +118,36 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
 
   // Load attendance records when session changes
   useEffect(() => {
-    if (!context.selectedSession || !selectedEpic || !cohortId || !context.selectedDate) {
+    if (
+      !context.selectedSession ||
+      !selectedEpic ||
+      !cohortId ||
+      !context.selectedDate
+    ) {
       return;
     }
-    
+
     const loadAttendance = async () => {
       const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
       try {
         const attendanceData = await AttendanceService.getSessionAttendance(
-          cohortId, 
-          selectedEpic, 
-          context.selectedSession, 
+          cohortId,
+          selectedEpic,
+          context.selectedSession,
           sessionDate
         );
-        
+
         setData(prev => ({
           ...prev,
           attendanceRecords: attendanceData,
         }));
       } catch (error) {
-        Logger.getInstance().error('Error loading attendance', { error, cohortId, selectedEpic, sessionDate });
+        Logger.getInstance().error('Error loading attendance', {
+          error,
+          cohortId,
+          selectedEpic,
+          sessionDate,
+        });
         toast.error('Failed to load attendance records');
       }
     };
@@ -135,9 +161,10 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
 
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
     const channelName = `attendance-${cohortId}-${selectedEpic}-${sessionDate}`;
-    
+
     // Create a single channel for all attendance-related changes with unique name
-    const attendanceChannel = connectionManager.createChannel(channelName)
+    const attendanceChannel = connectionManager
+      .createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -146,17 +173,26 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           table: 'cancelled_sessions',
           filter: `cohort_id=eq.${cohortId} and epic_id=eq.${selectedEpic} and session_date=eq.${sessionDate}`,
         },
-        (payload) => {
+        payload => {
           // Reload sessions when cancelled sessions change
           const loadSessions = async () => {
             try {
-              const sessionInfos = await AttendanceService.getSessionsForDate(cohortId, selectedEpic, sessionDate);
+              const sessionInfos = await AttendanceService.getSessionsForDate(
+                cohortId,
+                selectedEpic,
+                sessionDate
+              );
               setData(prev => ({
                 ...prev,
                 sessions: sessionInfos,
               }));
             } catch (error) {
-              Logger.getInstance().error('Error reloading sessions', { error, cohortId, selectedEpic, sessionDate });
+              Logger.getInstance().error('Error reloading sessions', {
+                error,
+                cohortId,
+                selectedEpic,
+                sessionDate,
+              });
             }
           };
           loadSessions();
@@ -170,23 +206,29 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           table: 'attendance_records',
           filter: `cohort_id=eq.${cohortId} and epic_id=eq.${selectedEpic}`,
         },
-        (payload) => {
+        payload => {
           // Reload attendance records when they change
           if (context.selectedSession) {
             const loadAttendance = async () => {
               try {
-                const attendanceData = await AttendanceService.getSessionAttendance(
-                  cohortId, 
-                  selectedEpic, 
-                  context.selectedSession, 
-                  sessionDate
-                );
+                const attendanceData =
+                  await AttendanceService.getSessionAttendance(
+                    cohortId,
+                    selectedEpic,
+                    context.selectedSession,
+                    sessionDate
+                  );
                 setData(prev => ({
                   ...prev,
                   attendanceRecords: attendanceData,
                 }));
               } catch (error) {
-                Logger.getInstance().error('Error reloading attendance', { error, cohortId, selectedEpic, sessionDate });
+                Logger.getInstance().error('Error reloading attendance', {
+                  error,
+                  cohortId,
+                  selectedEpic,
+                  sessionDate,
+                });
               }
             };
             loadAttendance();
@@ -201,17 +243,32 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
           table: 'cohort_epics',
           filter: `cohort_id=eq.${cohortId}`,
         },
-        (payload) => {
+        payload => {
           // Reload epics when they change (e.g., when active epic is set)
           const loadEpics = async () => {
             try {
-              const epicsData = await AttendanceService.getCohortEpics(cohortId);
+              const epicsData =
+                await AttendanceService.getCohortEpics(cohortId);
               setData(prev => ({
                 ...prev,
                 epics: epicsData,
               }));
+
+              // Update selected epic if current selection is no longer valid or if active epic changed
+              const currentEpicExists = epicsData.find(
+                epic => epic.id === selectedEpic
+              );
+              if (!currentEpicExists) {
+                const activeEpic = epicsData.find(epic => epic.is_active);
+                setSelectedEpic(
+                  activeEpic ? activeEpic.id : epicsData[0]?.id || ''
+                );
+              }
             } catch (error) {
-              Logger.getInstance().error('Error reloading epics', { error, cohortId });
+              Logger.getInstance().error('Error reloading epics', {
+                error,
+                cohortId,
+              });
             }
           };
           loadEpics();
@@ -226,25 +283,35 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
   }, [cohortId, selectedEpic, context.selectedDate, context.selectedSession]);
 
   const refetchAttendance = async () => {
-    if (!context.selectedSession || !selectedEpic || !cohortId || !context.selectedDate) {
+    if (
+      !context.selectedSession ||
+      !selectedEpic ||
+      !cohortId ||
+      !context.selectedDate
+    ) {
       return;
     }
-    
+
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
     try {
       const attendanceData = await AttendanceService.getSessionAttendance(
-        cohortId, 
-        selectedEpic, 
-        context.selectedSession, 
+        cohortId,
+        selectedEpic,
+        context.selectedSession,
         sessionDate
       );
-      
+
       setData(prev => ({
         ...prev,
         attendanceRecords: attendanceData,
       }));
     } catch (error) {
-      Logger.getInstance().error('Error refetching attendance', { error, cohortId, selectedEpic, sessionDate });
+      Logger.getInstance().error('Error refetching attendance', {
+        error,
+        cohortId,
+        selectedEpic,
+        sessionDate,
+      });
     }
   };
 
@@ -252,29 +319,47 @@ export const useAttendanceData = (cohortId: string | undefined, context: Partial
     if (!selectedEpic || !cohortId || !context.selectedDate) {
       return;
     }
-    
+
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
     try {
-      const sessionInfos = await AttendanceService.getSessionsForDate(cohortId, selectedEpic, sessionDate);
-      
+      const sessionInfos = await AttendanceService.getSessionsForDate(
+        cohortId,
+        selectedEpic,
+        sessionDate
+      );
+
       setData(prev => ({
         ...prev,
         sessions: sessionInfos,
       }));
     } catch (error) {
-      Logger.getInstance().error('Error refetching sessions', { error, cohortId, selectedEpic, sessionDate });
+      Logger.getInstance().error('Error refetching sessions', {
+        error,
+        cohortId,
+        selectedEpic,
+        sessionDate,
+      });
     }
   };
 
   const refetchEpics = async () => {
     if (!cohortId) return;
-    
+
     try {
       const epicsData = await AttendanceService.getCohortEpics(cohortId);
       setData(prev => ({
         ...prev,
         epics: epicsData,
       }));
+
+      // Update selected epic if current selection is no longer valid
+      const currentEpicExists = epicsData.find(
+        epic => epic.id === selectedEpic
+      );
+      if (!currentEpicExists) {
+        const activeEpic = epicsData.find(epic => epic.is_active);
+        setSelectedEpic(activeEpic ? activeEpic.id : epicsData[0]?.id || '');
+      }
     } catch (error) {
       Logger.getInstance().error('Error refetching epics', { error, cohortId });
     }

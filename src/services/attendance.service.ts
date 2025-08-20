@@ -1,11 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
-type AttendanceRecord = Database['public']['Tables']['attendance_records']['Row'];
-type CancelledSession = Database['public']['Tables']['cancelled_sessions']['Row'];
+type AttendanceRecord =
+  Database['public']['Tables']['attendance_records']['Row'];
+type CancelledSession =
+  Database['public']['Tables']['cancelled_sessions']['Row'];
 type CohortEpic = Database['public']['Tables']['cohort_epics']['Row'];
 type CohortStudent = Database['public']['Tables']['cohort_students']['Row'];
-type AttendanceSummary = Database['public']['Views']['attendance_summary']['Row'];
+type AttendanceSummary =
+  Database['public']['Views']['attendance_summary']['Row'];
 
 export interface SessionInfo {
   sessionNumber: number;
@@ -45,7 +48,7 @@ export class AttendanceService {
       p_student_id: studentId,
       p_status: status,
       p_absence_type: absenceType,
-      p_reason: reason
+      p_reason: reason,
     });
 
     if (error) throw error;
@@ -63,7 +66,7 @@ export class AttendanceService {
       p_cohort_id: cohortId,
       p_epic_id: epicId,
       p_session_number: sessionNumber,
-      p_session_date: sessionDate
+      p_session_date: sessionDate,
     });
 
     if (error) throw error;
@@ -83,7 +86,7 @@ export class AttendanceService {
       p_epic_id: epicId,
       p_session_number: sessionNumber,
       p_session_date: sessionDate,
-      p_is_cancelled: isCancelled
+      p_is_cancelled: isCancelled,
     });
 
     if (error) throw error;
@@ -126,11 +129,16 @@ export class AttendanceService {
     // Generate session info for all sessions of the day
     const sessions: SessionInfo[] = [];
     for (let i = 1; i <= cohort.sessions_per_day; i++) {
-      const isCancelled = await this.isSessionCancelled(cohortId, epicId, i, sessionDate);
+      const isCancelled = await this.isSessionCancelled(
+        cohortId,
+        epicId,
+        i,
+        sessionDate
+      );
       sessions.push({
         sessionNumber: i,
         sessionDate,
-        isCancelled
+        isCancelled,
       });
     }
 
@@ -145,11 +153,16 @@ export class AttendanceService {
     sessionDate: string
   ): Promise<AttendanceData> {
     // Get session info
-    const isCancelled = await this.isSessionCancelled(cohortId, epicId, sessionNumber, sessionDate);
+    const isCancelled = await this.isSessionCancelled(
+      cohortId,
+      epicId,
+      sessionNumber,
+      sessionDate
+    );
     const sessionInfo: SessionInfo = {
       sessionNumber,
       sessionDate,
-      isCancelled
+      isCancelled,
     };
 
     // Get students for the cohort
@@ -161,12 +174,17 @@ export class AttendanceService {
     if (studentsError) throw studentsError;
 
     // Get attendance records
-    const records = await this.getSessionAttendance(cohortId, epicId, sessionNumber, sessionDate);
+    const records = await this.getSessionAttendance(
+      cohortId,
+      epicId,
+      sessionNumber,
+      sessionDate
+    );
 
     return {
       sessionInfo,
       records,
-      students: students || []
+      students: students || [],
     };
   }
 
@@ -208,13 +226,13 @@ export class AttendanceService {
     const sessions: SessionInfo[] = (summary || []).map(s => ({
       sessionNumber: s.session_number || 1,
       sessionDate: s.session_date || '',
-      isCancelled: s.is_cancelled || false
+      isCancelled: s.is_cancelled || false,
     }));
 
     return {
       epic,
       sessions,
-      summary: summary || []
+      summary: summary || [],
     };
   }
 
@@ -222,7 +240,12 @@ export class AttendanceService {
   static async getCohortEpics(cohortId: string): Promise<CohortEpic[]> {
     const { data, error } = await supabase
       .from('cohort_epics')
-      .select('*')
+      .select(
+        `
+        *,
+        epic:epics(*)
+      `
+      )
       .eq('cohort_id', cohortId)
       .order('position', { ascending: true });
 
