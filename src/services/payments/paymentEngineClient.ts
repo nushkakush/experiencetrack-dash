@@ -43,9 +43,28 @@ export async function getPaymentStatus(params: PaymentEngineParams) {
 }
 
 export async function getFullPaymentView(params: PaymentEngineParams) {
-  const { data, error } = await supabase.functions.invoke('payment-engine', {
-    body: { action: 'full', ...params },
-  });
-  if (error) throw error;
-  return data; // Now includes breakdown, feeStructure, and aggregate
+  try {
+    const { data, error } = await supabase.functions.invoke('payment-engine', {
+      body: { action: 'full', ...params },
+    });
+    if (error) {
+      console.error('🔍 [PaymentEngine] Supabase function error:', {
+        error,
+        params,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint
+      });
+      throw error;
+    }
+    return data; // Now includes breakdown, feeStructure, and aggregate
+  } catch (error) {
+    console.error('🔍 [PaymentEngine] Detailed error information:', {
+      error,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      params
+    });
+    throw error;
+  }
 }

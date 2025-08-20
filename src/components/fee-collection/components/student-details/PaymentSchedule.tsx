@@ -143,6 +143,15 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         additionalDiscountPercentage,
       };
       
+      console.log('🔍 [PaymentSchedule] Payment engine parameters:', {
+        paymentParams,
+        hasStudentId: !!paymentParams.studentId,
+        hasCohortId: !!paymentParams.cohortId,
+        hasPaymentPlan: !!paymentParams.paymentPlan,
+        hasScholarshipId: !!paymentParams.scholarshipId,
+        additionalDiscountPercentage: paymentParams.additionalDiscountPercentage
+      });
+      
 
       
       // First, try to get the student's custom fee structure
