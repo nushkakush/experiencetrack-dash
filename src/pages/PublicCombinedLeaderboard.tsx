@@ -12,6 +12,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from '@/components/ui/carousel';
+import { SEO, PageSEO } from '@/components/common';
 import { Trophy, RefreshCw, Calendar, Users } from 'lucide-react';
 import type {
   CohortStudent,
@@ -170,7 +171,11 @@ const PublicCombinedLeaderboard = () => {
           const changedCohortId =
             (payload.new as Record<string, unknown>)?.cohort_id ||
             (payload.old as Record<string, unknown>)?.cohort_id;
-          if (changedCohortId && selectedCohortIds.includes(changedCohortId)) {
+          if (
+            changedCohortId &&
+            typeof changedCohortId === 'string' &&
+            selectedCohortIds.includes(changedCohortId)
+          ) {
             loadLeaderboardData();
           }
         }
@@ -194,137 +199,160 @@ const PublicCombinedLeaderboard = () => {
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-gray-50 py-8'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='space-y-6'>
-            <Skeleton className='h-8 w-[300px]' />
-            <Skeleton className='h-6 w-[200px]' />
-            <div className='bg-white dark:bg-gray-800 rounded-lg border p-6'>
-              <Skeleton className='h-64 w-full' />
+      <>
+        <SEO {...PageSEO.combinedLeaderboard} />
+        <div className='min-h-screen bg-gray-50 py-8'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+            <div className='space-y-6'>
+              <Skeleton className='h-8 w-[300px]' />
+              <Skeleton className='h-6 w-[200px]' />
+              <div className='bg-white dark:bg-gray-800 rounded-lg border p-6'>
+                <Skeleton className='h-64 w-full' />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error || leaderboardData.length === 0) {
     return (
-      <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='flex items-center justify-center min-h-[400px]'>
-            <div className='text-center'>
-              <Trophy className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <h2 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
-                Leaderboards Not Found
-              </h2>
-              <p className='text-gray-600 dark:text-gray-400'>
-                {error ||
-                  "The leaderboards you're looking for don't exist or are no longer available."}
-              </p>
+      <>
+        <SEO {...PageSEO.notFound} />
+        <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+            <div className='flex items-center justify-center min-h-[400px]'>
+              <div className='text-center'>
+                <Trophy className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+                <h2 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                  Leaderboards Not Found
+                </h2>
+                <p className='text-gray-600 dark:text-gray-400'>
+                  {error ||
+                    "The leaderboards you're looking for don't exist or are no longer available."}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
+  // Dynamic SEO for the combined leaderboards
+  const cohortNames = leaderboardData.map(data => data.cohort.name).join(', ');
+  const totalStudents = leaderboardData.reduce(
+    (sum, data) => sum + data.students.length,
+    0
+  );
+
+  const dynamicSEO = {
+    ...PageSEO.combinedLeaderboard,
+    title: `Combined Leaderboards - ${cohortNames}`,
+    description: `View combined leaderboards for ${leaderboardData.length} cohorts (${cohortNames}) in LIT OS. Track performance across ${totalStudents} students with real-time updates.`,
+    keywords: `combined leaderboards, ${cohortNames}, LIT OS, multi-cohort rankings, performance comparison, ${totalStudents} students`,
+  };
+
   return (
-    <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className='space-y-6'>
-          {/* Header */}
-          <div className='text-center'>
-            <div className='flex items-center justify-center gap-3 mb-4'>
-              <Trophy className='h-8 w-8 text-yellow-500' />
-              <h1 className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
-                Combined Leaderboards
-              </h1>
-            </div>
-            <div className='flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400'>
-              <div className='flex items-center gap-1'>
-                <Users className='h-4 w-4' />
-                <span>
-                  {leaderboardData.length} Cohort
-                  {leaderboardData.length !== 1 ? 's' : ''}
-                </span>
+    <>
+      <SEO {...dynamicSEO} />
+      <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='space-y-6'>
+            {/* Header */}
+            <div className='text-center'>
+              <div className='flex items-center justify-center gap-3 mb-4'>
+                <Trophy className='h-8 w-8 text-yellow-500' />
+                <h1 className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
+                  Combined Leaderboards
+                </h1>
               </div>
-              <Badge variant='outline' className='flex items-center gap-1'>
-                <RefreshCw className='h-3 w-3' />
-                Live Updates
-              </Badge>
+              <div className='flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400'>
+                <div className='flex items-center gap-1'>
+                  <Users className='h-4 w-4' />
+                  <span>
+                    {leaderboardData.length} Cohort
+                    {leaderboardData.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <Badge variant='outline' className='flex items-center gap-1'>
+                  <RefreshCw className='h-3 w-3' />
+                  Live Updates
+                </Badge>
+              </div>
             </div>
-          </div>
 
-          {/* Last Updated Info */}
-          <div className='text-center text-xs text-gray-500 dark:text-gray-400'>
-            Last updated: {lastUpdated.toLocaleString()}
-          </div>
+            {/* Last Updated Info */}
+            <div className='text-center text-xs text-gray-500 dark:text-gray-400'>
+              Last updated: {lastUpdated.toLocaleString()}
+            </div>
 
-          {/* Leaderboards Carousel */}
-          <div className='bg-white dark:bg-gray-800 rounded-lg border shadow-sm p-6'>
-            <Carousel className='w-full'>
-              <CarouselContent>
-                {leaderboardData.map(data => (
-                  <CarouselItem key={data.cohort.id}>
-                    <div className='space-y-4'>
-                      {/* Cohort Header */}
-                      <div className='text-center border-b pb-4'>
-                        <h3 className='text-xl font-bold'>
-                          {data.cohort.name}
-                        </h3>
-                        <div className='flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2'>
-                          <div className='flex items-center gap-1'>
-                            <Calendar className='h-4 w-4' />
-                            <span>{data.primaryEpic?.name || 'No Epic'}</span>
-                          </div>
-                          <div className='flex items-center gap-1'>
-                            <Users className='h-4 w-4' />
-                            <span>{data.students.length} Students</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Leaderboard */}
-                      {data.students.length > 0 ? (
-                        <AttendanceLeaderboard
-                          students={data.students}
-                          attendanceRecords={data.attendanceRecords}
-                          currentEpic={data.primaryEpic}
-                          layout='grid'
-                          hideFields={['email', 'late', 'absent']}
-                        />
-                      ) : (
-                        <div className='text-center py-8'>
-                          <Users className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-                          <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100 mb-2'>
-                            No Students
+            {/* Leaderboards Carousel */}
+            <div className='bg-white dark:bg-gray-800 rounded-lg border shadow-sm p-6'>
+              <Carousel className='w-full'>
+                <CarouselContent>
+                  {leaderboardData.map(data => (
+                    <CarouselItem key={data.cohort.id}>
+                      <div className='space-y-4'>
+                        {/* Cohort Header */}
+                        <div className='text-center border-b pb-4'>
+                          <h3 className='text-xl font-bold'>
+                            {data.cohort.name}
                           </h3>
-                          <p className='text-gray-600 dark:text-gray-400'>
-                            This cohort has no enrolled students.
-                          </p>
+                          <div className='flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2'>
+                            <div className='flex items-center gap-1'>
+                              <Calendar className='h-4 w-4' />
+                              <span>{data.primaryEpic?.name || 'No Epic'}</span>
+                            </div>
+                            <div className='flex items-center gap-1'>
+                              <Users className='h-4 w-4' />
+                              <span>{data.students.length} Students</span>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              {leaderboardData.length > 1 && (
-                <>
-                  <CarouselPrevious />
-                  <CarouselNext />
-                </>
-              )}
-            </Carousel>
-          </div>
 
-          {/* Footer */}
-          <div className='text-center text-xs text-gray-500'>
-            <p>These leaderboards update automatically in real-time</p>
+                        {/* Leaderboard */}
+                        {data.students.length > 0 ? (
+                          <AttendanceLeaderboard
+                            students={data.students}
+                            attendanceRecords={data.attendanceRecords}
+                            currentEpic={data.primaryEpic}
+                            layout='grid'
+                            hideFields={['email', 'late', 'absent']}
+                          />
+                        ) : (
+                          <div className='text-center py-8'>
+                            <Users className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+                            <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                              No Students
+                            </h3>
+                            <p className='text-gray-600 dark:text-gray-400'>
+                              This cohort has no enrolled students.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {leaderboardData.length > 1 && (
+                  <>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </>
+                )}
+              </Carousel>
+            </div>
+
+            {/* Footer */}
+            <div className='text-center text-xs text-gray-500'>
+              <p>These leaderboards update automatically in real-time</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

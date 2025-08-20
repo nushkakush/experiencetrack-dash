@@ -1,18 +1,21 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useInvitationLoading, useInvitationAcceptance } from './invitation/hooks';
-import { LoadingState, ErrorState, InvitationForm } from './invitation/components';
+import { SEO, PageSEO } from '@/components/common';
+import {
+  useInvitationLoading,
+  useInvitationAcceptance,
+} from './invitation/hooks';
+import {
+  LoadingState,
+  ErrorState,
+  InvitationForm,
+} from './invitation/components';
 
 export default function InvitationPage() {
   const { token } = useParams<{ token: string }>();
 
-  const {
-    loading,
-    student,
-    cohortName,
-    error,
-    isExistingUser
-  } = useInvitationLoading({ token });
+  const { loading, student, cohortName, error, isExistingUser } =
+    useInvitationLoading({ token });
 
   const {
     processing,
@@ -23,20 +26,30 @@ export default function InvitationPage() {
     handleAcceptInvitation,
     isExistingUser: effectiveExistingUser,
     canJoinWithoutPassword,
-    toggleExistingUserMode
+    toggleExistingUserMode,
   } = useInvitationAcceptance({
     token,
     student,
     cohortName,
-    isExistingUser
+    isExistingUser,
   });
 
   if (loading) {
-    return <LoadingState />;
+    return (
+      <>
+        <SEO {...PageSEO.invitation} />
+        <LoadingState />
+      </>
+    );
   }
 
   if (error) {
-    return <ErrorState error={error} />;
+    return (
+      <>
+        <SEO {...PageSEO.notFound} />
+        <ErrorState error={error} />
+      </>
+    );
   }
 
   if (!student) {
@@ -44,18 +57,21 @@ export default function InvitationPage() {
   }
 
   return (
-    <InvitationForm
-      student={student}
-      cohortName={cohortName}
-      isExistingUser={effectiveExistingUser}
-      canJoinWithoutPassword={canJoinWithoutPassword}
-      password={password}
-      confirmPassword={confirmPassword}
-      processing={processing}
-      onPasswordChange={setPassword}
-      onConfirmPasswordChange={setConfirmPassword}
-      onSubmit={handleAcceptInvitation}
-      onToggleMode={toggleExistingUserMode}
-    />
+    <>
+      <SEO {...PageSEO.invitation} />
+      <InvitationForm
+        student={student}
+        cohortName={cohortName}
+        isExistingUser={effectiveExistingUser}
+        canJoinWithoutPassword={canJoinWithoutPassword}
+        password={password}
+        confirmPassword={confirmPassword}
+        processing={processing}
+        onPasswordChange={setPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onSubmit={handleAcceptInvitation}
+        onToggleMode={toggleExistingUserMode}
+      />
+    </>
   );
 }

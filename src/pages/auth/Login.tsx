@@ -1,5 +1,6 @@
 import React from 'react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { SEO, PageSEO } from '@/components/common';
 import { useLoginState } from './login/hooks';
 import { ForgotPasswordForm, MainLoginForm } from './login/components';
 
@@ -25,19 +26,20 @@ const Login = () => {
     handleSignIn,
     handleSignUp,
     handleForgotPassword,
-    handleBackToSignIn
+    handleBackToSignIn,
   } = useLoginState();
 
   if (showForgotPassword) {
     return (
       <>
-        <div className="absolute top-4 right-4 z-10">
+        <SEO {...PageSEO.resetPassword} />
+        <div className='absolute top-4 right-4 z-10'>
           <ThemeToggle />
         </div>
         <ForgotPasswordForm
           resetEmail={resetEmail}
           loading={loading}
-          onResetEmailChange={(e) => setResetEmail(e.target.value)}
+          onResetEmailChange={e => setResetEmail(e.target.value)}
           onBackToSignIn={handleBackToSignIn}
           onSubmit={handleForgotPassword}
         />
@@ -47,7 +49,8 @@ const Login = () => {
 
   return (
     <>
-      <div className="absolute top-4 right-4 z-10">
+      <SEO {...PageSEO.login} />
+      <div className='absolute top-4 right-4 z-10'>
         <ThemeToggle />
       </div>
       <MainLoginForm
@@ -58,12 +61,14 @@ const Login = () => {
         showPassword={showPassword}
         showSignupPassword={showSignupPassword}
         loading={loading}
-        onEmailChange={(e) => setEmail(e.target.value)}
-        onPasswordChange={(e) => setPassword(e.target.value)}
-        onFirstNameChange={(e) => setFirstName(e.target.value)}
-        onLastNameChange={(e) => setLastName(e.target.value)}
+        onEmailChange={e => setEmail(e.target.value)}
+        onPasswordChange={e => setPassword(e.target.value)}
+        onFirstNameChange={e => setFirstName(e.target.value)}
+        onLastNameChange={e => setLastName(e.target.value)}
         onTogglePassword={() => setShowPassword(!showPassword)}
-        onToggleSignupPassword={() => setShowSignupPassword(!showSignupPassword)}
+        onToggleSignupPassword={() =>
+          setShowSignupPassword(!showSignupPassword)
+        }
         onForgotPassword={() => setShowForgotPassword(true)}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}

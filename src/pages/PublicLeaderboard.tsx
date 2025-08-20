@@ -11,6 +11,7 @@ import { Logger } from '@/lib/logging/Logger';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { SEO, PageSEO } from '@/components/common';
 import { Trophy, Medal, Crown, Users, Calendar, Clock } from 'lucide-react';
 import { supabase, connectionManager } from '@/integrations/supabase/client';
 import { AttendanceLeaderboard } from '@/components/attendance';
@@ -139,6 +140,65 @@ const PublicLeaderboard = () => {
 
   if (loading) {
     return (
+      <>
+        <SEO {...PageSEO.publicLeaderboard} />
+        <div className='min-h-screen bg-background py-8 relative'>
+          {/* Theme Toggle in top-right corner */}
+          <div className='absolute top-4 right-4'>
+            <ThemeToggle />
+          </div>
+
+          <div className='container mx-auto px-4'>
+            <div className='max-w-7xl mx-auto'>
+              <Skeleton className='h-8 w-64 mb-4' />
+              <Skeleton className='h-4 w-96 mb-8' />
+              <div className='grid gap-4'>
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className='h-16 w-full' />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <SEO {...PageSEO.notFound} />
+        <div className='min-h-screen bg-background py-8 relative'>
+          {/* Theme Toggle in top-right corner */}
+          <div className='absolute top-4 right-4'>
+            <ThemeToggle />
+          </div>
+
+          <div className='container mx-auto px-4'>
+            <div className='max-w-md mx-auto text-center'>
+              <Trophy className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+              <h2 className='text-lg font-semibold text-foreground'>
+                Leaderboard Not Found
+              </h2>
+              <p className='text-muted-foreground'>{error}</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Dynamic SEO for the specific cohort and epic
+  const dynamicSEO = {
+    ...PageSEO.publicLeaderboard,
+    title: `${cohort?.name || 'Cohort'} Leaderboard`,
+    description: `View the real-time leaderboard for ${cohort?.name || 'this cohort'} in LIT OS. Track student performance, attendance, and achievements for ${currentEpic?.name || 'the current learning period'}.`,
+    keywords: `leaderboard, ${cohort?.name || 'cohort'}, LIT OS, student performance, attendance tracking, ${currentEpic?.name || 'learning period'}`,
+  };
+
+  return (
+    <>
+      <SEO {...dynamicSEO} />
       <div className='min-h-screen bg-background py-8 relative'>
         {/* Theme Toggle in top-right corner */}
         <div className='absolute top-4 right-4'>
@@ -147,82 +207,40 @@ const PublicLeaderboard = () => {
 
         <div className='container mx-auto px-4'>
           <div className='max-w-7xl mx-auto'>
-            <Skeleton className='h-8 w-64 mb-4' />
-            <Skeleton className='h-4 w-96 mb-8' />
-            <div className='grid gap-4'>
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className='h-16 w-full' />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className='min-h-screen bg-background py-8 relative'>
-        {/* Theme Toggle in top-right corner */}
-        <div className='absolute top-4 right-4'>
-          <ThemeToggle />
-        </div>
-
-        <div className='container mx-auto px-4'>
-          <div className='max-w-md mx-auto text-center'>
-            <Trophy className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
-            <h2 className='text-lg font-semibold text-foreground'>
-              Leaderboard Not Found
-            </h2>
-            <p className='text-muted-foreground'>{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className='min-h-screen bg-background py-8 relative'>
-      {/* Theme Toggle in top-right corner */}
-      <div className='absolute top-4 right-4'>
-        <ThemeToggle />
-      </div>
-
-      <div className='container mx-auto px-4'>
-        <div className='max-w-7xl mx-auto'>
-          <div className='text-center mb-8'>
-            <h1 className='text-3xl font-bold text-foreground'>
-              {cohort?.name} Leaderboard
-            </h1>
-            <div className='flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2'>
-              <div className='flex items-center gap-1'>
-                <Users className='h-4 w-4' />
-                <span>{students.length} Students</span>
-              </div>
-              {currentEpic && (
+            <div className='text-center mb-8'>
+              <h1 className='text-3xl font-bold text-foreground'>
+                {cohort?.name} Leaderboard
+              </h1>
+              <div className='flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2'>
                 <div className='flex items-center gap-1'>
-                  <Calendar className='h-4 w-4' />
-                  <span>{currentEpic.epic?.name || currentEpic.name}</span>
+                  <Users className='h-4 w-4' />
+                  <span>{students.length} Students</span>
                 </div>
-              )}
+                {currentEpic && (
+                  <div className='flex items-center gap-1'>
+                    <Calendar className='h-4 w-4' />
+                    <span>{currentEpic.name}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <AttendanceLeaderboard
-            students={students}
-            attendanceRecords={attendanceData}
-            currentEpic={currentEpic}
-            layout='grid'
-            hideFields={['email', 'late', 'absent']}
-          />
+            <AttendanceLeaderboard
+              students={students}
+              attendanceRecords={attendanceData}
+              currentEpic={currentEpic}
+              layout='grid'
+              hideFields={['email', 'late', 'absent']}
+            />
 
-          <div className='text-center text-xs text-muted-foreground mt-8'>
-            <p>This leaderboard updates in real-time</p>
-            <p>Last updated: {new Date().toLocaleString()}</p>
+            <div className='text-center text-xs text-muted-foreground mt-8'>
+              <p>This leaderboard updates in real-time</p>
+              <p>Last updated: {new Date().toLocaleString()}</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

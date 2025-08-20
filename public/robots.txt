@@ -1,14 +1,49 @@
+# LIT OS - Robots.txt
+# Comprehensive SEO configuration for LIT OS Experiential Learning Management System
+
+# Allow all major search engines
+User-agent: *
+Allow: /
+
+# Specific bot configurations
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# Social media bots
 User-agent: Twitterbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: facebookexternalhit
 Allow: /
+Crawl-delay: 1
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
+Crawl-delay: 1
+
+# Block access to sensitive areas
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /cohorts/
+Disallow: /invite/
+
+# Sitemap location
+Sitemap: https://lit-cb3g6baa1-anushkas-projects-30c1e8f2.vercel.app/sitemap.xml
+
+# Host
+Host: https://lit-cb3g6baa1-anushkas-projects-30c1e8f2.vercel.app
