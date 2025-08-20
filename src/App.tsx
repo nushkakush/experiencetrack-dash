@@ -22,6 +22,12 @@ import PublicCombinedLeaderboard from './pages/PublicCombinedLeaderboard';
 import InvitationPage from './pages/InvitationPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import {
+  FeatureProtectedRoute,
+  CohortManagementProtectedRoute,
+  FeeManagementProtectedRoute,
+  AttendanceManagementProtectedRoute,
+} from './components/common';
 import NotFound from './pages/NotFound';
 import { APP_CONFIG } from '@/config/constants';
 import './App.css';
@@ -174,25 +180,53 @@ const App = () => {
                   <Route
                     path='/cohorts/:cohortId'
                     element={
-                      <ProtectedRoute>
+                      <FeatureProtectedRoute
+                        requiredFeatures={['cohorts.edit', 'cohorts.delete']}
+                        requireAllFeatures={false}
+                        showAccessDenied={true}
+                        accessDeniedMessage='Cohort Details Access Required'
+                        accessDeniedDescription='Only super administrators can access cohort details.'
+                      >
                         <CohortDetailsPage />
-                      </ProtectedRoute>
+                      </FeatureProtectedRoute>
                     }
                   />
                   <Route
                     path='/cohorts/:cohortId/attendance'
                     element={
-                      <ProtectedRoute>
+                      <FeatureProtectedRoute
+                        requiredFeatures={[
+                          'attendance.mark',
+                          'attendance.edit',
+                          'attendance.delete',
+                          'attendance.export',
+                        ]}
+                        requireAllFeatures={false}
+                        showAccessDenied={true}
+                        accessDeniedMessage='Attendance Access Required'
+                        accessDeniedDescription='Only program managers and super administrators can access attendance management.'
+                      >
                         <CohortAttendancePage />
-                      </ProtectedRoute>
+                      </FeatureProtectedRoute>
                     }
                   />
                   <Route
                     path='/cohorts/:cohortId/fee-payment'
                     element={
-                      <ProtectedRoute>
+                      <FeatureProtectedRoute
+                        requiredFeatures={[
+                          'fees.collect',
+                          'fees.waive',
+                          'fees.refund',
+                          'fees.manage_scholarships',
+                        ]}
+                        requireAllFeatures={false}
+                        showAccessDenied={true}
+                        accessDeniedMessage='Fee Collection Access Required'
+                        accessDeniedDescription='Only fee collectors and super administrators can access fee collection.'
+                      >
                         <FeePaymentDashboard />
-                      </ProtectedRoute>
+                      </FeatureProtectedRoute>
                     }
                   />
                   <Route

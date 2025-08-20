@@ -11,7 +11,7 @@ export interface FeatureFlag {
   targetCohorts?: string[];
   startDate?: string;
   endDate?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface FeatureFlagContext {
@@ -90,6 +90,31 @@ export class FeatureFlagService {
         rolloutPercentage: 10,
         targetRoles: ['admin'],
       },
+      // Role-based access control flags
+      {
+        id: 'fee-collection-access',
+        name: 'Fee Collection Access',
+        description: 'Control access to fee collection features',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['fee_collector', 'super_admin'],
+      },
+      {
+        id: 'attendance-access',
+        name: 'Attendance Access',
+        description: 'Control access to attendance management features',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['program_manager', 'super_admin'],
+      },
+      {
+        id: 'cohort-details-access',
+        name: 'Cohort Details Access',
+        description: 'Control access to cohort details and management',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin'],
+      },
     ];
 
     defaultFlags.forEach(flag => {
@@ -163,7 +188,7 @@ export class FeatureFlagService {
   /**
    * Get feature flag metadata
    */
-  getMetadata(flagId: string): Record<string, any> | null {
+  getMetadata(flagId: string): Record<string, unknown> | null {
     const flag = this.flags.get(flagId);
     return flag?.metadata || null;
   }
@@ -229,7 +254,7 @@ export class FeatureFlagService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -251,7 +276,9 @@ export class FeatureFlagService {
     // This is a simplified implementation
     // In a real application, you would track actual usage
     const totalUsers = 1000; // Mock total users
-    const enabledUsers = Math.floor((totalUsers * flag.rolloutPercentage) / 100);
+    const enabledUsers = Math.floor(
+      (totalUsers * flag.rolloutPercentage) / 100
+    );
     const percentage = flag.rolloutPercentage;
 
     return {

@@ -2,8 +2,17 @@ import { UserRole } from './auth';
 
 // Define all available features in the application
 export type FeatureKey =
+  // Attendance features
   | 'attendance.view'
+  | 'attendance.mark'
+  | 'attendance.edit'
+  | 'attendance.delete'
+  | 'attendance.export'
+  | 'attendance.leaderboard'
+  | 'attendance.statistics'
   | 'attendance.manage'
+
+  // Cohort features
   | 'cohorts.view'
   | 'cohorts.create'
   | 'cohorts.edit'
@@ -13,26 +22,82 @@ export type FeatureKey =
   | 'cohorts.edit_students'
   | 'cohorts.assign_scholarships'
   | 'cohorts.bulk_upload'
+  | 'cohorts.set_active_epic'
+
+  // Fee features
   | 'fees.view'
+  | 'fees.collect'
+  | 'fees.waive'
+  | 'fees.refund'
+  | 'fees.reports'
+  | 'fees.setup_structure'
+  | 'fees.manage_scholarships'
+  | 'fees.bulk_management'
   | 'fees.manage'
-  | 'holidays.view'
-  | 'holidays.manage'
-  | 'partnerships.view'
-  | 'partnerships.manage'
-  | 'placements.view'
-  | 'placements.manage'
-  | 'students.view'
-  | 'students.manage'
-  | 'system.admin'
+
+  // User features
   | 'users.view'
-  | 'users.manage';
+  | 'users.create'
+  | 'users.edit'
+  | 'users.delete'
+  | 'users.assign_roles'
+  | 'users.manage'
+
+  // System features
+  | 'system.settings'
+  | 'system.analytics'
+  | 'system.reports'
+  | 'system.logs'
+  | 'system.admin'
+
+  // Partnership features
+  | 'partnerships.view'
+  | 'partnerships.create'
+  | 'partnerships.edit'
+  | 'partnerships.delete'
+  | 'partnerships.analytics'
+  | 'partnerships.manage'
+
+  // Placement features
+  | 'placements.view'
+  | 'placements.create'
+  | 'placements.edit'
+  | 'placements.delete'
+  | 'placements.analytics'
+  | 'placements.manage'
+
+  // Holiday features
+  | 'holidays.view'
+  | 'holidays.create'
+  | 'holidays.edit'
+  | 'holidays.delete'
+  | 'holidays.global_manage'
+  | 'holidays.manage'
+
+  // Student features
+  | 'student.progress'
+  | 'student.assignments'
+  | 'student.programs'
+  | 'student.attendance_view'
+  | 'student.avatar_upload'
+  | 'students.view'
+  | 'students.manage';
 
 // Feature metadata for better organization and documentation
 export interface FeatureMetadata {
   key: FeatureKey;
   name: string;
   description: string;
-  category: 'cohorts' | 'attendance' | 'fees' | 'users' | 'system' | 'partnerships' | 'placements' | 'holidays' | 'student';
+  category:
+    | 'cohorts'
+    | 'attendance'
+    | 'fees'
+    | 'users'
+    | 'system'
+    | 'partnerships'
+    | 'placements'
+    | 'holidays'
+    | 'student';
   requiresAuthentication: boolean;
   deprecated?: boolean;
   experimental?: boolean;

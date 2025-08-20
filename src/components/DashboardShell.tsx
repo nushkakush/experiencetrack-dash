@@ -82,16 +82,16 @@ const getNavigationItems = (
     ],
     program_manager: [
       {
-        title: 'Cohorts',
+        title: 'Attendance Dashboard',
         onClick: () => navigate('/cohorts'),
-        icon: UsersRound,
+        icon: Calendar,
       },
     ],
     fee_collector: [
       {
-        title: 'Cohorts',
+        title: 'Fee Collection Dashboard',
         onClick: () => navigate('/cohorts'),
-        icon: UsersRound,
+        icon: DollarSign,
       },
       { title: 'Payments', url: '#', icon: DollarSign },
       { title: 'Outstanding Fees', url: '#', icon: Receipt },

@@ -60,6 +60,7 @@ const CohortsPage = () => {
     canCreateCohorts,
     canViewCohorts,
     canSetupFeeStructure,
+    canAccessCohortDetails,
   } = useFeaturePermissions();
 
   // Redirect if user can't view cohorts
@@ -79,6 +80,8 @@ const CohortsPage = () => {
   }
 
   const handleCohortClick = (cohortId: string) => {
+    // The CohortCard component now handles permission checking
+    // This function will only be called if the user has permission
     navigate(`/cohorts/${cohortId}`);
   };
 
@@ -221,7 +224,11 @@ const CohortsPage = () => {
               <CohortCard
                 key={cohort.id}
                 cohort={cohort}
-                onClick={() => handleCohortClick(cohort.id)}
+                onClick={
+                  canAccessCohortDetails
+                    ? () => handleCohortClick(cohort.id)
+                    : undefined
+                }
                 onFeeCollectionClick={() => handleFeeCollectionClick(cohort)}
                 onEditClick={() => handleEditClick(cohort)}
                 onDeleteClick={() => handleDeleteClick(cohort)}

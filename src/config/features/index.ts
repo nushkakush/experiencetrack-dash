@@ -1,4 +1,9 @@
-import { FeatureKey, FeatureMetadata, RolePermissions, FeatureGroup } from '@/types/features';
+import {
+  FeatureKey,
+  FeatureMetadata,
+  RolePermissions,
+  FeatureGroup,
+} from '@/types/features';
 import { UserRole } from '@/types/auth';
 
 // Import all domain-specific features
@@ -40,30 +45,24 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
   {
     role: 'program_manager',
     features: [
-      // Cohort Management (view, edit, delete + set active epic)
+      // Cohort Management (view only - no edit/delete access)
       'cohorts.view',
-      'cohorts.edit',
-      'cohorts.delete',
-      'cohorts.set_active_epic',
-      
-      // Attendance Management
+      'cohorts.set_active_epic', // Allow setting active epic for attendance management
+
+      // Attendance Management (full access)
       'attendance.view',
       'attendance.mark',
       'attendance.edit',
       'attendance.export',
       'attendance.leaderboard',
       'attendance.statistics',
-      
+
       // Holidays
       'holidays.view',
       'holidays.create',
       'holidays.edit',
       'holidays.delete',
-      
-      // Fee Management (basic access)
-      'fees.view',
-      'fees.bulk_management',
-      
+
       // Student Features (for viewing)
       'student.progress',
       'student.assignments',
@@ -76,8 +75,8 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
     features: [
       // Cohort Management (view only)
       'cohorts.view',
-      
-      // Fee Management (cannot setup - only super_admin can setup)
+
+      // Fee Management (full access except setup - only super_admin can setup)
       'fees.view',
       'fees.collect',
       'fees.waive',
@@ -85,10 +84,10 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'fees.reports',
       'fees.manage_scholarships',
       'fees.bulk_management',
-      
+
       // User Management (view only for fee purposes)
       'users.view',
-      
+
       // Student Features (for viewing)
       'student.avatar_upload', // Can view avatars but not upload
     ],
@@ -102,7 +101,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'partnerships.edit',
       'partnerships.delete',
       'partnerships.analytics',
-      
+
       // System (limited)
       'system.analytics',
       'system.reports',
@@ -117,7 +116,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'placements.edit',
       'placements.delete',
       'placements.analytics',
-      
+
       // System (limited)
       'system.analytics',
       'system.reports',
