@@ -233,6 +233,14 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           | 'partially_paid_verification_pending'
           | undefined;
 
+        console.log('🔍 [PaymentSchedule] One-shot payment status from engine:', {
+          statusFromEngine,
+          oneShotPayment: oneShot,
+          programFeeAmount,
+          studentId: student.student_id,
+          paymentPlan: student.payment_plan
+        });
+
         schedule.push({
           id: 'program_fee_one_shot',
           type: 'Program Fee (One-Shot)',
@@ -415,11 +423,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
   // Function to handle payment recording completion
   const handlePaymentRecorded = () => {
-    // Add a small delay to ensure payment engine has processed the transaction
+    console.log('🔍 [PaymentSchedule] handlePaymentRecorded called - refreshing payment schedule');
+    // Add a longer delay to ensure payment engine has processed the transaction
     setTimeout(() => {
+      console.log('🔍 [PaymentSchedule] Refreshing payment schedule after delay');
       // Refresh the payment schedule
       fetchPaymentSchedule();
-    }, 1000);
+    }, 3000); // Increased from 1000ms to 3000ms
   };
 
   // Function to close the recording dialog
