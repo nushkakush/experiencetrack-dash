@@ -142,12 +142,12 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
 
   if (loading) {
     return (
-      <div className='space-y-3'>
-        <div className='animate-pulse'>
-          <div className='h-4 bg-muted rounded mb-2'></div>
-          <div className='h-4 bg-muted rounded mb-2'></div>
-          <div className='h-4 bg-muted rounded mb-2'></div>
-          <div className='h-4 bg-muted rounded mb-2'></div>
+      <div className='space-y-4'>
+        <div className='animate-pulse space-y-3'>
+          <div className='h-4 bg-muted rounded'></div>
+          <div className='h-4 bg-muted rounded'></div>
+          <div className='h-4 bg-muted rounded'></div>
+          <div className='h-4 bg-muted rounded'></div>
         </div>
       </div>
     );
@@ -157,17 +157,21 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   if (!hasPaymentPlan) {
     return (
       <>
-        <div className='text-center py-8'>
-          <div className='mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4'>
-            <CreditCard className='h-8 w-8 text-muted-foreground' />
+        <div className='text-center space-y-6'>
+          <div className='space-y-4'>
+            <div className='mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center'>
+              <CreditCard className='h-8 w-8 text-muted-foreground' />
+            </div>
+            <div className='space-y-2'>
+              <h3 className='text-lg font-semibold text-foreground'>
+                No Payment Plan Selected
+              </h3>
+              <p className='text-sm text-muted-foreground max-w-sm mx-auto'>
+                This student hasn't chosen a payment plan yet. Once a plan is
+                selected, you'll see detailed financial information here.
+              </p>
+            </div>
           </div>
-          <h3 className='text-lg font-semibold text-foreground mb-2'>
-            No Payment Plan Selected
-          </h3>
-          <p className='text-sm text-muted-foreground mb-4 max-w-sm mx-auto'>
-            This student hasn't chosen a payment plan yet. Once a plan is
-            selected, you'll see detailed financial information here.
-          </p>
 
           {/* Payment Plan Options Preview */}
           <div className='grid grid-cols-1 gap-3 max-w-xs mx-auto'>
@@ -205,7 +209,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
 
   return (
     <>
-      <div>
+      <div className='space-y-4'>
         <div className='space-y-3'>
           <div className='flex justify-between items-center'>
             <span className='text-sm text-muted-foreground'>Total Amount:</span>
@@ -254,8 +258,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         </div>
 
         {/* Progress Bar */}
-        <div className='mt-4'>
-          <div className='flex justify-between text-sm mb-2'>
+        <div className='space-y-2'>
+          <div className='flex justify-between text-sm'>
             <span className='text-foreground'>
               {formatCurrency(financialData.paidAmount)} /{' '}
               {formatCurrency(financialData.totalAmount)}
@@ -268,10 +272,6 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             value={financialData.progressPercentage}
             className='h-2 bg-muted'
           />
-          <div className='text-xs text-muted-foreground mt-1'>
-            {financialData.paidInstallments} of{' '}
-            {financialData.totalInstallments} installments paid
-          </div>
         </div>
       </div>
       <Separator className='bg-border' />
