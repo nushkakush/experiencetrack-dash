@@ -72,8 +72,13 @@ export const AdminPaymentRecordingDialog: React.FC<
     useState<StudentPaymentBreakdown | null>(null);
   const [loading, setLoading] = useState(false);
   const { profile } = useAuth();
+  
   const { handlePaymentSubmission: handleRegularPayment, submittingPayments } =
-    usePaymentSubmissions();
+    usePaymentSubmissions(undefined, async () => {
+      // Close the dialog and refresh the payment schedule
+      onOpenChange(false);
+      onPaymentRecorded?.();
+    });
 
   // 🔍 DEBUG LOGGING - Track initial props (only on dialog open)
 
@@ -451,11 +456,7 @@ export const AdminPaymentRecordingDialog: React.FC<
   //   selectedInstallment,
   // ]);
 
-  const handlePaymentSuccess = () => {
-    // Close the dialog and refresh the payment schedule
-    onOpenChange(false);
-    onPaymentRecorded?.();
-  };
+
 
   if (!paymentItem) return null;
 
