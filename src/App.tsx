@@ -18,9 +18,11 @@ import CohortDetailsPage from './pages/CohortDetailsPage';
 import CohortAttendancePage from './pages/CohortAttendancePage';
 import CohortAttendanceDashboard from './pages/dashboards/CohortAttendanceDashboard';
 import FeePaymentDashboard from './pages/FeePaymentDashboard';
+import UserManagementPage from './pages/user-management/UserManagementPage';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import PublicCombinedLeaderboard from './pages/PublicCombinedLeaderboard';
 import InvitationPage from './pages/InvitationPage';
+import UserInvitationPage from './pages/UserInvitationPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import {
@@ -51,11 +53,15 @@ const App = () => {
     // Add debugging for potential reload causes
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       console.log('🔄 [DEBUG] Before unload event triggered', {
-        memory: performance.memory
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        memory: (performance as any).memory
           ? {
-              usedJSHeapSize: performance.memory.usedJSHeapSize,
-              totalJSHeapSize: performance.memory.totalJSHeapSize,
-              jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              usedJSHeapSize: (performance as any).memory?.usedJSHeapSize,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              totalJSHeapSize: (performance as any).memory?.totalJSHeapSize,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              jsHeapSizeLimit: (performance as any).memory?.jsHeapSizeLimit,
             }
           : 'Not available',
         navigationType: performance.navigation.type,
@@ -73,11 +79,15 @@ const App = () => {
         persisted: event.persisted,
         navigationType: performance.navigation.type,
         timing: performance.timing,
-        memory: performance.memory
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        memory: (performance as any).memory
           ? {
-              usedJSHeapSize: performance.memory.usedJSHeapSize,
-              totalJSHeapSize: performance.memory.totalJSHeapSize,
-              jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              usedJSHeapSize: (performance as any).memory?.usedJSHeapSize,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              totalJSHeapSize: (performance as any).memory?.totalJSHeapSize,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              jsHeapSizeLimit: (performance as any).memory?.jsHeapSizeLimit,
             }
           : 'Not available',
         timestamp: Date.now(),
@@ -157,6 +167,14 @@ const App = () => {
                     <Route path='/reset-password' element={<ResetPassword />} />
                     <Route
                       path='/dashboard'
+                      element={
+                        <ProtectedRoute>
+                          <DashboardRouter />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path='/user-management'
                       element={
                         <ProtectedRoute>
                           <DashboardRouter />
@@ -247,8 +265,13 @@ const App = () => {
                         </ProtectedRoute>
                       }
                     />
+
                     {/* Public routes (no authentication required) */}
                     <Route path='/invite/:token' element={<InvitationPage />} />
+                    <Route
+                      path='/user-invite/:token'
+                      element={<UserInvitationPage />}
+                    />
                     <Route
                       path='/public/leaderboard/:cohortId/:epicId'
                       element={<PublicLeaderboard />}

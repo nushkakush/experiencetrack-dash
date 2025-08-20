@@ -13,3 +13,6 @@ export * from './payments';
 
 // Lifecycle hooks
 export { useLifecycleLogging, useRouteLogging } from './useLifecycleLogging';
+
+// User management hooks
+export { useUserManagement } from './useUserManagement';

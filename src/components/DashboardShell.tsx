@@ -75,7 +75,11 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: UsersRound,
       },
-      { title: 'User Management', url: '#', icon: Users },
+      {
+        title: 'User Management',
+        onClick: () => navigate('/user-management'),
+        icon: Users,
+      },
       { title: 'System Settings', url: '#', icon: Settings },
       { title: 'Analytics', url: '#', icon: BarChart3 },
       { title: 'Reports', url: '#', icon: FileText },
