@@ -51,8 +51,13 @@ serve(async req => {
       invitationToken = userInvitation.invitation_token;
       invitationExpiresAt = userInvitation.invitation_expires_at;
 
-      // Generate user invitation URL
-      const baseUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
+      // Generate user invitation URL - dynamically detect domain from request
+      const origin =
+        req.headers.get('origin') ||
+        req.headers.get('referer')?.replace(/\/.*$/, '') ||
+        Deno.env.get('FRONTEND_URL') ||
+        'http://localhost:3000';
+      const baseUrl = origin.startsWith('http') ? origin : `https://${origin}`;
       invitationUrl = `${baseUrl}/user-invite/${invitationToken}`;
 
       // User invitation email content
@@ -99,8 +104,13 @@ serve(async req => {
       invitationToken = student.invitation_token;
       invitationExpiresAt = student.invitation_expires_at;
 
-      // Generate student invitation URL
-      const baseUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
+      // Generate student invitation URL - dynamically detect domain from request
+      const origin =
+        req.headers.get('origin') ||
+        req.headers.get('referer')?.replace(/\/.*$/, '') ||
+        Deno.env.get('FRONTEND_URL') ||
+        'http://localhost:3000';
+      const baseUrl = origin.startsWith('http') ? origin : `https://${origin}`;
       invitationUrl = `${baseUrl}/invite/${invitationToken}`;
 
       // Student invitation email content (original content)

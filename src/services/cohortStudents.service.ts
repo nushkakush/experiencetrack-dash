@@ -1,25 +1,27 @@
-
-import { supabase } from "@/integrations/supabase/client";
-import { BaseService } from "./base.service";
-import { ApiResponse } from "@/types/common";
-import { CohortStudent, NewStudentInput } from "@/types/cohort";
+import { supabase } from '@/integrations/supabase/client';
+import { BaseService } from './base.service';
+import { ApiResponse } from '@/types/common';
+import { CohortStudent, NewStudentInput } from '@/types/cohort';
 
 class CohortStudentsService extends BaseService<CohortStudent> {
   constructor() {
-    super("cohort_students");
+    super('cohort_students');
   }
 
   async listByCohort(cohortId: string): Promise<ApiResponse<CohortStudent[]>> {
-    return this["executeQuery"](async () => {
+    return this['executeQuery'](async () => {
       return await supabase
-        .from("cohort_students")
-        .select("*")
-        .eq("cohort_id", cohortId)
-        .order("created_at", { ascending: false });
+        .from('cohort_students')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .order('created_at', { ascending: false });
     });
   }
 
-  async addOne(cohortId: string, input: NewStudentInput): Promise<ApiResponse<CohortStudent>> {
+  async addOne(
+    cohortId: string,
+    input: NewStudentInput
+  ): Promise<ApiResponse<CohortStudent>> {
     return this.create<CohortStudent>({
       cohort_id: cohortId,
       email: input.email,
@@ -27,22 +29,26 @@ class CohortStudentsService extends BaseService<CohortStudent> {
       last_name: input.last_name,
       phone: input.phone,
       avatar_url: input.avatar_url,
-      invite_status: "pending",
+      invite_status: 'pending',
     } as Partial<CohortStudent>);
   }
 
-  async updateByEmail(cohortId: string, email: string, input: NewStudentInput): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+  async updateByEmail(
+    cohortId: string,
+    email: string,
+    input: NewStudentInput
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
+        .from('cohort_students')
         .update({
           first_name: input.first_name,
           last_name: input.last_name,
           phone: input.phone,
           avatar_url: input.avatar_url,
         })
-        .eq("cohort_id", cohortId)
-        .eq("email", email)
+        .eq('cohort_id', cohortId)
+        .eq('email', email)
         .select()
         .single();
 
@@ -51,21 +57,27 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async upsertStudent(cohortId: string, input: NewStudentInput): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+  async upsertStudent(
+    cohortId: string,
+    input: NewStudentInput
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
-        .upsert({
-          cohort_id: cohortId,
-          email: input.email,
-          first_name: input.first_name,
-          last_name: input.last_name,
-          phone: input.phone,
-          avatar_url: input.avatar_url,
-          invite_status: "pending",
-        }, {
-          onConflict: 'cohort_id,email'
-        })
+        .from('cohort_students')
+        .upsert(
+          {
+            cohort_id: cohortId,
+            email: input.email,
+            first_name: input.first_name,
+            last_name: input.last_name,
+            phone: input.phone,
+            avatar_url: input.avatar_url,
+            invite_status: 'pending',
+          },
+          {
+            onConflict: 'cohort_id,email',
+          }
+        )
         .select()
         .single();
 
@@ -76,31 +88,34 @@ class CohortStudentsService extends BaseService<CohortStudent> {
 
   async markInvited(id: string): Promise<void> {
     const { error } = await supabase
-      .from("cohort_students")
-      .update({ invite_status: "sent", invited_at: new Date().toISOString() })
-      .eq("id", id);
+      .from('cohort_students')
+      .update({ invite_status: 'sent', invited_at: new Date().toISOString() })
+      .eq('id', id);
     if (error) throw error;
   }
 
-  async sendCustomInvitation(id: string, invitedBy: string): Promise<ApiResponse<{ invitationUrl: string }>> {
-    return this["executeQuery"](async () => {
+  async sendCustomInvitation(
+    id: string,
+    invitedBy: string
+  ): Promise<ApiResponse<{ invitationUrl: string }>> {
+    return this['executeQuery'](async () => {
       // Generate a unique invitation token
       const invitationToken = crypto.randomUUID();
-      
+
       // Set invitation expiry to 7 days from now
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
       const { data, error } = await supabase
-        .from("cohort_students")
-        .update({ 
-          invite_status: "sent", 
+        .from('cohort_students')
+        .update({
+          invite_status: 'sent',
           invited_at: new Date().toISOString(),
           invitation_token: invitationToken,
           invitation_expires_at: expiresAt.toISOString(),
-          invited_by: invitedBy
+          invited_by: invitedBy,
         })
-        .eq("id", id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -108,17 +123,19 @@ class CohortStudentsService extends BaseService<CohortStudent> {
 
       // Generate invitation URL
       const invitationUrl = `${window.location.origin}/invite/${invitationToken}`;
-      
+
       return { data: { invitationUrl }, error: null };
     });
   }
 
-  async getStudentByInvitationToken(token: string): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+  async getStudentByInvitationToken(
+    token: string
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
-        .select("*")
-        .eq("invitation_token", token)
+        .from('cohort_students')
+        .select('*')
+        .eq('invitation_token', token)
         .single();
 
       if (error) throw error;
@@ -127,11 +144,11 @@ class CohortStudentsService extends BaseService<CohortStudent> {
   }
 
   async getByUserId(userId: string): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
-        .select("*")
-        .eq("user_id", userId)
+        .from('cohort_students')
+        .select('*')
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (error) throw error;
@@ -139,22 +156,22 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async getCohortByStudentId(studentId: string): Promise<ApiResponse<any>> {
-    return this["executeQuery"](async () => {
+  async getCohortByStudentId(studentId: string): Promise<ApiResponse<unknown>> {
+    return this['executeQuery'](async () => {
       // First get the student to get the cohort_id
       const { data: studentData, error: studentError } = await supabase
-        .from("cohort_students")
-        .select("cohort_id")
-        .eq("id", studentId)
+        .from('cohort_students')
+        .select('cohort_id')
+        .eq('id', studentId)
         .single();
 
       if (studentError) throw studentError;
 
       // Then get the cohort data
       const { data: cohortData, error: cohortError } = await supabase
-        .from("cohorts")
-        .select("*")
-        .eq("id", studentData.cohort_id)
+        .from('cohorts')
+        .select('*')
+        .eq('id', studentData.cohort_id)
         .single();
 
       if (cohortError) throw cohortError;
@@ -163,16 +180,19 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async acceptInvitation(token: string, userId: string): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+  async acceptInvitation(
+    token: string,
+    userId: string
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
-        .update({ 
-          invite_status: "accepted", 
+        .from('cohort_students')
+        .update({
+          invite_status: 'accepted',
           accepted_at: new Date().toISOString(),
-          user_id: userId
+          user_id: userId,
         })
-        .eq("invitation_token", token)
+        .eq('invitation_token', token)
         .select()
         .single();
 
@@ -181,12 +201,15 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async update(id: string, updates: Partial<CohortStudent>): Promise<ApiResponse<CohortStudent>> {
-    return this["executeQuery"](async () => {
+  async update(
+    id: string,
+    updates: Partial<CohortStudent>
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this['executeQuery'](async () => {
       const { data, error } = await supabase
-        .from("cohort_students")
+        .from('cohort_students')
         .update(updates)
-        .eq("id", id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -195,26 +218,37 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async sendInvitationEmail(studentId: string, email: string, firstName: string, lastName: string, cohortName: string): Promise<ApiResponse<{ invitationUrl: string; emailSent: boolean }>> {
+  async sendInvitationEmail(
+    studentId: string,
+    email: string,
+    firstName: string,
+    lastName: string,
+    cohortName: string
+  ): Promise<ApiResponse<{ invitationUrl: string; emailSent: boolean }>> {
     try {
-      const supabaseUrl = "https://ghmpaghyasyllfvamfna.supabase.co";
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-invitation-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
-        },
-        body: JSON.stringify({
-          studentId,
-          email,
-          firstName,
-          lastName,
-          cohortName,
-        }),
-      });
+      const supabaseUrl = 'https://ghmpaghyasyllfvamfna.supabase.co';
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/send-invitation-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
+            Origin: window.location.origin,
+            Referer: window.location.href,
+          },
+          body: JSON.stringify({
+            studentId,
+            email,
+            firstName,
+            lastName,
+            cohortName,
+          }),
+        }
+      );
 
       const result = await response.json();
-      
+
       if (result.success) {
         return { data: result, error: null, success: true };
       } else {

@@ -72,6 +72,8 @@ class UserInvitationService {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
+            Origin: window.location.origin,
+            Referer: window.location.href,
           },
           body: JSON.stringify({
             studentId: invitationId, // Map invitationId to studentId for compatibility
