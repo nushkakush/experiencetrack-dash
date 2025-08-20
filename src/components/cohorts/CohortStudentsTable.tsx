@@ -31,6 +31,7 @@ import { Scholarship } from '@/types/fee';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { studentPaymentPlanService, StudentPaymentPlan } from '@/services/studentPaymentPlan.service';
+import { FeeStructureService } from '@/services/feeStructure.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { toast } from 'sonner';
@@ -86,10 +87,34 @@ export default function CohortStudentsTable({
     Record<string, StudentPaymentPlan>
   >({});
   const [loadingPaymentPlans, setLoadingPaymentPlans] = useState(false);
+  const [customFeeStructures, setCustomFeeStructures] = useState<
+    Record<string, boolean>
+  >({});
+  const [isFeeSetupComplete, setIsFeeSetupComplete] = useState<boolean>(false);
+  const [loadingFeeSetup, setLoadingFeeSetup] = useState<boolean>(true);
 
   const canManageStudents = hasPermission('cohorts.manage_students');
   const canEditStudents = hasPermission('cohorts.edit_students');
   const canAssignScholarships = hasPermission('cohorts.assign_scholarships');
+
+  // Check if fee setup is complete for this cohort
+  const checkFeeSetupCompletion = useCallback(async () => {
+    if (!students.length) return;
+    
+    try {
+      setLoadingFeeSetup(true);
+      const cohortId = students[0]?.cohort_id;
+      if (!cohortId) return;
+
+      const { feeStructure } = await FeeStructureService.getCompleteFeeStructure(cohortId);
+      setIsFeeSetupComplete(!!(feeStructure && feeStructure.is_setup_complete));
+    } catch (error) {
+      console.error('Error checking fee setup completion:', error);
+      setIsFeeSetupComplete(false);
+    } finally {
+      setLoadingFeeSetup(false);
+    }
+  }, [students]);
 
   const handleSendInvitation = async (student: CohortStudent) => {
     setInvitingStudentId(student.id);
@@ -242,9 +267,40 @@ export default function CohortStudentsTable({
       setPaymentPlanAssignments(assignments);
       setPaymentPlanDetails(details);
 
+      // Load custom fee structures for students with payment plans
+      const customStructures: Record<string, boolean> = {};
+      const studentsWithPlans = results.filter(r => r.hasPaymentPlan && r.paymentPlanData);
+      
+      if (studentsWithPlans.length > 0) {
+        const customResults = await Promise.all(
+          studentsWithPlans.map(async ({ studentId }) => {
+            try {
+              // Check if student has a custom fee structure
+              const customStructure = await FeeStructureService.getFeeStructure(
+                students.find(s => s.id === studentId)?.cohort_id || '',
+                studentId
+              );
+              return {
+                studentId,
+                hasCustomStructure: !!customStructure && customStructure.structure_type === 'custom'
+              };
+            } catch {
+              return { studentId, hasCustomStructure: false };
+            }
+          })
+        );
+
+        customResults.forEach(({ studentId, hasCustomStructure }) => {
+          customStructures[studentId] = hasCustomStructure;
+        });
+      }
+
+      setCustomFeeStructures(customStructures);
+
       // Log the results for debugging
       console.log('Payment plan assignments loaded:', results);
       console.log('Payment plan details:', details);
+      console.log('Custom fee structures:', customStructures);
     } catch (error) {
       console.error('Error loading payment plan assignments:', error);
     } finally {
@@ -276,15 +332,24 @@ export default function CohortStudentsTable({
     }, 200);
   };
 
-  // Load scholarship assignments when students change
+  // Check fee setup completion when students change
   useEffect(() => {
-    loadScholarshipAssignments();
-  }, [students, canAssignScholarships, loadScholarshipAssignments]);
+    checkFeeSetupCompletion();
+  }, [checkFeeSetupCompletion]);
 
-  // Load payment plan assignments when students change
+  // Load scholarship assignments when students change and fee setup is complete
   useEffect(() => {
-    loadPaymentPlanAssignments();
-  }, [students, canAssignScholarships, loadPaymentPlanAssignments]);
+    if (isFeeSetupComplete) {
+      loadScholarshipAssignments();
+    }
+  }, [students, canAssignScholarships, isFeeSetupComplete, loadScholarshipAssignments]);
+
+  // Load payment plan assignments when students change and fee setup is complete
+  useEffect(() => {
+    if (isFeeSetupComplete) {
+      loadPaymentPlanAssignments();
+    }
+  }, [students, canAssignScholarships, isFeeSetupComplete, loadPaymentPlanAssignments]);
 
   if (loading) {
     return (
@@ -405,7 +470,7 @@ export default function CohortStudentsTable({
                         </div>
                       ) : (
                         <div className='text-sm text-muted-foreground'>
-                          No scholarship
+                          {!isFeeSetupComplete ? 'Fee setup required' : 'No scholarship'}
                         </div>
                       )}
                       <StudentScholarshipDialog
@@ -422,11 +487,13 @@ export default function CohortStudentsTable({
                               : 'text-primary hover:text-primary/80'
                           }`}
                           title={
-                            scholarshipAssignments[student.id]
-                              ? 'Edit scholarship'
-                              : 'Assign scholarship'
+                            !isFeeSetupComplete
+                              ? 'Complete fee setup first'
+                              : scholarshipAssignments[student.id]
+                                ? 'Edit scholarship'
+                                : 'Assign scholarship'
                           }
-                          disabled={loadingScholarships}
+                          disabled={loadingScholarships || !isFeeSetupComplete}
                         >
                           {scholarshipAssignments[student.id] ? (
                             <CheckCircle className='h-4 w-4' />
@@ -440,20 +507,21 @@ export default function CohortStudentsTable({
                     {/* Payment Plan Section */}
                     <div className='flex items-center gap-2'>
                       {paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan ? (
-                        <div className='flex-1 min-w-0'>
-                          <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
-                            {paymentPlanDetails[student.id]?.payment_plan === 'one_shot' && 'One Shot Payment'}
-                            {paymentPlanDetails[student.id]?.payment_plan === 'sem_wise' && 'Semester Wise'}
-                            {paymentPlanDetails[student.id]?.payment_plan === 'instalment_wise' && 'Instalment Wise'}
-                            {paymentPlanDetails[student.id]?.payment_plan === 'not_selected' && 'Not Selected'}
-                          </div>
-                          <div className='text-xs text-muted-foreground'>
-                            Payment plan set
-                          </div>
+                        <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
+                          {(() => {
+                            const plan = paymentPlanDetails[student.id]?.payment_plan;
+                            const isCustom = customFeeStructures[student.id];
+                            const planName = 
+                              plan === 'one_shot' ? 'One Shot Payment' :
+                              plan === 'sem_wise' ? 'Semester Wise' :
+                              plan === 'instalment_wise' ? 'Instalment Wise' :
+                              plan === 'not_selected' ? 'Not Selected' : '';
+                            return isCustom ? `Custom ${planName}` : planName;
+                          })()}
                         </div>
                       ) : (
                         <div className='text-sm text-muted-foreground'>
-                          No payment plan
+                          {!isFeeSetupComplete ? 'Fee setup required' : 'No payment plan'}
                         </div>
                       )}
                       <PaymentPlanDialog
@@ -469,11 +537,13 @@ export default function CohortStudentsTable({
                               : 'text-primary hover:text-primary/80'
                           }`}
                           title={
-                            paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan
-                              ? 'Edit payment plan'
-                              : 'Select payment plan'
+                            !isFeeSetupComplete
+                              ? 'Complete fee setup first'
+                              : paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan
+                                ? 'Edit payment plan'
+                                : 'Select payment plan'
                           }
-                          disabled={loadingPaymentPlans}
+                          disabled={loadingPaymentPlans || !isFeeSetupComplete}
                         >
                           {paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan ? (
                             <CheckCircle className='h-4 w-4' />

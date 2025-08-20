@@ -137,8 +137,8 @@ export const usePaymentDetails = () => {
       const cohortData = cohortStudentResult.data;
       setCohortData(cohortData);
 
-      // Load fee structure
-      const feeStructureResult = await FeeStructureService.getFeeStructure(cohortData.cohort_id);
+      // Load fee structure - prioritize custom plan for this student if it exists
+      const feeStructureResult = await FeeStructureService.getFeeStructure(cohortData.cohort_id, cohortData.id);
       if (feeStructureResult) {
         setFeeStructure(feeStructureResult);
       }

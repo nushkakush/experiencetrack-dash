@@ -10,6 +10,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { StepNavigation } from './components/StepNavigation';
 import { AddScholarshipButton } from './components/AddScholarshipButton';
+import { FeeStructureService } from '@/services/feeStructure.service';
+import { toast } from 'sonner';
 
 interface FeeCollectionSetupModalProps {
   open: boolean;
@@ -19,6 +21,13 @@ interface FeeCollectionSetupModalProps {
   onSetupComplete: () => void;
   mode?: 'view' | 'edit';
   onModeChange?: (mode: 'view' | 'edit') => void;
+  // New: student customization mode
+  variant?: 'cohort' | 'student-custom';
+  studentId?: string;
+  initialSelectedPlan?: 'one_shot' | 'sem_wise' | 'instalment_wise';
+  hideScholarships?: boolean;
+  restrictPaymentPlanToSelected?: boolean;
+  hideScholarshipControls?: boolean;
 }
 
 export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = ({
@@ -29,6 +38,12 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
   onSetupComplete,
   mode = 'view',
   onModeChange,
+  variant = 'cohort',
+  studentId,
+  initialSelectedPlan,
+  hideScholarships = false,
+  restrictPaymentPlanToSelected = false,
+  hideScholarshipControls = false,
 }) => {
   const {
     currentStep,
@@ -46,10 +61,12 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
     handleStepChange,
   } = useFeeCollectionSetup({
     cohortId,
+    // In student-custom mode, load the student's existing custom structure for editing
+    studentId,
     onComplete: onSetupComplete,
   });
 
-  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<'one_shot' | 'sem_wise' | 'instalment_wise'>('instalment_wise');
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<'one_shot' | 'sem_wise' | 'instalment_wise'>(initialSelectedPlan || 'instalment_wise');
 
   // Memoize the fee structure object to prevent unnecessary re-renders
   // Use existing fee structure if available (includes saved custom dates), otherwise create new one
@@ -106,6 +123,36 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
   }, [setEditedDates]);
 
   const handleSaveClick = async () => {
+    if (variant === 'student-custom') {
+      // Save student-specific custom plan
+      try {
+        const plan = (restrictPaymentPlanToSelected ? selectedPaymentPlan : selectedPaymentPlan) || 'instalment_wise';
+        const datesForSelected = (editedDates as any)[plan] || {};
+
+        const saved = await FeeStructureService.upsertCustomPlanForStudent({
+          cohortId,
+          studentId: studentId || '',
+          baseFields: {
+            admission_fee: feeStructureData.admission_fee,
+            total_program_fee: feeStructureData.total_program_fee,
+            number_of_semesters: feeStructureData.number_of_semesters,
+            instalments_per_semester: feeStructureData.instalments_per_semester,
+            one_shot_discount_percentage: feeStructureData.one_shot_discount_percentage,
+          },
+          selectedPlan: plan,
+          editedDates: datesForSelected,
+        });
+
+        if (!saved) throw new Error('Failed to save custom plan');
+        toast.success('Custom plan saved');
+        onOpenChange(false);
+        onSetupComplete();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to save custom plan');
+      }
+      return;
+    }
     await handleSave();
   };
 
@@ -132,15 +179,24 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
               onChange={(data) => setFeeStructureData(data)}
               errors={{}}
               isReadOnly={mode === 'view'}
+              selectedPaymentPlan={selectedPaymentPlan}
+              isStudentCustomMode={variant === 'student-custom'}
             />
           );
         case 2:
+          if (hideScholarships) {
+            return (
+              <div className="text-sm text-muted-foreground">
+                Scholarships are managed at the cohort level and are not editable in this flow.
+              </div>
+            );
+          }
           return (
             <Step2Scholarships
               scholarships={memoizedScholarships}
               onScholarshipsChange={setScholarships}
               errors={{}}
-              isReadOnly={mode === 'view'}
+              isReadOnly={variant === 'student-custom' || mode === 'view'}
             />
           );
               case 3:
@@ -152,6 +208,9 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
               isReadOnly={mode === 'view'}
               onPaymentPlanChange={handlePaymentPlanChangeCallback}
               selectedPaymentPlan={selectedPaymentPlan}
+              restrictToPlan={restrictPaymentPlanToSelected ? selectedPaymentPlan : undefined}
+              hideScholarshipControls={hideScholarshipControls}
+              initialScholarshipId={'no_scholarship'}
             />
           );
       default:
@@ -159,12 +218,21 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
     }
   };
 
+  // Auto-skip Step 2 only if scholarships are completely hidden
+  React.useEffect(() => {
+    if (hideScholarships && currentStep === 2) {
+      handleNext();
+    }
+  }, [hideScholarships, currentStep, handleNext]);
+
+  const totalSteps = hideScholarships ? 2 : 3;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {`Configure Fee Structure - Step ${currentStep} of 3`}
+            {`Configure Fee Structure - Step ${Math.min(currentStep, totalSteps)} of ${totalSteps}`}
           </DialogTitle>
           <DialogDescription>
             Configure your cohort's fee structure, define scholarships, and preview the resulting payment plans.
@@ -177,7 +245,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
           <StepNavigation
             steps={[
               { id: 1, title: 'Fee Structure' },
-              { id: 2, title: 'Scholarships' },
+              ...(hideScholarships ? [] as any : [{ id: 2, title: 'Scholarships' }]),
               { id: 3, title: 'Review' },
             ]}
             currentStep={currentStep}
@@ -191,6 +259,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
             isEditMode={mode === 'edit'}
             showNavigationButtons={true}
             showProgressBar={false}
+            saveButtonText={variant === 'student-custom' ? 'Save Custom Plan' : undefined}
           />
         </div>
       </DialogContent>

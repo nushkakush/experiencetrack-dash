@@ -2,16 +2,18 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NewFeeStructureInput } from '@/types/fee';
+import { NewFeeStructureInput, PaymentPlan } from '@/types/fee';
 
 interface Step1FeeStructureProps {
   data: NewFeeStructureInput;
   onChange: (data: NewFeeStructureInput) => void;
   errors?: Record<string, string>;
   isReadOnly?: boolean;
+  selectedPaymentPlan?: PaymentPlan;
+  isStudentCustomMode?: boolean;
 }
 
-export default function Step1FeeStructure({ data, onChange, errors, isReadOnly = false }: Step1FeeStructureProps) {
+export default function Step1FeeStructure({ data, onChange, errors, isReadOnly = false, selectedPaymentPlan, isStudentCustomMode = false }: Step1FeeStructureProps) {
   const handleChange = (field: keyof NewFeeStructureInput, value: string | number) => {
     if (isReadOnly) return; // Prevent changes in read-only mode
     
@@ -154,37 +156,40 @@ export default function Step1FeeStructure({ data, onChange, errors, isReadOnly =
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-              {isReadOnly ? (
-                <ReadOnlyField 
-                  label="One-Shot Payment Discount" 
-                  value={`${data.one_shot_discount_percentage}%`} 
-                />
-              ) : (
-                <>
-                  <Label htmlFor="one_shot_discount_percentage">One-Shot Payment Discount (%)</Label>
-                  <Input
-                    id="one_shot_discount_percentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={data.one_shot_discount_percentage}
-                    onChange={(e) => handleChange('one_shot_discount_percentage', e.target.value)}
-                    placeholder="0.00"
-                    className={errors?.one_shot_discount_percentage ? 'border-red-500' : ''}
+        {/* Show One-Shot Payment Discount in cohort setup, or only when one_shot plan is selected in student custom mode */}
+        {(!isStudentCustomMode || selectedPaymentPlan === 'one_shot') && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+                {isReadOnly ? (
+                  <ReadOnlyField 
+                    label="One-Shot Payment Discount" 
+                    value={`${data.one_shot_discount_percentage}%`} 
                   />
-                  {errors?.one_shot_discount_percentage && (
-                    <p className="text-sm text-red-500">{errors.one_shot_discount_percentage}</p>
-                  )}
-                </>
-              )}
-              <p className="text-sm text-muted-foreground">
-                This discount will be applied when students choose to pay the entire program fee upfront
-              </p>
+                ) : (
+                  <>
+                    <Label htmlFor="one_shot_discount_percentage">One-Shot Payment Discount (%)</Label>
+                    <Input
+                      id="one_shot_discount_percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={data.one_shot_discount_percentage}
+                      onChange={(e) => handleChange('one_shot_discount_percentage', e.target.value)}
+                      placeholder="0.00"
+                      className={errors?.one_shot_discount_percentage ? 'border-red-500' : ''}
+                    />
+                    {errors?.one_shot_discount_percentage && (
+                      <p className="text-sm text-red-500">{errors.one_shot_discount_percentage}</p>
+                    )}
+                  </>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  This discount will be applied when students choose to pay the entire program fee upfront
+                </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

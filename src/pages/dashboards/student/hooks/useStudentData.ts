@@ -144,9 +144,9 @@ export const useStudentData = (): StudentData => {
 
       setCohortData(cohortResult.data);
 
-      // Get fee structure
+      // Get fee structure - prioritize custom plan for this student if it exists
       const { feeStructure: feeData, scholarships: scholarshipData } =
-        await FeeStructureService.getCompleteFeeStructure(student.cohort_id);
+        await FeeStructureService.getCompleteFeeStructure(student.cohort_id, student.id);
 
       setFeeStructure(feeData as any);
       setScholarships(scholarshipData as CohortScholarshipRow[]);

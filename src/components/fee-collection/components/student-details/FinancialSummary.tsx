@@ -8,6 +8,7 @@ import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
 import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { supabase } from '@/integrations/supabase/client';
+import { FeeStructureService } from '@/services/feeStructure.service';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
@@ -92,11 +93,29 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   }, [student]);
 
   const calculateFinancialData = async (): Promise<CalculatedFinancialData> => {
+
+    
+    // Early validation - don't call payment engine if required data is missing
+    const validPaymentPlans = ['one_shot', 'sem_wise', 'instalment_wise'];
+    
     if (
       !student.student_id ||
+      student.student_id === 'undefined' ||
+      !student.student?.cohort_id ||
+      student.student?.cohort_id === 'undefined' ||
       !student.payment_plan ||
-      student.payment_plan === 'not_selected'
+      student.payment_plan === 'not_selected' ||
+      student.payment_plan === 'undefined' ||
+      !validPaymentPlans.includes(student.payment_plan)
     ) {
+      console.log('🔍 [FinancialSummary] Skipping payment engine call - missing required data:', {
+        student_id: student.student_id,
+        cohort_id: student.student?.cohort_id,
+        payment_plan: student.payment_plan,
+        hasStudent: !!student.student,
+        isValidPaymentPlan: validPaymentPlans.includes(student.payment_plan)
+      });
+      
       return {
         totalAmount: 0,
         paidAmount: 0,
@@ -112,8 +131,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     }
 
     try {
-      // Fetch canonical breakdown and fee structure from Edge Function
-      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
+      // Debug: Log the exact parameters being sent to payment engine
+      const paymentParams = {
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as
@@ -121,17 +140,35 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           | 'sem_wise'
           | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
-        // Pass fee structure data if available to ensure correct dates are used
-        feeStructureData: feeStructure ? {
-          total_program_fee: feeStructure.total_program_fee,
-          admission_fee: feeStructure.admission_fee,
-          number_of_semesters: feeStructure.number_of_semesters,
-          instalments_per_semester: feeStructure.instalments_per_semester,
-          one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-          one_shot_dates: feeStructure.one_shot_dates,
-          sem_wise_dates: feeStructure.sem_wise_dates,
-          instalment_wise_dates: feeStructure.instalment_wise_dates,
-        } : undefined,
+      };
+      
+
+      
+      // First, try to get the student's custom fee structure
+      const customFeeStructure = await FeeStructureService.getFeeStructure(
+        String(student.student?.cohort_id),
+        String(student.student_id)
+      );
+      
+      // Use custom structure if it exists, otherwise use the provided cohort structure
+      const feeStructureToUse = customFeeStructure || feeStructure;
+      
+
+      
+      // Fetch canonical breakdown and fee structure from Edge Function
+      // Use the correct fee structure (custom if exists, cohort otherwise)
+      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
+        ...paymentParams,
+        feeStructureData: {
+          total_program_fee: feeStructureToUse.total_program_fee,
+          admission_fee: feeStructureToUse.admission_fee,
+          number_of_semesters: feeStructureToUse.number_of_semesters,
+          instalments_per_semester: feeStructureToUse.instalments_per_semester,
+          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+          one_shot_dates: feeStructureToUse.one_shot_dates,
+          sem_wise_dates: feeStructureToUse.sem_wise_dates,
+          instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
+        }
       });
 
       if (!responseFeeStructure) {
@@ -220,6 +257,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       };
     } catch (error) {
       console.error('Error calculating financial data:', error);
+      
       return {
         totalAmount: 0,
         paidAmount: 0,

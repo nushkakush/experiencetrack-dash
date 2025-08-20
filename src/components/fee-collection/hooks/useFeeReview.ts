@@ -8,11 +8,12 @@ interface UseFeeReviewProps {
   feeStructure: FeeStructure;
   scholarships: Scholarship[];
   selectedPaymentPlan?: PaymentPlan;
+  initialScholarshipId?: string;
 }
 
-export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan }: UseFeeReviewProps) => {
+export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan, initialScholarshipId }: UseFeeReviewProps) => {
   const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan>(propSelectedPaymentPlan || 'one_shot');
-  const [selectedScholarshipId, setSelectedScholarshipId] = useState<string>('no_scholarship');
+  const [selectedScholarshipId, setSelectedScholarshipId] = useState<string>(initialScholarshipId || 'no_scholarship');
   const [isPreloaded, setIsPreloaded] = useState(false);
   // Keep dates isolated per plan to avoid cross-plan contamination
   const [datesByPlan, setDatesByPlan] = useState<{
@@ -284,6 +285,13 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
       setSelectedPaymentPlan(propSelectedPaymentPlan);
     }
   }, [propSelectedPaymentPlan, selectedPaymentPlan]);
+
+  // Sync external initial scholarship selection only once when the component mounts
+  React.useEffect(() => {
+    if (initialScholarshipId) {
+      setSelectedScholarshipId(initialScholarshipId);
+    }
+  }, [initialScholarshipId]); // Remove selectedScholarshipId from deps to prevent resetting user selections
 
   // Load dates for all plans when fee structure changes to prevent data loss
   React.useEffect(() => {

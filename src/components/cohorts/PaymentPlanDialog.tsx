@@ -13,13 +13,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CohortStudent } from '@/types/cohort';
-import { CreditCard, CheckCircle, Calendar, DollarSign } from 'lucide-react';
+import { CreditCard, CheckCircle, Calendar, DollarSign, Edit2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   studentPaymentPlanService,
   PaymentPlan,
   StudentPaymentPlan,
 } from '@/services/studentPaymentPlan.service';
+import { FeeCollectionSetupModal } from '@/components/fee-collection/FeeCollectionSetupModal';
+import { FeeStructureService } from '@/services/feeStructure.service';
 
 interface PaymentPlanDialogProps {
   student: CohortStudent;
@@ -59,6 +61,9 @@ export default function PaymentPlanDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [currentPaymentPlan, setCurrentPaymentPlan] = useState<StudentPaymentPlan | null>(null);
   const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan | ''>('');
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+  const [hasCustomPlan, setHasCustomPlan] = useState(false);
 
   const selectedOption = PAYMENT_PLAN_OPTIONS.find(
     option => option.value === selectedPaymentPlan
@@ -94,6 +99,29 @@ export default function PaymentPlanDialog({
         logger.info('Set current payment plan', {
           paymentPlan: result.data.payment_plan,
         });
+
+        // Check if student has a custom fee structure
+        try {
+          const customStructure = await FeeStructureService.getFeeStructure(
+            student.cohort_id,
+            student.id
+          );
+          const hasCustom = !!customStructure && customStructure.structure_type === 'custom';
+          logger.info('Custom fee structure check', {
+            studentId: student.id,
+            cohortId: student.cohort_id,
+            customStructure: customStructure ? {
+              id: customStructure.id,
+              structure_type: customStructure.structure_type,
+              student_id: customStructure.student_id
+            } : null,
+            hasCustom
+          });
+          setHasCustomPlan(hasCustom);
+        } catch (error) {
+          logger.error('Error checking custom fee structure', { studentId: student.id }, error as Error);
+          setHasCustomPlan(false);
+        }
         // Only set form values if we're editing
         if (isEditing) {
           setSelectedPaymentPlan(result.data.payment_plan);
@@ -148,6 +176,33 @@ export default function PaymentPlanDialog({
         currentPaymentPlan: currentPaymentPlan?.id,
       });
 
+      // If user has a custom plan and is setting a plan (without customization), 
+      // delete the custom plan to switch back to cohort plan
+      if (currentPaymentPlan && hasCustomPlan) {
+        logger.info('Admin: Deleting custom plan due to plan selection', {
+          studentId: student.id,
+          currentPlan: currentPaymentPlan.payment_plan,
+          selectedPlan: selectedPaymentPlan,
+          reason: currentPaymentPlan.payment_plan !== selectedPaymentPlan ? 'plan_change' : 'same_plan_no_customization'
+        });
+        
+        await FeeStructureService.deleteCustomPlanForStudent(
+          student.cohort_id,
+          student.id
+        );
+        setHasCustomPlan(false);
+        
+        // Reload current payment plan data to ensure UI reflects the cohort plan
+        await loadCurrentPaymentPlan();
+        
+        logger.info('Admin: Custom plan deleted, refreshing parent component', {
+          studentId: student.id,
+        });
+        
+        // Refresh parent component to update the table display
+        onPaymentPlanUpdated();
+      }
+
       const result = await studentPaymentPlanService.setPaymentPlan(
         student.id,
         student.cohort_id,
@@ -198,6 +253,47 @@ export default function PaymentPlanDialog({
     }
   };
 
+  // Save handler invoked from the customization modal (student-custom variant)
+  const handleSaveCustomPlan = async (
+    baseFields: {
+      admission_fee: number;
+      total_program_fee: number;
+      number_of_semesters: number;
+      instalments_per_semester: number;
+      one_shot_discount_percentage: number;
+    },
+    editedDates: Record<string, string>
+  ) => {
+    if (!selectedPaymentPlan) {
+      toast.error('Please select a payment plan');
+      return false;
+    }
+    try {
+      setCustomizing(true);
+      const res = await FeeStructureService.upsertCustomPlanForStudent({
+        cohortId: student.cohort_id,
+        studentId: student.id,
+        baseFields,
+        selectedPlan: selectedPaymentPlan,
+        editedDates,
+      });
+      if (!res) {
+        toast.error('Failed to save custom plan');
+        return false;
+      }
+      toast.success('Custom plan saved');
+      return true;
+    } catch (e) {
+      console.error(e);
+      toast.error('Error saving custom plan');
+      return false;
+    } finally {
+      setCustomizing(false);
+    }
+  };
+
+
+
   const handleRemovePaymentPlan = async () => {
     if (!currentPaymentPlan) return;
 
@@ -206,8 +302,34 @@ export default function PaymentPlanDialog({
       const logger = new Logger('PaymentPlanDialog');
       logger.info('Admin: Attempting to remove payment plan', {
         studentId: student.id,
+        cohortId: student.cohort_id,
         paymentPlanId: currentPaymentPlan.id,
+        hasCustomPlan,
+        currentPaymentPlan: currentPaymentPlan.payment_plan,
       });
+
+              // If student has a custom plan, delete it first
+        if (hasCustomPlan) {
+        logger.info('Admin: Deleting custom plan before removing payment plan', {
+          studentId: student.id,
+        });
+        
+        const deleteResult = await FeeStructureService.deleteCustomPlanForStudent(
+          student.cohort_id,
+          student.id
+        );
+        
+        logger.info('Admin: Custom plan deletion result', {
+          studentId: student.id,
+          deleteResult,
+        });
+        
+        setHasCustomPlan(false);
+              } else {
+          logger.info('Admin: No custom plan to delete', {
+            studentId: student.id,
+          });
+        }
 
       const result = await studentPaymentPlanService.removePaymentPlan(student.id);
 
@@ -276,45 +398,52 @@ export default function PaymentPlanDialog({
           {currentPaymentPlan && !isEditing ? (
             // Read-only view when payment plan is set
             <div className='space-y-4'>
+              {/* Payment Plan Status */}
               <div className='p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800'>
-                <div className='flex items-center gap-2 mb-2'>
+                <div className='flex items-center gap-3'>
                   <CheckCircle className='h-5 w-5 text-green-600' />
-                  <h3 className='font-semibold text-green-900 dark:text-green-100'>
-                    Payment Plan Assigned
-                  </h3>
-                </div>
-                {currentOption && (
-                  <div className='space-y-2'>
-                    <div className='flex items-center gap-2'>
-                      <currentOption.icon className='h-4 w-4 text-green-600' />
-                      <p className='text-sm font-medium'>
-                        {currentOption.label}
-                      </p>
-                    </div>
+                  <div>
+                    <p className='font-medium text-green-900 dark:text-green-100'>
+                      {hasCustomPlan ? `Custom ${currentOption?.label}` : currentOption?.label}
+                    </p>
                     <p className='text-sm text-green-700 dark:text-green-300'>
-                      {currentOption.description}
+                      {currentOption?.description}
                     </p>
                   </div>
-                )}
+                </div>
               </div>
 
-              <div className='flex gap-2'>
-                <Button
-                  variant='outline'
-                  onClick={() => setIsEditing(true)}
-                  className='flex-1'
-                >
-                  <CreditCard className='h-4 w-4 mr-2' />
-                  Edit Payment Plan
-                </Button>
-                <Button
-                  variant='outline'
-                  onClick={handleRemovePaymentPlan}
-                  disabled={loading}
-                  className='text-red-600 hover:text-red-700 border-red-200 hover:border-red-300'
-                >
-                  Remove
-                </Button>
+              {/* Action Buttons */}
+              <div className='space-y-2'>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='outline'
+                    onClick={() => setIsEditing(true)}
+                    className='flex-1'
+                  >
+                    <CreditCard className='h-4 w-4 mr-2' />
+                    Change Plan
+                  </Button>
+                  <Button
+                    variant='outline'
+                    onClick={handleRemovePaymentPlan}
+                    disabled={loading}
+                    className='text-red-600 hover:text-red-700 border-red-200 hover:border-red-300'
+                  >
+                    Remove
+                  </Button>
+                </div>
+                
+                {hasCustomPlan && (
+                  <Button
+                    variant='default'
+                    onClick={() => setCustomizeOpen(true)}
+                    className='w-full'
+                  >
+                    <Edit2 className='h-4 w-4 mr-2' />
+                    Edit Customization
+                  </Button>
+                )}
               </div>
             </div>
           ) : (
@@ -323,24 +452,16 @@ export default function PaymentPlanDialog({
               {/* Current Payment Plan Display (when editing) */}
               {currentPaymentPlan && isEditing && currentOption && (
                 <div className='p-3 bg-muted/50 rounded-lg'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='text-sm font-medium'>Current Payment Plan:</p>
-                      <div className='flex items-center gap-2 mt-1'>
-                        <currentOption.icon className='h-4 w-4 text-muted-foreground' />
-                        <p className='text-sm text-muted-foreground'>
-                          {currentOption.label}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <p className='text-sm text-muted-foreground'>
+                    Current: {hasCustomPlan ? `Custom ${currentOption.label}` : currentOption.label}
+                  </p>
                 </div>
               )}
 
               {/* Payment Plan Selection */}
-              <div className='space-y-2'>
-                <div className='text-sm font-medium'>Choose payment structure:</div>
-                <div className='grid gap-3'>
+              <div className='space-y-3'>
+                <p className='text-sm font-medium'>Choose payment structure:</p>
+                <div className='grid gap-2'>
                   {PAYMENT_PLAN_OPTIONS.map(option => {
                     const IconComponent = option.icon;
                     const isSelected = selectedPaymentPlan === option.value;
@@ -350,13 +471,13 @@ export default function PaymentPlanDialog({
                         key={option.value}
                         variant={isSelected ? 'default' : 'outline'}
                         onClick={() => setSelectedPaymentPlan(option.value)}
-                        className='justify-start h-auto p-4'
+                        className='justify-start h-auto p-3'
                       >
-                        <div className='flex items-start gap-3 text-left'>
-                          <IconComponent className='h-5 w-5 mt-0.5 flex-shrink-0' />
-                          <div>
+                        <div className='flex items-center gap-3'>
+                          <IconComponent className='h-4 w-4' />
+                          <div className='text-left'>
                             <div className='font-medium'>{option.label}</div>
-                            <div className='text-sm opacity-70 mt-1'>
+                            <div className='text-sm opacity-70'>
                               {option.description}
                             </div>
                           </div>
@@ -366,21 +487,6 @@ export default function PaymentPlanDialog({
                   })}
                 </div>
               </div>
-
-              {/* Selected Plan Summary */}
-              {selectedOption && (
-                <div className='p-3 bg-blue-50 dark:bg-blue-950 rounded-lg'>
-                  <div className='flex items-center gap-2'>
-                    <selectedOption.icon className='h-4 w-4 text-blue-600' />
-                    <p className='text-sm font-medium text-blue-900 dark:text-blue-100'>
-                      Selected: {selectedOption.label}
-                    </p>
-                  </div>
-                  <p className='text-xs text-blue-700 dark:text-blue-300 mt-1'>
-                    {selectedOption.description}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -388,7 +494,11 @@ export default function PaymentPlanDialog({
         <DialogFooter>
           {currentPaymentPlan && !isEditing ? (
             // Read-only view footer
-            <Button onClick={() => setOpen(false)}>Close</Button>
+            <div className='flex gap-2 w-full'>
+              <Button variant='outline' onClick={() => setOpen(false)} className='ml-auto'>
+                Close
+              </Button>
+            </div>
           ) : (
             // Edit form footer
             <>
@@ -409,6 +519,19 @@ export default function PaymentPlanDialog({
               >
                 Cancel
               </Button>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  if (!selectedPaymentPlan) {
+                    toast.error('Select a payment plan first');
+                    return;
+                  }
+                  setCustomizeOpen(true);
+                }}
+                disabled={loading || !selectedPaymentPlan}
+              >
+                Customize Plan
+              </Button>
               <Button 
                 onClick={handleSetPaymentPlan} 
                 disabled={loading || !selectedPaymentPlan}
@@ -423,6 +546,45 @@ export default function PaymentPlanDialog({
           )}
         </DialogFooter>
       </DialogContent>
+      {/* Customization modal reusing FeeCollectionSetupModal */}
+      {customizeOpen && (
+        <FeeCollectionSetupModal
+          open={customizeOpen}
+          onOpenChange={setCustomizeOpen}
+          cohortId={student.cohort_id}
+          cohortStartDate={(student as any).cohort_start_date || new Date().toISOString()}
+          onSetupComplete={async () => {
+            // After saving custom plan, assign the chosen plan to the student
+            try {
+              if (!selectedPaymentPlan) return setCustomizeOpen(false);
+              if (!user?.id) {
+                toast.error('User not authenticated');
+                return;
+              }
+              const result = await studentPaymentPlanService.setPaymentPlan(
+                student.id,
+                student.cohort_id,
+                selectedPaymentPlan,
+                user.id
+              );
+              if (result.success) {
+                toast.success('Custom plan applied to student');
+                await loadCurrentPaymentPlan();
+                onPaymentPlanUpdated();
+              } else {
+                toast.error(result.error || 'Failed to assign payment plan');
+              }
+            } finally {
+              setCustomizeOpen(false);
+            }
+          }}
+          mode='edit'
+          variant='student-custom'
+          studentId={student.id}
+          initialSelectedPlan={selectedPaymentPlan as any}
+          restrictPaymentPlanToSelected
+        />
+      )}
     </Dialog>
   );
 }

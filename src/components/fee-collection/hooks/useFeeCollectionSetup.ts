@@ -11,6 +11,7 @@ import { Logger } from '@/lib/logging/Logger';
 interface UseFeeCollectionSetupProps {
   cohortId: string;
   onComplete?: () => void;
+  studentId?: string;
 }
 
 interface FeeStructureData {
@@ -21,7 +22,7 @@ interface FeeStructureData {
   one_shot_discount_percentage: number;
 }
 
-export const useFeeCollectionSetup = ({ cohortId, onComplete }: UseFeeCollectionSetupProps) => {
+export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFeeCollectionSetupProps) => {
   const { profile } = useAuth();
   const logger = Logger.getInstance();
   const [currentStep, setCurrentStep] = useState(1);
@@ -45,11 +46,25 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete }: UseFeeCollection
   // Load existing data when component mounts
   useEffect(() => {
     loadExistingData();
-  }, [cohortId]);
+  }, [cohortId, studentId]);
 
   const loadExistingData = async () => {
     try {
-      const feeStructure = await FeeStructureService.getFeeStructure(cohortId);
+      let feeStructure = null;
+      
+      if (studentId) {
+        // Try to get student's custom structure first
+        feeStructure = await FeeStructureService.getFeeStructure(cohortId, studentId);
+        
+        // If no custom structure exists, fall back to cohort structure as baseline
+        if (!feeStructure) {
+          feeStructure = await FeeStructureService.getFeeStructure(cohortId);
+        }
+      } else {
+        // No studentId, get cohort structure
+        feeStructure = await FeeStructureService.getFeeStructure(cohortId);
+      }
+      
       if (feeStructure) {
         setExistingFeeStructure(feeStructure);
         setFeeStructureData({

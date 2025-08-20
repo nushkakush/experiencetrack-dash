@@ -20,9 +20,21 @@ interface Step3ReviewProps {
   }) => void;
   onPaymentPlanChange?: (plan: PaymentPlan) => void;
   selectedPaymentPlan?: PaymentPlan;
+  /**
+   * When provided, locks the UI to a single plan and hides the plan tabs.
+   */
+  restrictToPlan?: PaymentPlan;
+  /**
+   * When true, hides scholarship selection and related controls.
+   */
+  hideScholarshipControls?: boolean;
+  /**
+   * Optionally pre-select a scholarship (used in student-custom mode to preview cohort scholarships)
+   */
+  initialScholarshipId?: string;
 }
 
-const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isReadOnly = false, onDatesChange, onPaymentPlanChange, selectedPaymentPlan: propSelectedPaymentPlan }: Step3ReviewProps) {
+const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isReadOnly = false, onDatesChange, onPaymentPlanChange, selectedPaymentPlan: propSelectedPaymentPlan, restrictToPlan, hideScholarshipControls = false, initialScholarshipId }: Step3ReviewProps) {
   const {
     selectedPaymentPlan: internalSelectedPaymentPlan,
     selectedScholarshipId,
@@ -33,16 +45,17 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
     handlePaymentDateChange,
     handleScholarshipSelect,
     handlePaymentPlanChange: internalHandlePaymentPlanChange
-  } = useFeeReview({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan });
+  } = useFeeReview({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan, initialScholarshipId });
 
   // Use prop value if provided, otherwise fall back to internal state
-  const selectedPaymentPlan = propSelectedPaymentPlan || internalSelectedPaymentPlan;
+  const selectedPaymentPlan = restrictToPlan || propSelectedPaymentPlan || internalSelectedPaymentPlan;
 
   // Create a wrapper that calls both internal and external handlers
   const handlePaymentPlanChange = React.useCallback((plan: PaymentPlan) => {
+    if (restrictToPlan) return; // locked mode; ignore tab changes
     internalHandlePaymentPlanChange(plan);
     onPaymentPlanChange?.(plan);
-  }, [internalHandlePaymentPlanChange, onPaymentPlanChange]);
+  }, [internalHandlePaymentPlanChange, onPaymentPlanChange, restrictToPlan]);
 
   // Use ref to track previous dates and only call onDatesChange when dates actually change
   const prevDatesRef = React.useRef<{
@@ -104,20 +117,24 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
       {/* Title and helper removed to avoid duplication with modal header */}
 
       {/* Scholarship Selection */}
-      <ScholarshipSelection
-        scholarships={scholarships}
-        selectedScholarshipId={selectedScholarshipId}
-        onScholarshipSelect={handleScholarshipSelect}
-        isReadOnly={isReadOnly}
-      />
+      {!hideScholarshipControls && (
+        <ScholarshipSelection
+          scholarships={scholarships}
+          selectedScholarshipId={selectedScholarshipId}
+          onScholarshipSelect={handleScholarshipSelect}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       {/* Payment Plan Tabs */}
       <Tabs value={selectedPaymentPlan} onValueChange={(value) => handlePaymentPlanChange(value as PaymentPlan)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="one_shot">One Shot Payment</TabsTrigger>
-          <TabsTrigger value="sem_wise">Sem Wise Payment</TabsTrigger>
-          <TabsTrigger value="instalment_wise">Instalment wise Payment</TabsTrigger>
-        </TabsList>
+        {!restrictToPlan && (
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="one_shot">One Shot Payment</TabsTrigger>
+            <TabsTrigger value="sem_wise">Sem Wise Payment</TabsTrigger>
+            <TabsTrigger value="instalment_wise">Instalment wise Payment</TabsTrigger>
+          </TabsList>
+        )}
 
         {/* Content based on payment plan */}
         <TabsContent value="one_shot" className="space-y-6">
