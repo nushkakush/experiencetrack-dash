@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordField } from './PasswordField';
+import { ValidationUtils } from '@/utils/validation';
 
 interface SignUpFormProps {
   email: string;
@@ -33,6 +34,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
   onTogglePassword,
   onSubmit
 }) => {
+  // Validate email domain
+  const isEmailValid = email === '' || ValidationUtils.isValidSignupEmail(email);
+  const showEmailError = email !== '' && !isEmailValid;
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -61,16 +66,24 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="signupEmail" className="text-left block">Email</Label>
+        <Label htmlFor="signupEmail" className="text-left block">
+          Email <span className="text-sm text-muted-foreground">(@litschool.in only)</span>
+        </Label>
         <Input
           id="signupEmail"
           type="email"
           value={email}
           onChange={onEmailChange}
-          placeholder="Enter your email"
+          placeholder="Enter your @litschool.in email"
           autoComplete="email"
           required
+          className={showEmailError ? 'border-red-500 focus:border-red-500' : ''}
         />
+        {showEmailError && (
+          <p className="text-sm text-red-500 mt-1">
+            {ValidationUtils.getEmailDomainError()}
+          </p>
+        )}
       </div>
       
       <PasswordField
@@ -85,7 +98,11 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         required
       />
       
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={loading || !isEmailValid || !email}
+      >
         {loading ? 'Creating account...' : 'Sign Up'}
       </Button>
     </form>

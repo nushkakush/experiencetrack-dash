@@ -15,6 +15,28 @@ export class ValidationUtils {
   }
 
   /**
+   * Validate email domain for signup (only @litschool.in allowed)
+   */
+  static isValidSignupEmail(email: string): boolean {
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    // First check if it's a valid email format
+    if (!this.isValidEmail(trimmedEmail)) {
+      return false;
+    }
+    
+    // Check if the domain is @litschool.in
+    return trimmedEmail.endsWith('@litschool.in');
+  }
+
+  /**
+   * Get email domain validation error message
+   */
+  static getEmailDomainError(): string {
+    return 'Only @litschool.in email addresses are allowed for signup';
+  }
+
+  /**
    * Validate password strength
    */
   static validatePassword(password: string): ValidationError[] {

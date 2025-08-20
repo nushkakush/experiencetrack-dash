@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { cohortStudentsService } from '@/services/cohortStudents.service';
-import { Logger } from '@/lib/logging/Logger';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Logger } from '@/lib/logging/Logger';
+import { ValidationUtils } from '@/utils/validation';
+import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { CohortStudent } from '@/types/cohort';
 
 interface UseInvitationAcceptanceProps {
-  token: string | undefined;
-  student: CohortStudent | null;
+  token: string;
+  student: {
+    id: string;
+    email: string;
+    first_name: string | null;
+    last_name: string | null;
+    cohort_id: string;
+  } | null;
   cohortName: string;
   isExistingUser: boolean;
 }
@@ -98,6 +105,12 @@ export const useInvitationAcceptance = ({
           userId = data.user.id;
         } else {
           // New user - create account
+          // Validate email domain before creating account
+          if (!ValidationUtils.isValidSignupEmail(student.email)) {
+            toast.error(ValidationUtils.getEmailDomainError());
+            return;
+          }
+
           const { data, error } = await supabase.auth.signUp({
             email: student.email,
             password: password,

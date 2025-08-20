@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Logger } from '@/lib/logging/Logger';
+import { ValidationUtils } from '@/utils/validation';
 
 export const useLoginState = () => {
   const [email, setEmail] = useState('');
@@ -45,6 +46,13 @@ export const useLoginState = () => {
     setLoading(true);
 
     try {
+      // Validate email domain before attempting signup
+      if (!ValidationUtils.isValidSignupEmail(email)) {
+        toast.error(ValidationUtils.getEmailDomainError());
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
