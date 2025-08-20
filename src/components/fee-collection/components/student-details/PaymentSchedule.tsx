@@ -158,19 +158,40 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       
       // Fetch canonical breakdown and fee structure from Edge Function
       // Use the correct fee structure (custom if exists, cohort otherwise)
-      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
-        ...paymentParams,
-        feeStructureData: {
-          total_program_fee: feeStructureToUse.total_program_fee,
-          admission_fee: feeStructureToUse.admission_fee,
-          number_of_semesters: feeStructureToUse.number_of_semesters,
-          instalments_per_semester: feeStructureToUse.instalments_per_semester,
-          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
-          one_shot_dates: feeStructureToUse.one_shot_dates,
-          sem_wise_dates: feeStructureToUse.sem_wise_dates,
-          instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-        }
-      });
+      let feeReview: any;
+      let responseFeeStructure: any;
+      
+      try {
+        const result = await getFullPaymentView({
+          ...paymentParams,
+          feeStructureData: {
+            total_program_fee: feeStructureToUse.total_program_fee,
+            admission_fee: feeStructureToUse.admission_fee,
+            number_of_semesters: feeStructureToUse.number_of_semesters,
+            instalments_per_semester: feeStructureToUse.instalments_per_semester,
+            one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+            one_shot_dates: feeStructureToUse.one_shot_dates,
+            sem_wise_dates: feeStructureToUse.sem_wise_dates,
+            instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
+          }
+        });
+        feeReview = result.breakdown;
+        responseFeeStructure = result.feeStructure;
+      } catch (error) {
+        console.error('🔍 [PaymentSchedule] Payment engine error details:', {
+          error,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          paymentParams,
+          feeStructureToUse: {
+            total_program_fee: feeStructureToUse.total_program_fee,
+            admission_fee: feeStructureToUse.admission_fee,
+            number_of_semesters: feeStructureToUse.number_of_semesters,
+            instalments_per_semester: feeStructureToUse.instalments_per_semester,
+            one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+          }
+        });
+        throw error;
+      }
 
       if (!responseFeeStructure) {
         throw new Error('Fee structure not found in edge function response');

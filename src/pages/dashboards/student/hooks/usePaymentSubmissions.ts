@@ -419,8 +419,8 @@ export const usePaymentSubmissions = (
         transfer_date:
           paymentData.transferDate || new Date().toISOString().split('T')[0],
         // Add installment identification fields (normalized) - but NOT for one-shot payments
-        installment_id: isOneShotPayment ? null : normalizedInstallmentId,
-        semester_number: isOneShotPayment ? null : normalizedSemesterNumber,
+        installment_id: isOneShotPayment ? undefined : normalizedInstallmentId,
+        semester_number: isOneShotPayment ? undefined : normalizedSemesterNumber,
         // Add admin tracking fields
         recorded_by_user_id: recordedByUserId || null,
         verified_by: isAdminRecorded ? recordedByUserId : null, // Auto-verify admin payments
