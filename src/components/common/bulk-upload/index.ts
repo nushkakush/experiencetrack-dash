@@ -1,15 +1,28 @@
-// Re-export existing bulk upload components
-export { default as BulkUploadDialog, default } from './BulkUploadDialog';
-export { FileUploadZone } from './components/FileUploadZone';
-export { ValidationResults } from './components/ValidationResults';
-export { DuplicateHandling } from './components/DuplicateHandling';
-
-// Export new fee management bulk upload components
+// Main bulk upload components
+export { default as BulkUploadDialog } from './BulkUploadDialog';
+export { default as BulkAttendanceUploadDialog } from './BulkAttendanceUploadDialog';
 export { default as BulkScholarshipUploadDialog } from './BulkScholarshipUploadDialog';
 export { default as BulkPaymentPlanUploadDialog } from './BulkPaymentPlanUploadDialog';
 export { default as BulkFeeManagementDialog } from './BulkFeeManagementDialog';
 
-// Export types
-export type { BulkUploadConfig, ValidationResult } from './types';
+// Types
+export type {
+  BulkUploadConfig,
+  ValidationResult,
+  BulkUploadState,
+} from './types';
+export type {
+  BulkAttendanceUpload,
+  BulkAttendanceConfig,
+  AttendanceTemplateData,
+} from './types/attendance';
+
+// Services
+export { BulkAttendanceService } from './services/attendanceService';
+
+// Hooks
 export { useBulkUpload } from './hooks/useBulkUpload';
+export { useBulkUploadState } from './hooks/useBulkUploadState';
+
+// Utils
 export { CsvParser } from './utils/csvParser';

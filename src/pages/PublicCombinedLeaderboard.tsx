@@ -5,19 +5,19 @@ import { Logger } from '@/lib/logging/Logger';
 import { AttendanceLeaderboard } from '@/components/attendance';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Carousel, 
-  CarouselContent, 
-  CarouselItem, 
-  CarouselPrevious, 
-  CarouselNext 
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
 } from '@/components/ui/carousel';
 import { Trophy, RefreshCw, Calendar, Users } from 'lucide-react';
-import type { 
-  CohortStudent, 
-  AttendanceRecord, 
-  CohortEpic, 
-  Cohort 
+import type {
+  CohortStudent,
+  AttendanceRecord,
+  CohortEpic,
+  Cohort,
 } from '@/types/attendance';
 
 interface CohortLeaderboardData {
@@ -29,7 +29,9 @@ interface CohortLeaderboardData {
 
 const PublicCombinedLeaderboard = () => {
   const { cohortIds } = useParams<{ cohortIds: string }>();
-  const [leaderboardData, setLeaderboardData] = useState<CohortLeaderboardData[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<
+    CohortLeaderboardData[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -59,7 +61,9 @@ const PublicCombinedLeaderboard = () => {
           .single();
 
         if (cohortError) {
-          Logger.getInstance().error(`Error loading cohort ${cohortId}`, { error: cohortError });
+          Logger.getInstance().error(`Error loading cohort ${cohortId}`, {
+            error: cohortError,
+          });
           continue;
         }
 
@@ -71,15 +75,21 @@ const PublicCombinedLeaderboard = () => {
           .order('position', { ascending: true });
 
         if (epicsError) {
-          Logger.getInstance().error(`Error loading epics for cohort ${cohortId}`, { error: epicsError });
+          Logger.getInstance().error(
+            `Error loading epics for cohort ${cohortId}`,
+            { error: epicsError }
+          );
           continue;
         }
 
         // Find primary epic (active epic, or first epic if none active)
-        const primaryEpic = epics?.find(epic => epic.is_active) || epics?.[0] || null;
+        const primaryEpic =
+          epics?.find(epic => epic.is_active) || epics?.[0] || null;
 
         if (!primaryEpic) {
-          Logger.getInstance().warn(`No primary epic found for cohort ${cohortId}`);
+          Logger.getInstance().warn(
+            `No primary epic found for cohort ${cohortId}`
+          );
           continue;
         }
 
@@ -90,7 +100,10 @@ const PublicCombinedLeaderboard = () => {
           .eq('cohort_id', cohortId);
 
         if (studentsError) {
-          Logger.getInstance().error(`Error loading students for cohort ${cohortId}`, { error: studentsError });
+          Logger.getInstance().error(
+            `Error loading students for cohort ${cohortId}`,
+            { error: studentsError }
+          );
           continue;
         }
 
@@ -103,7 +116,10 @@ const PublicCombinedLeaderboard = () => {
           .order('session_date', { ascending: true });
 
         if (recordsError) {
-          Logger.getInstance().error(`Error loading attendance records for cohort ${cohortId}`, { error: recordsError });
+          Logger.getInstance().error(
+            `Error loading attendance records for cohort ${cohortId}`,
+            { error: recordsError }
+          );
           continue;
         }
 
@@ -111,7 +127,7 @@ const PublicCombinedLeaderboard = () => {
           cohort,
           primaryEpic,
           students: students || [],
-          attendanceRecords: attendanceRecords || []
+          attendanceRecords: attendanceRecords || [],
         });
       }
 
@@ -139,7 +155,8 @@ const PublicCombinedLeaderboard = () => {
     const channelName = `public-combined-leaderboard-${selectedCohortIds.join('-')}`;
 
     // Set up real-time subscription for attendance records with unique channel name
-    const channel = connectionManager.createChannel(channelName)
+    const channel = connectionManager
+      .createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -147,10 +164,12 @@ const PublicCombinedLeaderboard = () => {
           schema: 'public',
           table: 'attendance_records',
         },
-        (payload) => {
+        payload => {
           Logger.getInstance().debug('Real-time update received', { payload });
           // Only reload if the change affects our cohorts
-          const changedCohortId = (payload.new as any)?.cohort_id || (payload.old as any)?.cohort_id;
+          const changedCohortId =
+            (payload.new as Record<string, unknown>)?.cohort_id ||
+            (payload.old as Record<string, unknown>)?.cohort_id;
           if (changedCohortId && selectedCohortIds.includes(changedCohortId)) {
             loadLeaderboardData();
           }
@@ -175,13 +194,13 @@ const PublicCombinedLeaderboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-6">
-            <Skeleton className="h-8 w-[300px]" />
-            <Skeleton className="h-6 w-[200px]" />
-            <div className="bg-white rounded-lg border p-6">
-              <Skeleton className="h-64 w-full" />
+      <div className='min-h-screen bg-gray-50 py-8'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='space-y-6'>
+            <Skeleton className='h-8 w-[300px]' />
+            <Skeleton className='h-6 w-[200px]' />
+            <div className='bg-white dark:bg-gray-800 rounded-lg border p-6'>
+              <Skeleton className='h-64 w-full' />
             </div>
           </div>
         </div>
@@ -191,14 +210,17 @@ const PublicCombinedLeaderboard = () => {
 
   if (error || leaderboardData.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-gray-900">Leaderboards Not Found</h2>
-              <p className="text-gray-600">
-                {error || 'The leaderboards you\'re looking for don\'t exist or are no longer available.'}
+      <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='flex items-center justify-center min-h-[400px]'>
+            <div className='text-center'>
+              <Trophy className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+              <h2 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                Leaderboards Not Found
+              </h2>
+              <p className='text-gray-600 dark:text-gray-400'>
+                {error ||
+                  "The leaderboards you're looking for don't exist or are no longer available."}
               </p>
             </div>
           </div>
@@ -208,51 +230,56 @@ const PublicCombinedLeaderboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="space-y-6">
+    <div className='min-h-screen bg-gray-50 dark:bg-gray-900 py-8'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+        <div className='space-y-6'>
           {/* Header */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Trophy className="h-8 w-8 text-yellow-500" />
-              <h1 className="text-3xl font-bold text-gray-900">
+          <div className='text-center'>
+            <div className='flex items-center justify-center gap-3 mb-4'>
+              <Trophy className='h-8 w-8 text-yellow-500' />
+              <h1 className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
                 Combined Leaderboards
               </h1>
             </div>
-            <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Users className="h-4 w-4" />
-                <span>{leaderboardData.length} Cohort{leaderboardData.length !== 1 ? 's' : ''}</span>
+            <div className='flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400'>
+              <div className='flex items-center gap-1'>
+                <Users className='h-4 w-4' />
+                <span>
+                  {leaderboardData.length} Cohort
+                  {leaderboardData.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
+              <Badge variant='outline' className='flex items-center gap-1'>
+                <RefreshCw className='h-3 w-3' />
                 Live Updates
               </Badge>
             </div>
           </div>
 
           {/* Last Updated Info */}
-          <div className="text-center text-xs text-gray-500">
+          <div className='text-center text-xs text-gray-500 dark:text-gray-400'>
             Last updated: {lastUpdated.toLocaleString()}
           </div>
 
           {/* Leaderboards Carousel */}
-          <div className="bg-white rounded-lg border shadow-sm p-6">
-            <Carousel className="w-full">
+          <div className='bg-white dark:bg-gray-800 rounded-lg border shadow-sm p-6'>
+            <Carousel className='w-full'>
               <CarouselContent>
-                {leaderboardData.map((data) => (
+                {leaderboardData.map(data => (
                   <CarouselItem key={data.cohort.id}>
-                    <div className="space-y-4">
+                    <div className='space-y-4'>
                       {/* Cohort Header */}
-                      <div className="text-center border-b pb-4">
-                        <h3 className="text-xl font-bold">{data.cohort.name}</h3>
-                        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
+                      <div className='text-center border-b pb-4'>
+                        <h3 className='text-xl font-bold'>
+                          {data.cohort.name}
+                        </h3>
+                        <div className='flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2'>
+                          <div className='flex items-center gap-1'>
+                            <Calendar className='h-4 w-4' />
                             <span>{data.primaryEpic?.name || 'No Epic'}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
+                          <div className='flex items-center gap-1'>
+                            <Users className='h-4 w-4' />
                             <span>{data.students.length} Students</span>
                           </div>
                         </div>
@@ -264,14 +291,18 @@ const PublicCombinedLeaderboard = () => {
                           students={data.students}
                           attendanceRecords={data.attendanceRecords}
                           currentEpic={data.primaryEpic}
-                          layout="grid"
+                          layout='grid'
                           hideFields={['email', 'late', 'absent']}
                         />
                       ) : (
-                        <div className="text-center py-8">
-                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Students</h3>
-                          <p className="text-gray-600">This cohort has no enrolled students.</p>
+                        <div className='text-center py-8'>
+                          <Users className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+                          <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                            No Students
+                          </h3>
+                          <p className='text-gray-600 dark:text-gray-400'>
+                            This cohort has no enrolled students.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -288,7 +319,7 @@ const PublicCombinedLeaderboard = () => {
           </div>
 
           {/* Footer */}
-          <div className="text-center text-xs text-gray-500">
+          <div className='text-center text-xs text-gray-500'>
             <p>These leaderboards update automatically in real-time</p>
           </div>
         </div>

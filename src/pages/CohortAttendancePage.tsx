@@ -15,12 +15,12 @@ import {
   useEpicAttendanceData,
 } from '@/hooks/attendance';
 import { useAttendancePageState } from '@/pages/cohort-attendance/hooks/useAttendancePageState';
-import { 
-  LoadingState, 
-  ErrorState, 
+import {
+  LoadingState,
+  ErrorState,
   SessionManagementHeader,
   ManageView,
-  LeaderboardView
+  LeaderboardView,
 } from '@/pages/cohort-attendance/components';
 import type { AttendanceStatus } from '@/types/attendance';
 
@@ -37,9 +37,15 @@ const CohortAttendancePage = () => {
     selectedSession: pageState.selectedSession,
   });
 
-  const { currentHoliday, isHoliday } = useHolidayDetection(cohortId, pageState.selectedDate);
+  const { currentHoliday, isHoliday } = useHolidayDetection(
+    cohortId,
+    pageState.selectedDate
+  );
 
-  const epicAttendanceData = useEpicAttendanceData(cohortId, attendanceData.selectedEpic);
+  const epicAttendanceData = useEpicAttendanceData(
+    cohortId,
+    attendanceData.selectedEpic
+  );
 
   // Combined refetch function for both session and epic data
   const handleAttendanceMarked = async () => {
@@ -61,14 +67,21 @@ const CohortAttendancePage = () => {
     // Update the callback in the pageState
     const originalCallback = pageState.handleMarkAttendance;
     // We'll use the handleAttendanceMarked function directly in the component
-  }, [attendanceData.selectedEpic, pageState.selectedDate, pageState.selectedSession]);
+  }, [
+    attendanceData.selectedEpic,
+    pageState.selectedDate,
+    pageState.selectedSession,
+  ]);
 
   // Event handlers
   const handleEpicChange = (epicId: string) => {
     attendanceData.setSelectedEpic(epicId);
   };
 
-  const handleMarkAttendance = (studentId: string, status: AttendanceStatus) => {
+  const handleMarkAttendance = (
+    studentId: string,
+    status: AttendanceStatus
+  ) => {
     // Find the student to pass to the actions hook
     const student = attendanceData.students.find(s => s.id === studentId);
     if (student) {
@@ -78,7 +91,9 @@ const CohortAttendancePage = () => {
   };
 
   // Computed values
-  const currentSession = attendanceData.sessions.find(s => s.sessionNumber === pageState.selectedSession);
+  const currentSession = attendanceData.sessions.find(
+    s => s.sessionNumber === pageState.selectedSession
+  );
   const isSessionCancelled = currentSession?.isCancelled || false;
 
   // Loading state
@@ -93,7 +108,7 @@ const CohortAttendancePage = () => {
 
   return (
     <DashboardShell>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         <AttendanceHeader
           cohort={attendanceData.cohort}
           epics={attendanceData.epics}
@@ -103,6 +118,12 @@ const CohortAttendancePage = () => {
           onEpicActiveChanged={async () => {
             // Refresh epics data to reflect the new active epic
             await attendanceData.refetchEpics();
+            await attendanceData.refetchSessions();
+            await epicAttendanceData.refetchEpicAttendance();
+          }}
+          onAttendanceImported={async () => {
+            // Refresh attendance data after bulk import
+            await attendanceData.refetchAttendance();
             await attendanceData.refetchSessions();
             await epicAttendanceData.refetchEpicAttendance();
           }}
@@ -116,7 +137,7 @@ const CohortAttendancePage = () => {
           currentEpic={attendanceData.currentEpic}
           selectedDate={pageState.selectedDate}
           isSessionCancelled={isSessionCancelled}
-          mode="epic"
+          mode='epic'
         />
 
         {/* Session Management Header */}
@@ -136,7 +157,7 @@ const CohortAttendancePage = () => {
         />
 
         {/* Content Area */}
-        <div className="space-y-6">
+        <div className='space-y-6'>
           {pageState.currentView === 'manage' ? (
             <ManageView
               isHoliday={isHoliday}

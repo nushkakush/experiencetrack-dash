@@ -12,6 +12,7 @@ import {
   AttendanceTable,
   AttendanceReasonDialog,
 } from '@/components/attendance';
+import { SessionManagementHeader } from '@/pages/cohort-attendance/components/SessionManagementHeader';
 import {
   useAttendanceData,
   useHolidayDetection,
@@ -24,6 +25,9 @@ const CohortAttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState<number>(1);
   const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'manage' | 'leaderboard'>(
+    'manage'
+  );
 
   // Custom hooks for data and logic
   const attendanceData = useAttendanceData(cohortId, {
@@ -31,7 +35,10 @@ const CohortAttendancePage = () => {
     selectedSession,
   });
 
-  const { currentHoliday, isHoliday } = useHolidayDetection(cohortId, selectedDate);
+  const { currentHoliday, isHoliday } = useHolidayDetection(
+    cohortId,
+    selectedDate
+  );
 
   const attendanceActions = useAttendanceActions({
     cohortId: cohortId!,
@@ -57,7 +64,10 @@ const CohortAttendancePage = () => {
     attendanceData.setSelectedEpic(epicId);
   };
 
-  const handleMarkAttendance = (studentId: string, status: AttendanceStatus) => {
+  const handleMarkAttendance = (
+    studentId: string,
+    status: AttendanceStatus
+  ) => {
     // Find the student to pass to the actions hook
     const student = attendanceData.students.find(s => s.id === studentId);
     if (student) {
@@ -67,7 +77,9 @@ const CohortAttendancePage = () => {
   };
 
   // Computed values
-  const currentSession = attendanceData.sessions.find(s => s.sessionNumber === selectedSession);
+  const currentSession = attendanceData.sessions.find(
+    s => s.sessionNumber === selectedSession
+  );
   const isSessionCancelled = currentSession?.isCancelled || false;
   const isFutureDate = isAfter(selectedDate, new Date());
 
@@ -75,14 +87,14 @@ const CohortAttendancePage = () => {
   if (attendanceData.loading) {
     return (
       <DashboardShell>
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-[200px]" />
-          <Skeleton className="h-12 w-full" />
+        <div className='space-y-6'>
+          <Skeleton className='h-8 w-[200px]' />
+          <Skeleton className='h-12 w-full' />
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-64 w-full" />
+            <CardContent className='pt-6'>
+              <div className='space-y-4'>
+                <Skeleton className='h-8 w-full' />
+                <Skeleton className='h-64 w-full' />
               </div>
             </CardContent>
           </Card>
@@ -95,10 +107,14 @@ const CohortAttendancePage = () => {
   if (attendanceData.error) {
     return (
       <DashboardShell>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h2 className="text-lg font-semibold text-gray-900">Error loading attendance data</h2>
-            <p className="text-gray-600">{attendanceData.error}</p>
+        <div className='flex items-center justify-center min-h-[400px]'>
+          <div className='text-center'>
+            <h2 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+              Error loading attendance data
+            </h2>
+            <p className='text-gray-600 dark:text-gray-400'>
+              {attendanceData.error}
+            </p>
           </div>
         </div>
       </DashboardShell>
@@ -107,7 +123,7 @@ const CohortAttendancePage = () => {
 
   return (
     <DashboardShell>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         <AttendanceHeader
           cohort={attendanceData.cohort}
           currentEpic={attendanceData.currentEpic}
@@ -121,6 +137,45 @@ const CohortAttendancePage = () => {
           onCancelSession={attendanceActions.cancelSession}
           onReactivateSession={attendanceActions.reactivateSession}
           onMarkHolidays={() => setHolidaysDialogOpen(true)}
+          onAttendanceImported={() => {
+            attendanceData.refetchAttendance();
+            attendanceData.refetchSessions();
+          }}
+        />
+
+        {/* Session Management Header */}
+        <SessionManagementHeader
+          currentView={currentView}
+          selectedDate={selectedDate}
+          isSessionCancelled={isSessionCancelled}
+          isFutureDate={isFutureDate}
+          processing={attendanceActions.processing}
+          currentEpicName={attendanceData.currentEpic?.name}
+          cohortId={cohortId}
+          epicId={attendanceData.selectedEpic}
+          sessionsPerDay={attendanceData.cohort?.sessions_per_day}
+          onDateChange={handleDateChange}
+          onPreviousDay={() => {
+            const prevDate = new Date(selectedDate);
+            prevDate.setDate(prevDate.getDate() - 1);
+            if (!isAfter(prevDate, new Date())) {
+              setSelectedDate(prevDate);
+            }
+          }}
+          onNextDay={() => {
+            const nextDate = new Date(selectedDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            if (!isAfter(nextDate, new Date())) {
+              setSelectedDate(nextDate);
+            }
+          }}
+          onCancelSession={attendanceActions.cancelSession}
+          onReactivateSession={attendanceActions.reactivateSession}
+          onViewChange={setCurrentView}
+          onAttendanceImported={() => {
+            attendanceData.refetchAttendance();
+            attendanceData.refetchSessions();
+          }}
         />
 
         {/* Session Management Card Content */}
@@ -132,8 +187,8 @@ const CohortAttendancePage = () => {
                 cohort={attendanceData.cohort}
                 selectedDate={selectedDate}
               />
-            ) : (
-              <div className="space-y-6">
+            ) : currentView === 'manage' ? (
+              <div className='space-y-6'>
                 <SessionTabs
                   sessions={attendanceData.sessions}
                   selectedSession={selectedSession}
@@ -150,6 +205,15 @@ const CohortAttendancePage = () => {
                   processing={attendanceActions.processing}
                   onMarkAttendance={handleMarkAttendance}
                 />
+              </div>
+            ) : (
+              <div className='space-y-6'>
+                {/* Leaderboard view content would go here */}
+                <div className='text-center py-8'>
+                  <p className='text-muted-foreground'>
+                    Leaderboard view coming soon...
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>

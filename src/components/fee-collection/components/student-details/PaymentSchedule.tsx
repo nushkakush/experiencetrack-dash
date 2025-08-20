@@ -31,7 +31,15 @@ interface PaymentScheduleItem {
   type: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'pending_10_plus_days' | 'verification_pending' | 'paid' | 'overdue' | 'partially_paid_days_left' | 'partially_paid_overdue' | 'partially_paid_verification_pending';
+  status:
+    | 'pending'
+    | 'pending_10_plus_days'
+    | 'verification_pending'
+    | 'paid'
+    | 'overdue'
+    | 'partially_paid_days_left'
+    | 'partially_paid_overdue'
+    | 'partially_paid_verification_pending';
   paymentDate?: string;
   verificationStatus?: string;
   semesterNumber?: number;
@@ -71,10 +79,8 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
   }, [fetchPaymentSchedule]);
 
   const calculatePaymentSchedule = async (): Promise<PaymentScheduleItem[]> => {
-
-    
     const validPaymentPlans = ['one_shot', 'sem_wise', 'instalment_wise'];
-    
+
     if (
       !student.student_id ||
       student.student_id === 'undefined' ||
@@ -84,13 +90,16 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       student.payment_plan === 'not_selected' ||
       !validPaymentPlans.includes(student.payment_plan)
     ) {
-      console.log('🔍 [PaymentSchedule] Skipping payment engine call - missing required data:', {
-        student_id: student.student_id,
-        cohort_id: student.student?.cohort_id,
-        payment_plan: student.payment_plan,
-        hasStudent: !!student.student,
-        isValidPaymentPlan: validPaymentPlans.includes(student.payment_plan)
-      });
+      console.log(
+        '🔍 [PaymentSchedule] Skipping payment engine call - missing required data:',
+        {
+          student_id: student.student_id,
+          cohort_id: student.student?.cohort_id,
+          payment_plan: student.payment_plan,
+          hasStudent: !!student.student,
+          isValidPaymentPlan: validPaymentPlans.includes(student.payment_plan),
+        }
+      );
       return [];
     }
 
@@ -142,35 +151,34 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         scholarshipId: scholarshipId || undefined,
         additionalDiscountPercentage,
       };
-      
 
-      
       // First, try to get the student's custom fee structure
       const customFeeStructure = await FeeStructureService.getFeeStructure(
         String(student.student?.cohort_id),
         String(student.student_id)
       );
-      
+
       // Use custom structure if it exists, otherwise use the provided cohort structure
       const feeStructureToUse = customFeeStructure || feeStructure;
-      
 
-      
       // Fetch canonical breakdown and fee structure from Edge Function
       // Use the correct fee structure (custom if exists, cohort otherwise)
-      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
-        ...paymentParams,
-        feeStructureData: {
-          total_program_fee: feeStructureToUse.total_program_fee,
-          admission_fee: feeStructureToUse.admission_fee,
-          number_of_semesters: feeStructureToUse.number_of_semesters,
-          instalments_per_semester: feeStructureToUse.instalments_per_semester,
-          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
-          one_shot_dates: feeStructureToUse.one_shot_dates,
-          sem_wise_dates: feeStructureToUse.sem_wise_dates,
-          instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-        }
-      });
+      const { breakdown: feeReview, feeStructure: responseFeeStructure } =
+        await getFullPaymentView({
+          ...paymentParams,
+          feeStructureData: {
+            total_program_fee: feeStructureToUse.total_program_fee,
+            admission_fee: feeStructureToUse.admission_fee,
+            number_of_semesters: feeStructureToUse.number_of_semesters,
+            instalments_per_semester:
+              feeStructureToUse.instalments_per_semester,
+            one_shot_discount_percentage:
+              feeStructureToUse.one_shot_discount_percentage,
+            one_shot_dates: feeStructureToUse.one_shot_dates,
+            sem_wise_dates: feeStructureToUse.sem_wise_dates,
+            instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
+          },
+        });
 
       if (!responseFeeStructure) {
         throw new Error('Fee structure not found in edge function response');
@@ -220,12 +228,16 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         // Look for the semester data (should be semester 1 with installment 1)
         const semester1 = feeReview.semesters?.[0];
         const installment1 = semester1?.instalments?.[0];
-        
-        const programFeeAmount = installment1?.amountPayable ?? 
-          (feeReview.oneShotPayment?.amountPayable ?? 0) ??
-          (feeReview.overallSummary.totalAmountPayable - feeStructureToUse.admission_fee);
-          
-        const statusFromEngine = (installment1 as Record<string, unknown>)?.status as
+
+        const programFeeAmount =
+          installment1?.amountPayable ??
+          feeReview.oneShotPayment?.amountPayable ??
+          (feeReview.overallSummary.totalAmountPayable -
+            feeStructureToUse.admission_fee ||
+            0);
+
+        const statusFromEngine = (installment1 as Record<string, unknown>)
+          ?.status as
           | 'pending'
           | 'pending_10_plus_days'
           | 'verification_pending'
@@ -360,7 +372,7 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
     // Use centralized payment status utility for consistent display
     const statusDisplay = getInstallmentStatusDisplay(status);
-    
+
     // Map status to appropriate badge styling
     switch (statusDisplay.status) {
       case 'paid':
@@ -440,11 +452,11 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     // Don't allow recording for already paid or verification pending payments
     return (
       canCollectFees &&
-      (status === 'pending' || 
-       status === 'pending_10_plus_days' || 
-       status === 'overdue' || 
-       status === 'partially_paid_overdue' ||
-       status === 'partially_paid_days_left') &&
+      (status === 'pending' ||
+        status === 'pending_10_plus_days' ||
+        status === 'overdue' ||
+        status === 'partially_paid_overdue' ||
+        status === 'partially_paid_days_left') &&
       !verificationStatus
     );
   };
