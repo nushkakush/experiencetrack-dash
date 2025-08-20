@@ -125,6 +125,8 @@ export interface StudentPaymentSummaryRow {
   payment_plan: string;
   student: CohortStudentRow;
   payments: StudentPaymentRow[];
+  // Payment engine aggregate status
+  aggregate_status?: string;
 }
 
 // Utility Types for Database Operations

@@ -44,58 +44,70 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
       return { status: 'pending', text: 'Payment Setup Required' };
     }
 
-    // Calculate expected number of payments based on payment plan
-    // Note: This is a simplified calculation - the actual payment engine has more complex logic
-    const getExpectedPaymentCount = () => {
-      if (student.payment_plan === 'one_shot') {
-        return 1;
-      } else if (student.payment_plan === 'sem_wise') {
-        // Assuming 4 semesters (should ideally get from fee structure)
-        return 4;
-      } else if (student.payment_plan === 'instalment_wise') {
-        // Assuming 4 semesters × 3 installments = 12 (should ideally get from fee structure)
-        return 12;
+    // Use the aggregate status from payment engine if available
+    if ((student as any).aggregate_status) {
+      const aggregateStatus = (student as any).aggregate_status as string;
+      
+      // Map payment engine statuses to display text
+      switch (aggregateStatus) {
+        case 'paid':
+          return { status: 'paid' as const, text: 'All Payments Complete' };
+        case 'overdue':
+        case 'partially_paid_overdue':
+          return { status: 'overdue' as const, text: 'Payments Overdue' };
+        case 'verification_pending':
+        case 'partially_paid_verification_pending':
+          return { status: 'verification_pending' as const, text: 'Verification Pending' };
+        case 'partially_paid_days_left':
+          return { status: 'pending' as const, text: 'Partially Paid' };
+        case 'pending':
+        case 'pending_10_plus_days':
+        default:
+          return { status: 'pending' as const, text: 'Payments Pending' };
       }
-      // Fallback to actual payments count if plan is unknown
-      return student.payments?.length || 0;
-    };
+    }
 
-    const expectedPayments = getExpectedPaymentCount();
+    // Fallback to old logic if aggregate_status is not available
     const actualPayments = student.payments || [];
-    const completedPayments = actualPayments.filter(
-      p => p.status === 'paid'
-    ).length;
-    const pendingPayments = actualPayments.filter(
-      p => p.status === 'pending'
-    ).length;
-    const hasOverdue = actualPayments.some(p => {
-      const status = p.status as unknown as string;
-      return status === 'overdue' || status.endsWith('_overdue');
-    });
-
+    
     // If no payments exist yet, show pending
     if (actualPayments.length === 0) {
       return { status: 'pending', text: 'Payments Pending' };
     }
 
-    // Calculate status based on expected vs completed payments
+    // Check for overdue payments first (highest priority)
+    const hasOverdue = actualPayments.some(p => {
+      const status = p.status as unknown as string;
+      return status === 'overdue' || status.endsWith('_overdue');
+    });
+
     if (hasOverdue) {
-      // Overdue supersedes pending
-      return {
-        status: 'overdue' as const,
-        text: `${completedPayments}/${expectedPayments} Paid`,
-      };
-    } else if (completedPayments >= expectedPayments) {
-      return { status: 'paid' as const, text: 'All Payments Complete' };
-    } else if (completedPayments > 0) {
-      // Partially paid: show pending badge with progress text
-      return {
-        status: 'pending' as const,
-        text: `${completedPayments}/${expectedPayments} Paid`,
-      };
-    } else {
-      return { status: 'pending' as const, text: `${pendingPayments} Pending` };
+      return { status: 'overdue' as const, text: 'Payments Overdue' };
     }
+
+    // Check for verification pending
+    const hasVerificationPending = actualPayments.some(p => {
+      const status = p.status as unknown as string;
+      return status === 'verification_pending' || status.includes('verification_pending');
+    });
+
+    if (hasVerificationPending) {
+      return { status: 'verification_pending' as const, text: 'Verification Pending' };
+    }
+
+    // Check for paid payments
+    const paidPayments = actualPayments.filter(p => p.status === 'paid');
+    if (paidPayments.length === actualPayments.length) {
+      return { status: 'paid' as const, text: 'All Payments Complete' };
+    }
+
+    // Check for partially paid
+    if (paidPayments.length > 0) {
+      return { status: 'pending' as const, text: 'Partially Paid' };
+    }
+
+    // Default to pending
+    return { status: 'pending' as const, text: 'Payments Pending' };
   };
 
   const overallStatus = getOverallStatus();

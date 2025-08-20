@@ -7,6 +7,9 @@ import {
   StudentPaymentSummaryRow,
 } from '@/types/payments/DatabaseAlignedTypes';
 import { Logger } from '@/lib/logging/Logger';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
+import { FeeStructureService } from '@/services/feeStructure.service';
+import { studentScholarshipsService } from '@/services/studentScholarships.service';
 
 // Type aliases for backward compatibility
 type StudentPayment = StudentPaymentRow;
@@ -145,127 +148,162 @@ export class PaymentQueryService {
         throw transactionsError;
       }
 
+      // Load fee structure and scholarships for payment engine calls
+      const { feeStructure, scholarships } = await FeeStructureService.getCompleteFeeStructure(cohortId);
+      const { data: studentScholarships } = await studentScholarshipsService.getByCohort(cohortId);
+
       // Create summary for each student
-      const summary: StudentPaymentSummary[] = students.map(student => {
-        const studentPayment = payments?.find(p => p.student_id === student.id);
+      const summary: StudentPaymentSummary[] = await Promise.all(
+        students.map(async (student) => {
+          const studentPayment = payments?.find(p => p.student_id === student.id);
+          const studentScholarship = studentScholarships?.find(s => s.student_id === student.id);
 
-        if (!studentPayment) {
-          return {
+          if (!studentPayment) {
+            return {
+              student_id: student.id,
+              // No payment record yet, so no linked id
+              student_payment_id: undefined as unknown as string,
+              total_amount: 0,
+              paid_amount: 0,
+              pending_amount: 0,
+              overdue_amount: 0,
+              scholarship_name: undefined,
+              scholarship_id: undefined,
+              token_fee_paid: false,
+              payment_plan: 'not_selected',
+              student: student,
+              payments: [],
+            };
+          }
+
+          // Get transactions for this student's payment
+          const studentTransactions =
+            transactions?.filter(t => t.payment_id === studentPayment.id) || [];
+
+          // Convert payment transactions to a format that matches StudentPayment interface
+          const convertedPayments = studentTransactions.map(transaction => ({
+            id: transaction.id,
             student_id: student.id,
-            // No payment record yet, so no linked id
-            student_payment_id: undefined as unknown as string,
-            total_amount: 0,
-            paid_amount: 0,
-            pending_amount: 0,
-            overdue_amount: 0,
-            scholarship_name: undefined,
-            scholarship_id: undefined,
-            token_fee_paid: false,
-            payment_plan: 'not_selected',
-            student: student,
-            payments: [],
-          };
-        }
+            cohort_id: cohortId,
+            payment_type: 'program_fee' as const,
+            payment_plan: studentPayment.payment_plan,
+            base_amount: parseFloat(transaction.amount || '0'),
+            scholarship_amount: 0,
+            discount_amount: 0,
+            gst_amount: 0,
+            amount_payable: parseFloat(transaction.amount || '0'),
+            amount_paid:
+              transaction.status === 'success'
+                ? parseFloat(transaction.amount || '0')
+                : 0,
+            due_date: transaction.payment_date || transaction.created_at,
+            payment_date: transaction.payment_date,
+            status: transaction.status === 'success' ? 'paid' : 'pending',
+            receipt_url:
+              transaction.receipt_url || transaction.proof_of_payment_url,
+            notes: transaction.notes,
+            created_at: transaction.created_at,
+            updated_at: transaction.updated_at,
+          }));
 
-        // Get transactions for this student's payment
-        const studentTransactions =
-          transactions?.filter(t => t.payment_id === studentPayment.id) || [];
+          // Use payment engine to get accurate aggregate status
+          let aggregateStatus = 'pending';
+          let totalAmount = studentPayment.total_amount_payable || 0;
+          let paidAmount = 0;
+          let pendingAmount = 0;
+          let overdueAmount = 0;
 
-        // Convert payment transactions to a format that matches StudentPayment interface
-        const convertedPayments = studentTransactions.map(transaction => ({
-          id: transaction.id,
-          student_id: student.id,
-          cohort_id: cohortId,
-          payment_type: 'program_fee' as const,
-          payment_plan: studentPayment.payment_plan,
-          base_amount: parseFloat(transaction.amount || '0'),
-          scholarship_amount: 0,
-          discount_amount: 0,
-          gst_amount: 0,
-          amount_payable: parseFloat(transaction.amount || '0'),
-          amount_paid:
-            transaction.status === 'success'
-              ? parseFloat(transaction.amount || '0')
-              : 0,
-          due_date: transaction.payment_date || transaction.created_at,
-          payment_date: transaction.payment_date,
-          status: transaction.status === 'success' ? 'paid' : 'pending',
-          receipt_url:
-            transaction.receipt_url || transaction.proof_of_payment_url,
-          notes: transaction.notes,
-          created_at: transaction.created_at,
-          updated_at: transaction.updated_at,
-        }));
+          try {
+            if (studentPayment.payment_plan && studentPayment.payment_plan !== 'not_selected') {
+              const paymentEngineResult = await getFullPaymentView({
+                studentId: student.id,
+                cohortId: cohortId,
+                paymentPlan: studentPayment.payment_plan as any,
+                scholarshipId: studentScholarship?.scholarship_id,
+                additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+                feeStructureData: {
+                  total_program_fee: Number(feeStructure.total_program_fee),
+                  admission_fee: Number(feeStructure.admission_fee),
+                  number_of_semesters: (feeStructure as any).number_of_semesters,
+                  instalments_per_semester: (feeStructure as any).instalments_per_semester,
+                  one_shot_discount_percentage: (feeStructure as any).one_shot_discount_percentage,
+                  one_shot_dates: (feeStructure as any).one_shot_dates,
+                  sem_wise_dates: (feeStructure as any).sem_wise_dates,
+                  instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
+                }
+              });
 
-        return {
-          student_id: student.id,
-          // expose underlying record id so UI can fetch transactions reliably
-          student_payment_id: studentPayment.id,
-          total_amount: (() => {
-            // Use the total_amount_payable from the student payment record as the source of truth
-            return studentPayment.total_amount_payable || 0;
-          })(),
-          paid_amount: (() => {
-            // Calculate paid amount from approved transactions only
-            const approvedTransactions = studentTransactions.filter(
-              t => t.verification_status === 'approved'
+              if (paymentEngineResult.aggregate) {
+                aggregateStatus = paymentEngineResult.aggregate.paymentStatus;
+                totalAmount = paymentEngineResult.aggregate.totalPayable;
+                paidAmount = paymentEngineResult.aggregate.totalPaid;
+                pendingAmount = paymentEngineResult.aggregate.totalPending;
+                
+                // Calculate overdue amount based on aggregate status
+                if (aggregateStatus === 'overdue' || aggregateStatus === 'partially_paid_overdue') {
+                  overdueAmount = pendingAmount;
+                }
+              }
+            }
+          } catch (error) {
+            Logger.getInstance().error(
+              'PaymentQueryService: Error calling payment engine for student',
+              { error, studentId: student.id, cohortId }
             );
-            const transactionPaidAmount = approvedTransactions.reduce(
-              (sum, t) => sum + parseFloat(t.amount || '0'),
-              0
-            );
-
-            // Use the total_amount_paid from the student payment record as the source of truth
-            // This includes admission fee if it's been paid
-            return Math.max(
-              transactionPaidAmount,
-              studentPayment.total_amount_paid || 0
-            );
-          })(),
-          pending_amount: (() => {
-            // Calculate pending amount (total - paid)
-            const totalAmount = studentPayment.total_amount_payable || 0;
-            const paidAmount = Math.max(
+            // Fallback to database values if payment engine fails
+            totalAmount = studentPayment.total_amount_payable || 0;
+            paidAmount = Math.max(
               studentTransactions
                 .filter(t => t.verification_status === 'approved')
                 .reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0),
               studentPayment.total_amount_paid || 0
             );
-            return Math.max(0, totalAmount - paidAmount);
-          })(),
-          overdue_amount: 0, // TODO: Calculate overdue amount
-          scholarship_name: undefined, // TODO: Get from scholarship table
-          scholarship_id: studentPayment.scholarship_id || undefined,
-          token_fee_paid: false, // TODO: Check if admission fee is paid
-          payment_plan: studentPayment.payment_plan || 'not_selected',
-          student: student,
-          payments: convertedPayments,
-          // Calculate installment counts including ₹0 scholarship installments
-          total_installments: (() => {
-            if (studentPayment.payment_plan === 'one_shot') {
+            pendingAmount = Math.max(0, totalAmount - paidAmount);
+          }
+
+          return {
+            student_id: student.id,
+            // expose underlying record id so UI can fetch transactions reliably
+            student_payment_id: studentPayment.id,
+            total_amount: totalAmount,
+            paid_amount: paidAmount,
+            pending_amount: pendingAmount,
+            overdue_amount: overdueAmount,
+            scholarship_name: studentScholarship?.scholarship?.name,
+            scholarship_id: studentPayment.scholarship_id || undefined,
+            token_fee_paid: false, // TODO: Check if admission fee is paid
+            payment_plan: studentPayment.payment_plan || 'not_selected',
+            student: student,
+            payments: convertedPayments,
+            // Calculate installment counts including ₹0 scholarship installments
+            total_installments: (() => {
+              if (studentPayment.payment_plan === 'one_shot') {
+                return 1;
+              } else if (studentPayment.payment_plan === 'sem_wise') {
+                return 4; // Default: 4 semesters
+              } else if (studentPayment.payment_plan === 'instalment_wise') {
+                return 12; // Default: 4 semesters × 3 installments
+              }
               return 1;
-            } else if (studentPayment.payment_plan === 'sem_wise') {
-              return 4; // Default: 4 semesters
-            } else if (studentPayment.payment_plan === 'instalment_wise') {
-              return 12; // Default: 4 semesters × 3 installments
-            }
-            return 1;
-          })(),
-          completed_installments: (() => {
-            // Count approved transactions
-            const paidTransactionCount = studentTransactions.filter(
-              t => t.verification_status === 'approved'
-            ).length;
-            
-            // TODO: Use InstallmentCalculationService for accurate scholarship counting
-            // For performance reasons, this is currently just transaction count
-            // To get accurate scholarship installment counting, use:
-            // InstallmentCalculationService.calculateInstallmentCounts()
-            
-            return paidTransactionCount;
-          })(),
-        };
-      });
+            })(),
+            completed_installments: (() => {
+              // Count approved transactions
+              const paidTransactionCount = studentTransactions.filter(
+                t => t.verification_status === 'approved'
+              ).length;
+              
+              // TODO: Use InstallmentCalculationService for accurate scholarship counting
+              // For performance reasons, this is currently just transaction count
+              // To get accurate scholarship installment counting, use:
+              // InstallmentCalculationService.calculateInstallmentCounts()
+              
+              return paidTransactionCount;
+            })(),
+            // Add aggregate status from payment engine
+            aggregate_status: aggregateStatus,
+          };
+        })
+      );
 
       return {
         data: summary,
