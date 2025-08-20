@@ -22,6 +22,14 @@ export const ProgressCell: React.FC<ProgressCellProps> = ({ student }) => {
     aggregate_status: (student as any).aggregate_status,
     payment_engine_breakdown: !!(student as any).payment_engine_breakdown,
   });
+  
+  // Also log the raw student object for debugging
+  console.log('🔍 [ProgressCell] Raw student data:', {
+    total_amount: student.total_amount,
+    paid_amount: student.paid_amount,
+    aggregate_status: (student as any).aggregate_status,
+    has_breakdown: !!(student as any).payment_engine_breakdown,
+  });
 
   return (
     <TableCell>

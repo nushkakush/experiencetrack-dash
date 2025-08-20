@@ -251,6 +251,18 @@ export class PaymentQueryService {
                 if (aggregateStatus === 'overdue' || aggregateStatus === 'partially_paid_overdue') {
                   overdueAmount = pendingAmount;
                 }
+                
+                // Debug logging to track payment engine values
+                console.log('🔍 [PaymentQueryService] Payment engine values for student:', student.id, {
+                  original_total: paymentEngineResult.aggregate.totalPayable,
+                  original_paid: paymentEngineResult.aggregate.totalPaid,
+                  admission_fee: admissionFee,
+                  final_total: totalAmount,
+                  final_paid: paidAmount,
+                  final_pending: pendingAmount,
+                  aggregate_status: aggregateStatus,
+                  has_breakdown: !!paymentEngineBreakdown,
+                });
               }
             }
           } catch (error) {
