@@ -11,11 +11,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { 
-  Home, 
-  BookOpen, 
-  GraduationCap, 
-  User, 
+import { Logo } from '@/components/ui/logo';
+import {
+  Home,
+  BookOpen,
+  GraduationCap,
+  User,
   Settings,
   Users,
   BarChart3,
@@ -30,7 +31,7 @@ import {
   UsersRound,
   Calendar,
   CreditCard,
-  Menu
+  Menu,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +39,7 @@ import { useNavigate } from 'react-router-dom';
 interface NavigationItem {
   title: string;
   url?: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   onClick?: () => void;
 }
 
@@ -47,32 +48,55 @@ interface DashboardShellProps {
   hideSidebar?: boolean;
 }
 
-const getNavigationItems = (role: UserRole, navigate: (path: string) => void): NavigationItem[] => {
+const getNavigationItems = (
+  role: UserRole,
+  navigate: (path: string) => void
+): NavigationItem[] => {
   const baseItems: NavigationItem[] = [
     { title: 'Dashboard', onClick: () => navigate('/dashboard'), icon: Home },
   ];
 
   const roleSpecificItems: Record<UserRole, NavigationItem[]> = {
     student: [
-      { title: 'Attendance', onClick: () => navigate('/dashboard'), icon: Calendar },
-      { title: 'Fee Payment', onClick: () => navigate('/dashboard/fee-payment'), icon: CreditCard },
+      {
+        title: 'Attendance',
+        onClick: () => navigate('/dashboard'),
+        icon: Calendar,
+      },
+      {
+        title: 'Fee Payment',
+        onClick: () => navigate('/dashboard/fee-payment'),
+        icon: CreditCard,
+      },
     ],
     super_admin: [
-      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
       { title: 'User Management', url: '#', icon: Users },
       { title: 'System Settings', url: '#', icon: Settings },
       { title: 'Analytics', url: '#', icon: BarChart3 },
       { title: 'Reports', url: '#', icon: FileText },
     ],
     program_manager: [
-      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
       { title: 'Programs', url: '#', icon: BookOpen },
       { title: 'Students', url: '#', icon: GraduationCap },
       { title: 'Schedule', url: '#', icon: FileText },
       { title: 'Analytics', url: '#', icon: BarChart3 },
     ],
     fee_collector: [
-      { title: 'Cohorts', onClick: () => navigate('/cohorts'), icon: UsersRound },
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
       { title: 'Payments', url: '#', icon: DollarSign },
       { title: 'Outstanding Fees', url: '#', icon: Receipt },
       { title: 'Reports', url: '#', icon: FileText },
@@ -96,14 +120,14 @@ const getNavigationItems = (role: UserRole, navigate: (path: string) => void): N
   if (role === 'student') {
     return roleSpecificItems[role];
   }
-  
-  return [
-    ...baseItems,
-    ...roleSpecificItems[role],
-  ];
+
+  return [...baseItems, ...roleSpecificItems[role]];
 };
 
-const DashboardShell = ({ children, hideSidebar = false }: DashboardShellProps) => {
+const DashboardShell = ({
+  children,
+  hideSidebar = false,
+}: DashboardShellProps) => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -111,7 +135,8 @@ const DashboardShell = ({ children, hideSidebar = false }: DashboardShellProps) 
   if (!profile) return null;
 
   const navigationItems = getNavigationItems(profile.role, navigate);
-  const userInitials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
+  const userInitials =
+    `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
 
   const handleProfileClick = () => {
     navigate('/profile');
@@ -122,101 +147,104 @@ const DashboardShell = ({ children, hideSidebar = false }: DashboardShellProps) 
   };
 
   return (
-    <div className="h-screen w-screen flex bg-background overflow-hidden">
+    <div className='h-screen w-screen flex bg-background overflow-hidden'>
       {/* Sidebar */}
       {!hideSidebar && (
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full transition-all duration-300 overflow-hidden`}>
-        <div className="p-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4 w-4" />
+        <div
+          className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full transition-all duration-300 overflow-hidden`}
+        >
+          <div className='p-4 border-b border-border flex-shrink-0'>
+            <Logo size='md' showText={false} />
+          </div>
+
+          <div className='p-4 flex-1 overflow-y-auto'>
+            <div className='space-y-2'>
+              <h3 className='text-sm font-medium text-muted-foreground mb-3 text-left'>
+                Navigation
+              </h3>
+              {navigationItems.map(item => (
+                <button
+                  key={item.title}
+                  onClick={item.onClick}
+                  className='w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-left justify-start'
+                >
+                  <item.icon className='h-4 w-4' />
+                  <span>{item.title}</span>
+                </button>
+              ))}
             </div>
-            <span className="font-semibold text-foreground">
-              LIT Dashboard
-            </span>
           </div>
         </div>
-        
-        <div className="p-4 flex-1 overflow-y-auto">
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3 text-left">Navigation</h3>
-            {navigationItems.map((item) => (
-              <button
-                key={item.title}
-                onClick={item.onClick}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-left justify-start"
-              >
-                <item.icon className="h-4 w-4" />
-                <span>{item.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className='flex-1 flex flex-col h-full overflow-hidden'>
         {/* Header */}
-        <header className="h-16 border-b border-border bg-background px-6 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-4">
+        <header className='h-16 border-b border-border bg-background px-6 flex items-center justify-between flex-shrink-0'>
+          <div className='flex items-center gap-4'>
             {!hideSidebar && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0"
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-8 w-8 p-0'
                 onClick={handleSidebarToggle}
               >
-                <Menu className="h-4 w-4" />
+                <Menu className='h-4 w-4' />
               </Button>
             )}
+            {hideSidebar && <Logo size='sm' showText={false} />}
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          <div className='flex items-center gap-2'>
             <ThemeToggle />
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                <Button
+                  variant='ghost'
+                  className='relative h-8 w-8 rounded-full'
+                >
+                  <Avatar className='h-8 w-8'>
+                    <AvatarFallback className='text-xs bg-primary text-primary-foreground'>
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 z-[9999] bg-popover" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
+              <DropdownMenuContent
+                className='w-56 z-[9999] bg-popover'
+                align='end'
+                forceMount
+              >
+                <DropdownMenuLabel className='font-normal'>
+                  <div className='flex flex-col space-y-1'>
+                    <p className='text-sm font-medium leading-none'>
                       {profile.first_name} {profile.last_name}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className='text-xs leading-none text-muted-foreground'>
                       {profile.email}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground capitalize">
+                    <p className='text-xs leading-none text-muted-foreground capitalize'>
                       {profile.role.replace('_', ' ')}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleProfileClick}>
-                  <User className="mr-2 h-4 w-4" />
+                  <User className='mr-2 h-4 w-4' />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className='mr-2 h-4 w-4' />
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
-        
+
         {/* Main Content Area */}
-        <main className="flex-1 p-6 w-full overflow-y-auto">
-          {children}
-        </main>
+        <main className='flex-1 p-6 w-full overflow-y-auto'>{children}</main>
       </div>
     </div>
   );

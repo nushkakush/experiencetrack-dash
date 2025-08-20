@@ -1,6 +1,13 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Logo } from '@/components/ui/logo';
 import { SignInForm } from './SignInForm';
 import { SignUpForm } from './SignUpForm';
 
@@ -39,30 +46,33 @@ export const MainLoginForm: React.FC<MainLoginFormProps> = ({
   onToggleSignupPassword,
   onForgotPassword,
   onSignIn,
-  onSignUp
+  onSignUp,
 }) => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">LIT DASHBOARD</CardTitle>
+    <div className='fixed inset-0 flex items-center justify-center bg-background p-4'>
+      <Card className='w-full max-w-md'>
+        <CardHeader className='text-center'>
+          <div className='flex justify-center mb-4'>
+            <Logo size='lg' showText={false} />
+          </div>
           <CardDescription>
             Experiential Learning Management System
           </CardDescription>
-          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              <strong>Note:</strong> Only @litschool.in email addresses are allowed for signup
+          <div className='mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800'>
+            <p className='text-xs text-blue-700 dark:text-blue-300'>
+              <strong>Note:</strong> Only @litschool.in email addresses are
+              allowed for signup
             </p>
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          <Tabs defaultValue='signin' className='w-full'>
+            <TabsList className='grid w-full grid-cols-2'>
+              <TabsTrigger value='signin'>Sign In</TabsTrigger>
+              <TabsTrigger value='signup'>Sign Up</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="signin">
+
+            <TabsContent value='signin'>
               <SignInForm
                 email={email}
                 password={password}
@@ -75,8 +85,8 @@ export const MainLoginForm: React.FC<MainLoginFormProps> = ({
                 onSubmit={onSignIn}
               />
             </TabsContent>
-            
-            <TabsContent value="signup">
+
+            <TabsContent value='signup'>
               <SignUpForm
                 email={email}
                 password={password}

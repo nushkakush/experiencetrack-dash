@@ -1,5 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, useLocation } from 'react-router-dom';
+import { Logo } from '@/components/ui/logo';
 import StudentDashboard from './dashboards/StudentDashboard';
 import SuperAdminDashboard from './dashboards/SuperAdminDashboard';
 import ProgramManagerDashboard from './dashboards/ProgramManagerDashboard';
@@ -13,10 +14,13 @@ const DashboardRouter = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className='min-h-screen flex items-center justify-center bg-background'>
+        <div className='text-center'>
+          <div className='flex justify-center mb-6'>
+            <Logo size='lg' showText={false} />
+          </div>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4'></div>
+          <p className='text-muted-foreground'>Loading dashboard...</p>
         </div>
       </div>
     );
@@ -24,17 +28,20 @@ const DashboardRouter = () => {
 
   // Check if user is authenticated first, then check profile
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to='/auth' replace />;
   }
 
   // If profile is not yet available, show loading. Do NOT gate on `profileLoading`
   // to avoid unmounting dashboards on transient refetches (e.g., on focus).
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading profile...</p>
+      <div className='min-h-screen flex items-center justify-center bg-background'>
+        <div className='text-center'>
+          <div className='flex justify-center mb-6'>
+            <Logo size='lg' showText={false} />
+          </div>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4'></div>
+          <p className='text-muted-foreground'>Loading profile...</p>
         </div>
       </div>
     );
@@ -55,10 +62,15 @@ const DashboardRouter = () => {
       return <PlacementCoordinatorDashboard />;
     default:
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Invalid Role</h1>
-            <p className="text-muted-foreground">Your account role is not recognized.</p>
+        <div className='min-h-screen flex items-center justify-center bg-background'>
+          <div className='text-center'>
+            <div className='flex justify-center mb-6'>
+              <Logo size='lg' showText={false} />
+            </div>
+            <h1 className='text-2xl font-bold mb-4'>Invalid Role</h1>
+            <p className='text-muted-foreground'>
+              Your account role is not recognized.
+            </p>
           </div>
         </div>
       );
