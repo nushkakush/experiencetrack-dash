@@ -30,7 +30,7 @@ interface PaymentScheduleItem {
   type: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'verification_pending' | 'paid' | 'overdue';
+  status: 'pending' | 'pending_10_plus_days' | 'verification_pending' | 'paid' | 'overdue' | 'partially_paid_days_left' | 'partially_paid_overdue' | 'partially_paid_verification_pending';
   paymentDate?: string;
   verificationStatus?: string;
   semesterNumber?: number;

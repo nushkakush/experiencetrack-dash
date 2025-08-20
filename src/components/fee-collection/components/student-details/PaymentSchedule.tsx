@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { getInstallmentStatusDisplay } from '@/utils/paymentStatusUtils';
 
 interface PaymentScheduleProps {
   student: StudentPaymentSummary;
@@ -30,7 +31,7 @@ interface PaymentScheduleItem {
   type: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'verification_pending' | 'paid' | 'overdue';
+  status: 'pending' | 'pending_10_plus_days' | 'verification_pending' | 'paid' | 'overdue' | 'partially_paid_days_left' | 'partially_paid_overdue' | 'partially_paid_verification_pending';
   paymentDate?: string;
   verificationStatus?: string;
   semesterNumber?: number;
@@ -81,7 +82,6 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       student.student?.cohort_id === 'undefined' ||
       !student.payment_plan ||
       student.payment_plan === 'not_selected' ||
-      student.payment_plan === 'undefined' ||
       !validPaymentPlans.includes(student.payment_plan)
     ) {
       console.log('🔍 [PaymentSchedule] Skipping payment engine call - missing required data:', {
@@ -220,13 +220,17 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         const programFeeAmount =
           (oneShot?.amountPayable ?? 0) ||
           feeReview.overallSummary.totalAmountPayable -
-            feeStructure.admission_fee;
+            feeStructureToUse.admission_fee;
         const statusFromEngine = (oneShot as Record<string, unknown>)
           ?.status as
           | 'pending'
+          | 'pending_10_plus_days'
           | 'verification_pending'
           | 'paid'
           | 'overdue'
+          | 'partially_paid_days_left'
+          | 'partially_paid_overdue'
+          | 'partially_paid_verification_pending'
           | undefined;
 
         schedule.push({
@@ -235,7 +239,6 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           amount: programFeeAmount,
           dueDate:
             oneShot?.paymentDate ||
-            cohortData?.start_date ||
             new Date().toISOString(),
           status: statusFromEngine || 'pending',
           paymentDate: undefined,
@@ -250,9 +253,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           const inst = semester.instalments[0];
           const statusFromEngine = (inst as Record<string, unknown>)?.status as
             | 'pending'
+            | 'pending_10_plus_days'
             | 'verification_pending'
             | 'paid'
             | 'overdue'
+            | 'partially_paid_days_left'
+            | 'partially_paid_overdue'
+            | 'partially_paid_verification_pending'
             | undefined;
           schedule.push({
             id: `semester_${index + 1}`,
@@ -277,9 +284,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
             const statusFromEngine = (installment as Record<string, unknown>)
               ?.status as
               | 'pending'
+              | 'pending_10_plus_days'
               | 'verification_pending'
               | 'paid'
               | 'overdue'
+              | 'partially_paid_days_left'
+              | 'partially_paid_overdue'
+              | 'partially_paid_verification_pending'
               | undefined;
             schedule.push({
               id: `installment_${installmentIndex}`,
@@ -341,23 +352,48 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       );
     }
 
-    switch (status) {
+    // Use centralized payment status utility for consistent display
+    const statusDisplay = getInstallmentStatusDisplay(status);
+    
+    // Map status to appropriate badge styling
+    switch (statusDisplay.status) {
       case 'paid':
         return (
           <Badge className='bg-green-500/20 text-green-600 border-green-500/30 text-xs'>
-            Paid
+            {statusDisplay.text}
           </Badge>
         );
       case 'overdue':
+      case 'partially_paid_overdue':
         return (
           <Badge className='bg-red-500/20 text-red-600 border-red-500/30 text-xs'>
-            Overdue
+            {statusDisplay.text}
           </Badge>
         );
+      case 'pending_10_plus_days':
+        return (
+          <Badge className='bg-orange-500/20 text-orange-600 border-orange-500/30 text-xs'>
+            {statusDisplay.text}
+          </Badge>
+        );
+      case 'partially_paid_days_left':
+        return (
+          <Badge className='bg-orange-500/20 text-orange-600 border-orange-500/30 text-xs'>
+            {statusDisplay.text}
+          </Badge>
+        );
+      case 'verification_pending':
+      case 'partially_paid_verification_pending':
+        return (
+          <Badge className='bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-xs'>
+            {statusDisplay.text}
+          </Badge>
+        );
+      case 'pending':
       default:
         return (
           <Badge className='bg-muted text-muted-foreground border-border text-xs'>
-            Pending
+            {statusDisplay.text}
           </Badge>
         );
     }
@@ -395,7 +431,11 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     // Don't allow recording for already paid or verification pending payments
     return (
       canCollectFees &&
-      (status === 'pending' || status === 'overdue') &&
+      (status === 'pending' || 
+       status === 'pending_10_plus_days' || 
+       status === 'overdue' || 
+       status === 'partially_paid_overdue' ||
+       status === 'partially_paid_days_left') &&
       !verificationStatus
     );
   };
