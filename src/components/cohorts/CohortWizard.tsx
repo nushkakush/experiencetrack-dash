@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { addMonths, formatISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,10 +38,13 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
   const [cohortId, setCohortId] = useState("");
   const [startDate, setStartDate] = useState(toISODate(new Date()));
   const [duration, setDuration] = useState(6);
-  const [endDate, setEndDate] = useState(toISODate(addMonths(new Date(startDate), duration)));
+  const [endDate, setEndDate] = useState(toISODate(addMonths(new Date(), 6)));
   const [description, setDescription] = useState("");
   const [sessionsPerDay, setSessionsPerDay] = useState(1);
   const [epics, setEpics] = useState<NewEpicInput[]>([{ name: "", duration_months: 1 }]);
+  
+  // Track if end date has been manually edited
+  const [isEndDateManuallyEdited, setIsEndDateManuallyEdited] = useState(false);
 
   useMemo(() => {
     const auto = slugify(name || "cohort");
@@ -51,11 +54,34 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
     }
   }, [name]); // eslint-disable-line
 
-  // Remove auto-calculation of end date to make it editable
-  // useMemo(() => {
-  //   const newEnd = addMonths(new Date(startDate), Number(duration) || 1);
-  //   setEndDate(toISODate(newEnd));
-  // }, [startDate, duration]);
+  // Auto-calculate end date when start date or duration changes (only if not manually edited)
+  useEffect(() => {
+    if (!isEndDateManuallyEdited) {
+      const startDateObj = new Date(startDate);
+      const newEnd = addMonths(startDateObj, Number(duration) || 1);
+      setEndDate(toISODate(newEnd));
+    }
+  }, [startDate, duration, isEndDateManuallyEdited]);
+
+  // Reset manual edit flag when start date or duration changes
+  useEffect(() => {
+    setIsEndDateManuallyEdited(false);
+  }, [startDate, duration]);
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setIsEndDateManuallyEdited(true);
+  };
+
+  const handleDurationChange = (value: number) => {
+    setDuration(value);
+    setIsEndDateManuallyEdited(false); // Reset flag when duration changes
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setIsEndDateManuallyEdited(false); // Reset flag when start date changes
+  };
 
   const validateStep1 = async () => {
     if (!name.trim()) {
@@ -66,6 +92,15 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
       toast.error("Cohort ID is required.");
       return false;
     }
+    
+    // Validate that end date is after start date
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    if (endDateObj <= startDateObj) {
+      toast.error("End date must be after start date.");
+      return false;
+    }
+    
     setCheckingId(true);
     const unique = await cohortsService.isCohortIdUnique(cohortId.trim());
     setCheckingId(false);
@@ -142,7 +177,7 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
           </div>
           <div className="space-y-2">
             <Label>Start date</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="date" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Duration (months)</Label>
@@ -150,12 +185,17 @@ export default function CohortWizard({ onCreated, onClose }: CohortWizardProps) 
               type="number"
               min={1}
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value) || 1)}
+              onChange={(e) => handleDurationChange(Number(e.target.value) || 1)}
             />
           </div>
           <div className="space-y-2">
             <Label>End date</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Input type="date" value={endDate} onChange={(e) => handleEndDateChange(e.target.value)} />
+            {isEndDateManuallyEdited ? (
+              <p className="text-xs text-muted-foreground">Manually edited</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Auto-calculated from duration</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Sessions per day</Label>

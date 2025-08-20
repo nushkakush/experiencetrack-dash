@@ -127,7 +127,15 @@ export const usePaymentPlanState = ({
 
   // Determine if plan selection is complete (plan selected and data loaded)
   const isPlanSelectionComplete = useMemo(() => {
-    return hasSelectedPlan && !loading && studentPayments !== null;
+    const result = hasSelectedPlan && !loading && studentPayments !== null;
+    console.log('🔄 [usePaymentPlanState] isPlanSelectionComplete calculation:', {
+      hasSelectedPlan,
+      loading,
+      studentPaymentsIsNull: studentPayments === null,
+      studentPaymentsLength: studentPayments?.length || 0,
+      result,
+    });
+    return result;
   }, [hasSelectedPlan, loading, studentPayments]);
 
   // Update payment plan in database and local state

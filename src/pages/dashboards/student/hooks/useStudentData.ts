@@ -157,6 +157,12 @@ export const useStudentData = (): StudentData => {
           student.id,
           student.cohort_id
         );
+      console.log('🔄 [useStudentData] Student payments result:', {
+        success: paymentsResult.success,
+        data: paymentsResult.data,
+        dataLength: paymentsResult.data?.length || 0,
+        error: paymentsResult.error,
+      });
       if (paymentsResult.success) {
         setStudentPayments(paymentsResult.data || []);
         

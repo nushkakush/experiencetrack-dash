@@ -3,4 +3,4 @@ export {
   default as default,
   type BulkUploadConfig,
   type ValidationResult 
-} from "./bulk-upload";
+} from "./bulk-upload/index";

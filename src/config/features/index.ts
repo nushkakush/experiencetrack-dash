@@ -60,6 +60,10 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'holidays.edit',
       'holidays.delete',
       
+      // Fee Management (basic access)
+      'fees.view',
+      'fees.bulk_management',
+      
       // Student Features (for viewing)
       'student.progress',
       'student.assignments',
@@ -80,6 +84,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'fees.refund',
       'fees.reports',
       'fees.manage_scholarships',
+      'fees.bulk_management',
       
       // User Management (view only for fee purposes)
       'users.view',

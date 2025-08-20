@@ -44,6 +44,9 @@ export default function CohortEditWizard({ cohort, onUpdated, onClose }: CohortE
   const [description, setDescription] = useState(cohort.description || "");
   const [sessionsPerDay, setSessionsPerDay] = useState(cohort.sessions_per_day);
   const [epics, setEpics] = useState<NewEpicInput[]>([]);
+  
+  // Track if end date has been manually edited
+  const [isEndDateManuallyEdited, setIsEndDateManuallyEdited] = useState(false);
 
   // Load existing epics
   useEffect(() => {
@@ -65,11 +68,34 @@ export default function CohortEditWizard({ cohort, onUpdated, onClose }: CohortE
     loadEpics();
   }, [cohort.id]);
 
-  // Remove auto-calculation of end date to make it editable
-  // useMemo(() => {
-  //   const newEnd = addMonths(new Date(startDate), Number(duration) || 1);
-  //   setEndDate(toISODate(newEnd));
-  // }, [startDate, duration]);
+  // Auto-calculate end date when start date or duration changes (only if not manually edited)
+  useEffect(() => {
+    if (!isEndDateManuallyEdited) {
+      const startDateObj = new Date(startDate);
+      const newEnd = addMonths(startDateObj, Number(duration) || 1);
+      setEndDate(toISODate(newEnd));
+    }
+  }, [startDate, duration, isEndDateManuallyEdited]);
+
+  // Reset manual edit flag when start date or duration changes
+  useEffect(() => {
+    setIsEndDateManuallyEdited(false);
+  }, [startDate, duration]);
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setIsEndDateManuallyEdited(true);
+  };
+
+  const handleDurationChange = (value: number) => {
+    setDuration(value);
+    setIsEndDateManuallyEdited(false); // Reset flag when duration changes
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setIsEndDateManuallyEdited(false); // Reset flag when start date changes
+  };
 
   const validateStep1 = async () => {
     if (!name.trim()) {
@@ -78,6 +104,14 @@ export default function CohortEditWizard({ cohort, onUpdated, onClose }: CohortE
     }
     if (!cohortId.trim()) {
       toast.error("Cohort ID is required.");
+      return false;
+    }
+    
+    // Validate that end date is after start date
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    if (endDateObj <= startDateObj) {
+      toast.error("End date must be after start date.");
       return false;
     }
     
@@ -184,7 +218,7 @@ export default function CohortEditWizard({ cohort, onUpdated, onClose }: CohortE
           </div>
           <div className="space-y-2">
             <Label>Start date</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="date" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Duration (months)</Label>
@@ -192,12 +226,17 @@ export default function CohortEditWizard({ cohort, onUpdated, onClose }: CohortE
               type="number"
               min={1}
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value) || 1)}
+              onChange={(e) => handleDurationChange(Number(e.target.value) || 1)}
             />
           </div>
           <div className="space-y-2">
             <Label>End date</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Input type="date" value={endDate} onChange={(e) => handleEndDateChange(e.target.value)} />
+            {isEndDateManuallyEdited ? (
+              <p className="text-xs text-muted-foreground">Manually edited</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Auto-calculated from duration</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Sessions per day</Label>

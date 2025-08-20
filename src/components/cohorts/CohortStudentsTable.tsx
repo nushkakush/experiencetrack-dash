@@ -450,9 +450,9 @@ export default function CohortStudentsTable({
                 <TableCell>
                   <div className='space-y-3'>
                     {/* Scholarship Section */}
-                    <div className='flex items-center gap-2'>
+                    <div className='flex items-center justify-between'>
                       {scholarshipAssignments[student.id] ? (
-                        <div className='flex-1 min-w-0'>
+                        <div className='min-w-0'>
                           <div className='text-sm font-medium text-green-700 dark:text-green-300'>
                             {scholarshipDetails[student.id]?.scholarship?.name ||
                               'Scholarship'}
@@ -505,19 +505,21 @@ export default function CohortStudentsTable({
                     </div>
 
                     {/* Payment Plan Section */}
-                    <div className='flex items-center gap-2'>
+                    <div className='flex items-center justify-between'>
                       {paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan ? (
-                        <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
-                          {(() => {
-                            const plan = paymentPlanDetails[student.id]?.payment_plan;
-                            const isCustom = customFeeStructures[student.id];
-                            const planName = 
-                              plan === 'one_shot' ? 'One Shot Payment' :
-                              plan === 'sem_wise' ? 'Semester Wise' :
-                              plan === 'instalment_wise' ? 'Instalment Wise' :
-                              plan === 'not_selected' ? 'Not Selected' : '';
-                            return isCustom ? `Custom ${planName}` : planName;
-                          })()}
+                        <div className='min-w-0'>
+                          <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
+                            {(() => {
+                              const plan = paymentPlanDetails[student.id]?.payment_plan;
+                              const isCustom = customFeeStructures[student.id];
+                              const planName = 
+                                plan === 'one_shot' ? 'One Shot Payment' :
+                                plan === 'sem_wise' ? 'Semester Wise' :
+                                plan === 'instalment_wise' ? 'Instalment Wise' :
+                                plan === 'not_selected' ? 'Not Selected' : '';
+                              return isCustom ? `Custom ${planName}` : planName;
+                            })()}
+                          </div>
                         </div>
                       ) : (
                         <div className='text-sm text-muted-foreground'>

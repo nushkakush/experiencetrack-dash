@@ -415,8 +415,11 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
   // Function to handle payment recording completion
   const handlePaymentRecorded = () => {
-    // Refresh the payment schedule
-    fetchPaymentSchedule();
+    // Add a small delay to ensure payment engine has processed the transaction
+    setTimeout(() => {
+      // Refresh the payment schedule
+      fetchPaymentSchedule();
+    }, 1000);
   };
 
   // Function to close the recording dialog

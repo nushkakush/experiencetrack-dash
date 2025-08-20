@@ -49,9 +49,9 @@ interface AdminPaymentRecordingDialogProps {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
-    one_shot_dates?: any;
-    sem_wise_dates?: any;
-    instalment_wise_dates?: any;
+    one_shot_dates?: Record<string, string>;
+    sem_wise_dates?: Record<string, string | Record<string, unknown>>;
+    instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
   };
 }
 
@@ -133,7 +133,6 @@ export const AdminPaymentRecordingDialog: React.FC<
       installmentNumber: paymentItem.installmentNumber || 1,
       semesterNumber: paymentItem.semesterNumber || 1, // Add semesterNumber for targeting validation
       amount: calculatedAmount,
-      amountPayable: calculatedAmount, // Add this property for usePaymentForm compatibility
       dueDate: paymentItem.dueDate,
       status: paymentItem.status as 'pending' | 'paid' | 'overdue',
       paidAmount: 0,
@@ -161,13 +160,21 @@ export const AdminPaymentRecordingDialog: React.FC<
     paymentData: PaymentSubmissionData
   ) => {
     try {
-      // Add admin-specific fields
-      const adminPaymentData: PaymentSubmissionData = {
-        ...paymentData,
+      // Convert PaymentFormTypes.PaymentSubmissionData to PaymentMethods.PaymentSubmissionData
+      const adminPaymentData = {
+        paymentId: `student-payment-${Date.now()}`,
+        amount: paymentData.amount,
+        paymentMethod: paymentData.paymentMethod,
+        referenceNumber: paymentData.referenceNumber,
+        notes: paymentData.notes,
+        receiptFile: paymentData.receiptFile,
         studentId: studentData.id,
         cohortId: studentData.cohort_id,
-        studentUserId: studentData.user_id, // Add student's user_id for created_by field
-        installmentId: paymentItem?.id,
+        studentUserId: studentData.user_id,
+        // Construct installmentId in the same format as usePaymentForm
+        installmentId: paymentItem?.semesterNumber && paymentItem?.installmentNumber 
+          ? `${paymentItem.semesterNumber}-${paymentItem.installmentNumber}`
+          : paymentItem?.id, // Fallback to original id for one-shot payments
         semesterNumber: paymentItem?.semesterNumber,
         isAdminRecorded: true,
         recordedByUserId: profile?.user_id,
@@ -235,7 +242,8 @@ export const AdminPaymentRecordingDialog: React.FC<
       console.log('🔍 [AdminPaymentDialog] Payment engine response:', {
         success: response.success,
         hasBreakdown: !!response.breakdown,
-        breakdown: response.breakdown,
+        overallSummary: response.breakdown?.overallSummary,
+        feeStructure: feeStructure,
       });
 
       if (response.success && response.breakdown) {
@@ -260,18 +268,27 @@ export const AdminPaymentRecordingDialog: React.FC<
               response.breakdown.admissionFee.scholarshipAmount || 0,
             totalAmount: response.breakdown.admissionFee.totalPayable || 0,
           };
-        } else if (paymentItem.type === 'One-Shot Payment') {
+        } else if (paymentItem.type === 'Program Fee (One-Shot)') {
           const oneShotPayment = response.breakdown.oneShotPayment;
           console.log('🔍 [AdminPaymentDialog] Processing One-Shot Payment:', {
             oneShotPayment,
+            baseAmount: oneShotPayment?.baseAmount,
+            gstAmount: oneShotPayment?.gstAmount,
+            discountAmount: oneShotPayment?.discountAmount,
+            scholarshipAmount: oneShotPayment?.scholarshipAmount,
+            amountPayable: oneShotPayment?.amountPayable,
           });
           if (oneShotPayment) {
+            // For one-shot payments, use the overall summary to show the correct breakdown
+            // The payment engine calculates the remaining fee breakdown, but we want to show the full breakdown
+            const overallSummary = response.breakdown.overallSummary;
+            
             breakdown = {
-              baseAmount: oneShotPayment.baseAmount || 0,
-              gstAmount: oneShotPayment.gstAmount || 0,
-              discountAmount: oneShotPayment.discountAmount || 0,
-              scholarshipAmount: oneShotPayment.scholarshipAmount || 0,
-              totalAmount: oneShotPayment.amountPayable || 0,
+              baseAmount: overallSummary.totalProgramFee, // Full program fee
+              gstAmount: overallSummary.totalGST, // Total GST
+              discountAmount: overallSummary.totalDiscount, // Total discount
+              scholarshipAmount: overallSummary.totalScholarship, // Total scholarship
+              totalAmount: paymentItem.amount || 0, // Use the actual payment item amount
             };
           }
         } else if (
@@ -315,6 +332,10 @@ export const AdminPaymentRecordingDialog: React.FC<
         console.log('🔍 [AdminPaymentDialog] Final breakdown calculated:', {
           breakdown,
           totalAmount: breakdown?.totalAmount,
+          baseAmount: breakdown?.baseAmount,
+          gstAmount: breakdown?.gstAmount,
+          discountAmount: breakdown?.discountAmount,
+          scholarshipAmount: breakdown?.scholarshipAmount,
         });
 
         setAdminPaymentBreakdown(breakdown);
@@ -548,16 +569,6 @@ export const AdminPaymentRecordingDialog: React.FC<
 
           {/* Payment Form */}
           <div className='space-y-4'>
-            {/* DEBUG: Log data being passed to PaymentForm */}
-            {console.log(
-              '🔍 [AdminPaymentDialog] Data passed to PaymentForm:',
-              {
-                selectedInstallment,
-                paymentBreakdownForForm,
-                hasAmount: selectedInstallment?.amount,
-                hasAmountPayable: selectedInstallment?.amountPayable,
-              }
-            )}
             <PaymentForm
               paymentSubmissions={paymentSubmissions}
               submittingPayments={submittingPayments}

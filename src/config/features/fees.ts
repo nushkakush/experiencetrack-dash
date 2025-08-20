@@ -50,6 +50,13 @@ export const FEE_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'fees',
     requiresAuthentication: true,
   },
+  'fees.bulk_management': {
+    key: 'fees.bulk_management',
+    name: 'Bulk Fee Management',
+    description: 'Bulk upload scholarships and payment plans',
+    category: 'fees',
+    requiresAuthentication: true,
+  },
 } as const;
 
 export const FEE_FEATURE_KEYS = Object.keys(FEE_FEATURES) as FeatureKey[];

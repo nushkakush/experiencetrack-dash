@@ -57,30 +57,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
       refetch,
     });
 
-    // Debug logging
-    React.useEffect(() => {
-      console.log('🔄 FeePaymentSection Debug:', {
-        selectedPaymentPlan,
-        hasSelectedPlan,
-        isPlanSelectionComplete,
-        isUpdatingPlan,
-        planError,
-        hasStudentPayments: !!studentPayments && studentPayments.length > 0,
-        studentPaymentsCount: studentPayments?.length || 0,
-        serverPlan: studentPayments?.[0]?.payment_plan,
-        loading,
-        hasFeeStructure: !!feeStructure,
-      });
-    }, [
-      selectedPaymentPlan,
-      hasSelectedPlan,
-      isPlanSelectionComplete,
-      isUpdatingPlan,
-      planError,
-      studentPayments,
-      loading,
-      feeStructure,
-    ]);
+    // Debug logging will be added after variables are declared
 
     // Check for localStorage/server mismatch
     const hasLocalStorageMismatch = React.useMemo(() => {
@@ -102,7 +79,16 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
     React.useEffect(() => {
       let cancelled = false;
       const compute = async () => {
+        console.log('🔄 [FeePaymentSection] Payment breakdown calculation triggered:', {
+          hasFeeStructure: !!feeStructure,
+          hasSelectedPlan,
+          selectedPaymentPlan,
+          studentDataId: studentData?.id,
+          cohortDataId: cohortData?.id,
+        });
+        
         if (!feeStructure || !hasSelectedPlan) {
+          console.log('🔄 [FeePaymentSection] Skipping payment breakdown - missing data');
           setPaymentBreakdown(undefined);
           return;
         }
@@ -140,9 +126,13 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
               instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
             }
           });
+          console.log('🔄 [FeePaymentSection] Payment breakdown calculated successfully:', {
+            hasBreakdown: !!breakdown,
+            breakdownType: typeof breakdown,
+          });
           if (!cancelled) setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
         } catch (err) {
-          console.error('payment-engine call failed', err);
+          console.error('🔄 [FeePaymentSection] Payment engine call failed:', err);
           if (!cancelled) {
             setPaymentBreakdown(undefined);
             toast.error('Failed to load payment schedule. Please try again.');
@@ -224,6 +214,43 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         updatedAt: studentData.updated_at,
       };
     }, [studentData]);
+
+    // Debug logging
+    React.useEffect(() => {
+      console.log('🔄 FeePaymentSection Debug:', {
+        selectedPaymentPlan,
+        hasSelectedPlan,
+        isPlanSelectionComplete,
+        isUpdatingPlan,
+        planError,
+        hasStudentPayments: !!studentPayments && studentPayments.length > 0,
+        studentPaymentsCount: studentPayments?.length || 0,
+        serverPlan: studentPayments?.[0]?.payment_plan,
+        loading,
+        hasFeeStructure: !!feeStructure,
+        hasLocalStorageMismatch,
+        currentRenderState: (() => {
+          if (loading) return 'loading';
+          if (planError) return 'error';
+          if (hasLocalStorageMismatch) return 'localStorage_mismatch';
+          if (!hasSelectedPlan) return 'no_plan_selected';
+          if (!isPlanSelectionComplete) return 'plan_selection_incomplete';
+          if (!paymentBreakdown) return 'no_payment_breakdown';
+          return 'payment_dashboard';
+        })(),
+      });
+    }, [
+      selectedPaymentPlan,
+      hasSelectedPlan,
+      isPlanSelectionComplete,
+      isUpdatingPlan,
+      planError,
+      studentPayments,
+      loading,
+      feeStructure,
+      hasLocalStorageMismatch,
+      paymentBreakdown,
+    ]);
 
     // Handle payment plan selection
     const handlePlanSelection = async (plan: PaymentPlan) => {

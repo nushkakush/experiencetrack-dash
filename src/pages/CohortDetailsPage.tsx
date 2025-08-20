@@ -103,6 +103,8 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
           onStudentAdded={loadData}
           onRefresh={loadData}
           bulkUploadConfig={bulkUploadConfig}
+          onFeeManagementSuccess={loadData}
+          studentCount={students.length}
         />
         
         <CohortStudentsTable

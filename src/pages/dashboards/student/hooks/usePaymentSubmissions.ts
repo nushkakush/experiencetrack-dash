@@ -258,7 +258,7 @@ export const usePaymentSubmissions = (
       const { data: existingStudentPayment, error: studentPaymentError } =
         await supabase
           .from('student_payments')
-          .select('id')
+          .select('id, payment_plan')
           .eq('student_id', effectiveStudentId)
           .eq('cohort_id', effectiveCohortId)
           .single();
@@ -342,9 +342,19 @@ export const usePaymentSubmissions = (
       console.log('🔍 [DEBUG] Normalized targeting:', {
         normalizedInstallmentId,
         normalizedSemesterNumber,
+        isOneShotPayment: existingStudentPayment?.payment_plan === 'one_shot' || normalizedInstallmentId === 'program_fee_one_shot' || paymentData.installmentId === 'program_fee_one_shot',
+        paymentPlan: existingStudentPayment?.payment_plan,
+        originalInstallmentId: paymentData.installmentId,
+        hasExistingPayment: !!existingStudentPayment,
       });
 
-      if (!normalizedInstallmentId || !normalizedSemesterNumber) {
+      // For one-shot payments, we don't need semester/installment targeting
+      // Check both existing payment plan and installment ID pattern
+      const isOneShotPayment = existingStudentPayment?.payment_plan === 'one_shot' || 
+                               normalizedInstallmentId === 'program_fee_one_shot' ||
+                               paymentData.installmentId === 'program_fee_one_shot';
+      
+      if (!normalizedInstallmentId) {
         toast.error(
           'Installment targeting is required. Please select a specific installment and try again.'
         );
@@ -354,9 +364,27 @@ export const usePaymentSubmissions = (
             paymentData,
             normalizedInstallmentId,
             normalizedSemesterNumber,
+            isOneShotPayment,
           }
         );
         return { success: false, error: 'Missing installment targeting' };
+      }
+      
+      // For non-one-shot payments, require semester number
+      if (!isOneShotPayment && !normalizedSemesterNumber) {
+        toast.error(
+          'Semester targeting is required for installment-based payments. Please select a specific installment and try again.'
+        );
+        Logger.getInstance().error(
+          'Missing semester targeting on installment payment',
+          {
+            paymentData,
+            normalizedInstallmentId,
+            normalizedSemesterNumber,
+            isOneShotPayment,
+          }
+        );
+        return { success: false, error: 'Missing semester targeting' };
       }
 
       // Determine if this is an admin-recorded payment

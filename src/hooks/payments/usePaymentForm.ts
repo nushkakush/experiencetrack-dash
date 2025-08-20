@@ -37,13 +37,12 @@ export const usePaymentForm = ({
         '🔍 [usePaymentForm] getMaxAmount with selectedInstallment:',
         {
           selectedInstallment,
-          amountPayable: selectedInstallment.amountPayable,
           amount: selectedInstallment.amount,
-          hasAmountPayable: 'amountPayable' in selectedInstallment,
+          hasAmount: 'amount' in selectedInstallment,
         }
       );
       // Round to 2 decimal places to avoid floating point precision issues
-      return Math.round(selectedInstallment.amountPayable * 100) / 100;
+      return Math.round(selectedInstallment.amount * 100) / 100;
     }
 
     if (!paymentBreakdown) return 0;
@@ -60,12 +59,12 @@ export const usePaymentForm = ({
         paymentBreakdown.semesters?.flatMap(
           (semester: SemesterInstallment) =>
             semester.instalments?.filter(
-              (inst: Installment) => inst.amountPayable > 0
+              (inst: Installment) => inst.amount > 0
             ) || []
         ) || [];
 
       if (pendingInstallments.length > 0) {
-        return Math.round(pendingInstallments[0].amountPayable * 100) / 100;
+        return Math.round(pendingInstallments[0].amount * 100) / 100;
       }
 
       return 0;

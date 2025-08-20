@@ -238,34 +238,57 @@ export class FeeStructureService {
   }
 
   static async getFeeStructure(cohortId: string, studentId?: string): Promise<FeeStructure | null> {
-    let query = supabase
-      .from('fee_structures')
-      .select('*')
-      .eq('cohort_id', cohortId);
-
     if (studentId) {
       // Try to get custom plan first
-      query = query.eq('student_id', studentId).eq('structure_type', 'custom');
-    } else {
-      // Get cohort plan
-      query = query.eq('structure_type', 'cohort');
+      let query = supabase
+        .from('fee_structures')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .eq('student_id', studentId)
+        .eq('structure_type', 'custom');
+
+      const { data: customData, error: customError } = await query.maybeSingle();
+
+      // Debug logging
+      console.log('getFeeStructure: custom plan query result', {
+        cohortId,
+        studentId,
+        data: customData,
+        error: customError,
+        query: `cohort_id=${cohortId} AND student_id=${studentId} AND structure_type='custom'`
+      });
+
+      // If custom plan exists, return it
+      if (customData) {
+        return customData as FeeStructure;
+      }
+
+      // If no custom plan exists, fall back to cohort plan
+      console.log('getFeeStructure: No custom plan found, falling back to cohort plan');
     }
+
+    // Get cohort plan (either directly or as fallback)
+    const query = supabase
+      .from('fee_structures')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('structure_type', 'cohort');
 
     const { data, error } = await query.maybeSingle();
 
     // Debug logging
-    console.log('getFeeStructure: query result', {
+    console.log('getFeeStructure: cohort plan query result', {
       cohortId,
       studentId,
       data,
       error,
-      query: studentId ? `cohort_id=${cohortId} AND student_id=${studentId} AND structure_type='custom'` : `cohort_id=${cohortId} AND structure_type='cohort'`
+      query: `cohort_id=${cohortId} AND structure_type='cohort'`
     });
 
     // When no fee structure exists yet, return null without logging an error
     if (error) {
       // PGRST116 (406): Cannot coerce the result to a single JSON object (0 rows)
-      const code = (error as any)?.code || '';
+      const code = (error as { code?: string })?.code || '';
       if (code === 'PGRST116') {
         return null;
       }
@@ -273,7 +296,7 @@ export class FeeStructureService {
       return null;
     }
 
-    return (data as any) || null;
+    return (data as FeeStructure) || null;
   }
 
   static async deleteFeeStructure(id: string): Promise<boolean> {
@@ -297,7 +320,7 @@ export class FeeStructureService {
    */
   static async getCompleteFeeStructure(cohortId: string, studentId?: string): Promise<{
     feeStructure: FeeStructure | null;
-    scholarships: Array<any>;
+    scholarships: Array<Record<string, unknown>>;
   }> {
     // Load fee structure - prioritize custom plan for student if it exists
     const feeStructure = await this.getFeeStructure(cohortId, studentId);
