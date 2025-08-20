@@ -2,6 +2,7 @@ import { StudentPaymentSummary } from '@/types/fee';
 import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ProgressCalculationResult {
   totalAmount: number;
@@ -70,12 +71,32 @@ export class ProgressCalculator {
       
       const feeStructureToUse = customFeeStructure || feeStructure;
 
+      // Get additional discount percentage from database
+      let additionalDiscountPercentage = 0;
+      if (student.scholarship_id) {
+        try {
+          const { data: scholarship } = await supabase
+            .from('student_scholarships')
+            .select('additional_discount_percentage')
+            .eq('student_id', student.student_id)
+            .eq('scholarship_id', student.scholarship_id)
+            .maybeSingle();
+
+          if (scholarship && typeof scholarship.additional_discount_percentage === 'number') {
+            additionalDiscountPercentage = scholarship.additional_discount_percentage;
+          }
+        } catch (error) {
+          console.warn('Error fetching additional discount percentage:', error);
+        }
+      }
+
       // Get payment engine breakdown
       const { breakdown: feeReview } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
         paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
+        additionalDiscountPercentage,
         feeStructureData: {
           total_program_fee: feeStructureToUse.total_program_fee,
           admission_fee: feeStructureToUse.admission_fee,
@@ -171,7 +192,10 @@ export class ProgressCalculator {
    */
   private static calculateInstallments(
     paymentPlan: string,
-    feeStructure: any,
+    feeStructure: {
+      number_of_semesters: number;
+      instalments_per_semester: number;
+    },
     totalAmount: number,
     admissionFee: number,
     verifiedPayments: number
@@ -210,7 +234,16 @@ export class ProgressCalculator {
    */
   static async getProgress(
     student: StudentPaymentSummary,
-    feeStructure?: any
+    feeStructure?: {
+      total_program_fee: number;
+      admission_fee: number;
+      number_of_semesters: number;
+      instalments_per_semester: number;
+      one_shot_discount_percentage: number;
+      one_shot_dates?: Record<string, string>;
+      sem_wise_dates?: Record<string, string | Record<string, unknown>>;
+      instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
+    }
   ): Promise<ProgressCalculationResult> {
     try {
       return await this.calculateWithPaymentEngine(student, feeStructure);

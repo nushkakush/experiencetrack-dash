@@ -190,6 +190,7 @@ const calculateOneShotPayment = (
   const admissionFeeGST = extractGSTFromTotal(admissionFee);
   const remainingBaseFee = totalProgramFee - admissionFeeBase;
   const baseAmount = remainingBaseFee;
+  // Calculate discount on the total program fee (as per business requirement)
   const oneShotDiscount = calculateOneShotDiscount(
     totalProgramFee,
     discountPercentage
@@ -674,7 +675,7 @@ const generateFeeStructureReview = async (
       const basePct = scholarshipData.amount_percentage;
       const totalPct = basePct + (additionalScholarshipPercentage || 0);
       scholarshipAmount =
-        Math.round(feeStructure.total_program_fee * (totalPct / 100) * 100) /
+        Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) /
         100;
       console.log(
         `Using temporary scholarship: ${scholarshipData.name} (${basePct}%) = ₹${scholarshipAmount}`
@@ -690,7 +691,7 @@ const generateFeeStructureReview = async (
         const basePct = sch.amount_percentage;
         const totalPct = basePct + (additionalScholarshipPercentage || 0);
         scholarshipAmount =
-          Math.round(feeStructure.total_program_fee * (totalPct / 100) * 100) /
+          Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) /
           100;
         console.log(
           `Using saved scholarship: ID ${selectedScholarshipId} (${basePct}%) = ₹${scholarshipAmount}`
@@ -706,8 +707,8 @@ const generateFeeStructureReview = async (
     additionalScholarshipPercentage > 0
   ) {
     const totalPct = additionalScholarshipPercentage;
-    scholarshipAmount =
-      Math.round(feeStructure.total_program_fee * (totalPct / 100) * 100) / 100;
+          scholarshipAmount =
+        Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) / 100;
   }
 
   // Admission fee block
@@ -825,7 +826,7 @@ const generateFeeStructureReview = async (
         .select('start_date')
         .eq('id', cohortId)
         .maybeSingle();
-      const cohortStart = (cohortRow as any)?.start_date || new Date().toISOString().split('T')[0];
+      const cohortStart = (cohortRow as { start_date?: string })?.start_date || new Date().toISOString().split('T')[0];
       databaseDates = generateDefaultUiDateKeys(
         paymentPlan,
         cohortStart,
@@ -1108,31 +1109,29 @@ const enrichWithStatuses = (
     ),
   });
 
+  // For one-shot payments, the oneShotPayment will be processed as semester 1, installment 1
+  // by the regular installment processing logic below
   if (plan === 'one_shot' && breakdown.oneShotPayment) {
-    const total = Number(breakdown.oneShotPayment.amountPayable || 0);
-
-    // For one-shot payments, we don't expect installment-specific payments, so use general payments
-    const allocated = Math.min(generalPaidAmount, total);
-
-    const status = deriveInstallmentStatus(
-      String(
-        breakdown.oneShotPayment.paymentDate ||
-          new Date().toISOString().split('T')[0]
-      ),
-      total,
-      allocated,
-      hasVerificationPendingTx,
-      hasApprovedTx
-    );
-    breakdown.oneShotPayment.status = status;
-    breakdown.oneShotPayment.amountPaid = allocated;
-    breakdown.oneShotPayment.amountPending = Math.max(0, total - allocated);
-    totalPayableSchedule += total;
-    dueItems.push({
-      dueDate: breakdown.oneShotPayment.paymentDate,
-      pending: breakdown.oneShotPayment.amountPending,
-      status,
-    });
+    // Convert one-shot payment to semester structure for consistent processing
+    const oneShotAsSemester: SemesterView = {
+      semesterNumber: 1,
+      instalments: [{
+        ...breakdown.oneShotPayment,
+        installmentNumber: 1,
+      }],
+      total: {
+        baseAmount: breakdown.oneShotPayment.baseAmount,
+        scholarshipAmount: breakdown.oneShotPayment.scholarshipAmount,
+        discountAmount: breakdown.oneShotPayment.discountAmount,
+        gstAmount: breakdown.oneShotPayment.gstAmount,
+        totalPayable: breakdown.oneShotPayment.amountPayable,
+      }
+    };
+    
+    // Add to semesters array for processing
+    breakdown.semesters = [oneShotAsSemester];
+    
+    console.log('🔄 [DEBUG] Converted one-shot payment to semester 1, installment 1 format');
   }
 
   // Apply installment-specific payments first

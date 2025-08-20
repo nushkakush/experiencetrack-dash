@@ -20,9 +20,9 @@ interface PaymentScheduleProps {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
-    one_shot_dates?: any;
-    sem_wise_dates?: any;
-    instalment_wise_dates?: any;
+    one_shot_dates?: Record<string, string>;
+    sem_wise_dates?: Record<string, string | Record<string, unknown>>;
+    instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
   };
 }
 
@@ -143,15 +143,6 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         additionalDiscountPercentage,
       };
       
-      console.log('🔍 [PaymentSchedule] Payment engine parameters:', {
-        paymentParams,
-        hasStudentId: !!paymentParams.studentId,
-        hasCohortId: !!paymentParams.cohortId,
-        hasPaymentPlan: !!paymentParams.paymentPlan,
-        hasScholarshipId: !!paymentParams.scholarshipId,
-        additionalDiscountPercentage: paymentParams.additionalDiscountPercentage
-      });
-      
 
       
       // First, try to get the student's custom fee structure
@@ -167,40 +158,19 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
       
       // Fetch canonical breakdown and fee structure from Edge Function
       // Use the correct fee structure (custom if exists, cohort otherwise)
-      let feeReview: any;
-      let responseFeeStructure: any;
-      
-      try {
-        const result = await getFullPaymentView({
-          ...paymentParams,
-          feeStructureData: {
-            total_program_fee: feeStructureToUse.total_program_fee,
-            admission_fee: feeStructureToUse.admission_fee,
-            number_of_semesters: feeStructureToUse.number_of_semesters,
-            instalments_per_semester: feeStructureToUse.instalments_per_semester,
-            one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
-            one_shot_dates: feeStructureToUse.one_shot_dates,
-            sem_wise_dates: feeStructureToUse.sem_wise_dates,
-            instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-          }
-        });
-        feeReview = result.breakdown;
-        responseFeeStructure = result.feeStructure;
-      } catch (error) {
-        console.error('🔍 [PaymentSchedule] Payment engine error details:', {
-          error,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          paymentParams,
-          feeStructureToUse: {
-            total_program_fee: feeStructureToUse.total_program_fee,
-            admission_fee: feeStructureToUse.admission_fee,
-            number_of_semesters: feeStructureToUse.number_of_semesters,
-            instalments_per_semester: feeStructureToUse.instalments_per_semester,
-            one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
-          }
-        });
-        throw error;
-      }
+      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
+        ...paymentParams,
+        feeStructureData: {
+          total_program_fee: feeStructureToUse.total_program_fee,
+          admission_fee: feeStructureToUse.admission_fee,
+          number_of_semesters: feeStructureToUse.number_of_semesters,
+          instalments_per_semester: feeStructureToUse.instalments_per_semester,
+          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+          one_shot_dates: feeStructureToUse.one_shot_dates,
+          sem_wise_dates: feeStructureToUse.sem_wise_dates,
+          instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
+        }
+      });
 
       if (!responseFeeStructure) {
         throw new Error('Fee structure not found in edge function response');
@@ -246,13 +216,16 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
       // Add program fee installments based on payment plan
       if (student.payment_plan === 'one_shot') {
-        const oneShot = feeReview.oneShotPayment;
-        const programFeeAmount =
-          (oneShot?.amountPayable ?? 0) ||
-          feeReview.overallSummary.totalAmountPayable -
-            feeStructureToUse.admission_fee;
-        const statusFromEngine = (oneShot as Record<string, unknown>)
-          ?.status as
+        // For one-shot payments, treat as semester 1, installment 1
+        // Look for the semester data (should be semester 1 with installment 1)
+        const semester1 = feeReview.semesters?.[0];
+        const installment1 = semester1?.instalments?.[0];
+        
+        const programFeeAmount = installment1?.amountPayable ?? 
+          (feeReview.oneShotPayment?.amountPayable ?? 0) ??
+          (feeReview.overallSummary.totalAmountPayable - feeStructureToUse.admission_fee);
+          
+        const statusFromEngine = (installment1 as Record<string, unknown>)?.status as
           | 'pending'
           | 'pending_10_plus_days'
           | 'verification_pending'
@@ -263,20 +236,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
           | 'partially_paid_verification_pending'
           | undefined;
 
-        console.log('🔍 [PaymentSchedule] One-shot payment status from engine:', {
-          statusFromEngine,
-          oneShotPayment: oneShot,
-          programFeeAmount,
-          studentId: student.student_id,
-          paymentPlan: student.payment_plan
-        });
-
         schedule.push({
-          id: 'program_fee_one_shot',
+          id: '1-1', // Use semester 1, installment 1 ID
           type: 'Program Fee (One-Shot)',
           amount: programFeeAmount,
           dueDate:
-            oneShot?.paymentDate ||
+            installment1?.paymentDate ||
+            feeReview.oneShotPayment?.paymentDate ||
             new Date().toISOString(),
           status: statusFromEngine || 'pending',
           paymentDate: undefined,
@@ -284,6 +250,8 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
             statusFromEngine === 'verification_pending'
               ? 'verification_pending'
               : undefined,
+          semesterNumber: 1,
+          installmentNumber: 1,
         });
       } else if (student.payment_plan === 'sem_wise') {
         // Use engine statuses for each semester (single installment per semester)
@@ -453,13 +421,11 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
 
   // Function to handle payment recording completion
   const handlePaymentRecorded = () => {
-    console.log('🔍 [PaymentSchedule] handlePaymentRecorded called - refreshing payment schedule');
-    // Add a longer delay to ensure payment engine has processed the transaction
+    // Add a small delay to ensure payment engine has processed the transaction
     setTimeout(() => {
-      console.log('🔍 [PaymentSchedule] Refreshing payment schedule after delay');
       // Refresh the payment schedule
       fetchPaymentSchedule();
-    }, 3000); // Increased from 1000ms to 3000ms
+    }, 1000);
   };
 
   // Function to close the recording dialog

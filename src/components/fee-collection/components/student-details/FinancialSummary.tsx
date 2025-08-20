@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
-import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
+import { getTotalDiscountPercentage } from '@/utils/scholarshipUtils';
 import { ProgressCalculator, ProgressCalculationResult } from '@/utils/progressCalculation';
 
 interface FinancialSummaryProps {
@@ -15,9 +15,9 @@ interface FinancialSummaryProps {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
-    one_shot_dates?: any;
-    sem_wise_dates?: any;
-    instalment_wise_dates?: any;
+    one_shot_dates?: Record<string, string>;
+    sem_wise_dates?: Record<string, string | Record<string, unknown>>;
+    instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
   };
 }
 
@@ -30,7 +30,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   student,
   feeStructure,
 }) => {
-  const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
+  const [totalScholarshipPercentage, setTotalScholarshipPercentage] = useState<number>(0);
   const [financialData, setFinancialData] = useState<CalculatedFinancialData>({
     totalAmount: 0,
     paidAmount: 0,
@@ -50,12 +50,13 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       try {
         setLoading(true);
 
-        // Fetch scholarship percentage
+        // Fetch total scholarship percentage (base + additional)
         if (student.scholarship_id) {
-          const percentage = await getScholarshipPercentageForDisplay(
+          const totalPercentage = await getTotalDiscountPercentage(
+            student.student_id,
             student.scholarship_id
           );
-          setScholarshipPercentage(percentage);
+          setTotalScholarshipPercentage(totalPercentage);
         }
 
         // Calculate financial data
@@ -245,13 +246,13 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
               {getPaymentPlanDisplay()}
             </span>
           </div>
-          {student.scholarship_name && scholarshipPercentage > 0 && (
+          {student.scholarship_name && totalScholarshipPercentage > 0 && (
             <div className='flex justify-between items-center'>
               <span className='text-sm text-muted-foreground'>
                 Scholarship:
               </span>
               <span className='font-medium text-blue-400'>
-                {student.scholarship_name} ({scholarshipPercentage}%)
+                {student.scholarship_name} ({totalScholarshipPercentage}%)
               </span>
             </div>
           )}

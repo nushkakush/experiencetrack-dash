@@ -229,11 +229,12 @@ export const usePaymentForm = ({
       return;
     }
 
-    // Require explicit installment targeting for all non one-shot payments
-    const semesterNum: number | undefined = (
+    // Require explicit installment targeting for all payment types
+    const isOneShotPayment = selectedPaymentPlan === 'one_shot';
+    const semesterNum: number | undefined = isOneShotPayment ? 1 : (
       selectedInstallment as Record<string, unknown>
     )?.semesterNumber as number | undefined;
-    const installNum: number | undefined =
+    const installNum: number | undefined = isOneShotPayment ? 1 :
       selectedInstallment?.installmentNumber;
     const hasTargeting =
       typeof semesterNum === 'number' && typeof installNum === 'number';
@@ -248,7 +249,10 @@ export const usePaymentForm = ({
       return;
     }
 
-    const computedInstallmentId = `${semesterNum}-${installNum}`;
+    // For one-shot payments, treat as semester 1, installment 1
+    const computedInstallmentId = isOneShotPayment 
+      ? '1-1' 
+      : `${semesterNum}-${installNum}`;
 
     const paymentData = {
       paymentId: `student-payment-${Date.now()}`,
@@ -264,9 +268,9 @@ export const usePaymentForm = ({
       bankName: paymentDetails.bankName,
       bankBranch: paymentDetails.bankBranch,
       transferDate: paymentDetails.transferDate || paymentDetails.chequeDate,
-      // Installment targeting (strict)
+      // Installment targeting (treat one-shot as semester 1)
       installmentId: computedInstallmentId,
-      semesterNumber: semesterNum,
+      semesterNumber: isOneShotPayment ? 1 : semesterNum,
     };
 
     onPaymentSubmission(paymentData);

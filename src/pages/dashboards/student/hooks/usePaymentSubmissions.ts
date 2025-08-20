@@ -348,40 +348,33 @@ export const usePaymentSubmissions = (
         hasExistingPayment: !!existingStudentPayment,
       });
 
-      // For one-shot payments, we don't need semester/installment targeting
-      // Check both existing payment plan and installment ID pattern
-      const isOneShotPayment = existingStudentPayment?.payment_plan === 'one_shot' || 
-                               normalizedInstallmentId === 'program_fee_one_shot' ||
-                               paymentData.installmentId === 'program_fee_one_shot';
-      
+      // Check for installment targeting (required for all payments now)
       if (!normalizedInstallmentId) {
         toast.error(
           'Installment targeting is required. Please select a specific installment and try again.'
         );
         Logger.getInstance().error(
-          'Missing installment targeting on regular payment',
+          'Missing installment targeting on payment',
           {
             paymentData,
             normalizedInstallmentId,
             normalizedSemesterNumber,
-            isOneShotPayment,
           }
         );
         return { success: false, error: 'Missing installment targeting' };
       }
       
-      // For non-one-shot payments, require semester number
-      if (!isOneShotPayment && !normalizedSemesterNumber) {
+      // Require semester number for all payments
+      if (!normalizedSemesterNumber) {
         toast.error(
-          'Semester targeting is required for installment-based payments. Please select a specific installment and try again.'
+          'Semester targeting is required. Please select a specific installment and try again.'
         );
         Logger.getInstance().error(
-          'Missing semester targeting on installment payment',
+          'Missing semester targeting on payment',
           {
             paymentData,
             normalizedInstallmentId,
             normalizedSemesterNumber,
-            isOneShotPayment,
           }
         );
         return { success: false, error: 'Missing semester targeting' };
@@ -418,9 +411,9 @@ export const usePaymentSubmissions = (
           new Date().toISOString().split('T')[0],
         transfer_date:
           paymentData.transferDate || new Date().toISOString().split('T')[0],
-        // Add installment identification fields (normalized) - but NOT for one-shot payments
-        installment_id: isOneShotPayment ? null : normalizedInstallmentId,
-        semester_number: isOneShotPayment ? null : normalizedSemesterNumber,
+        // Add installment identification fields (normalized)
+        installment_id: normalizedInstallmentId,
+        semester_number: normalizedSemesterNumber,
         // Add admin tracking fields
         recorded_by_user_id: recordedByUserId || null,
         verified_by: isAdminRecorded ? recordedByUserId : null, // Auto-verify admin payments
