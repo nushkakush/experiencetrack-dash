@@ -13,6 +13,16 @@ export const ProgressCell: React.FC<ProgressCellProps> = ({ student }) => {
 
   const progress = totalAmount > 0 ? Math.min(100, Math.round((paidAmount / totalAmount) * 100)) : 0;
 
+  // Debug logging to help identify the issue
+  console.log('🔍 [ProgressCell] Debug values:', {
+    student_id: student.student_id,
+    total_amount: totalAmount,
+    paid_amount: paidAmount,
+    progress_percentage: progress,
+    aggregate_status: (student as any).aggregate_status,
+    payment_engine_breakdown: !!(student as any).payment_engine_breakdown,
+  });
+
   return (
     <TableCell>
       {totalAmount > 0 ? (

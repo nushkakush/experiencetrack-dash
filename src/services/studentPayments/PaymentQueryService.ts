@@ -212,6 +212,7 @@ export class PaymentQueryService {
           let paidAmount = 0;
           let pendingAmount = 0;
           let overdueAmount = 0;
+          let paymentEngineBreakdown = null;
 
           try {
             if (studentPayment.payment_plan && studentPayment.payment_plan !== 'not_selected') {
@@ -238,6 +239,7 @@ export class PaymentQueryService {
                 totalAmount = paymentEngineResult.aggregate.totalPayable;
                 paidAmount = paymentEngineResult.aggregate.totalPaid;
                 pendingAmount = paymentEngineResult.aggregate.totalPending;
+                paymentEngineBreakdown = paymentEngineResult.breakdown;
                 
                 // Include admission fee in paid amount since students have registered
                 // This makes the calculation consistent with FinancialSummary modal
@@ -307,6 +309,8 @@ export class PaymentQueryService {
             })(),
             // Add aggregate status from payment engine
             aggregate_status: aggregateStatus,
+            // Add payment engine breakdown for accurate next due calculation
+            payment_engine_breakdown: paymentEngineBreakdown,
           };
         })
       );

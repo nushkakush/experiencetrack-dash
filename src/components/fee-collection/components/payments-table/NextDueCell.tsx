@@ -106,6 +106,31 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       return null;
     }
 
+    // Use payment engine breakdown if available (more accurate)
+    if ((student as any).payment_engine_breakdown) {
+      const breakdown = (student as any).payment_engine_breakdown;
+      
+      // Find the next pending installment from the breakdown
+      if (breakdown.semesters && Array.isArray(breakdown.semesters)) {
+        for (const semester of breakdown.semesters) {
+          if (semester.instalments && Array.isArray(semester.instalments)) {
+            for (const installment of semester.instalments) {
+              // Check if this installment is pending (not paid)
+              if (installment.status !== 'paid' && installment.amountPending > 0) {
+                return {
+                  payment_type: 'program_fee' as PaymentType,
+                  due_date: installment.paymentDate || new Date().toISOString().split('T')[0],
+                  amount_payable: installment.amountPayable || installment.amountPending,
+                  installment_number: installment.installmentNumber,
+                  semester_number: semester.semesterNumber,
+                };
+              }
+            }
+          }
+        }
+      }
+    }
+
     // For installment-wise payments, we need to determine which installment is next
     if (student.payment_plan === 'instalment_wise') {
       // Calculate which installment should be next based on total paid amount
