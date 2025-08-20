@@ -239,6 +239,12 @@ export class PaymentQueryService {
                 paidAmount = paymentEngineResult.aggregate.totalPaid;
                 pendingAmount = paymentEngineResult.aggregate.totalPending;
                 
+                // Include admission fee in paid amount since students have registered
+                // This makes the calculation consistent with FinancialSummary modal
+                const admissionFee = paymentEngineResult.breakdown?.admissionFee?.totalPayable || 0;
+                paidAmount += admissionFee;
+                pendingAmount = Math.max(0, totalAmount - paidAmount);
+                
                 // Calculate overdue amount based on aggregate status
                 if (aggregateStatus === 'overdue' || aggregateStatus === 'partially_paid_overdue') {
                   overdueAmount = pendingAmount;
