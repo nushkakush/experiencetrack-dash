@@ -2,6 +2,7 @@ import React from 'react';
 import { TableCell } from '@/components/ui/table';
 import { PaymentStatusBadge } from '../../PaymentStatusBadge';
 import { StudentPaymentSummary, PaymentType, PaymentStatus } from '@/types/fee';
+import { getOverallStatusDisplay } from '@/utils/paymentStatusUtils';
 
 interface StatusCellProps {
   student: StudentPaymentSummary;
@@ -47,24 +48,7 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student }) => {
     // Use the aggregate status from payment engine if available
     if ((student as any).aggregate_status) {
       const aggregateStatus = (student as any).aggregate_status as string;
-      
-      // Map payment engine statuses to display text
-      switch (aggregateStatus) {
-        case 'paid':
-          return { status: 'paid' as const, text: 'All Payments Complete' };
-        case 'overdue':
-        case 'partially_paid_overdue':
-          return { status: 'overdue' as const, text: 'Payments Overdue' };
-        case 'verification_pending':
-        case 'partially_paid_verification_pending':
-          return { status: 'verification_pending' as const, text: 'Verification Pending' };
-        case 'partially_paid_days_left':
-          return { status: 'pending' as const, text: 'Partially Paid' };
-        case 'pending':
-        case 'pending_10_plus_days':
-        default:
-          return { status: 'pending' as const, text: 'Payments Pending' };
-      }
+      return getOverallStatusDisplay(aggregateStatus);
     }
 
     // Fallback to old logic if aggregate_status is not available

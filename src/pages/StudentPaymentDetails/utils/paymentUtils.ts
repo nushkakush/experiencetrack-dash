@@ -3,139 +3,74 @@
  * Extracted from StudentPaymentDetails.tsx to improve maintainability
  */
 
-import { PaymentPlan } from '@/types/payments';
-import { 
-  CreditCard, 
-  Building2, 
-  FileText, 
-  QrCode, 
-  DollarSign,
-  Calendar,
-  Calculator
-} from 'lucide-react';
+import { PaymentMethod } from '@/types/payments/PaymentMethod';
 
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-  }).format(amount);
-};
-
-export const formatDate = (dateString: string): string => {
-  if (!dateString) return 'TBD';
-  return new Date(dateString).toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
-export const getPaymentPlanDisplay = (plan: PaymentPlan): string => {
-  switch (plan) {
-    case 'one_shot':
-      return 'One Shot Payment';
-    case 'sem_wise':
-      return 'Semester-wise Payment';
-    case 'instalment_wise':
-      return 'Installment-wise Payment';
-    case 'not_selected':
-      return 'Not Selected';
-    default:
-      return 'Unknown Plan';
-  }
-};
-
-export const getPaymentPlanIcon = (plan: PaymentPlan): React.ReactNode => {
-  switch (plan) {
-    case 'one_shot':
-      return <CreditCard className="h-4 w-4" />;
-    case 'sem_wise':
-      return <Calendar className="h-4 w-4" />;
-    case 'instalment_wise':
-      return <Calculator className="h-4 w-4" />;
-    case 'not_selected':
-      return <DollarSign className="h-4 w-4" />;
-    default:
-      return <DollarSign className="h-4 w-4" />;
-  }
-};
-
-export const getPaymentPlanColor = (plan: PaymentPlan): string => {
-  switch (plan) {
-    case 'one_shot':
-      return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-    case 'sem_wise':
-      return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-    case 'instalment_wise':
-      return 'bg-green-100 text-green-800 hover:bg-green-200';
-    case 'not_selected':
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-    default:
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-  }
-};
-
-export const getPaymentMethods = (plan: PaymentPlan): Array<{
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}> => {
-  const baseMethods = [
+export const getPaymentMethods = (): PaymentMethod[] => {
+  return [
     {
+      id: 'bank_transfer',
       name: 'Bank Transfer',
-      description: 'Transfer to our bank account',
-      icon: <Building2 className="h-4 w-4" />
+      description: 'Transfer funds directly to our bank account',
+      instructions: [
+        'Transfer the amount to our bank account',
+        'Include your student ID as reference',
+        'Send us the transaction receipt',
+      ],
+      accountDetails: {
+        bankName: 'Example Bank',
+        accountNumber: '1234567890',
+        ifscCode: 'EXBK0001234',
+        accountHolder: 'LIT Institute',
+      },
     },
     {
-      name: 'Cash',
-      description: 'Pay in cash at office',
-      icon: <DollarSign className="h-4 w-4" />
+      id: 'upi',
+      name: 'UPI',
+      description: 'Pay using any UPI app',
+      instructions: [
+        'Scan the QR code or use UPI ID',
+        'Enter the payment amount',
+        'Send us the transaction screenshot',
+      ],
+      upiDetails: {
+        upiId: 'lit.institute@example',
+        qrCode: '/qr-code.png',
+      },
     },
     {
+      id: 'cheque',
       name: 'Cheque',
-      description: 'Pay via cheque',
-      icon: <FileText className="h-4 w-4" />
+      description: 'Pay using a bank cheque',
+      instructions: [
+        'Make cheque payable to "LIT Institute"',
+        'Write your student ID on the back',
+        'Submit the cheque at our office',
+      ],
     },
     {
-      name: 'Scan to Pay',
-      description: 'Scan QR code to pay',
-      icon: <QrCode className="h-4 w-4" />
-    }
+      id: 'cash',
+      name: 'Cash',
+      description: 'Pay in cash at our office',
+      instructions: [
+        'Visit our office during business hours',
+        'Bring exact amount',
+        'Get a receipt immediately',
+      ],
+    },
   ];
-
-  // Add Razorpay for all plans
-  if (plan !== 'not_selected') {
-    baseMethods.push({
-      name: 'Online Payment',
-      description: 'Online payment gateway',
-      icon: <CreditCard className="h-4 w-4" />
-    });
-  }
-
-  return baseMethods;
-};
-
-export const calculatePaymentStatus = (dueDate: string, paidAmount: number, totalAmount: number) => {
-  const isOverdue = new Date(dueDate) < new Date();
-  
-  if (paidAmount >= totalAmount) {
-    return 'paid';
-  } else if (isOverdue) {
-    return 'overdue';
-  } else {
-    return 'pending';
-  }
 };
 
 export const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case 'paid':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'overdue':
-      return 'bg-red-100 text-red-800 border-red-200';
+      return 'default';
     case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      return 'secondary';
+    case 'overdue':
+      return 'destructive';
+    case 'verification_pending':
+      return 'outline';
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
+      return 'secondary';
   }
 };
