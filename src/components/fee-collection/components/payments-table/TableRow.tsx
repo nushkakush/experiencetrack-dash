@@ -57,7 +57,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       <StudentNameCell student={student} />
       <PaymentPlanCell student={student} />
-      <ProgressCell student={student} />
+      <ProgressCell student={student} feeStructure={feeStructure} />
       <NextDueCell student={student} feeStructure={feeStructure} />
       <StatusCell student={student} />
       <ActionsCell

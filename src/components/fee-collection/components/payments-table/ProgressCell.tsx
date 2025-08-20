@@ -1,46 +1,80 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TableCell } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import type { StudentPaymentSummary } from '@/types/fee';
+import { ProgressCalculator, ProgressCalculationResult } from '@/utils/progressCalculation';
 
 interface ProgressCellProps {
   student: StudentPaymentSummary;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: Record<string, string>;
+    sem_wise_dates?: Record<string, string | Record<string, unknown>>;
+    instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
+  };
 }
 
-export const ProgressCell: React.FC<ProgressCellProps> = ({ student }) => {
-  const totalAmount = Number(student.total_amount) || 0;
-  const paidAmount = Number(student.paid_amount) || 0;
+export const ProgressCell: React.FC<ProgressCellProps> = ({ student, feeStructure }) => {
+  const [progressData, setProgressData] = useState<ProgressCalculationResult | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const progress = totalAmount > 0 ? Math.min(100, Math.round((paidAmount / totalAmount) * 100)) : 0;
+  useEffect(() => {
+    const calculateProgress = async () => {
+      try {
+        setLoading(true);
+        const result = await ProgressCalculator.getProgress(student, feeStructure);
+        setProgressData(result);
+        
+        // Debug logging
+        console.log('🔍 [ProgressCell] Progress calculation result:', {
+          student_id: student.student_id,
+          calculation_method: result.calculationMethod,
+          total_amount: result.totalAmount,
+          paid_amount: result.paidAmount,
+          progress_percentage: result.progressPercentage,
+        });
+      } catch (error) {
+        console.error('Error calculating progress:', error);
+        // Fallback to database calculation
+        const fallback = ProgressCalculator.calculateWithDatabase(student);
+        setProgressData(fallback);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Debug logging to help identify the issue
-  console.log('🔍 [ProgressCell] Debug values:', {
-    student_id: student.student_id,
-    total_amount: totalAmount,
-    paid_amount: paidAmount,
-    progress_percentage: progress,
-    aggregate_status: (student as any).aggregate_status,
-    payment_engine_breakdown: !!(student as any).payment_engine_breakdown,
-  });
-  
-  // Also log the raw student object for debugging
-  console.log('🔍 [ProgressCell] Raw student data:', {
-    total_amount: student.total_amount,
-    paid_amount: student.paid_amount,
-    aggregate_status: (student as any).aggregate_status,
-    has_breakdown: !!(student as any).payment_engine_breakdown,
-  });
+    calculateProgress();
+  }, [student, feeStructure]);
+
+  if (loading) {
+    return (
+      <TableCell>
+        <div className="flex items-center gap-3 min-w-[140px]">
+          <div className="w-24 h-2 bg-muted rounded animate-pulse" />
+          <span className="text-xs text-muted-foreground">--</span>
+        </div>
+      </TableCell>
+    );
+  }
+
+  if (!progressData || progressData.totalAmount === 0) {
+    return (
+      <TableCell>
+        <span className="text-xs text-muted-foreground">--</span>
+      </TableCell>
+    );
+  }
 
   return (
     <TableCell>
-      {totalAmount > 0 ? (
-        <div className="flex items-center gap-3 min-w-[140px]">
-          <Progress value={progress} className="w-24" />
-          <span className="text-xs text-muted-foreground">{progress}%</span>
-        </div>
-      ) : (
-        <span className="text-xs text-muted-foreground">--</span>
-      )}
+      <div className="flex items-center gap-3 min-w-[140px]">
+        <Progress value={progressData.progressPercentage} className="w-24" />
+        <span className="text-xs text-muted-foreground">{progressData.progressPercentage}%</span>
+      </div>
     </TableCell>
   );
 };

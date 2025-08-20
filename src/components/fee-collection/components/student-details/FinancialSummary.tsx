@@ -5,10 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getScholarshipPercentageForDisplay } from '@/utils/scholarshipUtils';
-import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
-import { paymentTransactionService } from '@/services/paymentTransaction.service';
-import { supabase } from '@/integrations/supabase/client';
-import { FeeStructureService } from '@/services/feeStructure.service';
+import { ProgressCalculator, ProgressCalculationResult } from '@/utils/progressCalculation';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
@@ -24,18 +21,10 @@ interface FinancialSummaryProps {
   };
 }
 
-interface CalculatedFinancialData {
-  totalAmount: number;
-  paidAmount: number;
-  pendingAmount: number;
+// Use the centralized progress calculation result
+type CalculatedFinancialData = ProgressCalculationResult & {
   overdueAmount: number;
-  verifiedPayments: number;
-  totalInstallments: number;
-  paidInstallments: number;
-  progressPercentage: number;
-  admissionFee: number;
-  admissionFeePaid: boolean;
-}
+};
 
 export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   student,
@@ -93,182 +82,30 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   }, [student]);
 
   const calculateFinancialData = async (): Promise<CalculatedFinancialData> => {
-
-    
-    // Early validation - don't call payment engine if required data is missing
-    const validPaymentPlans = ['one_shot', 'sem_wise', 'instalment_wise'];
-    
-    if (
-      !student.student_id ||
-      student.student_id === 'undefined' ||
-      !student.student?.cohort_id ||
-      student.student?.cohort_id === 'undefined' ||
-      !student.payment_plan ||
-      student.payment_plan === 'not_selected' ||
-      student.payment_plan === 'undefined' ||
-      !validPaymentPlans.includes(student.payment_plan)
-    ) {
-      console.log('🔍 [FinancialSummary] Skipping payment engine call - missing required data:', {
-        student_id: student.student_id,
-        cohort_id: student.student?.cohort_id,
-        payment_plan: student.payment_plan,
-        hasStudent: !!student.student,
-        isValidPaymentPlan: validPaymentPlans.includes(student.payment_plan)
-      });
-      
-      return {
-        totalAmount: 0,
-        paidAmount: 0,
-        pendingAmount: 0,
-        overdueAmount: 0,
-        verifiedPayments: 0,
-        totalInstallments: 0,
-        paidInstallments: 0,
-        progressPercentage: 0,
-        admissionFee: 0,
-        admissionFeePaid: false,
-      };
-    }
-
     try {
-      // Debug: Log the exact parameters being sent to payment engine
-      const paymentParams = {
-        studentId: String(student.student_id),
-        cohortId: String(student.student?.cohort_id),
-        paymentPlan: student.payment_plan as
-          | 'one_shot'
-          | 'sem_wise'
-          | 'instalment_wise',
-        scholarshipId: student.scholarship_id || undefined,
-      };
+      // Use the centralized progress calculator
+      const progressResult = await ProgressCalculator.getProgress(student, feeStructure);
       
-
-      
-      // First, try to get the student's custom fee structure
-      const customFeeStructure = await FeeStructureService.getFeeStructure(
-        String(student.student?.cohort_id),
-        String(student.student_id)
-      );
-      
-      // Use custom structure if it exists, otherwise use the provided cohort structure
-      const feeStructureToUse = customFeeStructure || feeStructure;
-      
-
-      
-      // Fetch canonical breakdown and fee structure from Edge Function
-      // Use the correct fee structure (custom if exists, cohort otherwise)
-      const { breakdown: feeReview, feeStructure: responseFeeStructure } = await getFullPaymentView({
-        ...paymentParams,
-        feeStructureData: {
-          total_program_fee: feeStructureToUse.total_program_fee,
-          admission_fee: feeStructureToUse.admission_fee,
-          number_of_semesters: feeStructureToUse.number_of_semesters,
-          instalments_per_semester: feeStructureToUse.instalments_per_semester,
-          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
-          one_shot_dates: feeStructureToUse.one_shot_dates,
-          sem_wise_dates: feeStructureToUse.sem_wise_dates,
-          instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-        }
+      console.log('🔍 [FinancialSummary] Progress calculation result:', {
+        student_id: student.student_id,
+        calculation_method: progressResult.calculationMethod,
+        total_amount: progressResult.totalAmount,
+        paid_amount: progressResult.paidAmount,
+        progress_percentage: progressResult.progressPercentage,
       });
 
-      if (!responseFeeStructure) {
-        throw new Error('Fee structure not found in edge function response');
-      }
-
-      // Calculate total amount (program fee + admission fee)
-      const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
-      const admissionFee =
-        feeReview?.admissionFee?.totalPayable || responseFeeStructure.admission_fee;
-
-      // Fetch verified payment transactions
-      let verifiedPayments = 0;
-      let totalInstallments = 0;
-      let paidInstallments = 0;
-      let admissionFeePaid = false;
-
-      if (student.student_payment_id) {
-        const txResponse = await paymentTransactionService.getByPaymentId(
-          student.student_payment_id
-        );
-
-        const txs =
-          txResponse?.success && Array.isArray(txResponse.data)
-            ? txResponse.data
-            : [];
-
-        if (txs.length > 0) {
-          // Count both approved and verification pending payments (to match Payment Schedule logic)
-          const relevantTransactions = txs.filter(
-            t =>
-              t?.verification_status === 'approved' ||
-              t?.verification_status === 'verification_pending'
-          );
-          verifiedPayments = relevantTransactions.reduce(
-            (sum, t) => sum + Number(t?.amount || 0),
-            0
-          );
-        }
-      }
-
-      // For the Financial Summary modal ONLY:
-      // Treat admission fee as already paid since students have registered
-      // This logic only affects this specific modal display and no other calculations
-      admissionFeePaid = true;
-
-      // Calculate paid amount including admission fee (since students are registered)
-      // This is specific to this Financial Summary view only
-      const paidAmount = verifiedPayments + admissionFee;
-
-      const pendingAmount = Math.max(0, totalAmount - paidAmount);
-      const progressPercentage =
-        totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
-
-      // Calculate installments based on payment plan
-      if (student.payment_plan === 'one_shot') {
-        totalInstallments = 1;
-        paidInstallments = verifiedPayments > 0 ? 1 : 0;
-      } else if (student.payment_plan === 'sem_wise') {
-        totalInstallments = feeStructure.number_of_semesters;
-        // Calculate paid installments based on verified payments
-        const installmentAmount =
-          (totalAmount - feeStructure.admission_fee) / totalInstallments;
-        paidInstallments = Math.floor(verifiedPayments / installmentAmount);
-      } else if (student.payment_plan === 'instalment_wise') {
-        totalInstallments =
-          feeStructure.number_of_semesters *
-          feeStructure.instalments_per_semester;
-        // Calculate paid installments based on verified payments
-        const installmentAmount =
-          (totalAmount - feeStructure.admission_fee) / totalInstallments;
-        paidInstallments = Math.floor(verifiedPayments / installmentAmount);
-      }
-
       return {
-        totalAmount,
-        paidAmount,
-        pendingAmount,
+        ...progressResult,
         overdueAmount: 0, // TODO: Calculate based on due dates
-        verifiedPayments,
-        totalInstallments,
-        paidInstallments,
-        progressPercentage,
-        admissionFee,
-        admissionFeePaid,
       };
     } catch (error) {
       console.error('Error calculating financial data:', error);
       
+      // Fallback to database calculation
+      const fallback = ProgressCalculator.calculateWithDatabase(student);
       return {
-        totalAmount: 0,
-        paidAmount: 0,
-        pendingAmount: 0,
+        ...fallback,
         overdueAmount: 0,
-        verifiedPayments: 0,
-        totalInstallments: 0,
-        paidInstallments: 0,
-        progressPercentage: 0,
-        admissionFee: 0,
-        admissionFeePaid: false,
       };
     }
   };
