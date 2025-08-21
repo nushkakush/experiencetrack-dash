@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -33,7 +39,7 @@ const DROPOUT_REASONS = [
   'Family circumstances',
   'Career change',
   'Relocation',
-  'Other'
+  'Other',
 ];
 
 export default function MarkDroppedOutDialog({
@@ -48,18 +54,14 @@ export default function MarkDroppedOutDialog({
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [showRefundOption, setShowRefundOption] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [refundInfo, setRefundInfo] = useState<{ amount: number; date: string } | null>(null);
+  const [refundInfo, setRefundInfo] = useState<{
+    amount: number;
+    date: string;
+  } | null>(null);
 
   const isDroppedOut = student?.dropped_out_status === 'dropped_out';
 
-  // Fetch refund information when viewing dropped out student details
-  useEffect(() => {
-    if (isDroppedOut && student) {
-      fetchRefundInfo();
-    }
-  }, [isDroppedOut, student]);
-
-  const fetchRefundInfo = async () => {
+  const fetchRefundInfo = useCallback(async () => {
     if (!student) return;
 
     try {
@@ -84,14 +86,22 @@ export default function MarkDroppedOutDialog({
         if (refunds && refunds.length > 0) {
           setRefundInfo({
             amount: parseFloat(refunds[0].amount.toString()),
-            date: new Date(refunds[0].created_at).toLocaleDateString()
+            date: new Date(refunds[0].created_at).toLocaleDateString(),
           });
         }
       }
     } catch (error) {
       console.error('Error fetching refund info:', error);
     }
-  };
+  }, [student]);
+
+  // Fetch refund information when viewing dropped out student details
+  useEffect(() => {
+    if (isDroppedOut && student) {
+      fetchRefundInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDroppedOut, student]);
 
   const handleSubmit = async () => {
     if (!student) return;
@@ -100,10 +110,14 @@ export default function MarkDroppedOutDialog({
       // Reverting dropout status
       setIsSubmitting(true);
       try {
-        const result = await cohortStudentsService.revertDroppedOutStatus(student.id);
-        
+        const result = await cohortStudentsService.revertDroppedOutStatus(
+          student.id
+        );
+
         if (result.success) {
-          toast.success(`${student.first_name} ${student.last_name} has been reactivated`);
+          toast.success(
+            `${student.first_name} ${student.last_name} has been reactivated`
+          );
           onReverted();
           onOpenChange(false);
           resetForm();
@@ -118,8 +132,9 @@ export default function MarkDroppedOutDialog({
       }
     } else {
       // Marking as dropped out
-      const finalReason = selectedReason === 'Other' ? customReason : selectedReason;
-      
+      const finalReason =
+        selectedReason === 'Other' ? customReason : selectedReason;
+
       if (!finalReason.trim()) {
         toast.error('Please provide a reason for dropping out');
         return;
@@ -128,36 +143,54 @@ export default function MarkDroppedOutDialog({
       setIsSubmitting(true);
       try {
         // First mark as dropped out
-        const result = await cohortStudentsService.markAsDroppedOut(student.id, finalReason);
-        
+        const result = await cohortStudentsService.markAsDroppedOut(
+          student.id,
+          finalReason
+        );
+
         if (result.success) {
           // If refund is requested, process it
           if (showRefundOption && refundAmount.trim()) {
             const amount = parseFloat(refundAmount);
             if (!isNaN(amount) && amount > 0) {
               try {
-                const refundResult = await cohortStudentsService.issueRefund(student.id, amount);
+                const refundResult = await cohortStudentsService.issueRefund(
+                  student.id,
+                  amount
+                );
                 if (refundResult.success) {
-                  toast.success(`${student.first_name} ${student.last_name} has been marked as dropped out with refund of ₹${amount}`);
+                  toast.success(
+                    `${student.first_name} ${student.last_name} has been marked as dropped out with refund of ₹${amount}`
+                  );
                 } else {
-                  toast.success(`${student.first_name} ${student.last_name} has been marked as dropped out, but refund failed`);
+                  toast.success(
+                    `${student.first_name} ${student.last_name} has been marked as dropped out, but refund failed`
+                  );
                 }
               } catch (refundError) {
-                toast.success(`${student.first_name} ${student.last_name} has been marked as dropped out, but refund failed`);
+                toast.success(
+                  `${student.first_name} ${student.last_name} has been marked as dropped out, but refund failed`
+                );
                 console.error('Refund error:', refundError);
               }
             } else {
-              toast.success(`${student.first_name} ${student.last_name} has been marked as dropped out`);
+              toast.success(
+                `${student.first_name} ${student.last_name} has been marked as dropped out`
+              );
             }
           } else {
-            toast.success(`${student.first_name} ${student.last_name} has been marked as dropped out`);
+            toast.success(
+              `${student.first_name} ${student.last_name} has been marked as dropped out`
+            );
           }
-          
+
           onMarkedAsDroppedOut();
           onOpenChange(false);
           resetForm();
         } else {
-          throw new Error(result.error || 'Failed to mark student as dropped out');
+          throw new Error(
+            result.error || 'Failed to mark student as dropped out'
+          );
         }
       } catch (error) {
         console.error('Error marking student as dropped out:', error);
@@ -187,24 +220,27 @@ export default function MarkDroppedOutDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle>
-            {isDroppedOut ? 'Student Dropout Details' : 'Mark Student as Dropped Out'}
+            {isDroppedOut
+              ? 'Student Dropout Details'
+              : 'Mark Student as Dropped Out'}
           </DialogTitle>
           <DialogDescription>
             {isDroppedOut ? (
               <>
-                {student.first_name} {student.last_name} was marked as dropped out on{' '}
-                {new Date(student.dropped_out_at!).toLocaleDateString()}.
+                {student.first_name} {student.last_name} was marked as dropped
+                out on {new Date(student.dropped_out_at!).toLocaleDateString()}.
                 {student.dropped_out_reason && (
-                  <div className="mt-2 p-2 bg-muted rounded border">
+                  <div className='mt-2 p-2 bg-muted rounded border'>
                     <strong>Reason:</strong> {student.dropped_out_reason}
                   </div>
                 )}
                 {refundInfo && (
-                  <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                    <strong>Refund Issued:</strong> ₹{refundInfo.amount} on {refundInfo.date}
+                  <div className='mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800'>
+                    <strong>Refund Issued:</strong> ₹{refundInfo.amount} on{' '}
+                    {refundInfo.date}
                   </div>
                 )}
               </>
@@ -214,18 +250,21 @@ export default function MarkDroppedOutDialog({
             )}
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
+
+        <div className='grid gap-4 py-4'>
           {!isDroppedOut && (
             <>
-              <div className="grid gap-2">
-                <Label htmlFor="reason">Reason for dropping out</Label>
-                <Select value={selectedReason} onValueChange={setSelectedReason}>
+              <div className='grid gap-2'>
+                <Label htmlFor='reason'>Reason for dropping out</Label>
+                <Select
+                  value={selectedReason}
+                  onValueChange={setSelectedReason}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a reason" />
+                    <SelectValue placeholder='Select a reason' />
                   </SelectTrigger>
                   <SelectContent>
-                    {DROPOUT_REASONS.map((reason) => (
+                    {DROPOUT_REASONS.map(reason => (
                       <SelectItem key={reason} value={reason}>
                         {reason}
                       </SelectItem>
@@ -235,43 +274,46 @@ export default function MarkDroppedOutDialog({
               </div>
 
               {selectedReason === 'Other' && (
-                <div className="grid gap-2">
-                  <Label htmlFor="custom-reason">Please specify the reason</Label>
+                <div className='grid gap-2'>
+                  <Label htmlFor='custom-reason'>
+                    Please specify the reason
+                  </Label>
                   <Textarea
-                    id="custom-reason"
-                    placeholder="Enter the specific reason for dropping out..."
+                    id='custom-reason'
+                    placeholder='Enter the specific reason for dropping out...'
                     value={customReason}
-                    onChange={(e) => setCustomReason(e.target.value)}
+                    onChange={e => setCustomReason(e.target.value)}
                     rows={3}
                   />
                 </div>
               )}
 
-              <div className="flex items-center space-x-2">
+              <div className='flex items-center space-x-2'>
                 <input
-                  type="checkbox"
-                  id="show-refund"
+                  type='checkbox'
+                  id='show-refund'
                   checked={showRefundOption}
-                  onChange={(e) => setShowRefundOption(e.target.checked)}
-                  className="rounded"
+                  onChange={e => setShowRefundOption(e.target.checked)}
+                  className='rounded'
                 />
-                <Label htmlFor="show-refund">Issue refund (optional)</Label>
+                <Label htmlFor='show-refund'>Issue refund (optional)</Label>
               </div>
 
               {showRefundOption && (
-                <div className="grid gap-2">
-                  <Label htmlFor="refund-amount">Refund amount (₹)</Label>
+                <div className='grid gap-2'>
+                  <Label htmlFor='refund-amount'>Refund amount (₹)</Label>
                   <Input
-                    id="refund-amount"
-                    type="number"
-                    placeholder="Enter refund amount"
+                    id='refund-amount'
+                    type='number'
+                    placeholder='Enter refund amount'
                     value={refundAmount}
-                    onChange={(e) => setRefundAmount(e.target.value)}
-                    min="0"
-                    step="0.01"
+                    onChange={e => setRefundAmount(e.target.value)}
+                    min='0'
+                    step='0.01'
                   />
-                  <p className="text-sm text-muted-foreground">
-                    Amount must be less than or equal to the total amount paid by the student.
+                  <p className='text-sm text-muted-foreground'>
+                    Amount must be less than or equal to the total amount paid
+                    by the student.
                   </p>
                 </div>
               )}
@@ -281,26 +323,30 @@ export default function MarkDroppedOutDialog({
 
         <DialogFooter>
           <Button
-            variant="outline"
+            variant='outline'
             onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
-          
+
           {isDroppedOut ? (
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
+              className='bg-green-600 hover:bg-green-700'
             >
               {isSubmitting ? 'Reactivating...' : 'Reactivate Student'}
             </Button>
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || (!selectedReason || (selectedReason === 'Other' && !customReason.trim()))}
-              className="bg-red-600 hover:bg-red-700"
+              disabled={
+                isSubmitting ||
+                !selectedReason ||
+                (selectedReason === 'Other' && !customReason.trim())
+              }
+              className='bg-red-600 hover:bg-red-700'
             >
               {isSubmitting ? 'Marking...' : 'Mark as Dropped Out'}
             </Button>

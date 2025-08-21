@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
-import { cohortStudentsService } from "@/services/cohortStudents.service";
-import { cohortsService } from "@/services/cohorts.service";
-import { CohortStudent, CohortWithCounts, NewStudentInput } from "@/types/cohort";
-import { toast } from "sonner";
+import { useState, useEffect, useCallback } from 'react';
+import { cohortStudentsService } from '@/services/cohortStudents.service';
+import { cohortsService } from '@/services/cohorts.service';
+import {
+  CohortStudent,
+  CohortWithCounts,
+  NewStudentInput,
+} from '@/types/cohort';
+import { toast } from 'sonner';
 import { supabase, connectionManager } from '@/integrations/supabase/client';
-import { Logger } from "@/lib/logging/Logger";
-import { useAuth } from "@/hooks/useAuth";
+import { Logger } from '@/lib/logging/Logger';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useCohortDetails(cohortId: string | undefined) {
   const { profile } = useAuth();
@@ -13,251 +17,272 @@ export function useCohortDetails(cohortId: string | undefined) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [students, setStudents] = useState<CohortStudent[]>([]);
   const [cohort, setCohort] = useState<CohortWithCounts | null>(null);
-  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(
+    null
+  );
 
   // Load data. When background=true, avoid flipping the main loading state
   // to prevent full-page skeleton flashes during focus/visibility or realtime updates.
-  const loadData = useCallback(async (background: boolean = false) => {
-    if (!cohortId) return;
-    
-    if (background) {
-      setIsRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    try {
-      // Load cohort details with counts
-      const cohortRes = await cohortsService.getByIdWithCounts(cohortId);
-      if (cohortRes.success && cohortRes.data) {
-        setCohort(cohortRes.data);
-      }
+  const loadData = useCallback(
+    async (background: boolean = false) => {
+      if (!cohortId) return;
 
-      // Load students
-      const studentsRes = await cohortStudentsService.listAllByCohort(cohortId);
-      setStudents(studentsRes.data || []);
-    } catch (error) {
-      Logger.getInstance().error("Error loading cohort details", { error, cohortId });
-      toast.error("Failed to load cohort details");
-    } finally {
       if (background) {
-        setIsRefreshing(false);
+        setIsRefreshing(true);
       } else {
-        setLoading(false);
+        setLoading(true);
       }
-    }
-  }, [cohortId]);
-
-  const handleDeleteStudent = useCallback(async (studentId: string) => {
-    setDeletingStudentId(studentId);
-    try {
-      const result = await cohortStudentsService.delete(studentId);
-      if (result.success) {
-        toast.success("Student removed from cohort successfully");
-        await loadData(); // Reload data to update the list
-      } else {
-        toast.error("Failed to remove student from cohort");
-      }
-    } catch (error) {
-      Logger.getInstance().error("Error deleting student", { error, studentId, cohortId });
-      toast.error("An error occurred while removing the student");
-    } finally {
-      setDeletingStudentId(null);
-    }
-  }, [loadData]);
-
-  const updateStudent = useCallback((studentId: string, updates: Partial<CohortStudent>) => {
-    setStudents(prevStudents => 
-      prevStudents.map(student => 
-        student.id === studentId ? { ...student, ...updates } : student
-      )
-    );
-  }, []);
-
-  const validateStudentRow = useCallback((data: any, row: number): string[] => {
-    const errors: string[] = [];
-
-    // Validate required fields
-    if (!data.first_name?.trim()) {
-      errors.push("First name is required");
-    }
-    if (!data.last_name?.trim()) {
-      errors.push("Last name is required");
-    }
-    if (!data.email?.trim()) {
-      errors.push("Email is required");
-    }
-
-    // Validate email format
-    if (data.email?.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email.trim())) {
-        errors.push("Invalid email format");
-      }
-    }
-
-    // Validate invite field if present
-    if (data.invite && data.invite.trim()) {
-      const inviteValue = data.invite.trim().toUpperCase();
-      if (inviteValue !== 'YES' && inviteValue !== 'NO') {
-        errors.push("Invite field must be 'YES' or 'NO'");
-      }
-    }
-
-    return errors;
-  }, []);
-
-  const processValidStudents = useCallback(async (
-    studentsData: NewStudentInput[], 
-    duplicateHandling: 'ignore' | 'overwrite'
-  ): Promise<{ success: boolean; message: string }> => {
-    if (!cohortId) {
-      return { success: false, message: "Cohort ID is missing" };
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-    let inviteCount = 0;
-
-    for (const studentData of studentsData) {
       try {
-        // Process the invite field
-        const processedData = { ...studentData };
-        if (studentData.invite) {
-          const inviteValue = studentData.invite.toString().trim().toUpperCase();
-          processedData.send_invite = inviteValue === 'YES';
-        } else {
-          processedData.send_invite = false; // Default to false if not specified
+        // Load cohort details with counts
+        const cohortRes = await cohortsService.getByIdWithCounts(cohortId);
+        if (cohortRes.success && cohortRes.data) {
+          setCohort(cohortRes.data);
         }
 
-        if (duplicateHandling === 'overwrite') {
-          // Use upsert to handle duplicates - will update if exists, insert if not
-          const result = await cohortStudentsService.upsertStudent(cohortId, processedData);
-          if (result.success) {
-            successCount++;
-            // Handle invitation if needed
-            if (processedData.send_invite && result.data) {
-              try {
-                await handleStudentInvitation(result.data, processedData);
-                inviteCount++;
-              } catch (inviteError) {
-                Logger.getInstance().error(`Failed to send invitation to ${processedData.email}`, { error: inviteError, email: processedData.email, cohortId, mode: 'overwrite' });
-              }
-            }
-          } else {
-            errorCount++;
-          }
+        // Load students
+        const studentsRes =
+          await cohortStudentsService.listAllByCohort(cohortId);
+        setStudents(studentsRes.data || []);
+      } catch (error) {
+        Logger.getInstance().error('Error loading cohort details', {
+          error,
+          cohortId,
+        });
+        toast.error('Failed to load cohort details');
+      } finally {
+        if (background) {
+          setIsRefreshing(false);
         } else {
-          // For ignore mode, just add normally (duplicates will be filtered out by the component)
-          const result = await cohortStudentsService.addOne(cohortId, processedData);
-          if (result.success) {
-            successCount++;
-            // Handle invitation if needed
-            if (processedData.send_invite && result.data) {
-              try {
-                await handleStudentInvitation(result.data, processedData);
-                inviteCount++;
-              } catch (inviteError) {
-                Logger.getInstance().error(`Failed to send invitation to ${processedData.email}`, { error: inviteError, email: processedData.email, cohortId, mode: 'ignore' });
-              }
-            }
-          } else {
-            errorCount++;
-          }
+          setLoading(false);
+        }
+      }
+    },
+    [cohortId]
+  );
+
+  const handleDeleteStudent = useCallback(
+    async (studentId: string) => {
+      setDeletingStudentId(studentId);
+      try {
+        const result = await cohortStudentsService.delete(studentId);
+        if (result.success) {
+          toast.success('Student removed from cohort successfully');
+          await loadData(); // Reload data to update the list
+        } else {
+          toast.error('Failed to remove student from cohort');
         }
       } catch (error) {
-        errorCount++;
-        Logger.getInstance().error(`Error adding student ${studentData.email}`, { error, email: studentData.email, cohortId });
+        Logger.getInstance().error('Error deleting student', {
+          error,
+          studentId,
+          cohortId,
+        });
+        toast.error('An error occurred while removing the student');
+      } finally {
+        setDeletingStudentId(null);
       }
-    }
+    },
+    [loadData]
+  );
 
-    if (successCount > 0) {
-      const message = `Successfully ${duplicateHandling === 'overwrite' ? 'processed' : 'added'} ${successCount} students`;
-      const inviteMessage = inviteCount > 0 ? `, ${inviteCount} invitations sent` : '';
-      const errorMessage = errorCount > 0 ? `, ${errorCount} failed` : '';
-      return { 
-        success: true, 
-        message: `${message}${inviteMessage}${errorMessage}` 
-      };
-    } else {
-      return { success: false, message: "Failed to process any students" };
-    }
-  }, [cohortId]);
+  const updateStudent = useCallback(
+    (studentId: string, updates: Partial<CohortStudent>) => {
+      setStudents(prevStudents =>
+        prevStudents.map(student =>
+          student.id === studentId ? { ...student, ...updates } : student
+        )
+      );
+    },
+    []
+  );
+
+  const validateStudentRow = useCallback(
+    (data: NewStudentInput, row: number): string[] => {
+      const errors: string[] = [];
+
+      if (!data.email || !data.email.trim()) {
+        errors.push(`Row ${row}: Email is required`);
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+        errors.push(`Row ${row}: Invalid email format`);
+      }
+
+      if (!data.first_name || !data.first_name.trim()) {
+        errors.push(`Row ${row}: First name is required`);
+      }
+
+      if (!data.last_name || !data.last_name.trim()) {
+        errors.push(`Row ${row}: Last name is required`);
+      }
+
+      return errors;
+    },
+    []
+  );
 
   // Helper function to handle student invitation
-  const handleStudentInvitation = async (student: CohortStudent, studentData: NewStudentInput) => {
-    try {
-      // Use the new SendGrid-based invitation system
-      const invitationResult = await cohortStudentsService.sendCustomInvitation(
-        student.id, 
-        profile?.user_id || ''
-      );
-      
-      if (invitationResult.success) {
-        // Send email via Edge Function
-        const emailResult = await cohortStudentsService.sendInvitationEmail(
-          student.id,
-          studentData.email,
-          studentData.first_name || '',
-          studentData.last_name || '',
-          cohort?.name || 'Your Cohort'
+  const handleStudentInvitation = useCallback(
+    async (studentId: string, email: string) => {
+      try {
+        const result = await cohortStudentsService.sendInvitationEmail(
+          studentId,
+          email,
+          'Student',
+          'Name',
+          cohort?.name || 'Cohort'
         );
-        
-        if (emailResult.success && emailResult.data?.emailSent) {
-          Logger.getInstance().info(`Invitation email sent to ${studentData.email}`, { 
-            email: studentData.email, 
-            studentId: student.id,
-            cohortId 
-          });
+
+        if (result.success) {
+          toast.success('Invitation sent successfully');
+          loadData();
         } else {
-          Logger.getInstance().warn(`Invitation prepared but email may not have been sent to ${studentData.email}`, { 
-            email: studentData.email, 
-            studentId: student.id,
-            cohortId,
-            emailResult 
-          });
+          toast.error(result.error || 'Failed to send invitation');
         }
-      } else {
-        throw new Error('Failed to prepare invitation');
+      } catch (error) {
+        console.error('Error sending invitation:', error);
+        toast.error('Failed to send invitation');
       }
-    } catch (error) {
-      Logger.getInstance().error(`Failed to send invitation to ${studentData.email}`, { 
-        error, 
-        email: studentData.email, 
-        studentId: student.id,
-        cohortId 
-      });
-      throw error;
-    }
-  };
+    },
+    [cohort?.name, loadData]
+  );
 
-  const checkDuplicateStudents = useCallback(async (
-    studentsData: NewStudentInput[]
-  ): Promise<Array<{ data: NewStudentInput; row: number; existingData?: any }>> => {
-    if (!cohortId) return [];
+  const checkDuplicateStudents = useCallback(
+    async (
+      students: NewStudentInput[]
+    ): Promise<{
+      duplicates: NewStudentInput[];
+      nonDuplicates: NewStudentInput[];
+    }> => {
+      const duplicates: NewStudentInput[] = [];
+      const nonDuplicates: NewStudentInput[] = [];
 
-    const duplicates: Array<{ data: NewStudentInput; row: number; existingData?: any }> = [];
-    
-    // Get existing students in this cohort
-    const existingStudentsRes = await cohortStudentsService.listByCohort(cohortId);
-    const existingStudents = existingStudentsRes.data || [];
-    
-    // Check for duplicates based on email
-    studentsData.forEach((student, index) => {
-      const existingStudent = existingStudents.find(existing => 
-        existing.email.toLowerCase() === student.email.toLowerCase()
-      );
-      
-      if (existingStudent) {
-        duplicates.push({
-          data: student,
-          row: index + 1,
-          existingData: existingStudent
+      for (const student of students) {
+        try {
+          const existingStudents =
+            await cohortStudentsService.listByCohort(cohortId);
+
+          if (existingStudents.success && existingStudents.data) {
+            const isDuplicate = existingStudents.data.some(
+              (existingStudent: CohortStudent) =>
+                existingStudent.email.toLowerCase() ===
+                student.email.toLowerCase()
+            );
+
+            if (isDuplicate) {
+              duplicates.push(student);
+            } else {
+              nonDuplicates.push(student);
+            }
+          } else {
+            nonDuplicates.push(student);
+          }
+        } catch (error) {
+          console.error('Error checking duplicate:', error);
+          nonDuplicates.push(student);
+        }
+      }
+
+      return { duplicates, nonDuplicates };
+    },
+    [cohortId]
+  );
+
+  const processBulkUpload = useCallback(
+    async (
+      studentsData: NewStudentInput[]
+    ): Promise<{ success: boolean; message: string }> => {
+      if (!cohortId) {
+        return { success: false, message: 'No cohort selected' };
+      }
+
+      try {
+        // Validate all students first
+        const allErrors: string[] = [];
+        studentsData.forEach((student, index) => {
+          const errors = validateStudentRow(student, index + 1);
+          allErrors.push(...errors);
         });
-      }
-    });
 
-    return duplicates;
-  }, [cohortId]);
+        if (allErrors.length > 0) {
+          return {
+            success: false,
+            message: `Validation errors:\n${allErrors.join('\n')}`,
+          };
+        }
+
+        // Check for duplicates
+        const { duplicates, nonDuplicates } =
+          await checkDuplicateStudents(studentsData);
+
+        if (duplicates.length > 0) {
+          const duplicateEmails = duplicates.map(d => d.email).join(', ');
+          return {
+            success: false,
+            message: `Duplicate students found: ${duplicateEmails}`,
+          };
+        }
+
+        // Process valid students
+        let successCount = 0;
+        let inviteCount = 0;
+
+        for (const studentData of nonDuplicates) {
+          try {
+            const processedData = {
+              ...studentData,
+              send_invite: true, // Always send invite for bulk uploads
+            };
+
+            const result = await cohortStudentsService.addOne(
+              cohortId,
+              processedData
+            );
+
+            if (result.success && result.data) {
+              successCount++;
+
+              if (processedData.send_invite && result.data) {
+                try {
+                  await handleStudentInvitation(
+                    result.data.id,
+                    processedData.email
+                  );
+                  inviteCount++;
+                } catch (inviteError) {
+                  console.error('Failed to send invitation:', inviteError);
+                  // Continue with other students even if invitation fails
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error processing student:', error);
+            // Continue with other students even if one fails
+          }
+        }
+
+        if (successCount > 0) {
+          const message = `Successfully added ${successCount} student(s)${inviteCount > 0 ? ` and sent ${inviteCount} invitation(s)` : ''}`;
+          toast.success(message);
+          loadData();
+          return { success: true, message };
+        } else {
+          return { success: false, message: 'Failed to process any students' };
+        }
+      } catch (error) {
+        console.error('Bulk upload error:', error);
+        return {
+          success: false,
+          message: 'An error occurred during bulk upload',
+        };
+      }
+    },
+    [
+      cohortId,
+      validateStudentRow,
+      checkDuplicateStudents,
+      handleStudentInvitation,
+      loadData,
+    ]
+  );
 
   useEffect(() => {
     loadData();
@@ -292,21 +317,25 @@ export function useCohortDetails(cohortId: string | undefined) {
 
     const channelName = `cohort_students_${cohortId}`;
 
-    const subscription = connectionManager.createChannel(channelName)
+    const subscription = connectionManager
+      .createChannel(channelName)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'cohort_students',
-          filter: `cohort_id=eq.${cohortId}`
+          filter: `cohort_id=eq.${cohortId}`,
         },
-        (payload) => {
+        payload => {
           // Check if the change is related to invitation status
-          if (payload.new && payload.old && 
-              (payload.new.invite_status !== payload.old.invite_status ||
-               payload.new.accepted_at !== payload.old.accepted_at ||
-               payload.new.user_id !== payload.old.user_id)) {
+          if (
+            payload.new &&
+            payload.old &&
+            (payload.new.invite_status !== payload.old.invite_status ||
+              payload.new.accepted_at !== payload.old.accepted_at ||
+              payload.new.user_id !== payload.old.user_id)
+          ) {
             // Refresh data when invitation status changes
           }
           // Refresh data when any change occurs
@@ -319,9 +348,9 @@ export function useCohortDetails(cohortId: string | undefined) {
           event: 'INSERT',
           schema: 'public',
           table: 'cohort_students',
-          filter: `cohort_id=eq.${cohortId}`
+          filter: `cohort_id=eq.${cohortId}`,
         },
-        (payload) => {
+        payload => {
           loadData(true);
         }
       )
@@ -331,9 +360,9 @@ export function useCohortDetails(cohortId: string | undefined) {
           event: 'DELETE',
           schema: 'public',
           table: 'cohort_students',
-          filter: `cohort_id=eq.${cohortId}`
+          filter: `cohort_id=eq.${cohortId}`,
         },
-        (payload) => {
+        payload => {
           loadData(true);
         }
       )
@@ -353,7 +382,7 @@ export function useCohortDetails(cohortId: string | undefined) {
     handleDeleteStudent,
     updateStudent,
     validateStudentRow,
-    processValidStudents,
+    processBulkUpload,
     checkDuplicateStudents,
   };
 }
