@@ -1,4 +1,4 @@
-import { Logger } from '@/lib/logging';
+import { logger } from '@/lib/logging';
 import { StudentPaymentSummary } from '@/types/payments/DatabaseAlignedTypes';
 import { UserProfile } from '@/types/userManagement';
 
@@ -28,7 +28,7 @@ export const exportPaymentData = (
         throw new Error(`Unsupported export format: ${options.format}`);
     }
   } catch (error) {
-    Logger.getInstance().error('Export failed', {
+    logger.error('Export failed', {
       error,
       students: students.length,
     });
@@ -148,7 +148,7 @@ export const exportUserData = (
         throw new Error(`Unsupported export format: ${options.format}`);
     }
   } catch (error) {
-    Logger.getInstance().error('User export failed', {
+    logger.error('User export failed', {
       error,
       users: users.length,
     });
