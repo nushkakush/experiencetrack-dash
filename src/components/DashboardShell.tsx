@@ -80,9 +80,6 @@ const getNavigationItems = (
         onClick: () => navigate('/user-management'),
         icon: Users,
       },
-      { title: 'System Settings', url: '#', icon: Settings },
-      { title: 'Analytics', url: '#', icon: BarChart3 },
-      { title: 'Reports', url: '#', icon: FileText },
     ],
     program_manager: [
       {

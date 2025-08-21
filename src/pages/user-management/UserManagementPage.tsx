@@ -70,25 +70,11 @@ const UserManagementPage: React.FC = () => {
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-3xl font-bold'>User Management</h1>
-          <p className='text-muted-foreground'>
-            Manage system users, roles, and permissions
-          </p>
-        </div>
-        <div className='flex items-center gap-2'>
-          <AddUserDialog onAdded={handleRefresh} />
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleRefresh}
-            disabled={state.loading}
-          >
-            <RefreshCw className='h-4 w-4 mr-2' />
-            Refresh
-          </Button>
-        </div>
+      <div>
+        <h1 className='text-3xl font-bold'>User Management</h1>
+        <p className='text-muted-foreground'>
+          Manage system users, roles, and permissions
+        </p>
       </div>
 
       {/* Users by Role - Individual Cards */}
@@ -114,29 +100,6 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search & Filter Users</CardTitle>
-          <CardDescription>
-            Find specific users or filter by various criteria
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <div className='flex items-center gap-4'>
-            <div className='relative flex-1'>
-              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-              <Input
-                placeholder='Search by name, email, or role...'
-                className='pl-10'
-                onChange={e => handleSearch(e.target.value)}
-              />
-            </div>
-            <UserFilters />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Bulk Actions */}
       {hasSelection && <UserActions />}
 
@@ -156,6 +119,16 @@ const UserManagementPage: React.FC = () => {
                   Clear Selection
                 </Button>
               )}
+              <AddUserDialog onAdded={handleRefresh} />
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={handleRefresh}
+                disabled={state.loading}
+              >
+                <RefreshCw className='h-4 w-4 mr-2' />
+                Refresh
+              </Button>
               <Button
                 variant='outline'
                 size='sm'
@@ -192,6 +165,19 @@ const UserManagementPage: React.FC = () => {
             </TabsList>
 
             <TabsContent value='registered' className='space-y-4'>
+              {/* Search and Filters */}
+              <div className='flex items-center gap-4'>
+                <div className='relative flex-1'>
+                  <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    placeholder='Search by name, email, or role...'
+                    className='pl-10'
+                    onChange={e => handleSearch(e.target.value)}
+                  />
+                </div>
+                <UserFilters />
+              </div>
+
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-muted-foreground'>
                   Showing{' '}
@@ -203,6 +189,19 @@ const UserManagementPage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value='invited' className='space-y-4'>
+              {/* Search and Filters */}
+              <div className='flex items-center gap-4'>
+                <div className='relative flex-1'>
+                  <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    placeholder='Search by name, email, or role...'
+                    className='pl-10'
+                    onChange={e => handleSearch(e.target.value)}
+                  />
+                </div>
+                <UserFilters />
+              </div>
+
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-muted-foreground'>
                   Showing{' '}
