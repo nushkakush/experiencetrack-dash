@@ -63,11 +63,12 @@ const getNavigationItems = (
         onClick: () => navigate('/dashboard'),
         icon: Calendar,
       },
-      {
-        title: 'Fee Payment',
-        onClick: () => navigate('/dashboard/fee-payment'),
-        icon: CreditCard,
-      },
+      // Fee Payment menu temporarily hidden for students
+      // {
+      //   title: 'Fee Payment',
+      //   onClick: () => navigate('/dashboard/fee-payment'),
+      //   icon: CreditCard,
+      // },
     ],
     super_admin: [
       {

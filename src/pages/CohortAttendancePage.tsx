@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import DashboardShell from '@/components/DashboardShell';
@@ -23,6 +23,8 @@ import {
   LeaderboardView,
 } from '@/pages/cohort-attendance/components';
 import type { AttendanceStatus } from '@/types/attendance';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 const CohortAttendancePage = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -71,6 +73,7 @@ const CohortAttendancePage = () => {
     attendanceData.selectedEpic,
     pageState.selectedDate,
     pageState.selectedSession,
+    pageState.handleMarkAttendance,
   ]);
 
   // Event handlers
@@ -88,6 +91,34 @@ const CohortAttendancePage = () => {
       attendanceActions.setSelectedStudent(student);
     }
     attendanceActions.markAttendance(studentId, status);
+  };
+
+  const handleResetAttendance = async (studentId: string) => {
+    try {
+      const sessionDate = format(pageState.selectedDate, 'yyyy-MM-dd');
+
+      // Delete the attendance record for this student, session, and date
+      const { error } = await supabase
+        .from('attendance_records')
+        .delete()
+        .eq('cohort_id', cohortId)
+        .eq('epic_id', attendanceData.selectedEpic)
+        .eq('session_number', pageState.selectedSession)
+        .eq('session_date', sessionDate)
+        .eq('student_id', studentId);
+
+      if (error) throw error;
+
+      // Refresh all data immediately
+      await Promise.all([
+        attendanceData.refetchAttendance(),
+        attendanceData.refetchSessions(),
+        epicAttendanceData.refetchEpicAttendance(),
+      ]);
+    } catch (error) {
+      console.error('Error resetting attendance:', error);
+      throw error; // Re-throw so the component can handle it
+    }
   };
 
   // Computed values
@@ -173,6 +204,7 @@ const CohortAttendancePage = () => {
               processing={attendanceActions.processing}
               onSessionChange={pageState.handleSessionChange}
               onMarkAttendance={handleMarkAttendance}
+              onResetAttendance={handleResetAttendance}
             />
           ) : (
             <LeaderboardView

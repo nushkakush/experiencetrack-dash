@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { isAfter } from 'date-fns';
+import { isAfter, format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import DashboardShell from '@/components/DashboardShell';
 import { CohortHolidayManagementDialog } from '@/components/holidays/CohortHolidayManagementDialog';
@@ -25,6 +27,7 @@ const CohortAttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState<number>(1);
   const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
+
   const [currentView, setCurrentView] = useState<'manage' | 'leaderboard'>(
     'manage'
   );
@@ -204,6 +207,33 @@ const CohortAttendancePage = () => {
                   isFutureDate={isFutureDate}
                   processing={attendanceActions.processing}
                   onMarkAttendance={handleMarkAttendance}
+                  onResetAttendance={async (studentId: string) => {
+                    try {
+                      const sessionDate = format(selectedDate, 'yyyy-MM-dd');
+
+                      const { error } = await supabase
+                        .from('attendance_records')
+                        .delete()
+                        .eq('cohort_id', cohortId)
+                        .eq('epic_id', attendanceData.selectedEpic)
+                        .eq('session_number', selectedSession)
+                        .eq('session_date', sessionDate)
+                        .eq('student_id', studentId);
+
+                      if (error) throw error;
+
+                      toast.success('Attendance reset successfully');
+
+                      // Refresh all data immediately
+                      await Promise.all([
+                        attendanceData.refetchAttendance(),
+                        attendanceData.refetchSessions(),
+                      ]);
+                    } catch (error) {
+                      console.error('Error resetting attendance:', error);
+                      toast.error('Failed to reset attendance');
+                    }
+                  }}
                 />
               </div>
             ) : (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -59,7 +59,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
     const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
 
     // Load epics for the cohort
-    const loadEpics = async () => {
+    const loadEpics = useCallback(async () => {
       try {
         const { data: epicsData, error: epicsError } = await supabase
           .from('cohort_epics')
@@ -79,10 +79,10 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         console.error('Error loading epics:', err);
         setError('Failed to load epics');
       }
-    };
+    }, [cohortData.id]);
 
     // Load students for the cohort
-    const loadStudents = async () => {
+    const loadStudents = useCallback(async () => {
       try {
         const { data: studentsData, error: studentsError } = await supabase
           .from('cohort_students')
@@ -96,10 +96,10 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         console.error('Error loading students:', err);
         setError('Failed to load students');
       }
-    };
+    }, [cohortData.id]);
 
     // Load attendance records for current epic
-    const loadAttendanceRecords = async () => {
+    const loadAttendanceRecords = useCallback(async () => {
       if (!currentEpic) return;
 
       try {
@@ -116,10 +116,10 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         console.error('Error loading attendance records:', err);
         setError('Failed to load attendance records');
       }
-    };
+    }, [currentEpic, cohortData.id]);
 
     // Calculate student statistics
-    const calculateStudentStats = (): StudentStats | null => {
+    const calculateStudentStats = useCallback((): StudentStats | null => {
       if (!studentData || !currentEpic || students.length === 0) return null;
 
       // Get all attendance records for this student in current epic
@@ -136,14 +136,17 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         record => record.status === 'late'
       ).length;
       const exemptedSessions = studentRecords.filter(
-        record => record.status === 'absent' && record.absence_type === 'exempted'
+        record =>
+          record.status === 'absent' && record.absence_type === 'exempted'
       ).length;
       const regularAbsentSessions = studentRecords.filter(
-        record => record.status === 'absent' && record.absence_type !== 'exempted'
+        record =>
+          record.status === 'absent' && record.absence_type !== 'exempted'
       ).length;
-      
+
       // For analytics: present + late + exempted count as attended
-      const attendedSessions = presentSessions + lateSessions + exemptedSessions;
+      const attendedSessions =
+        presentSessions + lateSessions + exemptedSessions;
       const attendancePercentage =
         totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
 
@@ -156,8 +159,11 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
       let currentStreak = 0;
       for (const record of sortedRecords) {
-        if (record.status === 'present' || record.status === 'late' || 
-            (record.status === 'absent' && record.absence_type === 'exempted')) {
+        if (
+          record.status === 'present' ||
+          record.status === 'late' ||
+          (record.status === 'absent' && record.absence_type === 'exempted')
+        ) {
           currentStreak++;
         } else {
           break;
@@ -171,8 +177,10 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         );
         const totalSessions = studentRecords.length;
         const attendedSessions = studentRecords.filter(
-          record => record.status === 'present' || record.status === 'late' || 
-                   (record.status === 'absent' && record.absence_type === 'exempted')
+          record =>
+            record.status === 'present' ||
+            record.status === 'late' ||
+            (record.status === 'absent' && record.absence_type === 'exempted')
         ).length;
         const attendancePercentage =
           totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
@@ -199,7 +207,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         currentStreak,
         rank,
       };
-    };
+    }, [studentData, currentEpic, students, attendanceRecords]);
 
     // Load initial data
     useEffect(() => {
@@ -225,20 +233,20 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       };
 
       loadData();
-    }, [cohortData?.id]);
+    }, [cohortData?.id, loadEpics, loadStudents]);
 
     // Load attendance records when epic changes
     useEffect(() => {
       if (currentEpic) {
         loadAttendanceRecords();
       }
-    }, [currentEpic, cohortData.id]);
+    }, [currentEpic, cohortData.id, loadAttendanceRecords]);
 
     // Calculate student stats when data changes
     useEffect(() => {
       const stats = calculateStudentStats();
       setStudentStats(stats);
-    }, [studentData, currentEpic, students, attendanceRecords]);
+    }, [calculateStudentStats]);
 
     // Handle epic change
     const handleEpicChange = (epicId: string) => {
@@ -311,12 +319,12 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
             Your attendance record and leaderboard position
           </p>
 
-          {/* Epic Selector and View Holidays Button */}
-          <div className='mb-6'>
+          {/* Epic Selector and View Holidays Button - Hidden for students */}
+          {/* <div className='mb-6'>
             {epics.length > 0 ? (
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-4'>
-                  <label className='text-sm font-medium'>View Epic:</label>
+                  <label className='text-sm font-medium'>Currently Active</label>
                   <Select
                     value={currentEpic?.id || ''}
                     onValueChange={handleEpicChange}
@@ -333,13 +341,6 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                       ))}
                     </SelectContent>
                   </Select>
-                  {currentEpic && (
-                    <div className='text-sm text-muted-foreground'>
-                      {currentEpic.is_active
-                        ? 'Viewing the currently active epic'
-                        : 'Viewing historical epic data'}
-                    </div>
-                  )}
                 </div>
 
                 <Button
@@ -370,7 +371,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                 </Button>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Student Statistics Cards */}
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6'>
@@ -472,6 +473,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                     currentEpic={currentEpic}
                     layout='grid'
                     hideFields={['email', 'late', 'absent']}
+                    showExemptedNotice={false}
                   />
                 </CardContent>
               </Card>

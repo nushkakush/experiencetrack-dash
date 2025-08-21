@@ -1,7 +1,12 @@
 import React from 'react';
 import { Trophy, Calendar, Shield, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useLeaderboardCalculations } from './leaderboard/hooks/useLeaderboardCalculations';
 import { GridLayout } from './leaderboard/layouts/GridLayout';
 import { TableLayout } from './leaderboard/layouts/TableLayout';
@@ -17,6 +22,7 @@ interface AttendanceLeaderboardProps {
   currentEpic: CohortEpic | null;
   layout?: 'table' | 'grid';
   hideFields?: ('email' | 'late' | 'absent')[];
+  showExemptedNotice?: boolean;
 }
 
 export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
@@ -25,6 +31,7 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
   currentEpic,
   layout = 'table',
   hideFields = [],
+  showExemptedNotice = true,
 }) => {
   const { studentStats } = useLeaderboardCalculations(
     students,
@@ -33,9 +40,11 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
 
   // Check if any students have exempted absences
   const hasExemptedAbsences = students.some(student => {
-    const studentRecords = attendanceRecords.filter(record => record.student_id === student.id);
-    return studentRecords.some(record => 
-      record.status === 'absent' && record.absence_type === 'exempted'
+    const studentRecords = attendanceRecords.filter(
+      record => record.student_id === student.id
+    );
+    return studentRecords.some(
+      record => record.status === 'absent' && record.absence_type === 'exempted'
     );
   });
 
@@ -64,21 +73,26 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
       </div>
 
       {/* Exempted Absences Notice */}
-      {hasExemptedAbsences && (
+      {showExemptedNotice && hasExemptedAbsences && (
         <div className='bg-amber-50 border border-amber-200 rounded-lg p-4'>
           <div className='flex items-start gap-3'>
             <Shield className='h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0' />
             <div className='flex-1'>
-              <h4 className='font-medium text-amber-800 mb-1'>Exempted Absences</h4>
+              <h4 className='font-medium text-amber-800 mb-1'>
+                Exempted Absences
+              </h4>
               <p className='text-sm text-amber-700 mb-2'>
-                Some students have exempted absences. These are marked with a shield icon and count as "present" 
-                for attendance analytics and leaderboard rankings.
+                Some students have exempted absences. These are marked with a
+                shield icon and count as "present" for attendance analytics and
+                leaderboard rankings.
               </p>
               <div className='flex items-center gap-4 text-xs text-amber-600'>
                 <div className='flex items-center gap-1'>
-                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-                    <Shield className='h-3 w-3 mr-1' />
-                    1
+                  <Badge
+                    variant='outline'
+                    className='bg-amber-50 text-amber-700 border-amber-300'
+                  >
+                    <Shield className='h-3 w-3 mr-1' />1
                   </Badge>
                   <span>Exempted absence indicator</span>
                 </div>
@@ -90,14 +104,24 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
                         <span>Learn more</span>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-sm">
-                      <div className="space-y-2">
-                        <p className="font-semibold">How Exempted Absences Work:</p>
-                        <ul className="text-xs space-y-1">
-                          <li>• Program managers can mark students as absent but exempted for legitimate reasons</li>
-                          <li>• Exempted absences count as "present" for attendance percentages</li>
+                    <TooltipContent side='top' className='max-w-sm'>
+                      <div className='space-y-2'>
+                        <p className='font-semibold'>
+                          How Exempted Absences Work:
+                        </p>
+                        <ul className='text-xs space-y-1'>
+                          <li>
+                            • Program managers can mark students as absent but
+                            exempted for legitimate reasons
+                          </li>
+                          <li>
+                            • Exempted absences count as "present" for
+                            attendance percentages
+                          </li>
                           <li>• They don't break attendance streaks</li>
-                          <li>• They don't negatively impact leaderboard rankings</li>
+                          <li>
+                            • They don't negatively impact leaderboard rankings
+                          </li>
                           <li>• They're excluded from absence statistics</li>
                         </ul>
                       </div>

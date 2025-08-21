@@ -1,21 +1,40 @@
 import React from 'react';
-import { HolidayNotice, SessionTabs, AttendanceTable } from '@/components/attendance';
+import {
+  HolidayNotice,
+  SessionTabs,
+  AttendanceTable,
+} from '@/components/attendance';
 import { Logger } from '@/lib/logging/Logger';
+import { toast } from 'sonner';
+import type {
+  Cohort,
+  CohortEpic,
+  CohortStudent,
+  AttendanceRecord,
+} from '@/types/attendance';
 
 interface ManageViewProps {
   isHoliday: boolean;
-  currentHoliday: any;
-  cohort: any;
+  currentHoliday: CohortEpic | null;
+  cohort: Cohort;
   selectedDate: Date;
-  sessions: any[];
+  sessions: {
+    sessionNumber: number;
+    sessionDate: string;
+    isCancelled: boolean;
+  }[];
   selectedSession: number;
-  students: any[];
-  attendanceRecords: any[];
+  students: CohortStudent[];
+  attendanceRecords: AttendanceRecord[];
   isSessionCancelled: boolean;
   isFutureDate: boolean;
   processing: boolean;
   onSessionChange: (session: number) => void;
-  onMarkAttendance: (studentId: string, status: any) => void;
+  onMarkAttendance: (
+    studentId: string,
+    status: 'present' | 'absent' | 'late'
+  ) => void;
+  onResetAttendance?: (studentId: string) => Promise<void>;
 }
 
 export const ManageView: React.FC<ManageViewProps> = ({
@@ -31,7 +50,8 @@ export const ManageView: React.FC<ManageViewProps> = ({
   isFutureDate,
   processing,
   onSessionChange,
-  onMarkAttendance
+  onMarkAttendance,
+  onResetAttendance,
 }) => {
   if (isHoliday && currentHoliday) {
     return (
@@ -60,6 +80,7 @@ export const ManageView: React.FC<ManageViewProps> = ({
         isFutureDate={isFutureDate}
         processing={processing}
         onMarkAttendance={onMarkAttendance}
+        onResetAttendance={onResetAttendance}
       />
     </>
   );
