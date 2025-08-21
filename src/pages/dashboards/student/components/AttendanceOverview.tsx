@@ -461,10 +461,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                     <TrendingUp className='h-5 w-5' />
                     Class Leaderboard
                   </CardTitle>
-                  <CardDescription>
-                    Complete leaderboard for{' '}
-                    {currentEpic.epic?.name || currentEpic.name}
-                  </CardDescription>
+                  <CardDescription>Class performance rankings</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <AttendanceLeaderboard

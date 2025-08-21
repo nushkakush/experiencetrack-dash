@@ -64,13 +64,7 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
 
   return (
     <div className='space-y-4'>
-      {/* Epic Info */}
-      <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-        <Calendar className='h-4 w-4' />
-        <span>
-          Showing performance for: {currentEpic?.name || 'Current Epic'}
-        </span>
-      </div>
+      {/* Epic Info - Removed for student dashboard */}
 
       {/* Exempted Absences Notice */}
       {showExemptedNotice && hasExemptedAbsences && (
