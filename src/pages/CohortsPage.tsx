@@ -35,6 +35,7 @@ import {
   CohortFeatureGate,
   HolidayFeatureGate,
   FeeFeatureGate,
+  AttendanceFeatureGate,
 } from '@/components/common';
 import { toast } from 'sonner';
 
@@ -210,15 +211,17 @@ const CohortsPage = () => {
                 Mark Global Holidays
               </Button>
             </HolidayFeatureGate>
-            <Button
-              variant='outline'
-              onClick={() => setCombinedLeaderboardOpen(true)}
-              className='gap-2'
-              disabled={!cohorts || cohorts.length === 0}
-            >
-              <Trophy className='h-4 w-4' />
-              Combined Leaderboards
-            </Button>
+            <AttendanceFeatureGate action='leaderboard'>
+              <Button
+                variant='outline'
+                onClick={() => setCombinedLeaderboardOpen(true)}
+                className='gap-2'
+                disabled={!cohorts || cohorts.length === 0}
+              >
+                <Trophy className='h-4 w-4' />
+                Combined Leaderboards
+              </Button>
+            </AttendanceFeatureGate>
             <CohortFeatureGate action='create'>
               <Button onClick={() => setWizardOpen(true)} className='gap-2'>
                 <Plus className='h-4 w-4' />
