@@ -1,12 +1,14 @@
 import React from 'react';
-import { Users, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Users, TrendingUp, AlertTriangle, Bell, CheckCircle, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatisticItem, StatisticsGrid } from '@/components/common/statistics';
 import type { CohortStudent, AttendanceRecord } from '@/types/attendance';
+import { calculateAttendanceBreakdown, calculateAbsenceBreakdown } from '@/utils/attendanceCalculations';
 
 interface SessionStatisticsProps {
   students: CohortStudent[];
-  attendanceRecords: AttendanceRecord[]; // Session-specific records
+  attendanceRecords: AttendanceRecord[];
   sessionNumber: number;
   isSessionCancelled?: boolean;
 }
@@ -17,23 +19,13 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
   sessionNumber,
   isSessionCancelled = false,
 }) => {
-  // Calculate session-specific attendance
+  // Calculate attendance breakdown using utility function
+  const attendanceBreakdown = calculateAttendanceBreakdown(attendanceRecords);
+  const absenceBreakdown = calculateAbsenceBreakdown(attendanceRecords);
+  
   const totalStudents = students.length;
-  const presentInSession = attendanceRecords.filter(record => record.status === 'present').length;
-  const absentInSession = attendanceRecords.filter(record => record.status === 'absent').length;
-  const lateInSession = attendanceRecords.filter(record => record.status === 'late').length;
-  const markedInSession = presentInSession + absentInSession + lateInSession;
-  
-  const sessionAttendancePercentage = totalStudents > 0 ? ((presentInSession + lateInSession) / totalStudents) * 100 : 0;
-
-  // Calculate session-specific absences
-  const uninformedAbsentsInSession = attendanceRecords.filter(
-    record => record.status === 'absent' && record.absence_type === 'uninformed'
-  ).length;
-  
-  const informedAbsentsInSession = attendanceRecords.filter(
-    record => record.status === 'absent' && (record.absence_type === 'informed' || record.absence_type === 'exempted')
-  ).length;
+  const markedInSession = attendanceBreakdown.total;
+  const sessionAttendancePercentage = totalStudents > 0 ? (attendanceBreakdown.attended / totalStudents) * 100 : 0;
 
   // Determine session status
   const getSessionStatus = () => {
@@ -41,7 +33,7 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
     if (totalStudents === 0) return { text: 'No Students', variant: 'default' as const };
     if (markedInSession === totalStudents) return { text: 'Complete', variant: 'success' as const };
     if (markedInSession === 0) return { text: 'Not Started', variant: 'default' as const };
-    if (absentInSession > totalStudents * 0.5) return { text: 'Needs Attention', variant: 'error' as const };
+    if (attendanceBreakdown.regularAbsent > totalStudents * 0.5) return { text: 'Needs Attention', variant: 'error' as const };
     return { text: 'In Progress', variant: 'info' as const };
   };
 
@@ -61,9 +53,9 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
-                    Shows attended students (present + late) out of total students for this session.
+                    Shows attended students (present + late + exempted) out of total students for this session.
                     <br /><br />
-                    Calculated as: ({presentInSession} + {lateInSession}) / {totalStudents} = {presentInSession + lateInSession}/{totalStudents}
+                    Calculated as: ({attendanceBreakdown.attended}) / {totalStudents} = {attendanceBreakdown.attended}/{totalStudents}
                     <br /><br />
                     Attendance rate: {sessionAttendancePercentage.toFixed(1)}%
                   </p>
@@ -71,7 +63,7 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
               </Tooltip>
             </div>
           }
-          value={`${presentInSession + lateInSession}/${totalStudents}`}
+          value={`${attendanceBreakdown.attended}/${totalStudents}`}
           subtitle={`${sessionAttendancePercentage.toFixed(1)}% attended this session`}
           variant="default"
         />
@@ -91,7 +83,7 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
                     <br />• Complete: All students marked ({markedInSession}/{totalStudents})
                     <br />• In Progress: Some students marked ({markedInSession}/{totalStudents})
                     <br />• Not Started: No students marked (0/{totalStudents})
-                    <br />• Needs Attention: More than 50% absent ({absentInSession}/{totalStudents})
+                    <br />• Needs Attention: More than 50% absent ({attendanceBreakdown.regularAbsent}/{totalStudents})
                     <br />• Session Cancelled: Session has been cancelled
                     <br /><br />
                     Current: {sessionStatus.text}
@@ -118,19 +110,19 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
                   <p>
                     Number of absences in this session where no reason was provided or the absence type is "uninformed".
                     <br /><br />
-                    Current count: {uninformedAbsentsInSession} out of {absentInSession} total absences
+                    Current count: {absenceBreakdown.uninformed} out of {attendanceBreakdown.regularAbsent} total absences
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={uninformedAbsentsInSession}
+          value={absenceBreakdown.uninformed}
           subtitle="For this session only"
           variant="default"
         />
 
         <StatisticItem
-          icon={<CheckCircle className="h-5 w-5" />}
+          icon={<Bell className="h-5 w-5" />}
           title={
             <div className="flex items-center gap-2">
               Informed Absents
@@ -140,15 +132,15 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
-                    Number of absences in this session where a reason was provided (absence type is "informed" or "exempted").
+                    Number of absences in this session where a reason was provided (absence type is "informed").
                     <br /><br />
-                    Current count: {informedAbsentsInSession} out of {absentInSession} total absences
+                    Current count: {absenceBreakdown.informed} out of {attendanceBreakdown.regularAbsent} total absences
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={informedAbsentsInSession}
+          value={absenceBreakdown.informed}
           subtitle="For this session only"
           variant="default"
         />

@@ -87,7 +87,8 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         const { data: studentsData, error: studentsError } = await supabase
           .from('cohort_students')
           .select('*')
-          .eq('cohort_id', cohortData.id);
+          .eq('cohort_id', cohortData.id)
+          .neq('dropped_out_status', 'dropped_out');
 
         if (studentsError) throw studentsError;
         setStudents(studentsData || []);
@@ -126,7 +127,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         record => record.student_id === studentData.id
       );
 
-      // Calculate basic stats
+      // Calculate basic stats - treat exempted absences as present for analytics
       const totalSessions = studentRecords.length;
       const presentSessions = studentRecords.filter(
         record => record.status === 'present'
@@ -134,14 +135,19 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       const lateSessions = studentRecords.filter(
         record => record.status === 'late'
       ).length;
-      const absentSessions = studentRecords.filter(
-        record => record.status === 'absent'
+      const exemptedSessions = studentRecords.filter(
+        record => record.status === 'absent' && record.absence_type === 'exempted'
       ).length;
-      const attendedSessions = presentSessions + lateSessions;
+      const regularAbsentSessions = studentRecords.filter(
+        record => record.status === 'absent' && record.absence_type !== 'exempted'
+      ).length;
+      
+      // For analytics: present + late + exempted count as attended
+      const attendedSessions = presentSessions + lateSessions + exemptedSessions;
       const attendancePercentage =
         totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
 
-      // Calculate current streak
+      // Calculate current streak - exempted counts as attended
       const sortedRecords = studentRecords.sort(
         (a, b) =>
           new Date(b.session_date).getTime() -
@@ -150,21 +156,23 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
       let currentStreak = 0;
       for (const record of sortedRecords) {
-        if (record.status === 'present' || record.status === 'late') {
+        if (record.status === 'present' || record.status === 'late' || 
+            (record.status === 'absent' && record.absence_type === 'exempted')) {
           currentStreak++;
         } else {
           break;
         }
       }
 
-      // Calculate rank among all students
+      // Calculate rank among all students - exempted counts as attended for all students
       const allStudentStats = students.map(student => {
         const studentRecords = attendanceRecords.filter(
           record => record.student_id === student.id
         );
         const totalSessions = studentRecords.length;
         const attendedSessions = studentRecords.filter(
-          record => record.status === 'present' || record.status === 'late'
+          record => record.status === 'present' || record.status === 'late' || 
+                   (record.status === 'absent' && record.absence_type === 'exempted')
         ).length;
         const attendancePercentage =
           totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
@@ -185,7 +193,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       return {
         totalSessions,
         presentSessions: attendedSessions,
-        absentSessions,
+        absentSessions: regularAbsentSessions,
         lateSessions,
         attendancePercentage,
         currentStreak,

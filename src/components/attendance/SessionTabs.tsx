@@ -26,6 +26,22 @@ export const SessionTabs: React.FC<SessionTabsProps> = ({
     );
   }
 
+  // If only one session, don't show tabs - just show the content directly
+  if (sessions.length === 1) {
+    const session = sessions[0];
+    return (
+      <div className="space-y-4">
+        <SessionStatistics
+          students={students}
+          attendanceRecords={attendanceRecords}
+          sessionNumber={session.sessionNumber}
+          isSessionCancelled={session.isCancelled}
+        />
+      </div>
+    );
+  }
+
+  // Multiple sessions - show tabs
   return (
     <Tabs 
       value={selectedSession.toString()} 

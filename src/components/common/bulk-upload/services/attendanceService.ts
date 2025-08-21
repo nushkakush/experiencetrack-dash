@@ -16,6 +16,7 @@ export class BulkAttendanceService {
         .from('cohort_students')
         .select('email, first_name, last_name')
         .eq('cohort_id', config.cohortId)
+        .neq('dropped_out_status', 'dropped_out')
         .order('first_name');
 
       if (error) throw error;

@@ -33,7 +33,7 @@ export function useCohortDetails(cohortId: string | undefined) {
       }
 
       // Load students
-      const studentsRes = await cohortStudentsService.listByCohort(cohortId);
+      const studentsRes = await cohortStudentsService.listAllByCohort(cohortId);
       setStudents(studentsRes.data || []);
     } catch (error) {
       Logger.getInstance().error("Error loading cohort details", { error, cohortId });

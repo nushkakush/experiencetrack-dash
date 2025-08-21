@@ -8,10 +8,7 @@ import { ValidationUtils } from '@/utils/validation';
 export const useLoginState = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,42 +38,7 @@ export const useLoginState = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
 
-    try {
-      // Validate email domain before attempting signup
-      if (!ValidationUtils.isValidSignupEmail(email)) {
-        toast.error(ValidationUtils.getEmailDomainError());
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            role: 'student',
-          }
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast.success("Account created! Please check your email to confirm your account.");
-      }
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,23 +69,16 @@ export const useLoginState = () => {
   return {
     email,
     password,
-    firstName,
-    lastName,
     showPassword,
-    showSignupPassword,
     showForgotPassword,
     resetEmail,
     loading,
     setEmail,
     setPassword,
-    setFirstName,
-    setLastName,
     setShowPassword,
-    setShowSignupPassword,
     setShowForgotPassword,
     setResetEmail,
     handleSignIn,
-    handleSignUp,
     handleForgotPassword,
     handleBackToSignIn
   };

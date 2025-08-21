@@ -11,6 +11,7 @@ import {
   StudentPaymentTable,
   PaymentTransactionTable,
   CommunicationHistoryTable,
+  UserCohortAssignmentTable,
 } from './tables';
 import { AttendanceSummaryView } from './views';
 import {
@@ -54,6 +55,7 @@ export type DatabaseTables = {
   student_payments: StudentPaymentTable
   payment_transactions: PaymentTransactionTable
   communication_history: CommunicationHistoryTable
+  user_cohort_assignments: UserCohortAssignmentTable
 }
 
 export type DatabaseViews = {

@@ -1,4 +1,5 @@
 import type { CohortStudent, AttendanceRecord } from '@/types/attendance';
+import { calculateAttendanceBreakdown, calculateCurrentStreak, getAttendanceColor } from '@/utils/attendanceCalculations';
 
 export interface StudentStats {
   student: CohortStudent;
@@ -19,24 +20,21 @@ export class StatisticsCalculator {
       // Get all attendance records for this student in current epic
       const studentRecords = attendanceRecords.filter(record => record.student_id === student.id);
       
-      // Calculate basic stats
-      const totalSessions = studentRecords.length;
-      const presentSessions = studentRecords.filter(record => record.status === 'present').length;
-      const lateSessions = studentRecords.filter(record => record.status === 'late').length;
-      const absentSessions = studentRecords.filter(record => record.status === 'absent').length;
-      const attendedSessions = presentSessions + lateSessions; // Both present and late count as attended
-      const attendancePercentage = totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
+      // Calculate attendance breakdown using utility function
+      const breakdown = calculateAttendanceBreakdown(studentRecords);
       
-      // Calculate current streak (consecutive days of attendance)
-      const currentStreak = this.calculateCurrentStreak(studentRecords);
+      // Calculate current streak using utility function
+      const sortedRecords = studentRecords
+        .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
+      const currentStreak = calculateCurrentStreak(sortedRecords);
 
       return {
         student,
-        attendancePercentage,
-        absentDays: absentSessions,
+        attendancePercentage: breakdown.attendancePercentage,
+        absentDays: breakdown.regularAbsent, // Only count non-exempted absences
         currentStreak,
-        totalSessions,
-        presentSessions: attendedSessions, // This represents attended sessions (present + late)
+        totalSessions: breakdown.total,
+        presentSessions: breakdown.attended, // This represents attended sessions (present + late + exempted)
         rank: 0, // Will be set after sorting
       };
     });
@@ -61,31 +59,22 @@ export class StatisticsCalculator {
     const sortedRecords = studentRecords
       .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
     
-    let currentStreak = 0;
-    for (const record of sortedRecords) {
-      if (record.status === 'present' || record.status === 'late') {
-        currentStreak++;
-      } else {
-        break;
-      }
-    }
-    
-    return currentStreak;
+    return calculateCurrentStreak(sortedRecords);
   }
 
   static getAttendanceColor(percentage: number): string {
-    if (percentage >= 95) return 'text-green-600 font-semibold';
-    if (percentage >= 85) return 'text-blue-600 font-semibold';
-    if (percentage >= 75) return 'text-yellow-600 font-semibold';
-    return 'text-red-600 font-semibold';
+    return getAttendanceColor(percentage);
   }
 
   static getSessionBreakdown(studentId: string, attendanceRecords: AttendanceRecord[]) {
     const records = attendanceRecords.filter(r => r.student_id === studentId);
+    const breakdown = calculateAttendanceBreakdown(records);
+    
     return {
-      present: records.filter(r => r.status === 'present').length,
-      late: records.filter(r => r.status === 'late').length,
-      absent: records.filter(r => r.status === 'absent').length,
+      present: breakdown.present,
+      late: breakdown.late,
+      absent: breakdown.regularAbsent, // Exclude exempted from absent count
+      exempted: breakdown.exempted, // Separate exempted count
     };
   }
 }

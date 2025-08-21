@@ -1,33 +1,55 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { SEO, PageSEO } from '@/components/common';
+import { useAuth } from '@/hooks/useAuth';
 import { useLoginState } from './login/hooks';
 import { ForgotPasswordForm, MainLoginForm } from './login/components';
 
 const Login = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  
   const {
     email,
     password,
-    firstName,
-    lastName,
     showPassword,
-    showSignupPassword,
     showForgotPassword,
     resetEmail,
     loading,
     setEmail,
     setPassword,
-    setFirstName,
-    setLastName,
     setShowPassword,
-    setShowSignupPassword,
     setShowForgotPassword,
     setResetEmail,
     handleSignIn,
-    handleSignUp,
     handleForgotPassword,
     handleBackToSignIn,
   } = useLoginState();
+
+  // Auto-redirect if user is already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if user is already authenticated
+  if (user) {
+    return null;
+  }
 
   if (showForgotPassword) {
     return (
@@ -56,22 +78,13 @@ const Login = () => {
       <MainLoginForm
         email={email}
         password={password}
-        firstName={firstName}
-        lastName={lastName}
         showPassword={showPassword}
-        showSignupPassword={showSignupPassword}
         loading={loading}
         onEmailChange={e => setEmail(e.target.value)}
         onPasswordChange={e => setPassword(e.target.value)}
-        onFirstNameChange={e => setFirstName(e.target.value)}
-        onLastNameChange={e => setLastName(e.target.value)}
         onTogglePassword={() => setShowPassword(!showPassword)}
-        onToggleSignupPassword={() =>
-          setShowSignupPassword(!showSignupPassword)
-        }
         onForgotPassword={() => setShowForgotPassword(true)}
         onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
       />
     </>
   );

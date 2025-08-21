@@ -1,9 +1,10 @@
 import React from 'react';
-import { Users, TrendingUp, AlertTriangle, Bell, CheckCircle, Crown, Info } from 'lucide-react';
+import { Users, TrendingUp, AlertTriangle, Bell, CheckCircle, Crown, Info, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatisticItem, StatisticsGrid } from '@/components/common/statistics';
 import type { CohortStudent, AttendanceRecord, CohortEpic } from '@/types/attendance';
+import { calculateAttendanceBreakdown, calculateAbsenceBreakdown } from '@/utils/attendanceCalculations';
 
 interface AttendanceStatisticsProps {
   students: CohortStudent[];
@@ -30,23 +31,12 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
   // For epic mode, use all epic records (no date filtering needed)
   const epicRecords = mode === 'epic' ? recordsToUse : attendanceRecords;
 
-  // Calculate attendance based on the mode
-  const totalStudents = students.length;
-  const presentInEpic = epicRecords.filter(record => record.status === 'present').length;
-  const absentInEpic = epicRecords.filter(record => record.status === 'absent').length;
-  const lateInEpic = epicRecords.filter(record => record.status === 'late').length;
-  const totalSessionsInEpic = epicRecords.length;
-  
-  const epicAttendancePercentage = totalSessionsInEpic > 0 ? ((presentInEpic + lateInEpic) / totalSessionsInEpic) * 100 : 0;
+  // Calculate attendance breakdown using utility function
+  const attendanceBreakdown = calculateAttendanceBreakdown(epicRecords);
+  const absenceBreakdown = calculateAbsenceBreakdown(epicRecords);
 
-  // Calculate absences for epic
-  const uninformedAbsentsInEpic = epicRecords.filter(
-    record => record.status === 'absent' && record.absence_type === 'uninformed'
-  ).length;
-  
-  const informedAbsentsInEpic = epicRecords.filter(
-    record => record.status === 'absent' && (record.absence_type === 'informed' || record.absence_type === 'exempted')
-  ).length;
+  // Check if there are any exempted absences
+  const hasExemptedAbsences = attendanceBreakdown.exempted > 0;
 
   // Calculate top streak across all students (always use epic records for streaks)
   const calculateTopStreak = () => {
@@ -64,10 +54,11 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
       const sortedRecords = studentRecords
         .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
       
-      // Calculate current streak for this student
+      // Calculate current streak for this student - exempted counts as attended
       let currentStreak = 0;
       for (const record of sortedRecords) {
-        if (record.status === 'present' || record.status === 'late') {
+        if (record.status === 'present' || record.status === 'late' || 
+            (record.status === 'absent' && record.absence_type === 'exempted')) {
           currentStreak++;
         } else {
           break;
@@ -88,11 +79,12 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
 
   // Determine attendance status for epic
   const getEpicStatus = () => {
+    const totalStudents = students.length;
     if (totalStudents === 0) return { text: 'No Students', variant: 'default' as const };
-    if (totalSessionsInEpic === 0) return { text: 'No Sessions', variant: 'default' as const };
-    if (epicAttendancePercentage >= 90) return { text: 'Excellent', variant: 'success' as const };
-    if (epicAttendancePercentage >= 75) return { text: 'Good', variant: 'info' as const };
-    if (epicAttendancePercentage >= 60) return { text: 'Fair', variant: 'warning' as const };
+    if (attendanceBreakdown.total === 0) return { text: 'No Sessions', variant: 'default' as const };
+    if (attendanceBreakdown.attendancePercentage >= 90) return { text: 'Excellent', variant: 'success' as const };
+    if (attendanceBreakdown.attendancePercentage >= 75) return { text: 'Good', variant: 'info' as const };
+    if (attendanceBreakdown.attendancePercentage >= 60) return { text: 'Fair', variant: 'warning' as const };
     return { text: 'Needs Attention', variant: 'error' as const };
   };
 
@@ -101,9 +93,9 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
   // Determine subtitle based on mode
   const getAttendanceSubtitle = () => {
     if (mode === 'epic') {
-      return `${epicAttendancePercentage.toFixed(1)}% overall attendance`;
+      return `${attendanceBreakdown.attendancePercentage.toFixed(1)}% overall attendance`;
     } else {
-      return `${epicAttendancePercentage.toFixed(1)}% attended this session`;
+      return `${attendanceBreakdown.attendancePercentage.toFixed(1)}% attended this session`;
     }
   };
 
@@ -117,7 +109,21 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
 
   return (
     <TooltipProvider>
-      <StatisticsGrid columns={5}>
+      <div className="space-y-4">
+        {/* Exempted Absences Notice */}
+        {hasExemptedAbsences && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-sm text-amber-800">
+              <Shield className="h-4 w-4 text-amber-600" />
+              <span>
+                <strong>{attendanceBreakdown.exempted} exempted absence{attendanceBreakdown.exempted !== 1 ? 's' : ''}</strong> 
+                {' '}included in attendance calculations. These count as "present" for analytics purposes.
+              </span>
+            </div>
+          </div>
+        )}
+
+        <StatisticsGrid columns={5}>
         <StatisticItem
           icon={<Users className="h-5 w-5" />}
           title={
@@ -130,15 +136,15 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                 <TooltipContent className="max-w-xs">
                   <p>
                     {mode === 'epic' 
-                      ? `Shows total attended sessions (present + late) out of all sessions in this epic. Calculated as: (${presentInEpic} + ${lateInEpic}) / ${totalSessionsInEpic} = ${presentInEpic + lateInEpic}/${totalSessionsInEpic}`
-                      : `Shows attended students (present + late) out of total students for this session. Calculated as: (${presentInEpic} + ${lateInEpic}) / ${totalStudents} = ${presentInEpic + lateInEpic}/${totalStudents}`
+                      ? `Shows total attended sessions (present + late + exempted) out of all sessions in this epic. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${attendanceBreakdown.total} = ${attendanceBreakdown.attended}/${attendanceBreakdown.total}`
+                      : `Shows attended students (present + late + exempted) out of total students for this session. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${students.length} = ${attendanceBreakdown.attended}/${students.length}`
                     }
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={`${presentInEpic + lateInEpic}/${mode === 'epic' ? totalSessionsInEpic : totalStudents}`}
+          value={`${attendanceBreakdown.attended}/${mode === 'epic' ? attendanceBreakdown.total : students.length}`}
           subtitle={getAttendanceSubtitle()}
           variant="default"
         />
@@ -155,15 +161,15 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                 <TooltipContent className="max-w-xs">
                   <p>
                     {mode === 'epic'
-                      ? `Epic attendance rate calculated as: (attended sessions / total sessions) × 100 = (${presentInEpic + lateInEpic} / ${totalSessionsInEpic}) × 100 = ${epicAttendancePercentage.toFixed(1)}%`
-                      : `Session attendance rate calculated as: (attended students / total students) × 100 = (${presentInEpic + lateInEpic} / ${totalStudents}) × 100 = ${epicAttendancePercentage.toFixed(1)}%`
+                      ? `Epic attendance rate calculated as: (attended sessions / total sessions) × 100 = (${attendanceBreakdown.attended} / ${attendanceBreakdown.total}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`
+                      : `Session attendance rate calculated as: (attended students / total students) × 100 = (${attendanceBreakdown.attended} / ${students.length}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`
                     }
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={`${epicAttendancePercentage.toFixed(1)}%`}
+          value={`${attendanceBreakdown.attendancePercentage.toFixed(1)}%`}
           subtitle={mode === 'epic' ? "Epic attendance rate" : "Session attendance rate"}
           variant="default"
         />
@@ -185,7 +191,7 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                     <br />• ≥60%: Fair (Yellow)
                     <br />• &lt;60%: Needs Attention (Red)
                     <br /><br />
-                    Current: {epicAttendancePercentage.toFixed(1)}% = {epicStatus.text}
+                    Current: {attendanceBreakdown.attendancePercentage.toFixed(1)}% = {epicStatus.text}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -213,7 +219,7 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                 <TooltipContent className="max-w-xs">
                   <p>
                     Longest current consecutive attendance streak across all students. 
-                    Counts both present and late as attended. 
+                    Counts present, late, and exempted as attended. 
                     {topStreakData.value > 0 && (
                       <>
                         <br /><br />
@@ -247,17 +253,18 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                       : ` Counts for this session only.`
                     }
                     <br /><br />
-                    Current count: {uninformedAbsentsInEpic}
+                    Current count: {absenceBreakdown.uninformed}
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={uninformedAbsentsInEpic}
+          value={absenceBreakdown.uninformed}
           subtitle={getAbsentSubtitle()}
           variant="default"
         />
-      </StatisticsGrid>
+        </StatisticsGrid>
+      </div>
     </TooltipProvider>
   );
 };

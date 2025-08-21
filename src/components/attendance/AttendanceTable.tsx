@@ -1,7 +1,10 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { CohortStudent, AttendanceRecord, AttendanceStatus } from '@/types/attendance';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Shield, Info } from 'lucide-react';
+import type { CohortStudent, AttendanceRecord } from '@/types/attendance';
 
 interface AttendanceTableProps {
   students: CohortStudent[];
@@ -9,7 +12,7 @@ interface AttendanceTableProps {
   isSessionCancelled: boolean;
   isFutureDate: boolean;
   processing: boolean;
-  onMarkAttendance: (studentId: string, status: AttendanceStatus) => void;
+  onMarkAttendance: (studentId: string, status: 'present' | 'absent' | 'late') => void;
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({
@@ -20,34 +23,53 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   processing,
   onMarkAttendance,
 }) => {
-  const getAttendanceStatus = (studentId: string): string => {
-    const record = attendanceRecords.find(r => r.student_id === studentId);
-    return record?.status || 'unmarked';
+  const getAttendanceStatus = (studentId: string) => {
+    return attendanceRecords.find(record => record.student_id === studentId);
   };
 
-  const getButtonVariant = (studentId: string, status: AttendanceStatus): "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" => {
-    const currentStatus = getAttendanceStatus(studentId);
-    return currentStatus === status ? 'default' : 'outline';
+  const getButtonVariant = (studentId: string, status: 'present' | 'absent' | 'late') => {
+    const attendance = getAttendanceStatus(studentId);
+    if (!attendance) return 'outline';
+    return attendance.status === status ? 'default' : 'outline';
   };
 
-  const getButtonClassName = (studentId: string, status: AttendanceStatus): string => {
-    const currentStatus = getAttendanceStatus(studentId);
-    const baseClasses = "transition-all duration-200";
+  const getButtonClassName = (studentId: string, status: 'present' | 'absent' | 'late') => {
+    const attendance = getAttendanceStatus(studentId);
+    if (!attendance) return '';
     
-    if (currentStatus === status) {
-      switch (status) {
-        case 'present':
-          return `${baseClasses} bg-green-600 hover:bg-green-700 text-white border-green-600`;
-        case 'absent':
-          return `${baseClasses} bg-red-600 hover:bg-red-700 text-white border-red-600`;
-        case 'late':
-          return `${baseClasses} bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600`;
-        default:
-          return baseClasses;
+    if (attendance.status === status) {
+      if (status === 'absent' && attendance.absence_type === 'exempted') {
+        return 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500';
       }
+      return '';
     }
+    return '';
+  };
+
+  const hasExemptedAbsence = (studentId: string) => {
+    const attendance = getAttendanceStatus(studentId);
+    return attendance?.status === 'absent' && attendance?.absence_type === 'exempted';
+  };
+
+  const getExemptedTooltipContent = (studentId: string) => {
+    const attendance = getAttendanceStatus(studentId);
+    if (!attendance || attendance.absence_type !== 'exempted') return '';
     
-    return `${baseClasses} hover:bg-gray-50`;
+    return (
+      <div className="max-w-xs">
+        <p className="font-semibold mb-2">Exempted Absence</p>
+        <p className="text-sm mb-2">
+          This student is marked as absent but exempted for a legitimate reason.
+        </p>
+        <p className="text-sm mb-2">
+          <strong>Reason:</strong> {attendance.reason || 'No reason provided'}
+        </p>
+        <p className="text-sm text-amber-200">
+          <strong>Impact:</strong> This absence counts as "present" for attendance analytics, 
+          leaderboards, and streak calculations.
+        </p>
+      </div>
+    );
   };
 
   const getRowClasses = (isCancelled: boolean) => {
@@ -67,11 +89,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   }
 
   return (
-    <div className="mt-6 pt-6 border-t">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Student Name</TableHead>
+            <TableHead>Student</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead className="text-center">Attendance</TableHead>
@@ -80,10 +102,29 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
         <TableBody>
           {students.map(student => {
             const attendanceStatus = getAttendanceStatus(student.id);
+            const isExempted = hasExemptedAbsence(student.id);
+
             return (
-              <TableRow key={`${student.id}-${attendanceStatus}`} className={getRowClasses(isSessionCancelled)}>
+              <TableRow key={student.id} className={getRowClasses(isSessionCancelled)}>
                 <TableCell className="font-medium">
-                  {student.first_name} {student.last_name}
+                  <div className="flex items-center gap-2">
+                    {student.first_name} {student.last_name}
+                    {isExempted && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Exempted
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {getExemptedTooltipContent(student.id)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{student.email}</TableCell>
                 <TableCell className="text-muted-foreground">{student.phone || 'N/A'}</TableCell>
@@ -105,7 +146,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                       onClick={() => onMarkAttendance(student.id, 'absent')}
                       disabled={isSessionCancelled || isFutureDate || processing}
                     >
-                      Absent
+                      {isExempted ? 'Exempted' : 'Absent'}
                     </Button>
                     <Button
                       size="sm"

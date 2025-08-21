@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 interface StatisticItemProps {
   icon?: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   value: string | number;
   subtitle?: string;
   badge?: React.ReactNode;

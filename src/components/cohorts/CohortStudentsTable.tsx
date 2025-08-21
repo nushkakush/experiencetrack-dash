@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -8,7 +8,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Logger } from '@/lib/logging/Logger';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -22,12 +23,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Separator } from '@/components/ui/separator';
 import EditStudentDialog from './EditStudentDialog';
 import StudentScholarshipDialog from './StudentScholarshipDialog';
 import PaymentPlanDialog from './PaymentPlanDialog';
 import AvatarUpload from './AvatarUpload';
+import MarkDroppedOutDialog from './MarkDroppedOutDialog';
 import { CohortStudent } from '@/types/cohort';
-import { Scholarship } from '@/types/fee';
+import { Scholarship, StudentScholarshipWithDetails } from '@/types/fee';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { studentPaymentPlanService, StudentPaymentPlan } from '@/services/studentPaymentPlan.service';
@@ -35,6 +38,7 @@ import { FeeStructureService } from '@/services/feeStructure.service';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { toast } from 'sonner';
+import { Logger } from '@/lib/logging/Logger';
 import {
   Edit2,
   Award,
@@ -43,6 +47,10 @@ import {
   UserPlus,
   CheckCircle,
   CreditCard,
+  Search,
+  Filter,
+  X,
+  UserX,
 } from 'lucide-react';
 
 interface CohortStudentsTableProps {
@@ -67,6 +75,14 @@ export default function CohortStudentsTable({
 }: CohortStudentsTableProps) {
   const { profile } = useAuth();
   const { hasPermission } = useFeaturePermissions();
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [scholarshipFilter, setScholarshipFilter] = useState<string>('all');
+  const [paymentPlanFilter, setPaymentPlanFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(
     null
   );
@@ -92,10 +108,52 @@ export default function CohortStudentsTable({
   >({});
   const [isFeeSetupComplete, setIsFeeSetupComplete] = useState<boolean>(false);
   const [loadingFeeSetup, setLoadingFeeSetup] = useState<boolean>(true);
+  const [droppedOutDialogOpen, setDroppedOutDialogOpen] = useState(false);
+  const [selectedStudentForDropout, setSelectedStudentForDropout] = useState<CohortStudent | null>(null);
 
   const canManageStudents = hasPermission('cohorts.manage_students');
   const canEditStudents = hasPermission('cohorts.edit_students');
   const canAssignScholarships = hasPermission('cohorts.assign_scholarships');
+
+  // Filtered students based on search and filters
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      // Search filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = searchQuery === '' || 
+        student.first_name?.toLowerCase().includes(searchLower) ||
+        student.last_name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower);
+
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || student.invite_status === statusFilter;
+
+      // Scholarship filter
+      const hasScholarship = scholarshipAssignments[student.id];
+      const matchesScholarship = scholarshipFilter === 'all' || 
+        (scholarshipFilter === 'assigned' && hasScholarship) ||
+        (scholarshipFilter === 'not_assigned' && !hasScholarship);
+
+      // Payment plan filter
+      const hasPaymentPlan = paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan;
+      const matchesPaymentPlan = paymentPlanFilter === 'all' || 
+        (paymentPlanFilter === 'assigned' && hasPaymentPlan) ||
+        (paymentPlanFilter === 'not_assigned' && !hasPaymentPlan);
+
+      return matchesSearch && matchesStatus && matchesScholarship && matchesPaymentPlan;
+    });
+  }, [students, searchQuery, statusFilter, scholarshipFilter, paymentPlanFilter, scholarshipAssignments, paymentPlanAssignments, paymentPlanDetails]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setScholarshipFilter('all');
+    setPaymentPlanFilter('all');
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || scholarshipFilter !== 'all' || paymentPlanFilter !== 'all';
 
   // Check if fee setup is complete for this cohort
   const checkFeeSetupCompletion = useCallback(async () => {
@@ -332,6 +390,19 @@ export default function CohortStudentsTable({
     }, 200);
   };
 
+  const handleMarkAsDroppedOut = (student: CohortStudent) => {
+    setSelectedStudentForDropout(student);
+    setDroppedOutDialogOpen(true);
+  };
+
+  const handleDroppedOutSuccess = () => {
+    onStudentDeleted(); // Refresh the data
+  };
+
+  const handleReverted = () => {
+    onStudentDeleted(); // Refresh the data
+  };
+
   // Check fee setup completion when students change
   useEffect(() => {
     checkFeeSetupCompletion();
@@ -372,22 +443,263 @@ export default function CohortStudentsTable({
     );
   }
 
-  if (students.length === 0) {
-    return (
-      <div className='text-center py-8'>
-        <UserPlus className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-        <h3 className='text-lg font-medium text-gray-900 mb-2'>
-          No Students Found
-        </h3>
-        <p className='text-gray-600'>
-          Add students to the cohort to see them here.
-        </p>
-      </div>
-    );
+  if (filteredStudents.length === 0) {
+    if (students.length === 0) {
+      return (
+        <div className='text-center py-8'>
+          <UserPlus className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+          <h3 className='text-lg font-medium text-gray-900 mb-2'>
+            No Students Found
+          </h3>
+          <p className='text-gray-600'>
+            Add students to the cohort to see them here.
+          </p>
+        </div>
+      );
+    } else {
+      return (
+        <div className='space-y-4'>
+          {/* Search and Filter Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {hasActiveFilters && (
+                    <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
+                      {[searchQuery, statusFilter, scholarshipFilter, paymentPlanFilter].filter(f => f !== 'all' && f !== '').length}
+                    </Badge>
+                  )}
+                </Button>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                0 of {students.length} students
+              </div>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search students by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Filters */}
+            {showFilters && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="sent">Sent</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {canAssignScholarships && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Scholarship</label>
+                      <Select value={scholarshipFilter} onValueChange={setScholarshipFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Filter by scholarship" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Students</SelectItem>
+                          <SelectItem value="assigned">With Scholarship</SelectItem>
+                          <SelectItem value="not_assigned">Without Scholarship</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {canAssignScholarships && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Payment Plan</label>
+                      <Select value={paymentPlanFilter} onValueChange={setPaymentPlanFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Filter by payment plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Students</SelectItem>
+                          <SelectItem value="assigned">With Payment Plan</SelectItem>
+                          <SelectItem value="not_assigned">Without Payment Plan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* No Results Message */}
+          <div className='text-center py-8'>
+            <Search className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>
+              No Students Match Your Filters
+            </h3>
+            <p className='text-gray-600 mb-4'>
+              Try adjusting your search terms or filters to find the students you're looking for.
+            </p>
+            <Button
+              variant="outline"
+              onClick={clearFilters}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Clear All Filters
+            </Button>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (
     <div className='space-y-4'>
+      {/* Search and Filter Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
+                  {[searchQuery, statusFilter, scholarshipFilter, paymentPlanFilter].filter(f => f !== 'all' && f !== '').length}
+                </Badge>
+              )}
+            </Button>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {filteredStudents.length} of {students.length} students
+          </div>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search students by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <>
+            <Separator />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {canAssignScholarships && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Scholarship</label>
+                  <Select value={scholarshipFilter} onValueChange={setScholarshipFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by scholarship" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Students</SelectItem>
+                      <SelectItem value="assigned">With Scholarship</SelectItem>
+                      <SelectItem value="not_assigned">Without Scholarship</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {canAssignScholarships && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Payment Plan</label>
+                  <Select value={paymentPlanFilter} onValueChange={setPaymentPlanFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by payment plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Students</SelectItem>
+                      <SelectItem value="assigned">With Payment Plan</SelectItem>
+                      <SelectItem value="not_assigned">Without Payment Plan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Results Summary */}
+      {hasActiveFilters && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Showing {filteredStudents.length} of {students.length} students</span>
+          {filteredStudents.length === 0 && (
+            <span className="text-amber-600">No students match your filters</span>
+          )}
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -400,7 +712,7 @@ export default function CohortStudentsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {students.map(student => (
+          {filteredStudents.map(student => (
             <TableRow key={student.id}>
               <TableCell>
                 <div className='flex items-center space-x-3'>
@@ -429,22 +741,29 @@ export default function CohortStudentsTable({
               <TableCell>{student.email}</TableCell>
               <TableCell>{student.phone || '-'}</TableCell>
               <TableCell>
-                <Badge
-                  variant={
-                    student.invite_status === 'accepted'
-                      ? 'default'
-                      : 'secondary'
-                  }
-                  className={
-                    student.invite_status === 'accepted'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : student.invite_status === 'sent'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                  }
-                >
-                  {student.invite_status}
-                </Badge>
+                <div className='flex items-center gap-2'>
+                  <Badge
+                    variant={
+                      student.invite_status === 'accepted'
+                        ? 'default'
+                        : 'secondary'
+                    }
+                    className={
+                      student.invite_status === 'accepted'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : student.invite_status === 'sent'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                    }
+                  >
+                    {student.invite_status}
+                  </Badge>
+                  {student.dropped_out_status === 'dropped_out' && (
+                    <Badge variant="destructive" className="text-xs">
+                      Dropped Out
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
               {canAssignScholarships && (
                 <TableCell>
@@ -585,6 +904,16 @@ export default function CohortStudentsTable({
                       </Button>
                     )}
 
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => handleMarkAsDroppedOut(student)}
+                      className='h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+                      title={student.dropped_out_status === 'dropped_out' ? 'View dropout details' : 'Mark as dropped out'}
+                    >
+                      <UserX className='h-4 w-4' />
+                    </Button>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -626,6 +955,15 @@ export default function CohortStudentsTable({
           ))}
         </TableBody>
       </Table>
+
+      {/* Mark Dropped Out Dialog */}
+      <MarkDroppedOutDialog
+        open={droppedOutDialogOpen}
+        onOpenChange={setDroppedOutDialogOpen}
+        student={selectedStudentForDropout}
+        onMarkedAsDroppedOut={handleDroppedOutSuccess}
+        onReverted={handleReverted}
+      />
     </div>
   );
 }

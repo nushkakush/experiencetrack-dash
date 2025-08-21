@@ -162,7 +162,14 @@ const App = () => {
                   basename='/'
                 >
                   <Routes>
-                    <Route path='/' element={<Navigate to='/auth' replace />} />
+                    <Route 
+                      path='/' 
+                      element={
+                        <ProtectedRoute>
+                          <Navigate to='/dashboard' replace />
+                        </ProtectedRoute>
+                      } 
+                    />
                     <Route path='/auth' element={<Login />} />
                     <Route path='/reset-password' element={<ResetPassword />} />
                     <Route

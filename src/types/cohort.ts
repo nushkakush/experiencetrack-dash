@@ -67,6 +67,10 @@ export interface CohortStudent {
   invitation_token?: string | null;
   invitation_expires_at?: string | null;
   invited_by?: string | null;
+  dropped_out_status: 'active' | 'dropped_out';
+  dropped_out_reason?: string | null;
+  dropped_out_at?: string | null;
+  dropped_out_by?: string | null;
   created_at: string;
   updated_at: string;
 }

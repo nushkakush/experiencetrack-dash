@@ -77,11 +77,12 @@ export class PaymentQueryService {
    */
   async getStudentPaymentSummary(cohortId: string): Promise<ApiResponse<StudentPaymentSummary[]>> {
     try {
-      // First, get all students in the cohort
+      // Get all students in the cohort
       const { data: students, error: studentsError } = await supabase
         .from('cohort_students')
         .select('*')
-        .eq('cohort_id', cohortId);
+        .eq('cohort_id', cohortId)
+        .neq('dropped_out_status', 'dropped_out');
 
       if (studentsError) {
         Logger.getInstance().error('getStudentPaymentSummary: Students query error', { error: studentsError, cohortId });

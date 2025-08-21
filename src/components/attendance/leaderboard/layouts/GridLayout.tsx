@@ -1,114 +1,209 @@
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Shield, Info, Trophy, TrendingUp, Users, Calendar } from 'lucide-react';
 import { StatisticsCalculator } from '../utils/statisticsCalculator';
-import { RankingUtils } from '../utils/rankingUtils';
 import type { StudentStats } from '../utils/statisticsCalculator';
 import type { AttendanceRecord } from '@/types/attendance';
 
 interface GridLayoutProps {
   studentStats: StudentStats[];
   attendanceRecords: AttendanceRecord[];
-  hideFields: ('email' | 'late' | 'absent')[];
+  hideFields?: ('email' | 'late' | 'absent')[];
 }
 
 export const GridLayout: React.FC<GridLayoutProps> = ({
   studentStats,
   attendanceRecords,
-  hideFields,
+  hideFields = [],
 }) => {
-  const top3Students = studentStats.filter(stat => stat.rank <= 3);
-  const restStudents = studentStats.filter(stat => stat.rank > 3);
+  const getAttendanceColor = (percentage: number) => {
+    if (percentage >= 95) return 'text-green-600';
+    if (percentage >= 85) return 'text-blue-600';
+    if (percentage >= 75) return 'text-yellow-600';
+    return 'text-red-600';
+  };
 
-  const renderStudentCard = (stat: StudentStats, isTop3: boolean = false) => {
-    const sessionBreakdown = StatisticsCalculator.getSessionBreakdown(
-      stat.student.id,
-      attendanceRecords
+  const getRankIcon = (rank: number) => {
+    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
+    if (rank === 2) return <Trophy className="h-5 w-5 text-gray-400" />;
+    if (rank === 3) return <Trophy className="h-5 w-5 text-amber-600" />;
+    return null;
+  };
+
+  const hasExemptedAbsences = (studentId: string) => {
+    const studentRecords = attendanceRecords.filter(record => record.student_id === studentId);
+    return studentRecords.some(record => 
+      record.status === 'absent' && record.absence_type === 'exempted'
+    );
+  };
+
+  const getExemptedCount = (studentId: string) => {
+    const studentRecords = attendanceRecords.filter(record => record.student_id === studentId);
+    return studentRecords.filter(record => 
+      record.status === 'absent' && record.absence_type === 'exempted'
+    ).length;
+  };
+
+  const getExemptedTooltipContent = (studentId: string) => {
+    const exemptedCount = getExemptedCount(studentId);
+    const studentRecords = attendanceRecords.filter(record => record.student_id === studentId);
+    const exemptedRecords = studentRecords.filter(record => 
+      record.status === 'absent' && record.absence_type === 'exempted'
     );
 
     return (
-      <div
-        key={stat.student.id}
-        className={`px-4 py-3 rounded-lg border transition-all ${
-          stat.rank <= 3 
-            ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300 dark:from-yellow-900/20 dark:to-orange-900/20 dark:border-yellow-700/50 dark:text-white shadow-sm' 
-            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-sm dark:hover:shadow-gray-900/20'
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          {/* Left: Rank and Name */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {RankingUtils.getRankBadge(stat.rank)}
-            <div className="min-w-0 flex-1">
-              <span className="font-semibold text-sm truncate dark:text-white">
-                {stat.student.first_name} {stat.student.last_name}
-              </span>
-              {!hideFields.includes('email') && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {stat.student.email}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Stats */}
-          <div className="flex items-center gap-4">
-            {/* Attendance Percentage */}
-            <div className="text-right">
-              <div className={`text-lg font-bold ${StatisticsCalculator.getAttendanceColor(stat.attendancePercentage)}`}>
-                {stat.attendancePercentage.toFixed(1)}%
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">attendance</div>
-            </div>
-
-            {/* Present Count */}
-            <div className="text-center">
-              <div className="font-medium text-green-600 dark:text-green-400">{sessionBreakdown.present}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Present</div>
-            </div>
-
-            {/* Late Count - conditionally shown */}
-            {!hideFields.includes('late') && (
-              <div className="text-center">
-                <div className="font-medium text-yellow-600 dark:text-yellow-400">{sessionBreakdown.late}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Late</div>
-              </div>
+      <div className="max-w-xs">
+        <p className="font-semibold mb-2">Exempted Absences</p>
+        <p className="text-sm mb-2">
+          This student has {exemptedCount} exempted absence{exemptedCount !== 1 ? 's' : ''}.
+        </p>
+        <p className="text-sm mb-2">
+          <strong>Impact on Leaderboard:</strong>
+        </p>
+        <ul className="text-sm text-amber-200 space-y-1">
+          <li>• Exempted absences count as "present" for attendance percentage</li>
+          <li>• They don't break attendance streaks</li>
+          <li>• They don't negatively impact rankings</li>
+          <li>• They're excluded from absence statistics</li>
+        </ul>
+        {exemptedRecords.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-amber-300">
+            <p className="text-xs text-amber-200 font-semibold">Recent Exempted Absences:</p>
+            {exemptedRecords.slice(0, 2).map((record, index) => (
+              <p key={index} className="text-xs text-amber-200">
+                • {new Date(record.session_date).toLocaleDateString()}: {record.reason || 'No reason provided'}
+              </p>
+            ))}
+            {exemptedRecords.length > 2 && (
+              <p className="text-xs text-amber-200">... and {exemptedRecords.length - 2} more</p>
             )}
-
-            {/* Absent Count - conditionally shown */}
-            {!hideFields.includes('absent') && (
-              <div className="text-center">
-                <div className="font-medium text-red-600 dark:text-red-400">{sessionBreakdown.absent}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Absent</div>
-              </div>
-            )}
-
-            {/* Streak */}
-            <div className="text-center">
-              <div className="flex items-center justify-center">
-                {RankingUtils.getStreakBadge(stat.currentStreak)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Streak</div>
-            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top 3 Students - Single Row */}
-      {top3Students.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {top3Students.map((stat) => renderStudentCard(stat, true))}
-        </div>
-      )}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {studentStats.map((stat) => {
+        const isExempted = hasExemptedAbsences(stat.student.id);
+        const exemptedCount = getExemptedCount(stat.student.id);
+        const breakdown = StatisticsCalculator.getSessionBreakdown(stat.student.id, attendanceRecords);
 
-      {/* Rest of the Students - 2 Column Grid */}
-      {restStudents.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {restStudents.map((stat) => renderStudentCard(stat))}
-        </div>
-      )}
+        return (
+          <Card key={stat.student.id} className="relative">
+            {stat.rank <= 3 && (
+              <div className="absolute -top-2 -right-2">
+                {getRankIcon(stat.rank)}
+              </div>
+            )}
+            
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">#{stat.rank}</span>
+                  <span>{stat.student.first_name} {stat.student.last_name}</span>
+                  {isExempted && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100">
+                            <Shield className="h-3 w-3 mr-1" />
+                            {exemptedCount}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {getExemptedTooltipContent(stat.student.id)}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </CardTitle>
+              {!hideFields.includes('email') && (
+                <p className="text-sm text-muted-foreground">{stat.student.email}</p>
+              )}
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Attendance</span>
+                <div className="flex items-center gap-1">
+                  <span className={`text-lg font-bold ${getAttendanceColor(stat.attendancePercentage)}`}>
+                    {stat.attendancePercentage.toFixed(1)}%
+                  </span>
+                  {isExempted && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-amber-500 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">
+                            Includes {exemptedCount} exempted absence{exemptedCount !== 1 ? 's' : ''} as attended
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Current Streak</span>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span className="font-semibold">{stat.currentStreak}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Sessions</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    <span className="font-semibold">{stat.presentSessions}/{stat.totalSessions}</span>
+                  </div>
+                </div>
+              </div>
+
+              {!hideFields.includes('late') && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Late</span>
+                  <span className="font-semibold text-yellow-600">{breakdown.late}</span>
+                </div>
+              )}
+
+              {!hideFields.includes('absent') && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Absent</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-red-600">{breakdown.absent}</span>
+                    {breakdown.exempted > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-300">
+                              +{breakdown.exempted} exempted
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">
+                              {breakdown.exempted} exempted absence{breakdown.exempted !== 1 ? 's' : ''} not included in absence count
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };

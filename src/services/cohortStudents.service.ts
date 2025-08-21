@@ -14,6 +14,17 @@ class CohortStudentsService extends BaseService<CohortStudent> {
         .from('cohort_students')
         .select('*')
         .eq('cohort_id', cohortId)
+        .neq('dropped_out_status', 'dropped_out')
+        .order('created_at', { ascending: false });
+    });
+  }
+
+  async listAllByCohort(cohortId: string): Promise<ApiResponse<CohortStudent[]>> {
+    return this['executeQuery'](async () => {
+      return await supabase
+        .from('cohort_students')
+        .select('*')
+        .eq('cohort_id', cohortId)
         .order('created_at', { ascending: false });
     });
   }
@@ -257,6 +268,194 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     } catch (error) {
       return { data: null, error: error.message, success: false };
     }
+  }
+
+  async markAsDroppedOut(
+    studentId: string,
+    reason: string
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this.update(studentId, {
+      dropped_out_status: 'dropped_out',
+      dropped_out_reason: reason,
+      dropped_out_at: new Date().toISOString(),
+      dropped_out_by: (await supabase.auth.getUser()).data.user?.id,
+    });
+  }
+
+  async revertDroppedOutStatus(
+    studentId: string
+  ): Promise<ApiResponse<CohortStudent>> {
+    return this.update(studentId, {
+      dropped_out_status: 'active',
+      dropped_out_reason: null,
+      dropped_out_at: null,
+      dropped_out_by: null,
+    });
+  }
+
+  async issueRefund(
+    studentId: string,
+    amount: number
+  ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this['executeQuery'](async () => {
+      try {
+        // First, get the student's payment records to validate the refund amount
+        const { data: payments, error: paymentsError } = await supabase
+          .from('student_payments')
+          .select('*')
+          .eq('student_id', studentId);
+
+        if (paymentsError) {
+          console.error('Error fetching student payments:', paymentsError);
+          throw new Error(`Failed to fetch payment records: ${paymentsError.message}`);
+        }
+
+        if (!payments || payments.length === 0) {
+          // For record keeping purposes, allow refunds even without payment records
+          // Create a minimal payment record for the refund transaction
+          console.log('No payment records found, creating minimal record for refund');
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            throw new Error('User not authenticated');
+          }
+
+          // Create a minimal payment record
+          const { data: student, error: studentError } = await supabase
+            .from('cohort_students')
+            .select('cohort_id')
+            .eq('id', studentId)
+            .single();
+
+          if (studentError) {
+            console.error('Error fetching student for minimal payment:', studentError);
+            throw new Error(`Failed to get student cohort_id: ${studentError.message}`);
+          }
+
+          const { data: newPayment, error: createPaymentError } = await supabase
+            .from('student_payments')
+            .insert({
+              student_id: studentId,
+              cohort_id: student.cohort_id, // Get cohort_id from student record
+              payment_plan: 'not_selected'
+            })
+            .select()
+            .single();
+
+          if (createPaymentError) {
+            console.error('Error creating payment record:', createPaymentError);
+            throw new Error(`Failed to create payment record: ${createPaymentError.message}`);
+          }
+
+          console.log('Created minimal payment record:', newPayment);
+          
+          // Create refund transaction using the new payment record
+          const refundData = {
+            payment_id: newPayment.id,
+            transaction_type: 'refund',
+            amount: amount,
+            payment_method: 'bank_transfer',
+            status: 'success',
+            notes: `Refund issued for student dropout (no previous payments)`,
+            created_by: user.id,
+          };
+
+          console.log('Creating refund transaction with data:', refundData);
+
+          const { data: refundTransaction, error: refundError } = await supabase
+            .from('payment_transactions')
+            .insert(refundData)
+            .select()
+            .single();
+
+          if (refundError) {
+            console.error('Error creating refund transaction:', refundError);
+            throw new Error(`Failed to create refund transaction: ${refundError.message}`);
+          }
+
+          console.log('Refund transaction created successfully:', refundTransaction);
+
+          return { 
+            data: { success: true, message: 'Refund recorded successfully' }, 
+            error: null 
+          };
+        }
+
+        // Get the first payment record to use as the payment_id for the refund transaction
+        const firstPayment = payments[0];
+        console.log('Found payment record:', firstPayment);
+
+        // Calculate total amount paid by summing up all payment transactions
+        const { data: transactions, error: transactionsError } = await supabase
+          .from('payment_transactions')
+          .select('amount')
+          .eq('payment_id', firstPayment.id)
+          .eq('transaction_type', 'payment')
+          .eq('status', 'success');
+
+        if (transactionsError) {
+          console.error('Error fetching payment transactions:', transactionsError);
+          throw new Error(`Failed to fetch payment transactions: ${transactionsError.message}`);
+        }
+
+        console.log('Found payment transactions:', transactions);
+
+        // Calculate total amount paid
+        const totalPaid = transactions?.reduce((sum, transaction) => sum + (parseFloat(transaction.amount.toString()) || 0), 0) || 0;
+        console.log('Total amount paid:', totalPaid, 'Requested refund:', amount);
+
+        // For record keeping purposes, allow refunds even when there are no previous payments
+        // Only validate if there are actual payment transactions
+        if (transactions && transactions.length > 0 && amount > totalPaid) {
+          throw new Error(`Refund amount (₹${amount}) cannot exceed total amount paid (₹${totalPaid})`);
+        }
+
+        // If no payment transactions exist, log a warning but proceed
+        if (!transactions || transactions.length === 0) {
+          console.warn('No payment transactions found. Proceeding with refund for record keeping purposes.');
+        }
+
+        // Get current user for created_by field
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        // Create refund transaction
+        const refundData = {
+          payment_id: firstPayment.id,
+          transaction_type: 'refund',
+          amount: amount,
+          payment_method: 'bank_transfer', // Default method for refunds
+          status: 'success',
+          notes: `Refund issued for student dropout`,
+          created_by: user.id,
+        };
+
+        console.log('Creating refund transaction with data:', refundData);
+
+        const { data: refundTransaction, error: refundError } = await supabase
+          .from('payment_transactions')
+          .insert(refundData)
+          .select()
+          .single();
+
+        if (refundError) {
+          console.error('Error creating refund transaction:', refundError);
+          throw new Error(`Failed to create refund transaction: ${refundError.message}`);
+        }
+
+        console.log('Refund transaction created successfully:', refundTransaction);
+
+        return { 
+          data: { success: true, message: 'Refund recorded successfully' }, 
+          error: null 
+        };
+      } catch (error) {
+        console.error('Error in issueRefund:', error);
+        throw error;
+      }
+    });
   }
 }
 
