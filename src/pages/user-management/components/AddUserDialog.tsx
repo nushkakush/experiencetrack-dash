@@ -147,17 +147,22 @@ export default function AddUserDialog({
 
       // Call onAdded callback to refresh the user list
       if (onAdded) {
+        console.log('🔄 [DEBUG] AddUserDialog: Calling onAdded callback');
         // Add a small delay to ensure the database transaction is complete
         setTimeout(() => {
+          console.log('🔄 [DEBUG] AddUserDialog: Executing onAdded callback');
           onAdded();
-        }, 100);
+        }, 500); // Increased delay for better reliability
       }
 
       // Call onInvitationCreated callback to switch to invited users tab
       if (onInvitationCreated) {
         setTimeout(() => {
+          console.log(
+            '🔄 [DEBUG] AddUserDialog: Switching to invited users tab'
+          );
           onInvitationCreated();
-        }, 150);
+        }, 600);
       }
 
       setOpen(false);
