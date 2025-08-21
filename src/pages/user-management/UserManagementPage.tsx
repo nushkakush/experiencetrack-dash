@@ -24,6 +24,7 @@ const UserManagementPage: React.FC = () => {
   );
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render key
   const [isRefreshing, setIsRefreshing] = useState(false); // Local refresh state
+  const [isExporting, setIsExporting] = useState(false); // Export loading state
 
   const {
     state,
@@ -35,6 +36,7 @@ const UserManagementPage: React.FC = () => {
     setFilters,
     hasSelection,
     clearSelection,
+    exportUsers,
   } = useUserManagement();
 
   // Debug state changes
@@ -74,6 +76,17 @@ const UserManagementPage: React.FC = () => {
       console.error('🔄 [DEBUG] Refresh failed:', error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await exportUsers('csv');
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -171,13 +184,11 @@ const UserManagementPage: React.FC = () => {
               <Button
                 variant='outline'
                 size='sm'
-                onClick={() => {
-                  // TODO: Implement export functionality
-                  console.log('Export users');
-                }}
+                onClick={handleExport}
+                disabled={state.loading || isExporting}
               >
                 <Download className='h-4 w-4 mr-2' />
-                Export
+                {isExporting ? 'Exporting...' : 'Export'}
               </Button>
             </div>
           </div>

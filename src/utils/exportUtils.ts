@@ -1,5 +1,6 @@
-import { StudentPaymentSummary } from '@/types/fee';
-import { Logger } from '@/lib/logging/Logger';
+import { Logger } from '@/lib/logging';
+import { StudentPaymentSummary } from '@/types/payments/DatabaseAlignedTypes';
+import { UserProfile } from '@/types/userManagement';
 
 export interface ExportOptions {
   format: 'csv' | 'json' | 'excel';
@@ -8,7 +9,7 @@ export interface ExportOptions {
 }
 
 export const exportPaymentData = (
-  students: StudentPaymentSummary[], 
+  students: StudentPaymentSummary[],
   options: ExportOptions = { format: 'csv', includeHeaders: true }
 ) => {
   try {
@@ -27,7 +28,10 @@ export const exportPaymentData = (
         throw new Error(`Unsupported export format: ${options.format}`);
     }
   } catch (error) {
-    Logger.getInstance().error('Export failed', { error, students: students.length });
+    Logger.getInstance().error('Export failed', {
+      error,
+      students: students.length,
+    });
     throw error;
   }
 };
@@ -49,14 +53,15 @@ const exportToCSV = (students: StudentPaymentSummary[], filename: string) => {
     'Last Payment Date',
     'Next Due Date',
     'Created At',
-    'Updated At'
+    'Updated At',
   ];
 
   // CSV Rows
   const rows = students.map(student => {
-    const progress = student.total_amount > 0 
-      ? Math.round((student.paid_amount / student.total_amount) * 100)
-      : 0;
+    const progress =
+      student.total_amount > 0
+        ? Math.round((student.paid_amount / student.total_amount) * 100)
+        : 0;
 
     const status = getPaymentStatus(student);
     const lastPaymentDate = getLastPaymentDate(student);
@@ -77,14 +82,14 @@ const exportToCSV = (students: StudentPaymentSummary[], filename: string) => {
       lastPaymentDate,
       nextDueDate,
       formatDate(student.student?.created_at),
-      formatDate(student.student?.updated_at)
+      formatDate(student.student?.updated_at),
     ];
   });
 
   // Combine headers and rows
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
   ].join('\n');
 
   downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8;');
@@ -100,16 +105,17 @@ const exportToJSON = (students: StudentPaymentSummary[], filename: string) => {
     total_amount: student.total_amount,
     paid_amount: student.paid_amount,
     pending_amount: student.pending_amount,
-    progress_percentage: student.total_amount > 0 
-      ? Math.round((student.paid_amount / student.total_amount) * 100)
-      : 0,
+    progress_percentage:
+      student.total_amount > 0
+        ? Math.round((student.paid_amount / student.total_amount) * 100)
+        : 0,
     status: getPaymentStatus(student),
     scholarship: student.scholarship_name || 'None',
     last_payment_date: getLastPaymentDate(student),
     next_due_date: getNextDueDate(student),
     created_at: student.student?.created_at,
     updated_at: student.student?.updated_at,
-    payments: student.payments || []
+    payments: student.payments || [],
   }));
 
   const jsonContent = JSON.stringify(exportData, null, 2);
@@ -120,6 +126,112 @@ const exportToExcel = (students: StudentPaymentSummary[], filename: string) => {
   // For Excel export, we'll create a CSV with Excel-compatible formatting
   // In a real implementation, you might want to use a library like xlsx
   exportToCSV(students, filename.replace('.xlsx', ''));
+};
+
+export const exportUserData = (
+  users: UserProfile[],
+  options: ExportOptions = { format: 'csv', includeHeaders: true }
+) => {
+  try {
+    const timestamp = new Date().toISOString().split('T')[0];
+    const defaultFilename = `user_data_${timestamp}`;
+    const filename = options.filename || defaultFilename;
+
+    switch (options.format) {
+      case 'csv':
+        return exportUsersToCSV(users, filename);
+      case 'json':
+        return exportUsersToJSON(users, filename);
+      case 'excel':
+        return exportUsersToExcel(users, filename);
+      default:
+        throw new Error(`Unsupported export format: ${options.format}`);
+    }
+  } catch (error) {
+    Logger.getInstance().error('User export failed', {
+      error,
+      users: users.length,
+    });
+    throw error;
+  }
+};
+
+const exportUsersToCSV = (users: UserProfile[], filename: string) => {
+  // CSV Headers
+  const headers = [
+    'User ID',
+    'First Name',
+    'Last Name',
+    'Email',
+    'Role',
+    'Status',
+    'Last Login',
+    'Login Count',
+    'Created At',
+    'Updated At',
+    'Invitation Token',
+    'Invitation Expires At',
+    'Invite Status',
+    'Invited At',
+    'Invited By',
+  ];
+
+  // CSV Rows
+  const rows = users.map(user => [
+    user.id,
+    user.first_name || '',
+    user.last_name || '',
+    user.email || '',
+    user.role,
+    user.status,
+    user.last_login || '',
+    user.login_count.toString(),
+    formatDate(user.created_at),
+    formatDate(user.updated_at),
+    user.invitation_token || '',
+    user.invitation_expires_at || '',
+    user.invite_status || '',
+    user.invited_at || '',
+    user.invited_by || '',
+  ]);
+
+  // Combine headers and rows
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+  ].join('\n');
+
+  downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8;');
+};
+
+const exportUsersToJSON = (users: UserProfile[], filename: string) => {
+  const exportData = users.map(user => ({
+    id: user.id,
+    user_id: user.user_id,
+    first_name: user.first_name || '',
+    last_name: user.last_name || '',
+    email: user.email || '',
+    role: user.role,
+    status: user.status,
+    last_login: user.last_login,
+    login_count: user.login_count,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+    invitation_token: user.invitation_token,
+    invitation_expires_at: user.invitation_expires_at,
+    invite_status: user.invite_status,
+    invited_at: user.invited_at,
+    invited_by: user.invited_by,
+  }));
+
+  const jsonContent = JSON.stringify(exportData, null, 2);
+  downloadFile(jsonContent, `${filename}.json`, 'application/json');
+};
+
+const exportUsersToExcel = (users: UserProfile[], filename: string) => {
+  // For Excel export, we'll create a CSV with Excel-compatible formatting
+  // In a real implementation, you might want to use a library like xlsx
+  exportUsersToCSV(users, filename.replace('.xlsx', ''));
 };
 
 const downloadFile = (content: string, filename: string, mimeType: string) => {
@@ -155,8 +267,12 @@ const getPaymentStatus = (student: StudentPaymentSummary): string => {
   }
 
   const totalPayments = student.payments.length;
-  const completedPayments = student.payments.filter(p => p.status === 'paid').length;
-  const pendingPayments = student.payments.filter(p => p.status === 'pending').length;
+  const completedPayments = student.payments.filter(
+    p => p.status === 'paid'
+  ).length;
+  const pendingPayments = student.payments.filter(
+    p => p.status === 'pending'
+  ).length;
 
   if (completedPayments === totalPayments) {
     return 'All Payments Complete';
@@ -183,7 +299,9 @@ const getLastPaymentDate = (student: StudentPaymentSummary): string => {
     return currentDate > latestDate ? current : latest;
   });
 
-  return new Date(lastPayment.payment_date || lastPayment.created_at).toLocaleDateString('en-IN');
+  return new Date(
+    lastPayment.payment_date || lastPayment.created_at
+  ).toLocaleDateString('en-IN');
 };
 
 const getNextDueDate = (student: StudentPaymentSummary): string => {
@@ -202,5 +320,7 @@ const getNextDueDate = (student: StudentPaymentSummary): string => {
     return currentDate < earliestDate ? current : earliest;
   });
 
-  return new Date(nextPayment.due_date || nextPayment.created_at).toLocaleDateString('en-IN');
+  return new Date(
+    nextPayment.due_date || nextPayment.created_at
+  ).toLocaleDateString('en-IN');
 };

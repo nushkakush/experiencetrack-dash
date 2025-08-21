@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { UserManagementService } from '@/services/userManagement/userManagement.service';
+import { exportUserData } from '@/utils/exportUtils';
 import {
   UserProfile,
   UserTableState,
@@ -19,10 +20,12 @@ interface UseUserManagementReturn {
 
   // Actions
   loadUsers: (params?: Partial<UserSearchParams>) => Promise<void>;
+  forceRefreshUsers: () => Promise<void>;
   updateUser: (userId: string, data: UpdateUserData) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   bulkAction: (action: BulkUserAction) => Promise<void>;
   loadStats: () => Promise<void>;
+  exportUsers: (format?: 'csv' | 'json' | 'excel') => Promise<void>;
 
   // Table state management
   setPage: (page: number) => void;
@@ -155,77 +158,80 @@ export const useUserManagement = (): UseUserManagementReturn => {
     }
   }, [toast]);
 
-  // Force refresh users (ignores current state)
+  // Export users
+  const exportUsers = useCallback(
+    async (format: 'csv' | 'json' | 'excel' = 'csv') => {
+      try {
+        // Get all users for export (not just current page)
+        const allUsers = await UserManagementService.exportUsers(state.filters);
+
+        if (!allUsers || allUsers.length === 0) {
+          toast({
+            title: 'No Data',
+            description: 'No users found to export.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        exportUserData(allUsers, { format });
+        toast({
+          title: 'Success',
+          description: `${allUsers.length} users exported successfully in ${format} format.`,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to export users';
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
+    },
+    [state.filters, toast]
+  );
+
+  // Force refresh users (for manual refresh)
   const forceRefreshUsers = useCallback(async () => {
     console.log('🔄 [DEBUG] forceRefreshUsers called');
-
-    // Force a complete state reset with immediate loading
-    setState(prev => ({
-      ...prev,
-      loading: true,
-      error: null,
-      users: [], // Clear users to force re-render and show skeletons
-      pagination: { page: 1, pageSize: 10, total: 0 },
-    }));
-
-    // Add a small delay to ensure loading state is visible
-    await new Promise(resolve => setTimeout(resolve, 100));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // Use default search params for refresh
       const searchParams: UserSearchParams = {
-        page: 1,
-        pageSize: 10,
-        sortBy: 'created_at',
-        sortOrder: 'desc',
+        page: 1, // Always refresh from first page
+        pageSize: state.pagination.pageSize,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
+        ...state.filters,
       };
-
-      console.log('🔄 [DEBUG] Force refresh search params:', searchParams);
 
       const response = await UserManagementService.searchUsers(searchParams);
 
-      console.log('🔄 [DEBUG] Force refresh response:', {
-        totalUsers: response.users.length,
-        hasInvitedUsers: response.users.some(u => u.status === 'invited'),
-        invitedCount: response.users.filter(u => u.status === 'invited').length,
-      });
+      setState(prev => ({
+        ...prev,
+        users: response.users,
+        pagination: {
+          page: response.page,
+          pageSize: response.pageSize,
+          total: response.total,
+        },
+        loading: false,
+        error: null,
+      }));
 
-      setState(prev => {
-        const newState = {
-          ...prev,
-          users: response.users,
-          pagination: {
-            page: response.page,
-            pageSize: response.pageSize,
-            total: response.total,
-          },
-          loading: false,
-          error: null,
-        };
-        console.log('🔄 [DEBUG] Force refresh new state:', {
-          totalUsers: newState.users.length,
-          invitedUsers: newState.users.filter(u => u.status === 'invited')
-            .length,
-          registeredUsers: newState.users.filter(u => u.status !== 'invited')
-            .length,
-        });
-        return newState;
-      });
+      console.log('🔄 [DEBUG] forceRefreshUsers completed successfully');
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to load users';
+      console.error('🔄 [DEBUG] forceRefreshUsers failed:', error);
       setState(prev => ({
         ...prev,
         loading: false,
-        error: errorMessage,
+        error:
+          error instanceof Error ? error.message : 'Failed to refresh users',
       }));
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      throw error;
     }
-  }, [toast]);
+  }, [state.pagination.pageSize, state.sortBy, state.sortOrder, state.filters]);
 
   // Update user
   const updateUser = useCallback(
@@ -405,6 +411,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
     deleteUser,
     bulkAction,
     loadStats,
+    exportUsers,
 
     // Table state management
     setPage,
