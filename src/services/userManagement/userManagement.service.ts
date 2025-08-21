@@ -204,9 +204,15 @@ export class UserManagementService {
       .from('user_invitations')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (invitationError) {
+      throw new Error(
+        `Failed to fetch user from invitations: ${invitationError.message}`
+      );
+    }
+
+    if (!invitation) {
       throw new Error(
         `Failed to fetch user: User not found in profiles or invitations`
       );
@@ -240,22 +246,70 @@ export class UserManagementService {
     userId: string,
     updateData: UpdateUserData
   ): Promise<UserProfile> {
+    console.log('🔄 [DEBUG] updateUser called with:', { userId, updateData });
+
+    // First check if user exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('🔄 [DEBUG] Check user existence error:', checkError);
+      throw new Error(`Failed to check user existence: ${checkError.message}`);
+    }
+
+    if (!existingUser) {
+      console.error('🔄 [DEBUG] User not found:', userId);
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    console.log('🔄 [DEBUG] Existing user found:', existingUser);
+
+    // Filter out undefined values and add updated_at timestamp
+    const cleanUpdateData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+
+    // Add updated_at timestamp
+    const finalUpdateData = {
+      ...cleanUpdateData,
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log('🔄 [DEBUG] Final update data:', finalUpdateData);
+
+    // Update the user
     const { data: user, error } = await supabase
       .from('profiles')
-      .update(updateData)
+      .update(finalUpdateData)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error('🔄 [DEBUG] Update error:', error);
       throw new Error(`Failed to update user: ${error.message}`);
     }
 
+    if (!user) {
+      console.error('🔄 [DEBUG] No user returned after update');
+      throw new Error(`Failed to update user: No user returned after update`);
+    }
+
+    console.log('🔄 [DEBUG] User updated successfully:', user);
+
     // Log the activity
-    await this.logUserActivity(userId, 'user_updated', {
-      updatedFields: Object.keys(updateData),
-      newValues: updateData,
-    });
+    try {
+      await this.logUserActivity(userId, 'user_updated', {
+        updatedFields: Object.keys(cleanUpdateData),
+        newValues: cleanUpdateData,
+      });
+    } catch (logError) {
+      console.warn('🔄 [DEBUG] Failed to log activity:', logError);
+      // Don't fail the update if logging fails
+    }
 
     return user;
   }
@@ -282,26 +336,37 @@ export class UserManagementService {
 
       console.log(`Deleted invitation for user: ${user.email}`);
     } else {
-      // This is an existing user - delete from auth.users (this will cascade to profiles)
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      // This is an existing user - use edge function to delete from auth.users
+      const supabaseUrl = 'https://ghmpaghyasyllfvamfna.supabase.co';
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
+        },
+        body: JSON.stringify({ userId }),
+      });
 
-      if (authError) {
-        throw new Error(`Failed to delete user: ${authError.message}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to delete user: ${errorData.error || 'Unknown error'}`
+        );
       }
 
-      console.log(`Deleted existing user: ${user.email}`);
+      const result = await response.json();
+      console.log(`Deleted existing user: ${user.email}`, result);
     }
 
-    // Log the activity (if the user exists in profiles)
-    if (user.status !== 'invited') {
-      await this.logUserActivity(userId, 'user_deleted', {
-        deletedUser: {
-          email: user.email,
-          name: `${user.first_name} ${user.last_name}`,
-          role: user.role,
-        },
-      });
-    }
+    // Log the activity
+    await this.logUserActivity(userId, 'user_deleted', {
+      deletedUser: {
+        email: user.email,
+        name: `${user.first_name} ${user.last_name}`,
+        role: user.role,
+        status: user.status,
+      },
+    });
   }
 
   /**

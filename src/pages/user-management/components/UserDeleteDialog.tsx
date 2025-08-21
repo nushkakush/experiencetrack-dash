@@ -74,11 +74,14 @@ export const UserDeleteDialog: React.FC<UserDeleteDialogProps> = ({
         <AlertDialogHeader>
           <AlertDialogTitle className='flex items-center gap-2 text-red-600'>
             <AlertTriangle className='h-5 w-5' />
-            Delete User Account
+            {user.status === 'invited'
+              ? 'Delete Invitation'
+              : 'Delete User Account'}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the user
-            account and remove all associated data.
+            {user.status === 'invited'
+              ? 'This will permanently delete the invitation and remove it from the system.'
+              : 'This will permanently delete the user account and remove all associated data from the system.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -123,10 +126,20 @@ export const UserDeleteDialog: React.FC<UserDeleteDialogProps> = ({
             <div className='text-sm text-red-700 dark:text-red-300'>
               <p className='font-medium mb-1'>Warning:</p>
               <ul className='list-disc list-inside space-y-1 text-xs'>
-                <li>All user data will be permanently deleted</li>
-                <li>User will lose access to all system features</li>
-                <li>This action cannot be reversed</li>
-                <li>Associated records may be affected</li>
+                {user.status === 'invited' ? (
+                  <>
+                    <li>Invitation will be permanently deleted</li>
+                    <li>User will not be able to accept this invitation</li>
+                    <li>This action cannot be reversed</li>
+                  </>
+                ) : (
+                  <>
+                    <li>All user data will be permanently deleted</li>
+                    <li>User will lose access to all system features</li>
+                    <li>This action cannot be reversed</li>
+                    <li>Associated records may be affected</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -140,7 +153,11 @@ export const UserDeleteDialog: React.FC<UserDeleteDialogProps> = ({
             className='bg-red-600 hover:bg-red-700 focus:ring-red-600'
           >
             <Trash2 className='h-4 w-4 mr-2' />
-            {loading ? 'Deleting...' : 'Delete User'}
+            {loading
+              ? 'Deleting...'
+              : user.status === 'invited'
+                ? 'Delete Invitation'
+                : 'Delete User'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

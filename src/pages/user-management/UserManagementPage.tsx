@@ -22,26 +22,59 @@ const UserManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'registered' | 'invited'>(
     'registered'
   );
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render key
+  const [isRefreshing, setIsRefreshing] = useState(false); // Local refresh state
 
   const {
     state,
     stats,
     statsLoading,
     loadUsers,
+    forceRefreshUsers,
     loadStats,
     setFilters,
     hasSelection,
     clearSelection,
   } = useUserManagement();
 
+  // Debug state changes
+  console.log('🔄 [DEBUG] UserManagementPage render - state:', {
+    totalUsers: state.users.length,
+    invitedUsers: state.users.filter(u => u.status === 'invited').length,
+    registeredUsers: state.users.filter(u => u.status !== 'invited').length,
+    loading: state.loading,
+    activeTab,
+  });
+
   const handleSearch = (searchTerm: string) => {
     setFilters({ search: searchTerm });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log('🔄 [DEBUG] handleRefresh called - refreshing users and stats');
-    loadUsers();
-    loadStats();
+    console.log('🔄 [DEBUG] Current state before refresh:', {
+      usersCount: state.users.length,
+      loading: state.loading,
+      isRefreshing,
+    });
+
+    setIsRefreshing(true);
+    try {
+      await forceRefreshUsers();
+      await loadStats();
+
+      // Force re-render with a small delay to ensure state updates are processed
+      setTimeout(() => {
+        setRefreshKey(prev => prev + 1);
+        console.log('🔄 [DEBUG] Force re-render triggered');
+      }, 100);
+
+      console.log('🔄 [DEBUG] Refresh completed successfully');
+    } catch (error) {
+      console.error('🔄 [DEBUG] Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const getRoleColor = (role: UserRole) => {
@@ -128,10 +161,12 @@ const UserManagementPage: React.FC = () => {
                 variant='outline'
                 size='sm'
                 onClick={handleRefresh}
-                disabled={state.loading}
+                disabled={state.loading || isRefreshing}
               >
-                <RefreshCw className='h-4 w-4 mr-2' />
-                Refresh
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${state.loading || isRefreshing ? 'animate-spin' : ''}`}
+                />
+                {state.loading || isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button
                 variant='outline'
@@ -189,7 +224,10 @@ const UserManagementPage: React.FC = () => {
                   registered users
                 </div>
               </div>
-              <UserTable showOnlyRegistered={true} />
+              <UserTable
+                key={`registered-${refreshKey}`}
+                showOnlyRegistered={true}
+              />
             </TabsContent>
 
             <TabsContent value='invited' className='space-y-4'>
@@ -213,7 +251,7 @@ const UserManagementPage: React.FC = () => {
                   invited users
                 </div>
               </div>
-              <UserTable showOnlyInvited={true} />
+              <UserTable key={`invited-${refreshKey}`} showOnlyInvited={true} />
             </TabsContent>
           </Tabs>
         </CardContent>

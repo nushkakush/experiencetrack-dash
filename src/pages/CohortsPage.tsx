@@ -94,23 +94,47 @@ const CohortsPage = () => {
       if (feeStructure && feeStructure.is_setup_complete) {
         // Fee configuration is complete, navigate directly to dashboard
         navigate(`/cohorts/${cohort.id}/fee-payment`);
-      } else if (feeStructure) {
-        // Fee structure exists but is not complete, open modal in view mode
-        setSelectedCohortForFee(cohort);
-        setFeeModalMode('view');
-        setFeeCollectionModalOpen(true);
       } else {
-        // No fee structure exists, open modal in edit mode for initial setup
-        setSelectedCohortForFee(cohort);
-        setFeeModalMode('edit');
-        setFeeCollectionModalOpen(true);
+        // Fee structure is not complete or doesn't exist
+        if (canSetupFeeStructure) {
+          // User has permission to set up fee structure
+          if (feeStructure) {
+            // Fee structure exists but is not complete, open modal in view mode
+            setSelectedCohortForFee(cohort);
+            setFeeModalMode('view');
+            setFeeCollectionModalOpen(true);
+          } else {
+            // No fee structure exists, open modal in edit mode for initial setup
+            setSelectedCohortForFee(cohort);
+            setFeeModalMode('edit');
+            setFeeCollectionModalOpen(true);
+          }
+        } else {
+          // User doesn't have permission to set up fee structure
+          toast.error(
+            `Fee collection setup is not complete for "${cohort.name}". Please contact your administrator to complete the fee structure configuration.`,
+            {
+              duration: 5000,
+            }
+          );
+        }
       }
     } catch (error) {
       console.error('Error checking fee structure:', error);
-      // If there's an error, default to opening the setup modal in edit mode
-      setSelectedCohortForFee(cohort);
-      setFeeModalMode('edit');
-      setFeeCollectionModalOpen(true);
+      if (canSetupFeeStructure) {
+        // If there's an error and user has permission, default to opening the setup modal in edit mode
+        setSelectedCohortForFee(cohort);
+        setFeeModalMode('edit');
+        setFeeCollectionModalOpen(true);
+      } else {
+        // If there's an error and user doesn't have permission, show error message
+        toast.error(
+          `Unable to check fee collection setup for "${cohort.name}". Please contact your administrator.`,
+          {
+            duration: 5000,
+          }
+        );
+      }
     }
   };
 

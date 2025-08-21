@@ -143,10 +143,42 @@ export default function UserInvitationPage() {
         }
 
         userId = data.user!.id;
+
+        // Ensure profile is created (backup in case trigger fails)
+        try {
+          const { error: profileError } = await supabase.rpc(
+            'ensure_user_profile',
+            {
+              user_id: userId,
+            }
+          );
+          if (profileError) {
+            console.warn('Profile creation backup failed:', profileError);
+          }
+        } catch (profileErr) {
+          console.warn('Profile creation backup failed:', profileErr);
+        }
       }
 
       // Mark invitation as accepted
       await userInvitationService.markInvitationAccepted(invitation.id);
+
+      // Clean up the invitation since user has accepted it
+      try {
+        const { error: cleanupError } = await supabase.rpc(
+          'cleanup_accepted_invitation',
+          {
+            invitation_id: invitation.id,
+          }
+        );
+        if (cleanupError) {
+          console.warn('Invitation cleanup failed:', cleanupError);
+        } else {
+          console.log('Successfully cleaned up accepted invitation');
+        }
+      } catch (cleanupErr) {
+        console.warn('Invitation cleanup failed:', cleanupErr);
+      }
 
       toast.success('Account created successfully! Welcome to LIT OS.');
 

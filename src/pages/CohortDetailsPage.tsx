@@ -1,20 +1,20 @@
-import { useParams } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
-import { NewStudentInput } from "@/types/cohort";
-import DashboardShell from "@/components/DashboardShell";
-import CohortHeader from "@/components/cohorts/CohortHeader";
-import CohortStudentsTable from "@/components/cohorts/CohortStudentsTable";
-import { useCohortDetails } from "@/hooks/useCohortDetails";
-import { BulkUploadConfig } from "@/components/common/BulkUploadDialog";
-import { CohortStudent } from "@/types/cohort";
-import { Scholarship } from "@/types/fee";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useParams } from 'react-router-dom';
+import { Skeleton } from '@/components/ui/skeleton';
+import { NewStudentInput } from '@/types/cohort';
+import DashboardShell from '@/components/DashboardShell';
+import CohortHeader from '@/components/cohorts/CohortHeader';
+import CohortStudentsTable from '@/components/cohorts/CohortStudentsTable';
+import { useCohortDetails } from '@/hooks/useCohortDetails';
+import { BulkUploadConfig } from '@/components/common/BulkUploadDialog';
+import { CohortStudent } from '@/types/cohort';
+import { Scholarship } from '@/types/fee';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CohortDetailsPage() {
   const { cohortId } = useParams<{ cohortId: string }>();
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
-  
+
   const {
     loading,
     students,
@@ -31,10 +31,13 @@ export default function CohortDetailsPage() {
   // Load scholarships for the cohort
   useEffect(() => {
     const loadScholarships = async () => {
+      if (!cohortId) return;
+
       try {
         const { data, error } = await supabase
           .from('cohort_scholarships')
           .select('*')
+          .eq('cohort_id', cohortId)
           .order('amount_percentage', { ascending: true });
 
         if (error) throw error;
@@ -45,9 +48,12 @@ export default function CohortDetailsPage() {
     };
 
     loadScholarships();
-  }, []);
+  }, [cohortId]);
 
-  const handleStudentUpdated = (studentId: string, updates: Partial<CohortStudent>) => {
+  const handleStudentUpdated = (
+    studentId: string,
+    updates: Partial<CohortStudent>
+  ) => {
     // Update the student locally without reloading from server
     updateStudent(studentId, updates);
   };
@@ -61,21 +67,22 @@ export default function CohortDetailsPage() {
     templateData: `first_name,last_name,email,phone,invite
 John,Doe,john.doe@example.com,+1234567890,YES
 Jane,Smith,jane.smith@example.com,+1234567891,NO`,
-    dialogTitle: "Bulk Import Students",
-    dialogDescription: "Upload a CSV file to import multiple students at once. The 'invite' column should contain 'YES' to send invitation emails or 'NO'/'blank' to skip invitations. Download the template below for the correct format.",
-    fileType: "CSV",
-    fileExtension: ".csv"
+    dialogTitle: 'Bulk Import Students',
+    dialogDescription:
+      "Upload a CSV file to import multiple students at once. The 'invite' column should contain 'YES' to send invitation emails or 'NO'/'blank' to skip invitations. Download the template below for the correct format.",
+    fileType: 'CSV',
+    fileExtension: '.csv',
   };
 
   if (loading) {
     return (
       <DashboardShell>
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
+        <div className='space-y-6'>
+          <Skeleton className='h-8 w-64' />
+          <div className='space-y-4'>
+            <Skeleton className='h-4 w-full' />
+            <Skeleton className='h-4 w-3/4' />
+            <Skeleton className='h-4 w-1/2' />
             {/* Background refresh shimmer */}
             {/* We can show a subtle indicator when background refresh is happening */}
           </div>
@@ -87,9 +94,14 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
   if (!cohort) {
     return (
       <DashboardShell>
-        <div className="text-center py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Cohort Not Found</h2>
-          <p className="text-gray-600">The cohort you're looking for doesn't exist or you don't have permission to view it.</p>
+        <div className='text-center py-8'>
+          <h2 className='text-2xl font-bold text-gray-900 mb-4'>
+            Cohort Not Found
+          </h2>
+          <p className='text-gray-600'>
+            The cohort you're looking for doesn't exist or you don't have
+            permission to view it.
+          </p>
         </div>
       </DashboardShell>
     );
@@ -97,16 +109,16 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
 
   return (
     <DashboardShell>
-      <div className="space-y-6">
-        <CohortHeader 
-          cohort={cohort} 
+      <div className='space-y-6'>
+        <CohortHeader
+          cohort={cohort}
           onStudentAdded={loadData}
           onRefresh={loadData}
           bulkUploadConfig={bulkUploadConfig}
           onFeeManagementSuccess={loadData}
           studentCount={students.length}
         />
-        
+
         <CohortStudentsTable
           students={students}
           scholarships={scholarships}

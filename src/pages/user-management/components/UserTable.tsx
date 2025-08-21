@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -54,6 +54,18 @@ export const UserTable: React.FC<UserTableProps> = ({
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Update selectedUser when user data changes (e.g., after refresh)
+  useEffect(() => {
+    if (selectedUser) {
+      const updatedUser = state.users.find(
+        u => u.user_id === selectedUser.user_id
+      );
+      if (updatedUser) {
+        setSelectedUser(updatedUser);
+      }
+    }
+  }, [state.users, selectedUser]);
 
   const handleSort = (column: string) => {
     const newOrder =

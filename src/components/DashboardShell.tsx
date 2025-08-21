@@ -94,10 +94,11 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: DollarSign,
       },
-      { title: 'Payments', url: '#', icon: DollarSign },
-      { title: 'Outstanding Fees', url: '#', icon: Receipt },
-      { title: 'Reports', url: '#', icon: FileText },
-      { title: 'Students', url: '#', icon: Users },
+      // Temporarily hidden menu items
+      // { title: 'Payments', url: '#', icon: DollarSign },
+      // { title: 'Outstanding Fees', url: '#', icon: Receipt },
+      // { title: 'Reports', url: '#', icon: FileText },
+      // { title: 'Students', url: '#', icon: Users },
     ],
     partnerships_head: [
       { title: 'Active Partnerships', url: '#', icon: Handshake },

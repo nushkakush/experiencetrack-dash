@@ -76,6 +76,8 @@ export const useUserManagement = (): UseUserManagementReturn => {
           ...params,
         };
 
+        console.log('🔄 [DEBUG] Search params:', searchParams);
+
         const response = await UserManagementService.searchUsers(searchParams);
         console.log('🔄 [DEBUG] loadUsers response:', {
           totalUsers: response.users.length,
@@ -84,17 +86,31 @@ export const useUserManagement = (): UseUserManagementReturn => {
             .length,
         });
 
-        setState(prev => ({
-          ...prev,
-          users: response.users,
-          pagination: {
-            page: response.page,
-            pageSize: response.pageSize,
-            total: response.total,
-          },
-          loading: false,
-          error: null,
-        }));
+        console.log(
+          '🔄 [DEBUG] Updating state with new users:',
+          response.users.length
+        );
+        setState(prev => {
+          const newState = {
+            ...prev,
+            users: response.users,
+            pagination: {
+              page: response.page,
+              pageSize: response.pageSize,
+              total: response.total,
+            },
+            loading: false,
+            error: null,
+          };
+          console.log('🔄 [DEBUG] New state:', {
+            totalUsers: newState.users.length,
+            invitedUsers: newState.users.filter(u => u.status === 'invited')
+              .length,
+            registeredUsers: newState.users.filter(u => u.status !== 'invited')
+              .length,
+          });
+          return newState;
+        });
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to load users';
@@ -139,14 +155,86 @@ export const useUserManagement = (): UseUserManagementReturn => {
     }
   }, [toast]);
 
+  // Force refresh users (ignores current state)
+  const forceRefreshUsers = useCallback(async () => {
+    console.log('🔄 [DEBUG] forceRefreshUsers called');
+
+    // Force a complete state reset with immediate loading
+    setState(prev => ({
+      ...prev,
+      loading: true,
+      error: null,
+      users: [], // Clear users to force re-render and show skeletons
+      pagination: { page: 1, pageSize: 10, total: 0 },
+    }));
+
+    // Add a small delay to ensure loading state is visible
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+      // Use default search params for refresh
+      const searchParams: UserSearchParams = {
+        page: 1,
+        pageSize: 10,
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      };
+
+      console.log('🔄 [DEBUG] Force refresh search params:', searchParams);
+
+      const response = await UserManagementService.searchUsers(searchParams);
+
+      console.log('🔄 [DEBUG] Force refresh response:', {
+        totalUsers: response.users.length,
+        hasInvitedUsers: response.users.some(u => u.status === 'invited'),
+        invitedCount: response.users.filter(u => u.status === 'invited').length,
+      });
+
+      setState(prev => {
+        const newState = {
+          ...prev,
+          users: response.users,
+          pagination: {
+            page: response.page,
+            pageSize: response.pageSize,
+            total: response.total,
+          },
+          loading: false,
+          error: null,
+        };
+        console.log('🔄 [DEBUG] Force refresh new state:', {
+          totalUsers: newState.users.length,
+          invitedUsers: newState.users.filter(u => u.status === 'invited')
+            .length,
+          registeredUsers: newState.users.filter(u => u.status !== 'invited')
+            .length,
+        });
+        return newState;
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to load users';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
+
   // Update user
   const updateUser = useCallback(
     async (userId: string, data: UpdateUserData) => {
       try {
         await UserManagementService.updateUser(userId, data);
 
-        // Reload users to reflect changes
-        await loadUsers();
+        // Force refresh users immediately to reflect changes
+        await forceRefreshUsers();
 
         toast({
           title: 'Success',
@@ -163,7 +251,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
         throw error;
       }
     },
-    [loadUsers, toast]
+    [forceRefreshUsers, toast]
   );
 
   // Delete user
@@ -172,8 +260,8 @@ export const useUserManagement = (): UseUserManagementReturn => {
       try {
         await UserManagementService.deleteUser(userId);
 
-        // Reload users to reflect changes
-        await loadUsers();
+        // Force refresh users immediately to reflect changes
+        await forceRefreshUsers();
 
         // Remove from selection if selected
         setState(prev => ({
@@ -196,7 +284,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
         throw error;
       }
     },
-    [loadUsers, toast]
+    [forceRefreshUsers, toast]
   );
 
   // Bulk actions
@@ -205,8 +293,8 @@ export const useUserManagement = (): UseUserManagementReturn => {
       try {
         await UserManagementService.bulkUserAction(action);
 
-        // Reload users to reflect changes
-        await loadUsers();
+        // Force refresh users immediately to reflect changes
+        await forceRefreshUsers();
 
         // Clear selection after bulk action
         setState(prev => ({ ...prev, selectedUsers: [] }));
@@ -228,7 +316,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
         throw error;
       }
     },
-    [loadUsers, toast]
+    [forceRefreshUsers, toast]
   );
 
   // Table state management
@@ -312,6 +400,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
 
     // Actions
     loadUsers,
+    forceRefreshUsers,
     updateUser,
     deleteUser,
     bulkAction,
