@@ -39,6 +39,7 @@ const UserManagementPage: React.FC = () => {
   };
 
   const handleRefresh = () => {
+    console.log('🔄 [DEBUG] handleRefresh called - refreshing users and stats');
     loadUsers();
     loadStats();
   };
@@ -119,7 +120,10 @@ const UserManagementPage: React.FC = () => {
                   Clear Selection
                 </Button>
               )}
-              <AddUserDialog onAdded={handleRefresh} />
+              <AddUserDialog
+                onAdded={handleRefresh}
+                onInvitationCreated={() => setActiveTab('invited')}
+              />
               <Button
                 variant='outline'
                 size='sm'

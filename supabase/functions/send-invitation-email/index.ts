@@ -186,6 +186,15 @@ serve(async req => {
           value: htmlContent,
         },
       ],
+      tracking_settings: {
+        click_tracking: {
+          enable: false,
+          enable_text: false,
+        },
+        open_tracking: {
+          enable: false,
+        },
+      },
     };
 
     // Send email via SendGrid

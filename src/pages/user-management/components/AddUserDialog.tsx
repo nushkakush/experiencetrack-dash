@@ -28,6 +28,7 @@ import { ValidationUtils } from '@/utils/validation';
 
 interface AddUserDialogProps {
   onAdded?: () => void;
+  onInvitationCreated?: () => void;
 }
 
 const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
@@ -59,7 +60,10 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
     },
   ];
 
-export default function AddUserDialog({ onAdded }: AddUserDialogProps) {
+export default function AddUserDialog({
+  onAdded,
+  onInvitationCreated,
+}: AddUserDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { profile } = useAuth();
@@ -141,7 +145,21 @@ export default function AddUserDialog({ onAdded }: AddUserDialogProps) {
         toast.success('User invited successfully!');
       }
 
-      onAdded?.();
+      // Call onAdded callback to refresh the user list
+      if (onAdded) {
+        // Add a small delay to ensure the database transaction is complete
+        setTimeout(() => {
+          onAdded();
+        }, 100);
+      }
+
+      // Call onInvitationCreated callback to switch to invited users tab
+      if (onInvitationCreated) {
+        setTimeout(() => {
+          onInvitationCreated();
+        }, 150);
+      }
+
       setOpen(false);
     } catch (error) {
       console.error('Error creating user invitation:', error);

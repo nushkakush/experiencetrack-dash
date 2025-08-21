@@ -63,6 +63,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
   // Load users with current state
   const loadUsers = useCallback(
     async (params?: Partial<UserSearchParams>) => {
+      console.log('🔄 [DEBUG] loadUsers called');
       setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -76,6 +77,12 @@ export const useUserManagement = (): UseUserManagementReturn => {
         };
 
         const response = await UserManagementService.searchUsers(searchParams);
+        console.log('🔄 [DEBUG] loadUsers response:', {
+          totalUsers: response.users.length,
+          hasInvitedUsers: response.users.some(u => u.status === 'invited'),
+          invitedCount: response.users.filter(u => u.status === 'invited')
+            .length,
+        });
 
         setState(prev => ({
           ...prev,
