@@ -42,6 +42,7 @@ import {
   useLifecycleLogging,
   useRouteLogging,
 } from '@/hooks/useLifecycleLogging';
+import '@/utils/featureFlagUtils';
 
 const App = () => {
   // Initialize lifecycle logging

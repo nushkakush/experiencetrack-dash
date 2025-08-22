@@ -6,8 +6,9 @@ import PaymentSubmissionForm from './PaymentSubmissionFormV2';
 import { FeeBreakdown } from './FeeBreakdown';
 import { PaymentSubmissionData, PaymentBreakdown } from '@/types/payments';
 import { PaymentStatusBadge } from '@/components/fee-collection/PaymentStatusBadge';
-import { CohortStudent } from '@/types/cohort';
+import { CohortStudent, Cohort } from '@/types/cohort';
 import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
+import { PartialPaymentHistory } from '@/components/common/payments/PartialPaymentHistory';
 
 // Define the installment type that includes scholarship amounts
 interface DatabaseInstallment {
@@ -37,6 +38,7 @@ export interface InstallmentCardProps {
   paymentSubmissions?: Map<string, PaymentSubmissionData>;
   submittingPayments?: Set<string>;
   studentData?: CohortStudent;
+  cohortData?: Cohort;
   paymentBreakdown?: PaymentBreakdown;
   paymentTransactions?: PaymentTransactionRow[]; // Add payment transactions
   onInstallmentClick: (
@@ -57,6 +59,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   paymentSubmissions,
   submittingPayments,
   studentData,
+  cohortData,
   paymentBreakdown,
   paymentTransactions,
   onInstallmentClick,
@@ -77,7 +80,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     });
   };
 
-  // Get relevant payment transactions for this installment
+  // Get relevant payment transactions for this installment (pending only)
   const getRelevantTransactions = () => {
     if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
     const instKey = `${semesterNumber}-${installment.installmentNumber}`;
@@ -94,6 +97,30 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
         Number(tx?.semester_number) === Number(semesterNumber);
       return matchesKey || (!!txKey === false && matchesSemester);
     });
+  };
+
+  // Get ALL relevant payment transactions for this installment (for history display)
+  const getAllRelevantTransactions = () => {
+    if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
+    const instKey = `${semesterNumber}-${installment.installmentNumber}`;
+    
+    return paymentTransactions
+      .filter(tx => {
+        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const matchesKey = txKey === instKey;
+        const matchesSemester = Number(tx?.semester_number) === Number(semesterNumber);
+        return matchesKey || (!!txKey === false && matchesSemester);
+      })
+      .map(tx => ({
+        id: tx.id,
+        amount: Number(tx.amount),
+        partial_payment_sequence: tx.partial_payment_sequence || 0,
+        verification_status: tx.verification_status || 'pending',
+        created_at: tx.created_at || new Date().toISOString(),
+        payment_method: tx.payment_method,
+        notes: tx.notes,
+        verification_notes: tx.verification_notes,
+      }));
   };
 
   const relevantTransactions = getRelevantTransactions();
@@ -476,6 +503,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
               selectedPaymentPlan={selectedPaymentPlan}
               paymentBreakdown={paymentBreakdown}
               selectedInstallment={convertedInstallment}
+              cohortData={cohortData}
             />
           </div>
         )}
@@ -490,6 +518,65 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
             amountPayable={convertedInstallment.amountPayable}
           />
         </div>
+
+        {/* Payment Transaction History - Only show if there are partial payments or multiple transactions */}
+        {(() => {
+          const transactions = getAllRelevantTransactions();
+          const totalPaid = transactions
+            .filter(t => t.verification_status === 'approved' || t.verification_status === 'partially_approved')
+            .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0);
+          
+          // Only show payment history if:
+          // 1. There are multiple transactions, OR
+          // 2. There's a partial payment (amount paid < expected amount)
+          // NOTE: We do NOT show for single complete payments, even if pending verification
+          const hasMultipleTransactions = transactions.length > 1;
+          const hasPartialPayment = totalPaid > 0 && totalPaid < convertedInstallment.amountPayable;
+          
+          // For single transactions, check if it's a complete payment (regardless of status)
+          const isSingleCompletePayment = transactions.length === 1 && 
+            transactions[0].amount >= convertedInstallment.amountPayable;
+          
+          const shouldShowHistory = hasMultipleTransactions || hasPartialPayment;
+          
+          // DEBUG LOGGING
+          console.log('🔍 [InstallmentCard] Payment History Visibility Check:', {
+            installmentId: `${semesterNumber}-${installment.installmentNumber}`,
+            transactionsCount: transactions.length,
+            totalPaid,
+            expectedAmount: convertedInstallment.amountPayable,
+            hasMultipleTransactions,
+            hasPartialPayment,
+            isSingleCompletePayment,
+            shouldShowHistory,
+            transactions: transactions.map(t => ({
+              id: t.id,
+              amount: t.amount,
+              status: t.verification_status,
+              partial_sequence: t.partial_payment_sequence
+            }))
+          });
+          
+          if (!shouldShowHistory) {
+            console.log('✅ [InstallmentCard] HIDING Payment History - Single complete payment');
+            return null;
+          }
+          
+          console.log('📋 [InstallmentCard] SHOWING Payment History - Complex payment scenario');
+          return (
+            <div className='mt-4'>
+              <PartialPaymentHistory
+                transactions={transactions}
+                totalExpectedAmount={convertedInstallment.amountPayable}
+                totalPaid={totalPaid}
+                remainingAmount={convertedInstallment.amountPayable - totalPaid}
+                totalPending={transactions
+                  .filter(t => t.verification_status === 'verification_pending' || t.verification_status === 'pending')
+                  .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0)}
+              />
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

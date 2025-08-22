@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CohortStudent } from '@/types/cohort';
 import { PaymentBreakdown, Installment, Semester } from '@/types/payments/PaymentCalculationTypes';
 import { validatePaymentForm } from '@/components/fee-collection/utils/PaymentValidation';
 import { PaymentSubmissionData } from '@/types/payments/PaymentMethods';
+import { paymentTransactionService } from '@/services/paymentTransaction.service';
 
 interface PaymentData {
   paymentMode: string;
@@ -31,33 +32,97 @@ export const usePaymentSubmission = ({
   const [paymentDetails, setPaymentDetails] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [existingTransactions, setExistingTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Fetch existing transactions for this student to calculate pending amount
+  const fetchExistingTransactions = useCallback(async () => {
+    if (!studentData?.id) return;
+
+    try {
+      setLoadingTransactions(true);
+      const studentPaymentId = (studentData as any).student_payment_id;
+      if (!studentPaymentId) return;
+
+      const result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      if (result.success && result.data) {
+        setExistingTransactions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching existing transactions:', error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }, [studentData?.id]);
+
+  // Fetch existing transactions when component mounts
+  useEffect(() => {
+    fetchExistingTransactions();
+  }, [fetchExistingTransactions]);
 
   // Calculate the maximum amount that can be paid for the selected installment
   const getMaxAmount = () => {
+    let originalAmount = 0;
+
     if (selectedInstallment) {
       // Round to 2 decimal places to avoid floating point precision issues
-      return Math.round(selectedInstallment.amountPayable * 100) / 100;
-    }
-    
-    if (!paymentBreakdown) return 0;
-    
-    if (selectedPaymentPlan === 'one_shot') {
-      return Math.round((paymentBreakdown.overallSummary?.totalAmountPayable || 0) * 100) / 100;
-    } else {
-      // For semester/installment plans, find the next due amount
-      const pendingInstallments = paymentBreakdown.semesters?.flatMap((semester: Semester) => 
-        semester.instalments?.filter((inst: Installment) => inst.amountPayable > 0) || []
-      ) || [];
-      
-      if (pendingInstallments.length > 0) {
-        return Math.round(pendingInstallments[0].amountPayable * 100) / 100;
+      originalAmount = Math.round(selectedInstallment.amountPayable * 100) / 100;
+    } else if (paymentBreakdown) {
+      if (selectedPaymentPlan === 'one_shot') {
+        originalAmount = Math.round((paymentBreakdown.overallSummary?.totalAmountPayable || 0) * 100) / 100;
+      } else {
+        // For semester/installment plans, find the next due amount
+        const pendingInstallments = paymentBreakdown.semesters?.flatMap((semester: Semester) => 
+          semester.instalments?.filter((inst: Installment) => inst.amountPayable > 0) || []
+        ) || [];
+        
+        if (pendingInstallments.length > 0) {
+          originalAmount = Math.round(pendingInstallments[0].amountPayable * 100) / 100;
+        }
       }
-      
-      return 0;
     }
+
+    // Calculate pending amount by subtracting already paid transactions
+    if (originalAmount > 0 && existingTransactions.length > 0 && selectedInstallment) {
+      const installmentKey = `${selectedInstallment.semesterNumber || 1}-${selectedInstallment.installmentNumber || 0}`;
+      
+      const relevantTransactions = existingTransactions.filter(tx => {
+        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const matchesKey = txKey === installmentKey;
+        const matchesSemester = Number(tx?.semester_number) === Number(selectedInstallment.semesterNumber);
+        return matchesKey || (!!txKey === false && matchesSemester);
+      });
+
+      const approvedTransactions = relevantTransactions.filter(tx => 
+        tx.verification_status === 'approved'
+      );
+
+      const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+      const pendingAmount = Math.max(0, originalAmount - totalPaid);
+
+      console.log('🔍 [usePaymentSubmission] Calculated pending amount:', {
+        originalAmount,
+        totalPaid,
+        pendingAmount,
+        relevantTransactions: relevantTransactions.length,
+        approvedTransactions: approvedTransactions.length,
+      });
+
+      return pendingAmount;
+    }
+
+    return originalAmount;
   };
 
   const maxAmount = getMaxAmount();
+
+  // Recalculate maxAmount when existingTransactions change
+  useEffect(() => {
+    const newMaxAmount = getMaxAmount();
+    if (newMaxAmount !== maxAmount) {
+      setAmountToPay(newMaxAmount);
+    }
+  }, [existingTransactions, selectedInstallment]);
 
   // Set initial amount when component mounts or installment changes
   useEffect(() => {

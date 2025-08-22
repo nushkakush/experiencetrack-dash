@@ -12,6 +12,7 @@ import { StepNavigation } from './components/StepNavigation';
 import { AddScholarshipButton } from './components/AddScholarshipButton';
 import { FeeStructureService } from '@/services/feeStructure.service';
 import { toast } from 'sonner';
+import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 
 interface FeeCollectionSetupModalProps {
   open: boolean;
@@ -36,7 +37,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
   cohortId,
   cohortStartDate,
   onSetupComplete,
-  mode = 'view',
+  mode = 'edit',
   onModeChange,
   variant = 'cohort',
   studentId,
@@ -45,6 +46,11 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
   restrictPaymentPlanToSelected = false,
   hideScholarshipControls = false,
 }) => {
+  const { hasPermission } = useFeaturePermissions();
+  
+  // Check if user can edit fee structure (only super admins)
+  const canEditFeeStructure = hasPermission('fees.setup_structure');
+  
   const {
     currentStep,
     feeStructureData,
@@ -66,7 +72,10 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
     onComplete: onSetupComplete,
   });
 
-  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<'one_shot' | 'sem_wise' | 'instalment_wise'>(initialSelectedPlan || 'instalment_wise');
+  // Force view mode for non-super admins
+  const effectiveMode = canEditFeeStructure ? mode : 'view';
+  
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<'one_shot' | 'sem_wise' | 'instalment_wise'>(initialSelectedPlan || 'one_shot');
 
   // Memoize the fee structure object to prevent unnecessary re-renders
   // Use existing fee structure if available (includes saved custom dates), otherwise create new one
@@ -178,7 +187,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
               }}
               onChange={(data) => setFeeStructureData(data)}
               errors={{}}
-              isReadOnly={mode === 'view'}
+              isReadOnly={effectiveMode === 'view'}
               selectedPaymentPlan={selectedPaymentPlan}
               isStudentCustomMode={variant === 'student-custom'}
             />
@@ -196,7 +205,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
               scholarships={memoizedScholarships}
               onScholarshipsChange={setScholarships}
               errors={{}}
-              isReadOnly={variant === 'student-custom' || mode === 'view'}
+              isReadOnly={variant === 'student-custom' || effectiveMode === 'view'}
             />
           );
               case 3:
@@ -205,7 +214,7 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
               feeStructure={memoizedFeeStructure}
               scholarships={memoizedScholarships}
               onDatesChange={handleDatesChange}
-              isReadOnly={mode === 'view'}
+              isReadOnly={effectiveMode === 'view'}
               onPaymentPlanChange={handlePaymentPlanChangeCallback}
               selectedPaymentPlan={selectedPaymentPlan}
               restrictToPlan={restrictPaymentPlanToSelected ? selectedPaymentPlan : undefined}
@@ -251,12 +260,12 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
             currentStep={currentStep}
             onNext={handleNext}
             onPrevious={handlePrevious}
-            onSave={mode === 'edit' ? handleSaveClick : undefined}
-            onEdit={mode === 'view' ? () => onModeChange?.('edit') : undefined}
-            onCancelEdit={mode === 'edit' ? () => onModeChange?.('view') : undefined}
+            onSave={effectiveMode === 'edit' ? handleSaveClick : undefined}
+            onEdit={effectiveMode === 'view' && canEditFeeStructure ? () => onModeChange?.('edit') : undefined}
+            onCancelEdit={effectiveMode === 'edit' ? () => onModeChange?.('view') : undefined}
             onClose={() => onOpenChange(false)}
-            isComplete={mode === 'view'}
-            isEditMode={mode === 'edit'}
+            isComplete={effectiveMode === 'view'}
+            isEditMode={effectiveMode === 'edit'}
             showNavigationButtons={true}
             showProgressBar={false}
             saveButtonText={variant === 'student-custom' ? 'Save Custom Plan' : undefined}

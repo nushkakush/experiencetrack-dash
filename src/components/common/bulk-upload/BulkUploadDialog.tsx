@@ -110,7 +110,7 @@ export default function BulkUploadDialog<T>({
                 />
               )}
               
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-muted p-4 rounded-lg">
                 <p className="text-sm">
                   Ready to import <strong>{state.validationResult?.valid.length}</strong> records.
                   {hasDuplicates && (

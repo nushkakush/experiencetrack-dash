@@ -196,34 +196,44 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
     <div className="space-y-6">
       {/* Scholarship Celebration Section */}
       {studentScholarshipData && scholarshipSavings && (
-        <Card className="border bg-card">
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold">Scholarship applied</h2>
-                <p className="text-sm text-muted-foreground">{studentScholarshipData.name}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-4xl mx-auto">
-                <div className="rounded-md border p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Scholarship Percentage</p>
-                  <p className="text-lg font-semibold">{scholarshipSavings.totalPercentage}%</p>
-                </div>
-                <div className="rounded-md border p-3 text-center">
-                  <p className="text-xs text-muted-foreground">You Save</p>
-                  <p className="text-lg font-semibold">₹{scholarshipSavings.totalScholarshipAmount.toLocaleString('en-IN')}</p>
-                </div>
-                <div className="rounded-md border p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Final Amount</p>
-                  <p className="text-lg font-semibold">₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}</p>
-                  <p className="text-xs text-muted-foreground">+GST</p>
-                </div>
-              </div>
-
-              <p className="text-center text-xs text-muted-foreground">This scholarship will be automatically applied to your payment plan below.</p>
+        <div className="space-y-4">
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-2xl">🎉</span>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Congratulations!
+              </h2>
+              <span className="text-2xl">🎉</span>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-lg text-muted-foreground">
+              You just earned a <span className="font-semibold text-purple-600">{scholarshipSavings.totalPercentage}% scholarship</span>!
+            </p>
+            <p className="text-sm text-muted-foreground">{studentScholarshipData.name}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-xl p-4 text-center border border-purple-200 dark:border-purple-800 shadow-sm">
+              <div className="text-2xl mb-1">🎯</div>
+              <p className="text-xs text-muted-foreground mb-1">Scholarship Percentage</p>
+              <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{scholarshipSavings.totalPercentage}%</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800 shadow-sm">
+              <div className="text-2xl mb-1">💰</div>
+              <p className="text-xs text-muted-foreground mb-1">You Save</p>
+              <p className="text-xl font-bold text-green-700 dark:text-green-300">₹{scholarshipSavings.totalScholarshipAmount.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800 shadow-sm">
+              <div className="text-2xl mb-1">💳</div>
+              <p className="text-xs text-muted-foreground mb-1">Final Amount</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}</p>
+              <p className="text-xs text-muted-foreground">+GST</p>
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            ✨ This scholarship will be automatically applied to your payment plan below ✨
+          </p>
+        </div>
       )}
 
       <div className="text-center space-y-2">

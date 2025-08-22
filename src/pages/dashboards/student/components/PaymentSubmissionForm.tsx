@@ -6,7 +6,8 @@ import {
   DollarSign, 
   CheckCircle
 } from 'lucide-react';
-import { CohortStudent } from '@/types/cohort';
+import { Label } from '@/components/ui/label';
+import { CohortStudent, Cohort } from '@/types/cohort';
 import { 
   PaymentModeSelector, 
   PaymentFieldRenderer,
@@ -15,6 +16,8 @@ import {
 } from '@/components/common/payments';
 import { getPaymentModeConfig } from '@/features/payments/domain/PaymentModeConfig';
 import { PaymentSubmissionData, PaymentBreakdown, Installment } from '@/types/payments';
+import { PartialPaymentsService } from '@/services/partialPayments.service';
+import { paymentTransactionService } from '@/services/paymentTransaction.service';
 
 interface PaymentSubmissionFormProps {
   paymentSubmissions: Map<string, PaymentSubmissionData>;
@@ -24,6 +27,7 @@ interface PaymentSubmissionFormProps {
   selectedPaymentPlan?: string;
   paymentBreakdown?: PaymentBreakdown;
   selectedInstallment?: Installment;
+  cohortData?: Cohort;
 }
 
 export const PaymentSubmissionForm = React.memo<PaymentSubmissionFormProps>(({
@@ -34,7 +38,133 @@ export const PaymentSubmissionForm = React.memo<PaymentSubmissionFormProps>(({
   selectedPaymentPlan,
   paymentBreakdown,
   selectedInstallment,
+  cohortData,
 }) => {
+  const [partialPaymentConfig, setPartialPaymentConfig] = React.useState<{
+    allowPartialPayments: boolean;
+  } | null>(null);
+  const [loadingPartialConfig, setLoadingPartialConfig] = React.useState(false);
+  const [existingTransactions, setExistingTransactions] = React.useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = React.useState(false);
+
+  // Fetch existing transactions for this student
+  const fetchExistingTransactions = React.useCallback(async () => {
+    if (!studentData?.id) return;
+
+    try {
+      setLoadingTransactions(true);
+      const studentPaymentId = (studentData as any).student_payment_id;
+      if (!studentPaymentId) return;
+
+      const result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      if (result.success && result.data) {
+        setExistingTransactions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching existing transactions:', error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }, [studentData?.id]);
+
+  // Fetch existing transactions when component mounts
+  React.useEffect(() => {
+    fetchExistingTransactions();
+  }, [fetchExistingTransactions]);
+
+  // Fetch partial payment configuration for this installment
+  React.useEffect(() => {
+    const fetchPartialPaymentConfig = async () => {
+      if (!selectedInstallment || !studentData?.id) {
+        console.log('🔒 [PaymentSubmissionForm] Skipping partial payment config fetch:', {
+          hasSelectedInstallment: !!selectedInstallment,
+          hasStudentDataId: !!studentData?.id,
+          selectedInstallment,
+          studentDataId: studentData?.id,
+        });
+        return;
+      }
+
+      try {
+        setLoadingPartialConfig(true);
+        const installmentKey = `${selectedInstallment.semesterNumber || 1}-${selectedInstallment.installmentNumber || 0}`;
+        
+        console.log('🔒 [PaymentSubmissionForm] Fetching partial payment config for:', {
+          studentId: studentData.id,
+          semesterNumber: selectedInstallment.semesterNumber || 1,
+          installmentNumber: selectedInstallment.installmentNumber || 0,
+          installmentKey,
+        });
+        
+        const config = await PartialPaymentsService.getInstallmentPartialPaymentConfig(
+          studentData.id,
+          selectedInstallment.semesterNumber || 1,
+          selectedInstallment.installmentNumber || 0
+        );
+        
+        console.log('🔒 [PaymentSubmissionForm] Retrieved partial payment config:', config);
+        setPartialPaymentConfig(config);
+      } catch (error) {
+        console.error('🚨 [PaymentSubmissionForm] Error fetching partial payment config:', error);
+        setPartialPaymentConfig({ allowPartialPayments: false });
+      } finally {
+        setLoadingPartialConfig(false);
+      }
+    };
+
+    fetchPartialPaymentConfig();
+  }, [selectedInstallment, studentData?.id]);
+
+  // Calculate partial payment info from existing transactions
+  const getPartialPaymentInfo = React.useCallback(() => {
+    if (!selectedInstallment || existingTransactions.length === 0) {
+      return {
+        totalAmount: selectedInstallment?.amountPayable || 0,
+        paidAmount: 0,
+        pendingAmount: selectedInstallment?.amountPayable || 0,
+        partialPaymentCount: 0,
+        maxPartialPayments: 2,
+      };
+    }
+
+    const installmentKey = `${selectedInstallment.semesterNumber || 1}-${selectedInstallment.installmentNumber || 0}`;
+    
+    const relevantTransactions = existingTransactions.filter(tx => {
+      const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+      const matchesKey = txKey === installmentKey;
+      const matchesSemester = Number(tx?.semester_number) === Number(selectedInstallment.semesterNumber);
+      return matchesKey || (!!txKey === false && matchesSemester);
+    });
+
+    const approvedTransactions = relevantTransactions.filter(tx => 
+      tx.verification_status === 'approved'
+    );
+
+    const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const totalAmount = selectedInstallment.amountPayable || 0;
+    const pendingAmount = Math.max(0, totalAmount - totalPaid);
+
+    return {
+      totalAmount,
+      paidAmount: totalPaid,
+      pendingAmount,
+      partialPaymentCount: approvedTransactions.length,
+      maxPartialPayments: 2,
+    };
+  }, [selectedInstallment, existingTransactions]);
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔒 PaymentSubmissionForm Partial Payment Config:', {
+      partialPaymentConfig,
+      allowPartialPayments: partialPaymentConfig?.allowPartialPayments || false,
+      isFixedAmount: partialPaymentConfig === null ? true : !partialPaymentConfig.allowPartialPayments,
+      loadingPartialConfig,
+      selectedInstallment,
+      studentDataId: studentData?.id,
+      partialPaymentInfo: getPartialPaymentInfo(),
+    });
+  }, [partialPaymentConfig, loadingPartialConfig, selectedInstallment, studentData?.id, getPartialPaymentInfo]);
   const {
     selectedPaymentMode,
     amountToPay,
@@ -114,13 +244,42 @@ export const PaymentSubmissionForm = React.memo<PaymentSubmissionFormProps>(({
         <Separator />
 
         {/* Amount Input */}
-        <AmountInput
-          amount={amountToPay}
-          maxAmount={maxAmount}
-          onAmountChange={handleAmountChange}
-          error={errors.amount}
-          disabled={isSubmitting}
-        />
+        {loadingPartialConfig ? (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="amount">Amount to Pay</Label>
+              <div className="w-full px-3 py-2 pl-8 pr-16 border rounded-md bg-muted text-lg font-medium">
+                Loading...
+              </div>
+            </div>
+          </div>
+        ) : (
+          (() => {
+            const allowPartialPayments = partialPaymentConfig?.allowPartialPayments || false;
+            const isFixedAmount = partialPaymentConfig === null ? true : !partialPaymentConfig.allowPartialPayments;
+            
+            console.log('🔒 [PaymentSubmissionForm] AmountInput props being passed:', {
+              partialPaymentConfig,
+              allowPartialPayments,
+              isFixedAmount,
+              maxAmount,
+              currentAmount: amountToPay,
+            });
+            
+            return (
+              <AmountInput
+                amount={amountToPay}
+                maxAmount={maxAmount}
+                onAmountChange={handleAmountChange}
+                error={errors.amount}
+                disabled={isSubmitting}
+                allowPartialPayments={allowPartialPayments}
+                isFixedAmount={isFixedAmount}
+                partialPaymentInfo={getPartialPaymentInfo()}
+              />
+            );
+          })()
+        )}
 
         <Separator />
 

@@ -60,6 +60,51 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
     });
   }
 
+  // Get payment transactions by student ID (joins with student_payments to get all transactions for a student)
+  async getByStudentId(
+    studentId: string
+  ): Promise<ApiResponse<PaymentTransactionRow[]>> {
+    return this.executeQuery(async () => {
+      console.log('🔍 [paymentTransactionService] getByStudentId called with studentId:', studentId);
+      
+      // First, get the student_payment_id for this student
+      const { data: studentPaymentData, error: studentPaymentError } = await supabase
+        .from('student_payments')
+        .select('id')
+        .eq('student_id', studentId)
+        .single();
+
+      if (studentPaymentError) {
+        console.log('🔍 [paymentTransactionService] Error getting student payment:', studentPaymentError);
+        throw studentPaymentError;
+      }
+
+      if (!studentPaymentData) {
+        console.log('🔍 [paymentTransactionService] No student payment found for studentId:', studentId);
+        return { data: [], error: null };
+      }
+
+      console.log('🔍 [paymentTransactionService] Found student payment:', studentPaymentData);
+
+      // Then get all transactions for this payment_id
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('payment_id', studentPaymentData.id)
+        .order('created_at', { ascending: false });
+
+      console.log('🔍 [paymentTransactionService] getByStudentId result:', {
+        success: !error,
+        dataLength: data?.length || 0,
+        data: data?.slice(0, 3), // Show first 3 transactions
+        error: error?.message,
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    });
+  }
+
   // Submit a new payment transaction
   async submitPayment(
     paymentData: PaymentSubmissionData,
@@ -293,6 +338,87 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       // automatically reflect the correct status based on the approved transactions.
 
       return { data, error: null };
+    });
+  }
+
+  // Partial approval functionality
+  async partialApproval(
+    transactionId: string,
+    verifiedBy: string,
+    approvalType: 'full' | 'partial' | 'reject',
+    approvedAmount?: number,
+    notes?: string,
+    rejectionReason?: string
+  ): Promise<ApiResponse<{ success: boolean; newTransactionId?: string; message?: string }>> {
+    return this.executeQuery(async () => {
+      // First, get the current transaction to understand its state
+      const { data: currentTransaction, error: fetchError } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch transaction: ${fetchError.message}`);
+      }
+
+      if (!currentTransaction) {
+        throw new Error('Transaction not found');
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        verification_status: approvalType === 'reject' ? 'rejected' : 'approved',
+        verified_by: verifiedBy,
+        verified_at: new Date().toISOString(),
+        verification_notes: notes || null,
+        rejection_reason: approvalType === 'reject' ? rejectionReason : null,
+      };
+
+      // If this is a partial or full approval, update the amount
+      if ((approvalType === 'partial' || approvalType === 'full') && approvedAmount !== undefined) {
+        updateData.amount = approvedAmount;
+        
+        // For partial payments, set or maintain partial payment sequence
+        if (approvalType === 'partial') {
+          // If this transaction doesn't have a partial_payment_sequence yet, set it to 1
+          // If it already has one, keep the existing sequence
+          if (!currentTransaction.partial_payment_sequence) {
+            updateData.partial_payment_sequence = 1;
+          }
+          
+          // Update notes to indicate this was a partial approval
+          updateData.verification_notes = `Partial approval: Original amount ₹${currentTransaction.amount}, Approved amount ₹${approvedAmount}. ${notes || ''}`;
+        } else {
+          // For full payments, clear partial payment sequence if it exists
+          updateData.partial_payment_sequence = null;
+          updateData.verification_notes = `Full approval: Amount updated to ₹${approvedAmount}. ${notes || ''}`;
+        }
+      }
+
+      // Update the transaction
+      const { data: updatedTransaction, error: updateError } = await supabase
+        .from('payment_transactions')
+        .update(updateData)
+        .eq('id', transactionId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Failed to update transaction: ${updateError.message}`);
+      }
+
+      return {
+        data: {
+          success: true,
+          message: approvalType === 'partial' 
+            ? `Partial payment of ₹${approvedAmount} approved`
+            : approvalType === 'full'
+            ? `Full payment of ₹${approvedAmount} approved`
+            : 'Payment rejected'
+        },
+        error: null
+      };
     });
   }
 

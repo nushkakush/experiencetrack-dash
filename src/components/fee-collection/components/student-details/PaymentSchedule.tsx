@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, DollarSign, Plus } from 'lucide-react';
+import { Calendar, Clock, DollarSign, Plus, Settings } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
@@ -11,6 +11,8 @@ import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
 import { FeeStructureService } from '@/services/feeStructure.service';
 import { getInstallmentStatusDisplay } from '@/utils/paymentStatusUtils';
+import { PartialPaymentToggle } from '@/components/common/payments/PartialPaymentToggle';
+import { PartialPaymentHistory } from '@/components/common/payments/PartialPaymentHistory';
 
 interface PaymentScheduleProps {
   student: StudentPaymentSummary;
@@ -58,9 +60,54 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
   const [selectedPaymentItem, setSelectedPaymentItem] =
     useState<PaymentScheduleItem | null>(null);
   const [showRecordingDialog, setShowRecordingDialog] = useState(false);
+  const [paymentTransactions, setPaymentTransactions] = useState<any[]>([]);
 
   // Check if user can record payments (admin/fee_collector permissions)
   const { canCollectFees } = useFeaturePermissions();
+
+  // Fetch payment transactions for this student
+  const fetchPaymentTransactions = useCallback(async () => {
+    try {
+      const studentPaymentId = (student as any).student_payment_id;
+      if (!studentPaymentId) return;
+
+      const result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      if (result.success && result.data) {
+        setPaymentTransactions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching payment transactions:', error);
+    }
+  }, [student]);
+
+  useEffect(() => {
+    fetchPaymentTransactions();
+  }, [fetchPaymentTransactions]);
+
+  // Get relevant transactions for a specific installment
+  const getRelevantTransactions = (item: PaymentScheduleItem) => {
+    if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
+    
+    const instKey = `${item.semesterNumber || 1}-${item.installmentNumber || 0}`;
+    
+    return paymentTransactions
+      .filter(tx => {
+        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const matchesKey = txKey === instKey;
+        const matchesSemester = Number(tx?.semester_number) === Number(item.semesterNumber);
+        return matchesKey || (!!txKey === false && matchesSemester);
+      })
+      .map(tx => ({
+        id: tx.id,
+        amount: Number(tx.amount),
+        partial_payment_sequence: tx.partial_payment_sequence || 0,
+        verification_status: tx.verification_status || 'pending',
+        created_at: tx.created_at || new Date().toISOString(),
+        payment_method: tx.payment_method,
+        notes: tx.notes,
+        verification_notes: tx.verification_notes,
+      }));
+  };
 
   const fetchPaymentSchedule = useCallback(async () => {
     try {
@@ -562,6 +609,20 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
                   </div>
                 </div>
 
+                {/* Partial Payment Toggle - Only show for program fee installments, not admission fee */}
+                {item.type !== 'Admission Fee' && (
+                  <div className='mb-2 flex items-center justify-end'>
+                    <PartialPaymentToggle
+                      studentId={student.student_id}
+                      installmentKey={`${item.semesterNumber || 1}-${item.installmentNumber || 0}`}
+                      onToggle={(enabled) => {
+                        // No need to refresh payment schedule - partial payment toggle doesn't affect payment amounts or dates
+                        console.log('🔧 [PaymentSchedule] Partial payment toggle changed:', { installmentKey: `${item.semesterNumber || 1}-${item.installmentNumber || 0}`, enabled });
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div className='space-y-2 text-xs text-muted-foreground'>
                   <div className='flex justify-between'>
                     <span>Amount Payable:</span>
@@ -589,6 +650,65 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Payment Transaction History - Only show if there are partial payments or multiple transactions */}
+                {(() => {
+                  const transactions = getRelevantTransactions(item);
+                  const totalPaid = transactions
+                    .filter(t => t.verification_status === 'approved' || t.verification_status === 'partially_approved')
+                    .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0);
+                  
+                  // Only show payment history if:
+                  // 1. There are multiple transactions, OR
+                  // 2. There's a partial payment (amount paid < expected amount)
+                  // NOTE: We do NOT show for single complete payments, even if pending verification
+                  const hasMultipleTransactions = transactions.length > 1;
+                  const hasPartialPayment = totalPaid > 0 && totalPaid < item.amount;
+                  
+                  // For single transactions, check if it's a complete payment (regardless of status)
+                  const isSingleCompletePayment = transactions.length === 1 && 
+                    transactions[0].amount >= item.amount;
+                  
+                  const shouldShowHistory = hasMultipleTransactions || hasPartialPayment;
+                  
+                  // DEBUG LOGGING
+                  console.log('🔍 [PaymentSchedule] Payment History Visibility Check:', {
+                    installmentKey: `${item.semesterNumber || 1}-${item.installmentNumber || 0}`,
+                    transactionsCount: transactions.length,
+                    totalPaid,
+                    expectedAmount: item.amount,
+                    hasMultipleTransactions,
+                    hasPartialPayment,
+                    isSingleCompletePayment,
+                    shouldShowHistory,
+                    transactions: transactions.map(t => ({
+                      id: t.id,
+                      amount: t.amount,
+                      status: t.verification_status,
+                      partial_sequence: t.partial_payment_sequence
+                    }))
+                  });
+                  
+                  if (!shouldShowHistory) {
+                    console.log('✅ [PaymentSchedule] HIDING Payment History - Single complete payment');
+                    return null;
+                  }
+                  
+                  console.log('📋 [PaymentSchedule] SHOWING Payment History - Complex payment scenario');
+                  return (
+                    <div className='mt-3 pt-3 border-t'>
+                      <PartialPaymentHistory
+                        transactions={transactions}
+                        totalExpectedAmount={item.amount}
+                        totalPaid={totalPaid}
+                        remainingAmount={item.amount - totalPaid}
+                        totalPending={transactions
+                          .filter(t => t.verification_status === 'verification_pending' || t.verification_status === 'pending')
+                          .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0)}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

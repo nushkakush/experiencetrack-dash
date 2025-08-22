@@ -115,6 +115,14 @@ export class FeatureFlagService {
         rolloutPercentage: 100,
         targetRoles: ['super_admin'],
       },
+      {
+        id: 'student-payment-dashboard',
+        name: 'Student Payment Dashboard',
+        description: 'Enable payment dashboard navigation for students',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['student'],
+      },
     ];
 
     defaultFlags.forEach(flag => {
@@ -198,6 +206,34 @@ export class FeatureFlagService {
    */
   getAllFlags(): FeatureFlag[] {
     return Array.from(this.flags.values());
+  }
+
+  /**
+   * Toggle a feature flag for testing purposes
+   */
+  toggleFlag(flagId: string): boolean {
+    const flag = this.flags.get(flagId);
+    if (flag) {
+      flag.enabled = !flag.enabled;
+      console.log(`Feature flag '${flagId}' ${flag.enabled ? 'enabled' : 'disabled'}`);
+      return flag.enabled;
+    }
+    console.warn(`Feature flag '${flagId}' not found`);
+    return false;
+  }
+
+  /**
+   * Set feature flag state for testing purposes
+   */
+  setFlagState(flagId: string, enabled: boolean): boolean {
+    const flag = this.flags.get(flagId);
+    if (flag) {
+      flag.enabled = enabled;
+      console.log(`Feature flag '${flagId}' ${enabled ? 'enabled' : 'disabled'}`);
+      return true;
+    }
+    console.warn(`Feature flag '${flagId}' not found`);
+    return false;
   }
 
   /**

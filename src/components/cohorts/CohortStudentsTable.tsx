@@ -89,6 +89,13 @@ export default function CohortStudentsTable({
   const [invitingStudentId, setInvitingStudentId] = useState<string | null>(
     null
   );
+  const [emailConfirmationDialog, setEmailConfirmationDialog] = useState<{
+    open: boolean;
+    student: CohortStudent | null;
+  }>({
+    open: false,
+    student: null,
+  });
   const [scholarshipAssignments, setScholarshipAssignments] = useState<
     Record<string, boolean>
   >({});
@@ -219,6 +226,43 @@ export default function CohortStudentsTable({
     } finally {
       setInvitingStudentId(null);
     }
+  };
+
+  const openEmailConfirmation = (student: CohortStudent) => {
+    setEmailConfirmationDialog({
+      open: true,
+      student,
+    });
+  };
+
+  const closeEmailConfirmation = () => {
+    setEmailConfirmationDialog({
+      open: false,
+      student: null,
+    });
+  };
+
+  const confirmSendEmail = async () => {
+    if (emailConfirmationDialog.student) {
+      await handleSendInvitation(emailConfirmationDialog.student);
+      closeEmailConfirmation();
+    }
+  };
+
+  // Helper function to check if email option should be shown
+  const shouldShowEmailOption = (student: CohortStudent) => {
+    // Show for pending status (no email sent yet)
+    if (student.invite_status === 'pending') {
+      return true;
+    }
+    
+    // Show for sent status (email sent but not yet accepted/registered)
+    if (student.invite_status === 'sent') {
+      return true;
+    }
+    
+    // Don't show for accepted, failed, or other statuses
+    return false;
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -891,14 +935,14 @@ export default function CohortStudentsTable({
                       />
                     )}
 
-                    {student.invite_status === 'pending' && (
+                    {shouldShowEmailOption(student) && (
                       <Button
                         variant='ghost'
                         size='sm'
-                        onClick={() => handleSendInvitation(student)}
+                        onClick={() => openEmailConfirmation(student)}
                         disabled={invitingStudentId === student.id}
                         className='h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                        title='Send invitation'
+                        title={student.invite_status === 'pending' ? 'Send invitation' : 'Resend invitation'}
                       >
                         <Mail className='h-4 w-4' />
                       </Button>
@@ -964,6 +1008,35 @@ export default function CohortStudentsTable({
         onMarkedAsDroppedOut={handleDroppedOutSuccess}
         onReverted={handleReverted}
       />
+
+             {/* Email Confirmation Dialog */}
+       <AlertDialog open={emailConfirmationDialog.open} onOpenChange={closeEmailConfirmation}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>
+               {emailConfirmationDialog.student?.invite_status === 'pending' 
+                 ? 'Send Invitation' 
+                 : 'Resend Invitation'
+               }
+             </AlertDialogTitle>
+             <AlertDialogDescription>
+               {emailConfirmationDialog.student?.invite_status === 'pending' 
+                 ? `Are you sure you want to send an invitation email to ${emailConfirmationDialog.student?.first_name} ${emailConfirmationDialog.student?.last_name}?`
+                 : `This student has already been sent an invitation. Would you like to resend it to ${emailConfirmationDialog.student?.first_name} ${emailConfirmationDialog.student?.last_name}?`
+               }
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel onClick={closeEmailConfirmation}>Cancel</AlertDialogCancel>
+             <AlertDialogAction onClick={confirmSendEmail}>
+               {emailConfirmationDialog.student?.invite_status === 'pending' 
+                 ? 'Send Invitation' 
+                 : 'Resend Invitation'
+               }
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
     </div>
   );
 }

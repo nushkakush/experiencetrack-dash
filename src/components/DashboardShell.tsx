@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
+import { useFeatureFlag } from '@/lib/feature-flags/useFeatureFlag';
 
 interface NavigationItem {
   title: string;
@@ -50,7 +51,8 @@ interface DashboardShellProps {
 
 const getNavigationItems = (
   role: UserRole,
-  navigate: (path: string) => void
+  navigate: (path: string) => void,
+  showStudentPaymentDashboard: boolean = false
 ): NavigationItem[] => {
   const baseItems: NavigationItem[] = [
     { title: 'Dashboard', onClick: () => navigate('/dashboard'), icon: Home },
@@ -63,12 +65,12 @@ const getNavigationItems = (
         onClick: () => navigate('/dashboard'),
         icon: Calendar,
       },
-      // Fee Payment menu temporarily hidden for students
-      // {
-      //   title: 'Fee Payment',
-      //   onClick: () => navigate('/dashboard/fee-payment'),
-      //   icon: CreditCard,
-      // },
+      // Fee Payment menu - controlled by feature flag
+      ...(showStudentPaymentDashboard ? [{
+        title: 'Fee Payment',
+        onClick: () => navigate('/dashboard/fee-payment'),
+        icon: CreditCard,
+      }] : []),
     ],
     super_admin: [
       {
@@ -130,10 +132,15 @@ const DashboardShell = ({
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  
+  // Check if student payment dashboard feature flag is enabled
+  const { isEnabled: showStudentPaymentDashboard } = useFeatureFlag('student-payment-dashboard', {
+    defaultValue: false,
+  });
 
   if (!profile) return null;
 
-  const navigationItems = getNavigationItems(profile.role, navigate);
+  const navigationItems = getNavigationItems(profile.role, navigate, showStudentPaymentDashboard);
   const userInitials =
     `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
 

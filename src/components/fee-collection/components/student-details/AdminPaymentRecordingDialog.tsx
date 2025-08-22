@@ -16,6 +16,7 @@ import { PaymentForm } from '@/components/common/payments/PaymentForm';
 import { useAuth } from '@/hooks/useAuth';
 import { usePaymentSubmissions } from '@/pages/dashboards/student/hooks/usePaymentSubmissions';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import {
   StudentData,
   PaymentBreakdown,
@@ -71,7 +72,81 @@ export const AdminPaymentRecordingDialog: React.FC<
   const [studentPaymentBreakdown, setStudentPaymentBreakdown] =
     useState<StudentPaymentBreakdown | null>(null);
   const [loading, setLoading] = useState(false);
+  const [existingTransactions, setExistingTransactions] = useState<any[]>([]);
+  const [pendingAmount, setPendingAmount] = useState<number>(0);
   const { profile } = useAuth();
+
+  // Fetch existing transactions for this student to calculate pending amount
+  const fetchExistingTransactions = useCallback(async () => {
+    if (!student?.student_id) return;
+
+    console.log('🔍 [AdminPaymentDialog] fetchExistingTransactions called with:', {
+      studentId: student.student_id,
+      paymentItem: paymentItem ? {
+        id: paymentItem.id,
+        type: paymentItem.type,
+        amount: paymentItem.amount,
+        semesterNumber: paymentItem.semesterNumber,
+        installmentNumber: paymentItem.installmentNumber,
+      } : null,
+    });
+
+    try {
+      const result = await paymentTransactionService.getByStudentId(student.student_id);
+      console.log('🔍 [AdminPaymentDialog] Transaction fetch result:', {
+        success: result.success,
+        dataLength: result.data?.length || 0,
+        data: result.data?.slice(0, 3), // Show first 3 transactions
+      });
+      
+      if (result.success && result.data) {
+        setExistingTransactions(result.data);
+        
+        // Calculate pending amount for the specific installment
+        if (paymentItem && result.data.length > 0) {
+          const installmentKey = `${paymentItem.semesterNumber || 1}-${paymentItem.installmentNumber || 0}`;
+          
+          const relevantTransactions = result.data.filter(tx => {
+            const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+            const matchesKey = txKey === installmentKey;
+            const matchesSemester = Number(tx?.semester_number) === Number(paymentItem.semesterNumber);
+            return matchesKey || (!!txKey === false && matchesSemester);
+          });
+
+          const approvedTransactions = relevantTransactions.filter(tx => 
+            tx.verification_status === 'approved'
+          );
+
+          const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+          const originalAmount = paymentItem.amount || 0;
+          const calculatedPendingAmount = Math.max(0, originalAmount - totalPaid);
+          
+          console.log('🔍 [AdminPaymentDialog] Calculated pending amount:', {
+            originalAmount,
+            totalPaid,
+            calculatedPendingAmount,
+            relevantTransactions: relevantTransactions.length,
+            approvedTransactions: approvedTransactions.length,
+            installmentKey,
+            relevantTransactionDetails: relevantTransactions.map(tx => ({
+              id: tx.id,
+              amount: tx.amount,
+              status: tx.verification_status,
+              installment_id: tx.installment_id,
+              semester_number: tx.semester_number,
+            })),
+          });
+          
+          setPendingAmount(calculatedPendingAmount);
+        } else {
+          console.log('🔍 [AdminPaymentDialog] No paymentItem or no transactions found');
+          setPendingAmount(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching existing transactions:', error);
+    }
+  }, [student?.student_id, paymentItem]);
 
   // 🔍 DEBUG LOGGING - Track initial props (only on dialog open)
 
@@ -110,19 +185,23 @@ export const AdminPaymentRecordingDialog: React.FC<
   const selectedInstallment: Instalment | undefined = useMemo(() => {
     if (!paymentItem) return undefined;
 
-    // Calculate the amount - prefer breakdown total, fallback to paymentItem amount
-    const calculatedAmount =
-      adminPaymentBreakdown?.totalAmount ?? paymentItem.amount;
+    // Calculate the amount - use pending amount if available, otherwise prefer breakdown total, fallback to paymentItem amount
+    const calculatedAmount = pendingAmount > 0 
+      ? pendingAmount 
+      : (adminPaymentBreakdown?.totalAmount ?? paymentItem.amount);
 
     console.log(
       '🔍 [AdminPaymentDialog] selectedInstallment amount calculation:',
       {
         adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
         paymentItemAmount: paymentItem.amount,
+        pendingAmount,
         calculatedAmount,
         isNaN: isNaN(calculatedAmount),
         paymentItemSemesterNumber: paymentItem.semesterNumber,
         paymentItemInstallmentNumber: paymentItem.installmentNumber,
+        usePendingAmount: pendingAmount > 0,
+        finalAmount: calculatedAmount,
       }
     );
 
@@ -136,7 +215,7 @@ export const AdminPaymentRecordingDialog: React.FC<
       paidAmount: 0,
       paidDate: paymentItem.paymentDate,
     };
-  }, [paymentItem, adminPaymentBreakdown?.totalAmount]);
+  }, [paymentItem, adminPaymentBreakdown?.totalAmount, pendingAmount]);
 
   // 🔍 DEBUG LOGGING - Track selectedInstallment creation (DISABLED to prevent infinite loop)
   // useEffect(() => {
@@ -355,8 +434,9 @@ export const AdminPaymentRecordingDialog: React.FC<
   useEffect(() => {
     if (open && paymentItem && student) {
       fetchPaymentBreakdown();
+      fetchExistingTransactions();
     }
-  }, [open, paymentItem, student, fetchPaymentBreakdown]);
+  }, [open, paymentItem, student, fetchPaymentBreakdown, fetchExistingTransactions]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -549,10 +629,27 @@ export const AdminPaymentRecordingDialog: React.FC<
 
                 <Separator />
 
+                {/* Show partial payments if any */}
+                {pendingAmount > 0 && pendingAmount < adminPaymentBreakdown.totalAmount && (
+                  <div className='space-y-2'>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>Original Amount:</span>
+                      <span>₹{adminPaymentBreakdown.totalAmount.toLocaleString()}</span>
+                    </div>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>Partial Payments:</span>
+                      <span className='text-green-600'>
+                        -₹{(adminPaymentBreakdown.totalAmount - pendingAmount).toLocaleString()}
+                      </span>
+                    </div>
+                    <Separator />
+                  </div>
+                )}
+
                 <div className='flex justify-between text-lg font-semibold'>
-                  <span>Total Amount:</span>
+                  <span>Amount to Pay:</span>
                   <span>
-                    ₹{adminPaymentBreakdown.totalAmount.toLocaleString()}
+                    ₹{pendingAmount > 0 ? pendingAmount.toLocaleString() : adminPaymentBreakdown.totalAmount.toLocaleString()}
                   </span>
                 </div>
 
@@ -571,6 +668,21 @@ export const AdminPaymentRecordingDialog: React.FC<
 
           {/* Payment Form */}
           <div className='space-y-4'>
+            {console.log('🔍 [AdminPaymentDialog] Passing selectedInstallment to PaymentForm:', {
+              selectedInstallmentDetails: selectedInstallment ? {
+                id: selectedInstallment.id,
+                semesterNumber: selectedInstallment.semesterNumber,
+                installmentNumber: selectedInstallment.installmentNumber,
+                amount: selectedInstallment.amount,
+                status: selectedInstallment.status,
+              } : null,
+              pendingAmountCalculated: pendingAmount,
+              adminPaymentBreakdownTotalAmount: adminPaymentBreakdown?.totalAmount,
+              paymentBreakdownForForm: paymentBreakdownForForm ? {
+                totalAmount: paymentBreakdownForForm.totalAmount,
+                pendingAmount: paymentBreakdownForForm.pendingAmount,
+              } : null,
+            })}
             <PaymentForm
               paymentSubmissions={paymentSubmissions}
               submittingPayments={submittingPayments}

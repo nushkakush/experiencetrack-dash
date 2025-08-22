@@ -24,7 +24,7 @@ export default function CohortDetailsPage() {
     handleDeleteStudent,
     updateStudent,
     validateStudentRow,
-    processValidStudents,
+    processBulkUpload,
     checkDuplicateStudents,
   } = useCohortDetails(cohortId);
 
@@ -62,7 +62,7 @@ export default function CohortDetailsPage() {
     requiredHeaders: ['first_name', 'last_name', 'email'],
     optionalHeaders: ['phone', 'invite'],
     validateRow: validateStudentRow,
-    processValidData: processValidStudents,
+    processValidData: processBulkUpload,
     checkDuplicates: checkDuplicateStudents,
     templateData: `first_name,last_name,email,phone,invite
 John,Doe,john.doe@example.com,+1234567890,YES

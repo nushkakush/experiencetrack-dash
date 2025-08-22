@@ -13,6 +13,7 @@ import {
   Installment,
   SemesterInstallment,
 } from '@/types/payments/PaymentFormTypes';
+import { paymentTransactionService } from '@/services/paymentTransaction.service';
 
 // Using imported UsePaymentFormProps interface from PaymentFormTypes
 
@@ -24,14 +25,87 @@ export const usePaymentForm = ({
   studentData,
   isAdminMode = false,
 }: UsePaymentFormProps) => {
+  console.log('🔍 [usePaymentForm] Hook called with:', {
+    hasSelectedInstallment: !!selectedInstallment,
+    selectedInstallmentDetails: selectedInstallment ? {
+      id: selectedInstallment.id,
+      semesterNumber: selectedInstallment.semesterNumber,
+      installmentNumber: selectedInstallment.installmentNumber,
+      amount: selectedInstallment.amount,
+    } : null,
+    hasPaymentBreakdown: !!paymentBreakdown,
+    selectedPaymentPlan,
+    hasStudentData: !!studentData,
+    studentDataId: studentData?.id,
+    isAdminMode,
+    isAdminModeType: typeof isAdminMode,
+    isAdminModeBoolean: isAdminMode === true,
+  });
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>('');
   const [amountToPay, setAmountToPay] = useState<number>(0);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({});
   const [errors, setErrors] = useState<FormErrors>({});
+  const [existingTransactions, setExistingTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Fetch existing transactions for this student to calculate pending amount
+  const fetchExistingTransactions = useCallback(async () => {
+    if (!studentData?.id) {
+      console.log('🔍 [usePaymentForm] No studentData.id, skipping transaction fetch');
+      return;
+    }
+
+    try {
+      setLoadingTransactions(true);
+      
+      // Try to get student_payment_id from studentData if it exists
+      const studentPaymentId = (studentData as any).student_payment_id;
+      
+      console.log('🔍 [usePaymentForm] Fetching transactions with:', {
+        studentId: studentData.id,
+        studentPaymentId,
+        hasStudentPaymentId: !!studentPaymentId,
+        studentDataKeys: Object.keys(studentData),
+        studentDataValues: Object.fromEntries(
+          Object.entries(studentData).map(([key, value]) => [key, typeof value === 'object' ? '[Object]' : value])
+        ),
+      });
+      
+      let result;
+      
+      if (studentPaymentId) {
+        // Use student_payment_id if available
+        result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      } else {
+        // Fallback: fetch by student_id directly
+        console.log('🔍 [usePaymentForm] Using fallback method with student_id directly');
+        // Get all transactions for the student directly
+        result = await paymentTransactionService.getByStudentId(studentData.id);
+      }
+      
+      console.log('🔍 [usePaymentForm] Transaction fetch result:', {
+        success: result.success,
+        dataLength: result.data?.length || 0,
+        data: result.data?.slice(0, 3), // Show first 3 transactions to avoid console spam
+        allTransactionIds: result.data?.map(tx => tx.id) || [],
+        allTransactionAmounts: result.data?.map(tx => ({ id: tx.id, amount: tx.amount, status: tx.verification_status })) || [],
+      });
+      
+      if (result.success && result.data) {
+        setExistingTransactions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching existing transactions:', error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }, [studentData?.id]);
 
   // Calculate the maximum amount that can be paid for the selected installment
   const getMaxAmount = useCallback(() => {
+    let originalAmount = 0;
+
     if (selectedInstallment) {
       console.log(
         '🔍 [usePaymentForm] getMaxAmount with selectedInstallment:',
@@ -42,47 +116,144 @@ export const usePaymentForm = ({
         }
       );
       // Round to 2 decimal places to avoid floating point precision issues
-      return Math.round(selectedInstallment.amount * 100) / 100;
-    }
-
-    if (!paymentBreakdown) return 0;
-
-    if (selectedPaymentPlan === 'one_shot') {
-      return (
-        Math.round(
+      originalAmount = Math.round(selectedInstallment.amount * 100) / 100;
+    } else if (paymentBreakdown) {
+      if (selectedPaymentPlan === 'one_shot') {
+        originalAmount = Math.round(
           (paymentBreakdown.overallSummary?.totalAmountPayable || 0) * 100
-        ) / 100
-      );
-    } else {
-      // For semester/installment plans, find the next due amount
-      const pendingInstallments =
-        paymentBreakdown.semesters?.flatMap(
-          (semester: SemesterInstallment) =>
-            semester.instalments?.filter(
-              (inst: Installment) => inst.amount > 0
-            ) || []
-        ) || [];
+        ) / 100;
+      } else {
+        // For semester/installment plans, find the next due amount
+        const pendingInstallments =
+          paymentBreakdown.semesters?.flatMap(
+            (semester: SemesterInstallment) =>
+              semester.instalments?.filter(
+                (inst: Installment) => inst.amount > 0
+              ) || []
+          ) || [];
 
-      if (pendingInstallments.length > 0) {
-        return Math.round(pendingInstallments[0].amount * 100) / 100;
+        if (pendingInstallments.length > 0) {
+          originalAmount = Math.round(pendingInstallments[0].amount * 100) / 100;
+        }
       }
-
-      return 0;
     }
-  }, [selectedInstallment, paymentBreakdown, selectedPaymentPlan]);
+
+        // Calculate pending amount by subtracting already paid transactions
+    if (originalAmount > 0 && existingTransactions.length > 0 && selectedInstallment) {
+      const installmentKey = `${selectedInstallment.semesterNumber || 1}-${selectedInstallment.installmentNumber || 0}`;
+      
+      const relevantTransactions = existingTransactions.filter(tx => {
+        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const matchesKey = txKey === installmentKey;
+        const matchesSemester = Number(tx?.semester_number) === Number(selectedInstallment.semesterNumber);
+        return matchesKey || (!!txKey === false && matchesSemester);
+      });
+
+      const approvedTransactions = relevantTransactions.filter(tx => 
+        tx.verification_status === 'approved'
+      );
+
+      const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+      
+      // Check if selectedInstallment.amount is already reduced (less than originalAmount)
+      // This happens when the admin dialog has already calculated the pending amount
+      if (selectedInstallment.amount < originalAmount) {
+        console.log('🔍 [usePaymentForm] Using already reduced amount from selectedInstallment:', {
+          selectedInstallmentAmount: selectedInstallment.amount,
+          originalAmount,
+          isAdminMode,
+          usingReducedAmount: true,
+        });
+        return selectedInstallment.amount;
+      }
+      
+      // Also check if we're in admin mode and the amount is significantly different from the expected original
+      // This handles the case where the admin dialog has already reduced the amount
+      if (isAdminMode === true && selectedInstallment.amount !== originalAmount) {
+        console.log('🔍 [usePaymentForm] Admin mode detected - using selectedInstallment amount:', {
+          selectedInstallmentAmount: selectedInstallment.amount,
+          originalAmount,
+          isAdminMode,
+          usingSelectedAmount: true,
+        });
+        return selectedInstallment.amount;
+      }
+      
+      // If we're in admin mode, always use the selectedInstallment amount if it's provided
+      if (isAdminMode === true && selectedInstallment.amount > 0) {
+        console.log('🔍 [usePaymentForm] Admin mode - using selectedInstallment amount directly:', {
+          selectedInstallmentAmount: selectedInstallment.amount,
+          originalAmount,
+          isAdminMode,
+          usingDirectAmount: true,
+        });
+        return selectedInstallment.amount;
+      }
+      
+      const pendingAmount = Math.max(0, originalAmount - totalPaid);
+      
+      console.log('🔍 [usePaymentForm] Calculated pending amount:', {
+        originalAmount: originalAmount,
+        totalPaid,
+        pendingAmount,
+        relevantTransactions: relevantTransactions.length,
+        approvedTransactions: approvedTransactions.length,
+        installmentKey,
+        isAdminMode,
+        selectedInstallmentAmount: selectedInstallment.amount,
+        relevantTransactionDetails: relevantTransactions.map(tx => ({
+          id: tx.id,
+          amount: tx.amount,
+          status: tx.verification_status,
+          installment_id: tx.installment_id,
+          semester_number: tx.semester_number,
+        })),
+        approvedTransactionDetails: approvedTransactions.map(tx => ({
+          id: tx.id,
+          amount: tx.amount,
+          status: tx.verification_status,
+        })),
+      });
+      
+      return pendingAmount;
+    }
+
+    return originalAmount;
+  }, [selectedInstallment, paymentBreakdown, selectedPaymentPlan, existingTransactions]);
 
   const maxAmount = getMaxAmount();
 
   console.log('🔍 [usePaymentForm] Calculated values:', {
     maxAmount,
     isMaxAmountNaN: isNaN(maxAmount),
+    existingTransactionsLength: existingTransactions.length,
+    selectedInstallment: selectedInstallment ? {
+      semesterNumber: selectedInstallment.semesterNumber,
+      installmentNumber: selectedInstallment.installmentNumber,
+      amount: selectedInstallment.amount,
+    } : null,
+    studentData: studentData ? {
+      id: studentData.id,
+      hasStudentPaymentId: !!(studentData as any).student_payment_id,
+      studentPaymentId: (studentData as any).student_payment_id,
+      keys: Object.keys(studentData),
+    } : null,
   });
+
+  // Fetch existing transactions when component mounts
+  useEffect(() => {
+    console.log('🔍 [usePaymentForm] useEffect triggered for fetchExistingTransactions');
+    if (studentData?.id) {
+      fetchExistingTransactions();
+    }
+  }, [fetchExistingTransactions, studentData?.id]);
 
   // Set initial amount when component mounts or installment changes
   useEffect(() => {
     console.log('🔍 [usePaymentForm] Setting amountToPay to maxAmount:', {
       maxAmount,
       isNaN: isNaN(maxAmount),
+      previousAmountToPay: amountToPay,
     });
     setAmountToPay(maxAmount);
   }, [maxAmount]);

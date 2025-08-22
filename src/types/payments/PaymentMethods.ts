@@ -86,9 +86,11 @@ export interface PaymentTransaction {
     | 'verification_pending'
     | 'approved'
     | 'rejected'
+    | 'partially_approved'
     | null;
   verified_by?: string | null;
   verified_at?: string | null;
+  partial_payment_sequence?: number;
   receipt_url?: string | null;
   proof_of_payment_url?: string | null;
   transaction_screenshot_url?: string | null;

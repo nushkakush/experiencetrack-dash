@@ -27,6 +27,19 @@ export const PaymentForm = React.memo<PaymentFormProps>(
     selectedInstallment,
     isAdminMode = false,
   }) => {
+    console.log('🔍 [PaymentForm] Component rendered with:', {
+      hasStudentData: !!studentData,
+      studentDataId: studentData?.id,
+      hasSelectedInstallment: !!selectedInstallment,
+      selectedInstallmentDetails: selectedInstallment ? {
+        id: selectedInstallment.id,
+        semesterNumber: selectedInstallment.semesterNumber,
+        installmentNumber: selectedInstallment.installmentNumber,
+        amount: selectedInstallment.amount,
+      } : null,
+      selectedPaymentPlan,
+      isAdminMode,
+    });
     const {
       selectedPaymentMode,
       amountToPay,
@@ -147,11 +160,24 @@ export const PaymentForm = React.memo<PaymentFormProps>(
 
         {/* Amount Section */}
         <div className='space-y-4'>
+          {console.log('🔍 [PaymentForm] About to render PaymentAmountInput with:', {
+            amountToPay,
+            maxAmount,
+            studentId: studentData?.id,
+            selectedInstallment: selectedInstallment ? {
+              id: selectedInstallment.id,
+              semesterNumber: selectedInstallment.semesterNumber,
+              installmentNumber: selectedInstallment.installmentNumber,
+              amount: selectedInstallment.amount,
+            } : null,
+          })}
           <PaymentAmountInput
             amount={amountToPay}
             maxAmount={maxAmount}
             onAmountChange={handleAmountChange}
             error={errors.amount}
+            studentId={studentData?.id}
+            selectedInstallment={selectedInstallment}
           />
         </div>
 

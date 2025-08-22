@@ -76,6 +76,7 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(
         <PaymentDashboardHeader
           cohortName={cohortData?.name}
           cohortStartDate={cohortData?.startDate}
+          selectedPaymentPlan={selectedPaymentPlan}
         />
 
         {/* Payment Summary Cards */}
@@ -100,6 +101,7 @@ export const PaymentDashboard = React.memo<PaymentDashboardProps>(
           paymentSubmissions={paymentSubmissions}
           submittingPayments={submittingPayments}
           studentData={studentData}
+          cohortData={cohortData}
           studentPayments={studentPayments}
           paymentTransactions={paymentTransactions}
           onToggleSemester={toggleSemester}

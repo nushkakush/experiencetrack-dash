@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Types (lightweight, internal to function)
-type Action = 'breakdown' | 'status' | 'full';
+type Action = 'breakdown' | 'status' | 'full' | 'partial_calculation' | 'admin_partial_approval' | 'partial_config';
 
 type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise';
 
@@ -28,6 +28,14 @@ type EdgeRequest = {
   additionalDiscountPercentage?: number;
   // startDate removed - dates come from database only
   customDates?: Record<string, string>; // For preview with custom dates
+  // Partial payment specific fields
+  installmentId?: string;
+  approvedAmount?: number;
+  transactionId?: string;
+  approvalType?: 'full' | 'partial' | 'reject';
+  adminNotes?: string;
+  rejectionReason?: string;
+  allowPartialPayments?: boolean;
   feeStructureData?: {
     // For preview mode when no saved structure exists
     total_program_fee: number;
@@ -933,6 +941,261 @@ const generateFeeStructureReview = async (
   };
 };
 
+// Partial payment calculation helpers
+const calculatePartialPaymentSummary = async (
+  supabase: ReturnType<typeof createClient>,
+  studentId: string,
+  installmentId: string
+): Promise<{
+  installmentId: string;
+  originalAmount: number;
+  totalPaid: number;
+  pendingAmount: number;
+  nextPaymentAmount: number;
+  canMakeAnotherPayment: boolean;
+  partialPaymentHistory: Array<{
+    id: string;
+    sequenceNumber: number;
+    amount: number;
+    status: string;
+    paymentDate?: string;
+    verifiedAt?: string;
+    notes?: string;
+    rejectionReason?: string;
+  }>;
+  restrictions: {
+    maxPartialPayments: number;
+    currentCount: number;
+    remainingPayments: number;
+  };
+}> => {
+  // Get the payment record
+  const { data: paymentRecord } = await supabase
+    .from('student_payments')
+    .select('id')
+    .eq('student_id', studentId)
+    .single();
+
+  if (!paymentRecord) {
+    throw new Error('Payment record not found');
+  }
+
+  // Get all transactions for this installment
+  const { data: transactions } = await supabase
+    .from('payment_transactions')
+    .select('id, amount, verification_status, partial_payment_sequence, created_at, verified_at, notes, rejection_reason')
+    .eq('payment_id', paymentRecord.id)
+    .eq('installment_id', installmentId)
+    .order('partial_payment_sequence', { ascending: true });
+
+  const partialPayments = transactions || [];
+  
+  // Calculate totals
+  const totalPaid = partialPayments
+    .filter(t => t.verification_status === 'approved' || t.verification_status === 'partially_approved')
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+  // Get original installment amount (this would need to be calculated from fee structure)
+  // For now, using a placeholder - in real implementation, this would call the breakdown calculation
+  const originalAmount = 10000; // TODO: Calculate from fee structure
+  
+  const pendingAmount = originalAmount - totalPaid;
+  const currentCount = partialPayments.length;
+  const maxPartialPayments = 2; // As per requirements
+  const canMakeAnotherPayment = currentCount < maxPartialPayments && pendingAmount > 0;
+
+  return {
+    installmentId,
+    originalAmount,
+    totalPaid,
+    pendingAmount,
+    nextPaymentAmount: canMakeAnotherPayment ? 0 : pendingAmount, // 0 means student can choose amount
+    canMakeAnotherPayment,
+    partialPaymentHistory: partialPayments.map(t => ({
+      id: t.id,
+      sequenceNumber: t.partial_payment_sequence || 1,
+      amount: t.amount || 0,
+      status: t.verification_status || 'pending',
+      paymentDate: t.created_at,
+      verifiedAt: t.verified_at,
+      notes: t.notes,
+      rejectionReason: t.rejection_reason,
+    })),
+    restrictions: {
+      maxPartialPayments,
+      currentCount,
+      remainingPayments: Math.max(0, maxPartialPayments - currentCount),
+    },
+  };
+};
+
+const processAdminPartialApproval = async (
+  supabase: ReturnType<typeof createClient>,
+  transactionId: string,
+  approvalType: 'full' | 'partial' | 'reject',
+  approvedAmount?: number,
+  adminNotes?: string,
+  rejectionReason?: string
+): Promise<{ success: boolean; newTransactionId?: string; message?: string }> => {
+  if (approvalType === 'reject') {
+    // Reject the transaction
+    const { error } = await supabase
+      .from('payment_transactions')
+      .update({
+        verification_status: 'rejected',
+        rejection_reason: rejectionReason,
+        verified_at: new Date().toISOString(),
+        verification_notes: adminNotes,
+      })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true, message: 'Transaction rejected successfully' };
+  }
+
+  if (approvalType === 'full') {
+    // Approve the full transaction
+    const { error } = await supabase
+      .from('payment_transactions')
+      .update({
+        verification_status: 'approved',
+        verified_at: new Date().toISOString(),
+        verification_notes: adminNotes,
+      })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true, message: 'Transaction approved successfully' };
+  }
+
+  if (approvalType === 'partial' && approvedAmount) {
+    // Get the original transaction
+    const { data: originalTransaction, error: fetchError } = await supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError || !originalTransaction) {
+      throw new Error('Original transaction not found');
+    }
+
+    const originalAmount = originalTransaction.amount;
+    const remainingAmount = originalAmount - approvedAmount;
+
+    if (approvedAmount <= 0 || approvedAmount >= originalAmount) {
+      throw new Error('Invalid approved amount for partial approval');
+    }
+
+    // Update original transaction to partially approved with approved amount
+    const { error: updateError } = await supabase
+      .from('payment_transactions')
+      .update({
+        amount: approvedAmount,
+        verification_status: 'partially_approved',
+        verified_at: new Date().toISOString(),
+        verification_notes: adminNotes,
+      })
+      .eq('id', transactionId);
+
+    if (updateError) throw updateError;
+
+    // Create new pending transaction for remaining amount
+    const { data: newTransaction, error: createError } = await supabase
+      .from('payment_transactions')
+      .insert({
+        payment_id: originalTransaction.payment_id,
+        transaction_type: originalTransaction.transaction_type,
+        amount: remainingAmount,
+        payment_method: originalTransaction.payment_method,
+        status: 'pending',
+        verification_status: 'pending',
+        installment_id: originalTransaction.installment_id,
+        semester_number: originalTransaction.semester_number,
+        partial_payment_sequence: (originalTransaction.partial_payment_sequence || 1) + 1,
+        notes: `Remaining amount from partial approval of transaction ${transactionId}`,
+        created_by: originalTransaction.created_by,
+        recorded_by_user_id: originalTransaction.recorded_by_user_id,
+      })
+      .select('id')
+      .single();
+
+    if (createError) throw createError;
+
+    return {
+      success: true,
+      newTransactionId: newTransaction.id,
+      message: `Transaction partially approved. ₹${approvedAmount} approved, ₹${remainingAmount} remains pending.`,
+    };
+  }
+
+  throw new Error('Invalid approval type or missing required parameters');
+};
+
+const updatePartialPaymentConfig = async (
+  supabase: ReturnType<typeof createClient>,
+  studentPaymentId: string,
+  installmentKey: string,
+  allowPartialPayments: boolean
+): Promise<{ success: boolean; message?: string }> => {
+  // Get current config
+  const { data: currentData, error: fetchError } = await supabase
+    .from('student_payments')
+    .select('allow_partial_payments_json')
+    .eq('id', studentPaymentId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // Update the specific installment setting
+  const currentConfig = currentData?.allow_partial_payments_json || {};
+  const updatedConfig = {
+    ...currentConfig,
+    [installmentKey]: allowPartialPayments,
+  };
+
+  const { error } = await supabase
+    .from('student_payments')
+    .update({ allow_partial_payments_json: updatedConfig })
+    .eq('id', studentPaymentId);
+
+  if (error) throw error;
+
+  return {
+    success: true,
+    message: `Partial payments ${allowPartialPayments ? 'enabled' : 'disabled'} for installment ${installmentKey}`,
+  };
+};
+
+const getPartialPaymentConfig = async (
+  supabase: ReturnType<typeof createClient>,
+  studentPaymentId: string,
+  installmentKey: string
+): Promise<{ allowPartialPayments: boolean }> => {
+  const { data, error } = await supabase
+    .from('student_payments')
+    .select('allow_partial_payments_json')
+    .eq('id', studentPaymentId)
+    .single();
+
+  if (error) throw error;
+
+  const config = data?.allow_partial_payments_json || {};
+  const result = config[installmentKey] || false;
+  console.log('🔍 [getPartialPaymentConfig] Debug:', {
+    studentPaymentId,
+    installmentKey,
+    config,
+    result,
+    configType: typeof config,
+    configKeys: Object.keys(config || {}),
+    configValues: Object.values(config || {}),
+    directLookup: config?.[installmentKey],
+    directLookupType: typeof config?.[installmentKey],
+  });
+  return { allowPartialPayments: result };
+};
+
 // Status derivation helpers
 const normalizeDateOnly = (isoDate: string): number => {
   const d = new Date(isoDate);
@@ -945,7 +1208,8 @@ const deriveInstallmentStatus = (
   totalPayable: number,
   allocatedPaid: number,
   hasVerificationPendingTx: boolean,
-  hasApprovedTx: boolean
+  hasApprovedTx: boolean,
+  approvedAmount: number = 0 // Add approved amount parameter
 ): string => {
   const today = new Date();
   const d0 = new Date(
@@ -956,14 +1220,16 @@ const deriveInstallmentStatus = (
   const d1 = normalizeDateOnly(dueDate);
   const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
 
-  if (hasApprovedTx && allocatedPaid >= totalPayable) {
+  // Only consider it 'paid' if the approved amount covers the total payable
+  if (hasApprovedTx && approvedAmount >= totalPayable) {
     return 'paid';
   }
   if (hasVerificationPendingTx && allocatedPaid > 0) {
     if (allocatedPaid >= totalPayable) return 'verification_pending';
     return 'partially_paid_verification_pending';
   }
-  if (allocatedPaid >= totalPayable) return 'paid';
+  // Only consider it 'paid' if the approved amount covers the total payable
+  if (approvedAmount >= totalPayable) return 'paid';
   if (daysUntilDue < 0)
     return allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
   if (allocatedPaid > 0) return 'partially_paid_days_left';
@@ -1048,6 +1314,7 @@ const enrichWithStatuses = (
   // Initialize installment-specific payment tracking per installment
   type InstallmentAlloc = {
     amount: number;
+    approvedAmount: number;
     hasVerificationPending: boolean;
     hasApproved: boolean;
   };
@@ -1073,11 +1340,13 @@ const enrichWithStatuses = (
         const key = `${payment.semester_number}-${installmentNumber}`;
         const prev = installmentPayments.get(key) || {
           amount: 0,
+          approvedAmount: 0,
           hasVerificationPending: false,
           hasApproved: false,
         };
         const next: InstallmentAlloc = {
           amount: prev.amount + (Number(payment.amount) || 0),
+          approvedAmount: prev.approvedAmount + (payment.verification_status === 'approved' ? (Number(payment.amount) || 0) : 0),
           hasVerificationPending:
             prev.hasVerificationPending ||
             payment.verification_status === 'verification_pending',
@@ -1147,13 +1416,33 @@ const enrichWithStatuses = (
       // ONLY apply installment-specific payments - NO fallback to general payments
       const allocated = installmentSpecificAmount;
 
+      console.log('🔍 [PaymentEngine] Installment status calculation:', {
+        semester: sem.semesterNumber,
+        installment: inst.installmentNumber,
+        total,
+        allocated,
+        approvedAmount: alloc?.approvedAmount || 0,
+        hasVerificationPending: alloc?.hasVerificationPending || false,
+        hasApproved: alloc?.hasApproved || false
+      });
+
       const status = deriveInstallmentStatus(
         String(inst.paymentDate || new Date().toISOString().split('T')[0]),
         total,
         allocated,
         alloc?.hasVerificationPending || false,
-        alloc?.hasApproved || false
+        alloc?.hasApproved || false,
+        alloc?.approvedAmount || 0
       );
+
+      console.log('🔍 [PaymentEngine] Installment status result:', {
+        semester: sem.semesterNumber,
+        installment: inst.installmentNumber,
+        status,
+        total,
+        allocated,
+        approvedAmount: alloc?.approvedAmount || 0
+      });
 
       inst.status = status;
       inst.amountPaid = allocated;
@@ -1227,11 +1516,26 @@ const enrichWithStatuses = (
   const anyOverdue = dueItems.some(
     d => d.status === 'overdue' || d.status === 'partially_paid_overdue'
   );
-  if (totalPending <= 0 && (hasApprovedTx || !hasVerificationPendingTx))
+  
+  // Check if all installments are fully paid (no pending amounts)
+  const allInstallmentsPaid = totalPending <= 0;
+  
+  console.log('🔍 [PaymentEngine] Aggregate status calculation:', {
+    totalPayable,
+    totalPaid,
+    totalPending,
+    allInstallmentsPaid,
+    hasApprovedTx,
+    hasVerificationPendingTx,
+    anyOverdue,
+    dueItemsCount: dueItems.length
+  });
+  
+  if (allInstallmentsPaid && (hasApprovedTx || !hasVerificationPendingTx))
     aggStatus = 'paid';
   else if (hasVerificationPendingTx) aggStatus = 'verification_pending';
   else if (anyOverdue) aggStatus = 'overdue';
-  else if (totalPaid > 0) aggStatus = 'partially_paid_days_left';
+  else if (totalPaid > 0 && totalPending > 0) aggStatus = 'partially_paid_days_left';
   else {
     // derive based on nearest due
     if (nextDue) {
@@ -1248,6 +1552,39 @@ const enrichWithStatuses = (
       aggStatus = 'pending';
     }
   }
+  
+  console.log('🔍 [PaymentEngine] Final aggregate status:', aggStatus);
+
+  // Find the current installment status (the most recently completed or currently being processed)
+  let currentInstallmentStatus = 'pending';
+  
+  // First, check if there are any fully paid installments
+  const paidInstallments = dueItems.filter(d => d.status === 'paid');
+  if (paidInstallments.length > 0) {
+    // If there are paid installments, show 'paid' status
+    currentInstallmentStatus = 'paid';
+  } else if (nextDue) {
+    // If no paid installments, find the installment that corresponds to the next due date
+    const currentInstallment = dueItems.find(d => d.dueDate === nextDue);
+    if (currentInstallment) {
+      currentInstallmentStatus = currentInstallment.status;
+    }
+  } else if (dueItems.length > 0) {
+    // If no next due date, find the most recent installment with pending amount
+    const pendingItems = dueItems.filter(d => (Number(d.pending) || 0) > 0);
+    if (pendingItems.length > 0) {
+      currentInstallmentStatus = pendingItems[0].status;
+    } else {
+      // All installments are paid
+      currentInstallmentStatus = 'paid';
+    }
+  }
+
+  console.log('🔍 [PaymentEngine] Current installment status:', {
+    nextDue,
+    currentInstallmentStatus,
+    dueItems: dueItems.map(d => ({ dueDate: d.dueDate, pending: d.pending, status: d.status }))
+  });
 
   return {
     breakdown,
@@ -1256,7 +1593,7 @@ const enrichWithStatuses = (
       totalPaid,
       totalPending,
       nextDueDate: nextDue,
-      paymentStatus: aggStatus,
+      paymentStatus: currentInstallmentStatus, // Use current installment status instead of aggregate
     },
   };
 };
@@ -1277,6 +1614,14 @@ serve(async req => {
       additionalDiscountPercentage = 0,
       customDates,
       feeStructureData,
+      // Partial payment fields
+      installmentId,
+      approvedAmount,
+      transactionId,
+      approvalType,
+      adminNotes,
+      rejectionReason,
+      allowPartialPayments,
     }: EdgeRequest = await req.json();
 
     console.log('🚀 Edge function called with:', {
@@ -1300,13 +1645,117 @@ serve(async req => {
       instalmentWiseDatesValue: feeStructureData?.instalment_wise_dates,
     });
 
-    if (!cohortId) throw new Error('cohortId is required');
-    if (!paymentPlan)
-      throw new Error('paymentPlan is required for preview mode');
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle partial payment specific actions
+    if (action === 'partial_calculation') {
+      if (!studentId || !installmentId) {
+        throw new Error('studentId and installmentId are required for partial calculation');
+      }
+      
+      const result = await calculatePartialPaymentSummary(supabase, studentId, installmentId);
+      return new Response(JSON.stringify({ success: true, data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    if (action === 'admin_partial_approval') {
+      if (!transactionId || !approvalType) {
+        throw new Error('transactionId and approvalType are required for admin approval');
+      }
+      
+      const result = await processAdminPartialApproval(
+        supabase,
+        transactionId,
+        approvalType,
+        approvedAmount,
+        adminNotes,
+        rejectionReason
+      );
+      return new Response(JSON.stringify({ success: true, data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    if (action === 'partial_config') {
+      console.log('🔧 [partial_config] Starting with:', { studentId, installmentId, allowPartialPayments });
+      
+      if (!studentId || !installmentId) {
+        throw new Error('studentId and installmentId are required for partial payment config');
+      }
+
+      // Get student payment ID
+      const { data: studentPayment, error: studentPaymentError } = await supabase
+        .from('student_payments')
+        .select('id')
+        .eq('student_id', studentId)
+        .single();
+
+      console.log('🔧 [partial_config] Student payment lookup:', { studentPayment, studentPaymentError });
+
+      if (studentPaymentError) {
+        throw new Error(`Student payment lookup failed: ${studentPaymentError.message}`);
+      }
+
+      if (!studentPayment) {
+        throw new Error('Student payment record not found');
+      }
+
+      if (allowPartialPayments !== undefined) {
+        // Update partial payment setting (allowPartialPayments is provided)
+        console.log('🔧 [partial_config] Updating config with value:', allowPartialPayments);
+        
+        const result = await updatePartialPaymentConfig(
+          supabase, 
+          studentPayment.id, 
+          installmentId, 
+          allowPartialPayments
+        );
+        
+        // Verify the update was successful by reading back the value
+        console.log('🔍 [partial_config] Verifying update was successful...');
+        const verifyResult = await getPartialPaymentConfig(
+          supabase, 
+          studentPayment.id, 
+          installmentId
+        );
+        console.log('✅ [partial_config] Verification result:', verifyResult);
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          data: { 
+            ...result, 
+            verified: verifyResult,
+            allowPartialPayments: verifyResult.allowPartialPayments 
+          } 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      } else {
+        // Get partial payment setting (allowPartialPayments is not provided)
+        console.log('🔧 [partial_config] Getting current config');
+        
+        const result = await getPartialPaymentConfig(
+          supabase, 
+          studentPayment.id, 
+          installmentId
+        );
+        return new Response(JSON.stringify({ success: true, data: result }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+    }
+
+    // Existing fee structure logic continues below
+    if (!cohortId) throw new Error('cohortId is required');
+    if (!paymentPlan)
+      throw new Error('paymentPlan is required for preview mode');
 
     // Resolve payment plan and payment record if student is provided
     let resolvedPlan: PaymentPlan | undefined = paymentPlan;

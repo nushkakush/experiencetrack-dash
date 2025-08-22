@@ -1,14 +1,17 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { getPaymentPlanDescription } from '@/utils/paymentPlanDescriptions';
 
 export interface PaymentDashboardHeaderProps {
   cohortName?: string;
   cohortStartDate?: string;
+  selectedPaymentPlan?: 'one_shot' | 'sem_wise' | 'instalment_wise' | 'not_selected';
 }
 
 export const PaymentDashboardHeader: React.FC<PaymentDashboardHeaderProps> = ({
   cohortName,
-  cohortStartDate
+  cohortStartDate,
+  selectedPaymentPlan
 }) => {
   const getCohortStartDate = () => {
     if (cohortStartDate) {
@@ -24,15 +27,19 @@ export const PaymentDashboardHeader: React.FC<PaymentDashboardHeaderProps> = ({
     return 'Start date to be announced';
   };
 
+
+
   return (
     <div className="space-y-2">
-      <h1 className="text-3xl font-bold">{cohortName || 'Cohort'}</h1>
-      <p className="text-muted-foreground">{getCohortStartDate()}</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">{cohortName || 'Cohort'}</h1>
+        <p className="text-muted-foreground">{getCohortStartDate()}</p>
+      </div>
       
       {/* Introductory Text */}
       <div className="text-muted-foreground">
         <p>
-          Our zero-interest instalment plan is designed to ease lump-sum payments and ensure you can focus on learning without financial strain.
+          {getPaymentPlanDescription(selectedPaymentPlan || 'not_selected')}
         </p>
       </div>
     </div>

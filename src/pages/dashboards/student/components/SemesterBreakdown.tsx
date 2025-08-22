@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar, ChevronUp, ChevronDown, CheckCircle } from 'lucide-react';
 import { PaymentPlan, PaymentStatus } from '@/types/fee';
 import { InstallmentCard } from './InstallmentCard';
-import { CohortStudent } from '@/types/cohort';
+import { CohortStudent, Cohort } from '@/types/cohort';
 import { PaymentSubmissionData } from '@/types/payments';
 import { Logger } from '@/lib/logging/Logger';
 import {
@@ -68,6 +68,7 @@ export interface SemesterBreakdownProps {
   paymentSubmissions?: Map<string, PaymentSubmissionData>;
   submittingPayments?: Set<string>;
   studentData?: CohortStudent;
+  cohortData?: Cohort;
   studentPayments?: StudentPaymentRow[];
   paymentTransactions?: PaymentTransactionRow[];
   onToggleSemester: (semesterNumber: number) => void;
@@ -88,6 +89,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
   paymentSubmissions,
   submittingPayments,
   studentData,
+  cohortData,
   studentPayments,
   paymentTransactions,
   onToggleSemester,
@@ -276,6 +278,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
             paymentSubmissions={paymentSubmissions}
             submittingPayments={submittingPayments}
             studentData={studentData}
+            cohortData={cohortData}
             paymentBreakdown={
               paymentBreakdown as unknown as PaymentBreakdownType
             }
@@ -579,6 +582,7 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
                             paymentSubmissions={paymentSubmissions}
                             submittingPayments={submittingPayments}
                             studentData={studentData}
+                            cohortData={cohortData}
                             paymentBreakdown={
                               paymentBreakdown as unknown as PaymentBreakdownType
                             }

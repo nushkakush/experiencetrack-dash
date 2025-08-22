@@ -20,6 +20,7 @@ import { PaymentPlan, StudentScholarshipWithDetails } from '@/types/fee';
 import { FeeStructure } from '@/types/fee';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import AdminLikePlanPreview from './AdminLikePlanPreview';
+import { getPaymentPlanDescription, getPaymentPlanTitle } from '@/utils/paymentPlanDescriptions';
 
 interface PaymentPlanPreviewModalProps {
   isOpen: boolean;
@@ -61,31 +62,7 @@ export const PaymentPlanPreviewModal: React.FC<
     }
   };
 
-  const getPlanTitle = (plan: PaymentPlan) => {
-    switch (plan) {
-      case 'one_shot':
-        return 'One Shot Payment';
-      case 'sem_wise':
-        return 'Semester Wise';
-      case 'instalment_wise':
-        return 'Installment Wise';
-      default:
-        return 'Payment Plan';
-    }
-  };
 
-  const getPlanDescription = (plan: PaymentPlan) => {
-    switch (plan) {
-      case 'one_shot':
-        return 'One-time payment for the entire program with maximum discount';
-      case 'sem_wise':
-        return 'Payments divided by semesters with clear payment schedule';
-      case 'instalment_wise':
-        return 'Payments divided into monthly installments for maximum flexibility';
-      default:
-        return 'Payment plan preview';
-    }
-  };
 
   if (!feeStructure) {
     return (
@@ -123,10 +100,10 @@ export const PaymentPlanPreviewModal: React.FC<
             {getPlanIcon(selectedPlan)}
             <div>
               <DialogTitle className='text-2xl font-bold'>
-                {getPlanTitle(selectedPlan)} - Preview
+                {getPaymentPlanTitle(selectedPlan)} - Preview
               </DialogTitle>
               <DialogDescription className='text-base'>
-                {getPlanDescription(selectedPlan)}
+                {getPaymentPlanDescription(selectedPlan)}
               </DialogDescription>
             </div>
           </div>

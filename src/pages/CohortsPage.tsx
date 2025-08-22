@@ -100,9 +100,9 @@ const CohortsPage = () => {
         if (canSetupFeeStructure) {
           // User has permission to set up fee structure
           if (feeStructure) {
-            // Fee structure exists but is not complete, open modal in view mode
+            // Fee structure exists but is not complete, open modal in edit mode to complete setup
             setSelectedCohortForFee(cohort);
-            setFeeModalMode('view');
+            setFeeModalMode('edit');
             setFeeCollectionModalOpen(true);
           } else {
             // No fee structure exists, open modal in edit mode for initial setup

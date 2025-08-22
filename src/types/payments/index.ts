@@ -9,6 +9,7 @@ export * from './PaymentMethods';
 export * from './PaymentPlans';
 export * from './FeeStructureTypes';
 export * from './PaymentBreakdownTypes';
+export * from './PartialPaymentTypes';
 
 // Re-export commonly used types for backward compatibility
 export type {

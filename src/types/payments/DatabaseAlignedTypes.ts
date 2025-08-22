@@ -11,6 +11,7 @@ export interface StudentPaymentRow {
   scholarship_id?: string;
   next_due_date?: string;
   notes: string | null;
+  allow_partial_payments_json: Record<string, boolean> | null; // JSON object controlling partial payments per installment
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +34,7 @@ export interface PaymentTransactionRow {
     | 'verification_pending'
     | 'approved'
     | 'rejected'
+    | 'partially_approved'
     | null;
   verified_by: string | null;
   verified_at: string | null;
@@ -58,6 +60,8 @@ export interface PaymentTransactionRow {
   // Installment tracking fields (added for targeted payments)
   installment_id: string | null;
   semester_number: number | null;
+  // Partial payment tracking
+  partial_payment_sequence: number | null;
   // User tracking fields
   recorded_by_user_id: string | null; // Who initiated/recorded the payment (student vs admin)
 }

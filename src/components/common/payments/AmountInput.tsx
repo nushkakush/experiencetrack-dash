@@ -8,6 +8,15 @@ export interface AmountInputProps {
   onAmountChange: (amount: number) => void;
   error?: string;
   disabled?: boolean;
+  allowPartialPayments?: boolean;
+  isFixedAmount?: boolean;
+  partialPaymentInfo?: {
+    totalAmount: number;
+    paidAmount: number;
+    pendingAmount: number;
+    partialPaymentCount: number;
+    maxPartialPayments: number;
+  };
 }
 
 export const AmountInput: React.FC<AmountInputProps> = ({
@@ -15,7 +24,10 @@ export const AmountInput: React.FC<AmountInputProps> = ({
   maxAmount,
   onAmountChange,
   error,
-  disabled = false
+  disabled = false,
+  allowPartialPayments = false,
+  isFixedAmount = false,
+  partialPaymentInfo
 }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -73,29 +85,88 @@ export const AmountInput: React.FC<AmountInputProps> = ({
     return decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger;
   };
 
+  // Log partial payment restrictions for debugging
+  React.useEffect(() => {
+    console.log('🔒 AmountInput Partial Payment Settings:', {
+      allowPartialPayments,
+      isFixedAmount,
+      maxAmount,
+      hasPartialPaymentInfo: !!partialPaymentInfo,
+    });
+  }, [allowPartialPayments, isFixedAmount, maxAmount, partialPaymentInfo]);
+
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor="amount">Amount to Pay</Label>
+        
+        {/* Show partial payment history if available */}
+        {partialPaymentInfo && partialPaymentInfo.paidAmount > 0 && (
+          <div className="mb-3 p-3 bg-muted/50 rounded-lg border">
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Amount:</span>
+                <span className="font-medium">{formatCurrency(partialPaymentInfo.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Already Paid:</span>
+                <span className="font-medium text-green-600">{formatCurrency(partialPaymentInfo.paidAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1">
+                <span className="text-muted-foreground">Amount Pending:</span>
+                <span className="font-medium text-orange-600">{formatCurrency(partialPaymentInfo.pendingAmount)}</span>
+              </div>
+              {partialPaymentInfo.partialPaymentCount > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Partial payments: {partialPaymentInfo.partialPaymentCount}/{partialPaymentInfo.maxPartialPayments}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
             ₹
           </div>
-          <Input
-            id="amount"
-            type="text"
-            placeholder="Enter amount"
-            value={formatAmountForDisplay(amount)}
-            onChange={(e) => handleAmountChange(e.target.value)}
-            className={`${error ? 'border-red-500' : ''} pl-8`}
-            disabled={disabled}
-          />
+          
+          {isFixedAmount ? (
+            // Fixed amount display (no input)
+            <div className="w-full px-3 py-2 pl-8 pr-16 border rounded-md bg-muted text-lg font-medium">
+              {formatAmountForDisplay(maxAmount)}
+            </div>
+          ) : (
+            // Editable amount input
+            <Input
+              id="amount"
+              type="text"
+              placeholder={allowPartialPayments ? "Enter amount" : "Full payment amount"}
+              value={formatAmountForDisplay(amount)}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              className={`${error ? 'border-red-500' : ''} pl-8 pr-16`}
+              disabled={disabled}
+            />
+          )}
+          
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-            Max: {formatCurrency(maxAmount)}
+            {isFixedAmount ? 'Fixed' : `Max: ${formatCurrency(maxAmount)}`}
           </div>
         </div>
+        
         {error && (
           <p className="text-sm text-red-500 mt-1">{error}</p>
+        )}
+        
+        {!allowPartialPayments && !isFixedAmount && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Full payment required - partial payments not allowed
+          </p>
+        )}
+        
+        {allowPartialPayments && !isFixedAmount && partialPaymentInfo && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Partial payments allowed - {partialPaymentInfo.maxPartialPayments - partialPaymentInfo.partialPaymentCount} remaining
+          </p>
         )}
       </div>
     </div>
