@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface FeeBreakdownCardProps {
   title: string;
@@ -12,6 +13,7 @@ interface FeeBreakdownCardProps {
   status?: string;
   statusVariant?: 'outline' | 'secondary' | 'default';
   showDiscount?: boolean;
+  paymentDate?: string;
 }
 
 export const FeeBreakdownCard: React.FC<FeeBreakdownCardProps> = ({
@@ -22,13 +24,22 @@ export const FeeBreakdownCard: React.FC<FeeBreakdownCardProps> = ({
   totalPayable,
   status = 'Pending',
   statusVariant = 'outline',
-  showDiscount = true
+  showDiscount = true,
+  paymentDate
 }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch {
+      return dateString;
+    }
   };
 
   return (
@@ -62,11 +73,18 @@ export const FeeBreakdownCard: React.FC<FeeBreakdownCardProps> = ({
             </p>
           </div>
         </div>
-        {status && (
-          <div className="mt-4">
+        
+        <div className="mt-4 flex items-center justify-between">
+          {status && (
             <Badge variant={statusVariant} className="w-fit">{status}</Badge>
-          </div>
-        )}
+          )}
+          {paymentDate && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>Due: {formatDate(paymentDate)}</span>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

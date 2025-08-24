@@ -323,7 +323,7 @@ export const useCohortStudentsTable = ({
   const handleDeleteStudent = async (studentId: string) => {
     setDeletingStudentId(studentId);
     try {
-      const result = await cohortStudentsService.deleteStudent(studentId);
+      const result = await cohortStudentsService.delete(studentId);
       if (result.success) {
         toast.success('Student removed from cohort');
         onStudentDeleted();

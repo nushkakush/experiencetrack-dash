@@ -26,6 +26,53 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
   const cachedReviewsRef = useRef<Record<string, any>>({});
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Load existing dates from database when fee structure is loaded
+  React.useEffect(() => {
+    if (!feeStructure) return;
+    
+    console.log('🔄 Loading existing dates from database:', {
+      one_shot_dates: feeStructure.one_shot_dates,
+      sem_wise_dates: feeStructure.sem_wise_dates,
+      instalment_wise_dates: feeStructure.instalment_wise_dates,
+    });
+    
+    const existingDates = {
+      one_shot: {},
+      sem_wise: {},
+      instalment_wise: {},
+    };
+    
+    // Convert database dates to UI format
+    if (feeStructure.one_shot_dates && Object.keys(feeStructure.one_shot_dates).length > 0) {
+      existingDates.one_shot = PaymentScheduleOverrides.fromPlanSpecificJson(
+        feeStructure.one_shot_dates,
+        'one_shot'
+      );
+    }
+    
+    if (feeStructure.sem_wise_dates && Object.keys(feeStructure.sem_wise_dates).length > 0) {
+      existingDates.sem_wise = PaymentScheduleOverrides.fromPlanSpecificJson(
+        feeStructure.sem_wise_dates,
+        'sem_wise'
+      );
+    }
+    
+    if (feeStructure.instalment_wise_dates && Object.keys(feeStructure.instalment_wise_dates).length > 0) {
+      existingDates.instalment_wise = PaymentScheduleOverrides.fromPlanSpecificJson(
+        feeStructure.instalment_wise_dates,
+        'instalment_wise'
+      );
+    }
+    
+    console.log('✅ Converted existing dates:', existingDates);
+    console.log('🔍 Debug - admission date in converted dates:', {
+      one_shot_admission: existingDates.one_shot['admission'],
+      sem_wise_admission: existingDates.sem_wise['admission'],
+      instalment_wise_admission: existingDates.instalment_wise['admission'],
+    });
+    setDatesByPlan(existingDates);
+  }, [feeStructure]);
+
   // Memoized function to generate cache key
   const getCacheKey = useCallback((plan: PaymentPlan, scholarshipId: string, customDates: Record<string, string>) => {
     return `${plan}-${scholarshipId}-${JSON.stringify(customDates)}`;
@@ -86,7 +133,15 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
         };
         
         console.log('Calling payment engine with params:', params);
+        console.log('🔍 Debug - customDates being passed:', customDates);
+        console.log('🔍 Debug - admission date in customDates:', customDates['admission']);
         const result = await getPaymentBreakdown(params);
+        
+        console.log('🔍 Debug - payment engine response:', {
+          hasBreakdown: !!result.breakdown,
+          admissionFee: result.breakdown?.admissionFee,
+          admissionDate: result.breakdown?.admissionFee?.paymentDate,
+        });
         
       // Cache the result
       console.log('Caching result for key:', cacheKey);
@@ -204,6 +259,11 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
             // Extract dates from the breakdown
             const extractedDates: Record<string, string> = {};
             const breakdown = noScholarshipResult.breakdown;
+            
+            // Extract admission date if available
+            if (breakdown?.admissionFee?.paymentDate) {
+              extractedDates['admission'] = breakdown.admissionFee.paymentDate;
+            }
             
             if (plan === 'one_shot' && breakdown?.oneShotPayment?.paymentDate) {
               extractedDates['one-shot'] = breakdown.oneShotPayment.paymentDate;
@@ -361,6 +421,12 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
     }
     
     const seed: Record<string, string> = {};
+    
+    // Always seed admission date if available
+    if (engineReview?.admissionFee?.paymentDate) {
+      seed['admission'] = engineReview.admissionFee.paymentDate;
+    }
+    
     if (selectedPaymentPlan === 'one_shot') {
       const d = engineReview?.oneShotPayment?.paymentDate;
       if (typeof d === 'string' && d) seed['one-shot'] = d;
@@ -386,10 +452,21 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
       console.log('Seeding dates from engine for plan:', selectedPaymentPlan, seed);
       setDatesByPlan(prev => {
         const currentPlanDates = prev[selectedPaymentPlan] || {};
-        return {
+        const updated = {
           ...prev,
           [selectedPaymentPlan]: { ...currentPlanDates, ...seed },
         };
+        
+        // If we have an admission date, sync it across all payment plans
+        if (seed['admission']) {
+          ['one_shot', 'sem_wise', 'instalment_wise'].forEach(plan => {
+            if (plan !== selectedPaymentPlan) {
+              updated[plan] = { ...updated[plan], admission: seed['admission'] };
+            }
+          });
+        }
+        
+        return updated;
       });
     }
   }, [engineReview, selectedPaymentPlan, datesByPlan]);
@@ -403,10 +480,20 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
       // Only update if the value actually changed
       if (currentPlanDates[key] === value) return prev;
       
+      // If this is an admission date change, sync it across all payment plans
+      if (key === 'admission') {
+        const updated = { ...prev };
+        // Update admission date in all payment plans
+        ['one_shot', 'sem_wise', 'instalment_wise'].forEach(plan => {
+          updated[plan] = { ...updated[plan], [key]: value };
+        });
+        return updated;
+      }
+      
       return {
-      ...prev,
+        ...prev,
         [selectedPaymentPlan]: { ...currentPlanDates, [key]: value },
-  };
+      };
     });
   }, [selectedPaymentPlan]);
 

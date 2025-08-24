@@ -234,7 +234,7 @@ export const usePaymentSchedule = ({
         id: 'admission_fee',
         type: 'Admission Fee',
         amount: responseFeeStructure.admission_fee,
-        dueDate: new Date().toISOString(),
+        dueDate: feeReview.admissionFee?.paymentDate || new Date().toISOString(),
         status: 'paid',
         paymentDate: new Date().toISOString(),
       });

@@ -147,6 +147,11 @@ export class FeatureFlagService {
       return false;
     }
 
+    // Development override for student-payment-dashboard
+    if (flagId === 'student-payment-dashboard' && this.context.environment === 'development') {
+      return true; // Always enable in development
+    }
+
     if (!flag.enabled) {
       return false;
     }

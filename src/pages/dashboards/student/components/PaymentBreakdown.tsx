@@ -47,6 +47,7 @@ export const PaymentBreakdown = React.memo<PaymentBreakdownProps>(({
         totalPayable={paymentBreakdown.admissionFee.totalPayable}
         status="Pending"
         showDiscount={false}
+        paymentDate={paymentBreakdown.admissionFee.paymentDate}
       />
 
       {/* Semesters */}

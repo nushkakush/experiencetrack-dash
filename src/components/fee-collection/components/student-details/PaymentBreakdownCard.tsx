@@ -1,8 +1,9 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Calendar } from 'lucide-react';
 import { formatCurrency } from './utils/adminPaymentUtils';
+import { format } from 'date-fns';
 
 interface AdminPaymentBreakdown {
   baseAmount: number;
@@ -10,6 +11,7 @@ interface AdminPaymentBreakdown {
   discountAmount: number;
   scholarshipAmount: number;
   totalAmount: number;
+  paymentDate?: string;
 }
 
 interface PaymentBreakdownCardProps {
@@ -19,6 +21,7 @@ interface PaymentBreakdownCardProps {
     type: string;
     semesterNumber?: number;
     installmentNumber?: number;
+    dueDate?: string;
   } | null;
   pendingAmount: number;
 }
@@ -122,6 +125,19 @@ export const PaymentBreakdownCard: React.FC<PaymentBreakdownCardProps> = ({
             ₹{pendingAmount > 0 ? pendingAmount.toLocaleString() : adminPaymentBreakdown.totalAmount.toLocaleString()}
           </span>
         </div>
+
+        {/* Payment Date Information */}
+        {(adminPaymentBreakdown.paymentDate || paymentItem?.dueDate) && (
+          <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+            <Calendar className='h-4 w-4' />
+            <span>
+              Due: {format(
+                new Date(adminPaymentBreakdown.paymentDate || paymentItem?.dueDate || ''),
+                'MMM dd, yyyy'
+              )}
+            </span>
+          </div>
+        )}
 
         <div className='text-xs text-muted-foreground'>
           {paymentItem?.semesterNumber && paymentItem?.installmentNumber && (

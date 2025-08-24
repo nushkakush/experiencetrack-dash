@@ -13,6 +13,11 @@ export class PaymentScheduleOverrides {
   ): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
+    // Always include admission date in all payment plans
+    if (editableDates['admission']) {
+      result.admission_date = editableDates['admission'];
+    }
+
     if (paymentPlan === 'one_shot') {
       // One-shot plan: store program fee due date
       if (editableDates['one-shot']) {
@@ -85,6 +90,13 @@ export class PaymentScheduleOverrides {
   ): Record<string, string> {
     const editable: Record<string, string> = {};
 
+    // Always extract admission date from all payment plans
+    if (planJson.admission_date) {
+      editable['admission'] = planJson.admission_date;
+    } else if (planJson.admission) {
+      editable['admission'] = planJson.admission;
+    }
+
     if (paymentPlan === 'one_shot') {
       // One-shot plan: extract program fee due date
       // Handle both nested format: {"program_fee_due_date": "..."}
@@ -123,30 +135,26 @@ export class PaymentScheduleOverrides {
     } else if (paymentPlan === 'instalment_wise') {
       // Installment-wise plan: extract individual installment dates
       // Handle both nested format: {"semesters": {"semester_1": {"installments": {"installment_1": "..."}}}}
-      // and flat UI format: {"semester-1-instalment-0": "..."}
+      // and flat UI format: {"semester-1-instalment-1": "..."}
       const semesters =
-        (
-          planJson as {
-            semesters?: Record<
-              string,
-              { installments?: Record<string, string> }
-            >;
-          }
-        ).semesters || {};
+        (planJson as {
+          semesters?: Record<
+            string,
+            { installments?: Record<string, string> }
+          >;
+        }).semesters || {};
 
       if (Object.keys(semesters).length > 0) {
         // Nested format
         Object.keys(semesters).forEach(semesterKey => {
           const semesterData = semesters[semesterKey];
-          const semesterNum = semesterKey.replace('semester_', '');
-
-          if (semesterData.installments) {
-            Object.keys(semesterData.installments).forEach(installmentKey => {
-              const installmentNum = installmentKey.replace('installment_', '');
-              const dateKey = `semester-${semesterNum}-instalment-${installmentNum}`;
-              editable[dateKey] = semesterData.installments[installmentKey];
-            });
-          }
+          const installments = semesterData.installments || {};
+          Object.keys(installments).forEach(installmentKey => {
+            const installmentNum = installmentKey.replace('installment_', '');
+            const semesterNum = semesterKey.replace('semester_', '');
+            editable[`semester-${semesterNum}-instalment-${installmentNum}`] =
+              installments[installmentKey];
+          });
         });
       } else {
         // Flat UI format - check for semester-*-instalment-* keys

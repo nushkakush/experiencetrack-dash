@@ -108,6 +108,13 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
             // Extract dates from the breakdown
             const breakdown = result.breakdown;
             
+            // Always extract admission date if available
+            if (breakdown?.admissionFee?.paymentDate) {
+              preloadedDates.one_shot['admission'] = breakdown.admissionFee.paymentDate;
+              preloadedDates.sem_wise['admission'] = breakdown.admissionFee.paymentDate;
+              preloadedDates.instalment_wise['admission'] = breakdown.admissionFee.paymentDate;
+            }
+            
             if (plan === 'one_shot' && breakdown?.oneShotPayment?.paymentDate) {
               preloadedDates.one_shot['one-shot'] = breakdown.oneShotPayment.paymentDate;
             } else if (plan === 'sem_wise' && breakdown?.semesters) {
@@ -222,6 +229,13 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
 
               // Extract dates from the breakdown
               const breakdown = result.breakdown;
+              
+              // Always extract admission date if available
+              if (breakdown?.admissionFee?.paymentDate) {
+                updatedDates.one_shot['admission'] = breakdown.admissionFee.paymentDate;
+                updatedDates.sem_wise['admission'] = breakdown.admissionFee.paymentDate;
+                updatedDates.instalment_wise['admission'] = breakdown.admissionFee.paymentDate;
+              }
               
               if (plan === 'sem_wise' && breakdown?.semesters) {
                 breakdown.semesters.forEach((semester: any, index: number) => {
@@ -361,6 +375,22 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
       console.log('✅ Payment dates validation passed');
 
       // First, save the fee structure with actual dates
+      // Ensure admission date is included in all payment plans
+      const admissionDate = editedDates.one_shot?.['admission'] || 
+                           editedDates.sem_wise?.['admission'] || 
+                           editedDates.instalment_wise?.['admission'];
+
+      // Add admission date to all payment plans if it exists
+      const oneShotDates = { ...editedDates.one_shot };
+      const semWiseDates = { ...editedDates.sem_wise };
+      const instalmentWiseDates = { ...editedDates.instalment_wise };
+
+      if (admissionDate) {
+        oneShotDates['admission'] = admissionDate;
+        semWiseDates['admission'] = admissionDate;
+        instalmentWiseDates['admission'] = admissionDate;
+      }
+
       const feeStructureToSave = {
         cohort_id: cohortId,
         structure_type: 'cohort' as const,
@@ -370,9 +400,9 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
         instalments_per_semester: feeStructureData.instalments_per_semester,
         one_shot_discount_percentage: feeStructureData.one_shot_discount_percentage,
         is_setup_complete: false,
-        one_shot_dates: editedDates.one_shot || {},
-        sem_wise_dates: editedDates.sem_wise || {},
-        instalment_wise_dates: editedDates.instalment_wise || {},
+        one_shot_dates: oneShotDates,
+        sem_wise_dates: semWiseDates,
+        instalment_wise_dates: instalmentWiseDates,
       };
 
       const savedFeeStructure = await FeeStructureService.upsertFeeStructure(feeStructureToSave);

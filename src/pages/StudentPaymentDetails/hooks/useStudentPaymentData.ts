@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { studentPaymentsService } from '@/services/studentPayments.service';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
+import { cohortsService } from '@/services/cohorts.service';
 import { FeeStructureService } from '@/services/feeStructure.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { profileService } from '@/services/profile.service';
@@ -54,7 +55,7 @@ export const useStudentPaymentData = () => {
       }
 
       // Load cohort data using the cohort_id from the student record
-      const cohortResult = await cohortStudentsService.getCohort(cohortStudentResult.data.cohort_id);
+      const cohortResult = await cohortsService.getById(cohortStudentResult.data.cohort_id);
       if (!cohortResult.success || !cohortResult.data) {
         toast.error('Failed to load cohort data');
         return;

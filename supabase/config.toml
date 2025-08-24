@@ -15,3 +15,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/razorpay-payment/deno.json"
 entrypoint = "./functions/razorpay-payment/index.ts"
+
+[functions.payment-engine]
+enabled = true
+verify_jwt = false
+import_map = "./functions/payment-engine/deno.json"
+entrypoint = "./functions/payment-engine/index.ts"

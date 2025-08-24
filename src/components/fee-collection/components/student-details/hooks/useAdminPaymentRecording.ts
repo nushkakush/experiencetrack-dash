@@ -25,6 +25,7 @@ interface AdminPaymentBreakdown {
   discountAmount: number;
   scholarshipAmount: number;
   totalAmount: number;
+  paymentDate?: string;
 }
 
 interface UseAdminPaymentRecordingProps {
@@ -67,10 +68,10 @@ export const useAdminPaymentRecording = ({
     first_name: student.student?.first_name || null,
     last_name: student.student?.last_name || null,
     phone: student.student?.phone || null,
-    avatar_url: student.student?.avatar_url || null,
     cohort_id: student.student?.cohort_id || '',
     user_id: student.student?.user_id || null,
     invite_status: 'accepted' as const,
+    dropped_out_status: 'active' as const,
     invited_at: null,
     accepted_at: null,
     created_at: new Date().toISOString(),
@@ -225,6 +226,7 @@ export const useAdminPaymentRecording = ({
             discountAmount: response.breakdown.admissionFee.discountAmount || 0,
             scholarshipAmount: response.breakdown.admissionFee.scholarshipAmount || 0,
             totalAmount: response.breakdown.admissionFee.totalPayable || 0,
+            paymentDate: response.breakdown.admissionFee.paymentDate,
           };
         } else if (paymentItem.type === 'Program Fee (One-Shot)') {
           const oneShotPayment = response.breakdown.oneShotPayment;
@@ -246,6 +248,7 @@ export const useAdminPaymentRecording = ({
               discountAmount: overallSummary.totalDiscount, // Total discount
               scholarshipAmount: overallSummary.totalScholarship, // Total scholarship
               totalAmount: paymentItem.amount || 0, // Use the actual payment item amount
+              paymentDate: oneShotPayment?.paymentDate,
             };
           }
         } else if (paymentItem.semesterNumber && paymentItem.installmentNumber) {
@@ -276,6 +279,7 @@ export const useAdminPaymentRecording = ({
               discountAmount: installment.discountAmount || 0,
               scholarshipAmount: installment.scholarshipAmount || 0,
               totalAmount: installment.amountPayable || 0,
+              paymentDate: installment.paymentDate,
             };
           }
         }

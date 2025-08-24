@@ -60,7 +60,10 @@ export const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             {formatCurrency(paymentBreakdown.admissionFee.totalPayable)}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Admission fee to be paid before course commencement
+            {paymentBreakdown.admissionFee.paymentDate 
+              ? `Admission fee due on ${formatDate(paymentBreakdown.admissionFee.paymentDate)}`
+              : 'Admission fee to be paid before course commencement'
+            }
           </p>
         </CardContent>
       </Card>

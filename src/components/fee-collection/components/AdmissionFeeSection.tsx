@@ -9,6 +9,7 @@ interface AdmissionFeeData {
   baseAmount: number;
   gstAmount: number;
   totalPayable: number;
+  paymentDate?: string;
 }
 
 interface AdmissionFeeSectionProps {
@@ -24,7 +25,18 @@ export const AdmissionFeeSection: React.FC<AdmissionFeeSectionProps> = ({
   onPaymentDateChange,
   isReadOnly = false
 }) => {
-  const admissionDate = editablePaymentDates['admission'] || new Date().toISOString().split('T')[0];
+  // Priority: 1. Payment engine response, 2. Editable dates, 3. Default date
+  const admissionDate = admissionFee?.paymentDate || 
+                       editablePaymentDates['admission'] || 
+                       new Date().toISOString().split('T')[0];
+
+  console.log('🔍 AdmissionFeeSection Debug:', {
+    admissionFee,
+    admissionFeePaymentDate: admissionFee?.paymentDate,
+    editablePaymentDates,
+    editableAdmissionDate: editablePaymentDates['admission'],
+    finalAdmissionDate: admissionDate,
+  });
 
   if (!admissionFee) {
     return (
