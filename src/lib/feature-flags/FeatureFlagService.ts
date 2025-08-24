@@ -119,8 +119,8 @@ export class FeatureFlagService {
         id: 'student-payment-dashboard',
         name: 'Student Payment Dashboard',
         description: 'Enable payment dashboard navigation for students',
-        enabled: true,
-        rolloutPercentage: 100,
+        enabled: false,
+        rolloutPercentage: 0,
         targetRoles: ['student'],
       },
     ];
@@ -215,7 +215,9 @@ export class FeatureFlagService {
     const flag = this.flags.get(flagId);
     if (flag) {
       flag.enabled = !flag.enabled;
-      console.log(`Feature flag '${flagId}' ${flag.enabled ? 'enabled' : 'disabled'}`);
+      console.log(
+        `Feature flag '${flagId}' ${flag.enabled ? 'enabled' : 'disabled'}`
+      );
       return flag.enabled;
     }
     console.warn(`Feature flag '${flagId}' not found`);
@@ -229,7 +231,9 @@ export class FeatureFlagService {
     const flag = this.flags.get(flagId);
     if (flag) {
       flag.enabled = enabled;
-      console.log(`Feature flag '${flagId}' ${enabled ? 'enabled' : 'disabled'}`);
+      console.log(
+        `Feature flag '${flagId}' ${enabled ? 'enabled' : 'disabled'}`
+      );
       return true;
     }
     console.warn(`Feature flag '${flagId}' not found`);
