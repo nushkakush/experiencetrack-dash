@@ -119,8 +119,8 @@ export class FeatureFlagService {
         id: 'student-payment-dashboard',
         name: 'Student Payment Dashboard',
         description: 'Enable payment dashboard navigation for students',
-        enabled: true,
-        rolloutPercentage: 100,
+        enabled: false,
+        rolloutPercentage: 0,
         targetRoles: ['student'],
       },
     ];
