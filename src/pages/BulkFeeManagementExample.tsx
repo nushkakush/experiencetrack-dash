@@ -174,7 +174,7 @@ export default function BulkFeeManagementExample() {
                 Customization
               </Badge>
               <p className="text-sm text-muted-foreground">
-                Support for custom payment dates and additional discount percentages.
+                Support for custom payment dates and need based scholarship percentages.
               </p>
             </div>
             

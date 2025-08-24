@@ -6,6 +6,7 @@ export interface PaymentMethodFieldsProps {
   amountPaid: number;
   // Bank transfer/cheque fields
   paymentDate: string;
+  paymentTime: string;
   bankName: string;
   bankBranch: string;
   accountNumber: string;
@@ -18,6 +19,7 @@ export interface PaymentMethodFieldsProps {
   notes: string;
   // Handlers
   onPaymentDateChange: (value: string) => void;
+  onPaymentTimeChange: (value: string) => void;
   onBankNameChange: (value: string) => void;
   onBankBranchChange: (value: string) => void;
   onAccountNumberChange: (value: string) => void;

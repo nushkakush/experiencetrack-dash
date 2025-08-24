@@ -10,6 +10,7 @@ interface PaymentMethodFieldFactoryProps {
   amountPaid: number;
   // Bank transfer/cheque fields
   paymentDate: string;
+  paymentTime: string;
   bankName: string;
   bankBranch: string;
   accountNumber: string;
@@ -22,6 +23,7 @@ interface PaymentMethodFieldFactoryProps {
   notes: string;
   // Handlers
   onPaymentDateChange: (value: string) => void;
+  onPaymentTimeChange: (value: string) => void;
   onBankNameChange: (value: string) => void;
   onBankBranchChange: (value: string) => void;
   onAccountNumberChange: (value: string) => void;
@@ -37,6 +39,7 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
   selectedMethod,
   amountPaid,
   paymentDate,
+  paymentTime,
   bankName,
   bankBranch,
   accountNumber,
@@ -46,6 +49,7 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
   transactionScreenshotFile,
   notes,
   onPaymentDateChange,
+  onPaymentTimeChange,
   onBankNameChange,
   onBankBranchChange,
   onAccountNumberChange,
@@ -74,12 +78,14 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
         return (
           <BankTransferFields
             paymentDate={paymentDate}
+            paymentTime={paymentTime}
             bankName={bankName}
             bankBranch={bankBranch}
             accountNumber={accountNumber}
             transactionId={transactionId}
             proofOfPaymentFile={proofOfPaymentFile}
             onPaymentDateChange={onPaymentDateChange}
+            onPaymentTimeChange={onPaymentTimeChange}
             onBankNameChange={onBankNameChange}
             onBankBranchChange={onBankBranchChange}
             onAccountNumberChange={onAccountNumberChange}
@@ -92,12 +98,14 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
         return (
           <BankTransferFields
             paymentDate={paymentDate}
+            paymentTime={paymentTime}
             bankName={bankName}
             bankBranch={bankBranch}
             accountNumber={accountNumber}
             transactionId={transactionId}
             proofOfPaymentFile={proofOfPaymentFile}
             onPaymentDateChange={onPaymentDateChange}
+            onPaymentTimeChange={onPaymentTimeChange}
             onBankNameChange={onBankNameChange}
             onBankBranchChange={onBankBranchChange}
             onAccountNumberChange={onAccountNumberChange}

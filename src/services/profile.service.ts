@@ -94,6 +94,10 @@ export class ProfileService extends BaseService {
       validated.email = email || null;
     }
 
+    if (updates.avatar_url !== undefined) {
+      validated.avatar_url = updates.avatar_url || null;
+    }
+
     // Don't allow role updates through this method
     // Role updates should go through a separate admin-only method
 

@@ -19,9 +19,14 @@ import {
 import { PaymentRecordingData } from './PaymentRecordingForm';
 import { PAYMENT_METHODS } from './PaymentMethodSelector';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { Label } from '@/components/ui/label';
 
 interface PaymentSummaryProps {
   studentName: string;
+  student?: {
+    user_id?: string | null;
+  };
   paymentData: PaymentRecordingData;
   onConfirm: () => void;
   onEdit: () => void;
@@ -30,6 +35,7 @@ interface PaymentSummaryProps {
 
 export const PaymentSummary: React.FC<PaymentSummaryProps> = React.memo(({
   studentName,
+  student,
   paymentData,
   onConfirm,
   onEdit,
@@ -61,12 +67,19 @@ export const PaymentSummary: React.FC<PaymentSummaryProps> = React.memo(({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Student */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              Student
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <Label className="text-muted-foreground">Student</Label>
+              <div className="flex items-center gap-2 font-medium">
+                <UserAvatar
+                  avatarUrl={null}
+                  name={studentName}
+                  size="sm"
+                  userId={student.user_id}
+                />
+                {studentName}
+              </div>
             </div>
-            <div className="font-medium">{studentName}</div>
           </div>
 
           <Separator />

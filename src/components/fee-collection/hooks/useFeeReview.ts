@@ -158,8 +158,15 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
 
   // Preload all payment plans for instant tab switching
   React.useEffect(() => {
+    console.log('🔄 useFeeReview: Preload effect triggered', {
+      isPreloaded,
+      hasFeeStructure: !!feeStructure,
+      currentDatesByPlan: datesByPlan
+    });
+    
     if (!isPreloaded && feeStructure) {
       const preloadPlans = async () => {
+        console.log('🚀 Starting preload of all payment plans...');
         const plans: PaymentPlan[] = ['one_shot', 'sem_wise', 'instalment_wise'];
         const emptyDates = {};
         // Accumulate seed dates for all plans from engine
@@ -171,113 +178,109 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
         
         // Preload all plans with no scholarship and with temporary scholarships for instant switching
         for (const plan of plans) {
+          console.log(`📋 Preloading plan: ${plan}`);
           // Preload with no scholarship
-          const noScholarshipCacheKey = getCacheKey(plan, 'no_scholarship', emptyDates);
-          if (!cachedReviewsRef.current[noScholarshipCacheKey]) {
-            try {
-              const params = {
-                cohortId: feeStructure.cohort_id,
-                paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
-                scholarshipId: null,
-                scholarshipData: null,
-                customDates: undefined,
-                feeStructureData: {
-                  total_program_fee: feeStructure.total_program_fee,
-                  admission_fee: feeStructure.admission_fee,
-                  number_of_semesters: feeStructure.number_of_semesters,
-                  instalments_per_semester: feeStructure.instalments_per_semester,
-                  one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-                },
-              };
-              
-              const result = await getPaymentBreakdown(params);
-              cachedReviewsRef.current[noScholarshipCacheKey] = result.breakdown;
-              // Extract dates for seeding
-              const b = result.breakdown;
-              if (plan === 'one_shot') {
-                const d = b?.oneShotPayment?.paymentDate;
-                if (typeof d === 'string' && d) seeds.one_shot['one-shot'] = d;
-              } else if (plan === 'sem_wise') {
-                (b?.semesters || []).forEach((s: any) => {
-                  const v = s?.instalments?.[0]?.paymentDate;
-                  if (typeof v === 'string' && v) seeds.sem_wise[`semester-${s.semesterNumber}-instalment-0`] = v;
-                });
-              } else {
-                (b?.semesters || []).forEach((s: any) => {
-                  (s?.instalments || []).forEach((inst: any, idx: number) => {
-                    const v = inst?.paymentDate;
-                    if (typeof v === 'string' && v) seeds.instalment_wise[`semester-${s.semesterNumber}-instalment-${idx}`] = v;
-                  });
-                });
-              }
-              console.log('Preloaded plan (no scholarship):', plan);
-            } catch (err) {
-              console.warn('Failed to preload plan (no scholarship):', plan, err);
-            }
-          }
-          
-          // Preload with temporary scholarships
-          for (const scholarship of scholarships) {
-            const scholarshipCacheKey = getCacheKey(plan, scholarship.id, emptyDates);
-            if (!cachedReviewsRef.current[scholarshipCacheKey]) {
-              try {
-                let scholarshipData = null;
-                if (scholarship.id.startsWith('temp-')) {
-                  scholarshipData = {
-                    id: scholarship.id,
-                    amount_percentage: scholarship.amount_percentage,
-                    name: scholarship.name
-                  };
+          try {
+            const noScholarshipResult = await getPaymentBreakdown({
+              cohortId: feeStructure.cohort_id,
+              paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+              scholarshipId: null,
+              customDates: undefined,
+              feeStructureData: {
+                total_program_fee: feeStructure.total_program_fee,
+                admission_fee: feeStructure.admission_fee,
+                number_of_semesters: feeStructure.number_of_semesters,
+                instalments_per_semester: feeStructure.instalments_per_semester,
+                one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+              },
+            });
+            
+            console.log(`✅ Preloaded ${plan} with no scholarship:`, {
+              breakdown: noScholarshipResult.breakdown,
+              oneShotPayment: noScholarshipResult.breakdown?.oneShotPayment,
+              semesters: noScholarshipResult.breakdown?.semesters
+            });
+            
+            // Extract dates from the breakdown
+            const extractedDates: Record<string, string> = {};
+            const breakdown = noScholarshipResult.breakdown;
+            
+            if (plan === 'one_shot' && breakdown?.oneShotPayment?.paymentDate) {
+              extractedDates['one-shot'] = breakdown.oneShotPayment.paymentDate;
+            } else if (plan === 'sem_wise' && breakdown?.semesters) {
+              breakdown.semesters.forEach((semester: any, index: number) => {
+                if (semester.instalments?.[0]?.paymentDate) {
+                  extractedDates[`semester-${index + 1}-instalment-0`] = semester.instalments[0].paymentDate;
                 }
-                
-                const params = {
-                  cohortId: feeStructure.cohort_id,
-                  paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
-                  scholarshipId: scholarship.id,
-                  scholarshipData,
-                  customDates: undefined,
-                  feeStructureData: {
-                    total_program_fee: feeStructure.total_program_fee,
-                    admission_fee: feeStructure.admission_fee,
-                    number_of_semesters: feeStructure.number_of_semesters,
-                    instalments_per_semester: feeStructure.instalments_per_semester,
-                    one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-                  },
-                };
-                
-                const result = await getPaymentBreakdown(params);
-                cachedReviewsRef.current[scholarshipCacheKey] = result.breakdown;
-                console.log('Preloaded plan with scholarship:', plan, scholarship.name);
-              } catch (err) {
-                console.warn('Failed to preload plan with scholarship:', plan, scholarship.name, err);
-              }
+              });
+            } else if (plan === 'instalment_wise' && breakdown?.semesters) {
+              breakdown.semesters.forEach((semester: any, semIndex: number) => {
+                semester.instalments?.forEach((instalment: any, instIndex: number) => {
+                  if (instalment.paymentDate) {
+                    extractedDates[`semester-${semIndex + 1}-instalment-${instIndex}`] = instalment.paymentDate;
+                  }
+                });
+              });
             }
+            
+            console.log(`📅 Extracted dates for ${plan}:`, extractedDates);
+            seeds[plan] = extractedDates;
+          } catch (error) {
+            console.error(`❌ Failed to preload ${plan} with no scholarship:`, error);
           }
         }
-        // Seed dates once after preloading to avoid flicker; preserve any user edits
+        
+        console.log('🎯 All plans preloaded, seeds collected:', {
+          one_shot_dates: Object.keys(seeds.one_shot).length,
+          sem_wise_dates: Object.keys(seeds.sem_wise).length,
+          instalment_wise_dates: Object.keys(seeds.instalment_wise).length
+        });
+        
+        // Seed dates immediately after preloading to ensure all tabs have dates
         setDatesByPlan(prev => {
+          console.log('🔄 Setting dates by plan from preloaded seeds:', {
+            previousDates: {
+              one_shot: Object.keys(prev.one_shot || {}).length,
+              sem_wise: Object.keys(prev.sem_wise || {}).length,
+              instalment_wise: Object.keys(prev.instalment_wise || {}).length
+            },
+            newSeeds: {
+              one_shot: Object.keys(seeds.one_shot).length,
+              sem_wise: Object.keys(seeds.sem_wise).length,
+              instalment_wise: Object.keys(seeds.instalment_wise).length
+            }
+          });
+          
           // Only seed if we don't already have saved dates
-          const hasSavedDates = Object.keys(prev.one_shot).length > 0 || 
-                               Object.keys(prev.sem_wise).length > 0 || 
-                               Object.keys(prev.instalment_wise).length > 0;
+          const hasSavedDates = Object.keys(prev.one_shot || {}).length > 0 || 
+                               Object.keys(prev.sem_wise || {}).length > 0 || 
+                               Object.keys(prev.instalment_wise || {}).length > 0;
           
           if (hasSavedDates) {
-            console.log('Skipping engine seeding - saved dates already exist');
+            console.log('⏭️ Skipping engine seeding - saved dates already exist');
             return prev;
           }
           
+          console.log('🌱 Seeding all payment dates from engine:', {
+            one_shot: Object.keys(seeds.one_shot),
+            sem_wise: Object.keys(seeds.sem_wise),
+            instalment_wise: Object.keys(seeds.instalment_wise),
+          });
+          
           return {
-            one_shot: { ...seeds.one_shot, ...prev.one_shot },
-            sem_wise: { ...seeds.sem_wise, ...prev.sem_wise },
-            instalment_wise: { ...seeds.instalment_wise, ...prev.instalment_wise },
+            one_shot: seeds.one_shot,
+            sem_wise: seeds.sem_wise,
+            instalment_wise: seeds.instalment_wise,
           };
         });
+        
         setIsPreloaded(true);
+        console.log('✅ Preloading completed, isPreloaded set to true');
       };
       
       preloadPlans();
     }
-  }, [feeStructure, isPreloaded, getCacheKey, scholarships]);
+  }, [isPreloaded, feeStructure, getCacheKey]);
 
   // Sync external prop with internal state
   React.useEffect(() => {
@@ -350,6 +353,13 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
       return;
     }
     
+    // Also check if we have preloaded dates for this plan
+    const hasPreloadedDates = Object.keys(currentPlanDates).length > 0;
+    if (hasPreloadedDates) {
+      console.log('Using preloaded dates, skipping engine seeding for plan:', selectedPaymentPlan);
+      return;
+    }
+    
     const seed: Record<string, string> = {};
     if (selectedPaymentPlan === 'one_shot') {
       const d = engineReview?.oneShotPayment?.paymentDate;
@@ -371,7 +381,7 @@ export const useFeeReview = ({ feeStructure, scholarships, selectedPaymentPlan: 
         });
       });
     }
-    // Only seed if we have engine dates and no saved dates
+    // Only seed if we have engine dates and no saved/preloaded dates
     if (Object.keys(seed).length > 0) {
       console.log('Seeding dates from engine for plan:', selectedPaymentPlan, seed);
       setDatesByPlan(prev => {

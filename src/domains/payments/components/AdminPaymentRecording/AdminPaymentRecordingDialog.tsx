@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PaymentRecordingForm, PaymentRecordingData } from './PaymentRecordingForm';
 import { PaymentSummary } from './PaymentSummary';
 import { useAdminPaymentRecording } from './useAdminPaymentRecording';
@@ -24,6 +25,7 @@ interface Student {
   id: string;
   name: string;
   email?: string;
+  avatar_url?: string; // Added avatar_url to the Student interface
 }
 
 interface AdminPaymentRecordingDialogProps {
@@ -212,8 +214,15 @@ export const AdminPaymentRecordingDialog: React.FC<AdminPaymentRecordingDialogPr
 
           {/* Student Info Footer */}
           <div className="pt-4 border-t text-sm text-muted-foreground">
-            <div className="flex justify-between">
-              <span>Student: {student.name}</span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <UserAvatar
+                  avatarUrl={student.avatar_url}
+                  name={student.name}
+                  size="sm"
+                />
+                <span>Student: {student.name}</span>
+              </div>
               <span>Outstanding: ₹{outstandingAmount.toLocaleString()}</span>
             </div>
           </div>

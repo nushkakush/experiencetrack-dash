@@ -15,6 +15,7 @@ interface PaymentsTabProps {
   onSelectAll: (isSelected: boolean) => void;
   onExportSelected: (students: StudentPaymentSummary[]) => void;
   onVerificationUpdate?: () => void;
+  onPendingCountUpdate?: () => void;
 }
 
 export const PaymentsTab: React.FC<PaymentsTabProps> = ({
@@ -27,6 +28,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   onSelectAll,
   onExportSelected,
   onVerificationUpdate,
+  onPendingCountUpdate,
 }) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
@@ -59,6 +61,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
           onRowSelection={onRowSelection}
           onSelectAll={onSelectAll}
           onVerificationUpdate={onVerificationUpdate}
+          onPendingCountUpdate={onPendingCountUpdate}
         />
       </div>
 

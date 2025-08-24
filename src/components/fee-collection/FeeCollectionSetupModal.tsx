@@ -127,9 +127,13 @@ export const FeeCollectionSetupModal: React.FC<FeeCollectionSetupModalProps> = (
     sem_wise: Record<string, string>;
     instalment_wise: Record<string, string>;
   }) => {
+    console.log('🔄 FeeCollectionSetupModal: handleDatesChange called', {
+      newDatesByPlan: datesByPlan,
+      currentEditedDates: editedDates
+    });
     // Store all plans' dates, not just the current plan
     setEditedDates(datesByPlan);
-  }, [setEditedDates]);
+  }, [setEditedDates, editedDates]);
 
   const handleSaveClick = async () => {
     if (variant === 'student-custom') {

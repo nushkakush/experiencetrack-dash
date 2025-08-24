@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Upload, X } from 'lucide-react';
 import { AvatarService } from '@/services/avatar.service';
 import { cohortStudentsService } from '@/services/cohortStudents.service';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAvatarPermissions } from '@/hooks/useAvatarPermissions';
 import AvatarDisplay from './AvatarDisplay';
@@ -28,6 +29,7 @@ import {
 
 interface AvatarUploadProps {
   studentId: string;
+  userId?: string | null;
   currentAvatarUrl?: string | null;
   studentName: string;
   onAvatarUpdated: (newAvatarUrl?: string | null) => void;
@@ -36,6 +38,7 @@ interface AvatarUploadProps {
 
 export default function AvatarUpload({
   studentId,
+  userId,
   currentAvatarUrl,
   studentName,
   onAvatarUpdated,
@@ -81,19 +84,23 @@ export default function AvatarUpload({
       // Convert blob to file
       const croppedFile = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
       
-      const result = await AvatarService.uploadAvatar(studentId, croppedFile);
+      const uploadUserId = userId || studentId;
+      const result = await AvatarService.uploadAvatar(uploadUserId, croppedFile);
       
-      if (result.success && result.url) {
-        // Update the student's avatar_url in the database
-        const updateResult = await cohortStudentsService.update(studentId, {
-          avatar_url: result.url,
-        });
+      if (result.success && result.data?.url) {
+        // Update the user's avatar_url in the profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: result.data.url })
+          .eq('user_id', uploadUserId)
+          .select()
+          .single();
 
-        if (updateResult.success) {
-          toast.success('Avatar uploaded successfully');
-          onAvatarUpdated(result.url);
+        if (profileError) {
+          toast.error('Failed to update profile');
         } else {
-          toast.error('Failed to update student profile');
+          toast.success('Avatar uploaded successfully');
+          onAvatarUpdated(result.data.url);
         }
       } else {
         toast.error(result.error || 'Failed to upload avatar');
@@ -121,31 +128,35 @@ export default function AvatarUpload({
         const deleteResult = await AvatarService.deleteAvatar(fileName);
         
         if (deleteResult.success) {
-          // Update the student's avatar_url in the database
-          const updateResult = await cohortStudentsService.update(studentId, {
-            avatar_url: null,
-          });
+          // Update the user's avatar_url in the profiles table
+          const uploadUserId = userId || studentId;
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: null })
+            .eq('user_id', uploadUserId);
 
-          if (updateResult.success) {
+          if (profileError) {
+            toast.error('Failed to update profile');
+          } else {
             toast.success('Avatar removed successfully');
             onAvatarUpdated(null);
-          } else {
-            toast.error('Failed to update student profile');
           }
         } else {
           toast.error(deleteResult.error || 'Failed to delete avatar');
         }
       } else {
         // If we can't extract filename, just update the database
-        const updateResult = await cohortStudentsService.update(studentId, {
-          avatar_url: null,
-        });
+        const uploadUserId = userId || studentId;
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: null })
+          .eq('user_id', uploadUserId);
 
-        if (updateResult.success) {
+        if (profileError) {
+          toast.error('Failed to update profile');
+        } else {
           toast.success('Avatar removed successfully');
           onAvatarUpdated(null);
-        } else {
-          toast.error('Failed to update student profile');
         }
       }
     } catch (error) {

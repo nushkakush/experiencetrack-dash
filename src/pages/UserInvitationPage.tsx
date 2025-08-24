@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
   userInvitationService,
   UserInvitation,
@@ -256,6 +257,13 @@ export default function UserInvitationPage() {
         </CardHeader>
         <CardContent className='space-y-4'>
           <div className='text-center'>
+            <div className="flex justify-center mb-3">
+              <UserAvatar
+                avatarUrl={null}
+                name={`${invitation.first_name || ''} ${invitation.last_name || ''}`.trim() || invitation.email}
+                size="lg"
+              />
+            </div>
             <p className='text-sm text-muted-foreground'>
               Setting up account for: <strong>{invitation.email}</strong>
             </p>

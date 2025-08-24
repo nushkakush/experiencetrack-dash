@@ -47,6 +47,7 @@ export default function CohortWizard({
   const [endDate, setEndDate] = useState(toISODate(addMonths(new Date(), 6)));
   const [description, setDescription] = useState('');
   const [sessionsPerDay, setSessionsPerDay] = useState(1);
+  const [maxStudents, setMaxStudents] = useState(50);
   const [epics, setEpics] = useState<NewEpicInput[]>([
     { name: '', duration_months: 1 },
   ]);
@@ -109,6 +110,14 @@ export default function CohortWizard({
       toast.error('Cohort ID is required.');
       return false;
     }
+    if (!maxStudents || maxStudents < 1) {
+      toast.error('Maximum students must be at least 1.');
+      return false;
+    }
+    if (maxStudents > 1000) {
+      toast.error('Maximum students cannot exceed 1000.');
+      return false;
+    }
 
     // Validate that end date is after start date
     const startDateObj = new Date(startDate);
@@ -138,6 +147,7 @@ export default function CohortWizard({
       end_date: endDate,
       description: description.trim(),
       sessions_per_day: Number(sessionsPerDay) || 1,
+      max_students: Number(maxStudents) || 50,
     };
 
     const filteredEpics = (epics || []).filter(
@@ -278,6 +288,16 @@ export default function CohortWizard({
               min={1}
               value={sessionsPerDay}
               onChange={e => setSessionsPerDay(Number(e.target.value) || 1)}
+            />
+          </div>
+          <div className='space-y-2'>
+            <Label>Maximum students</Label>
+            <Input
+              type='number'
+              min={1}
+              value={maxStudents}
+              onChange={e => setMaxStudents(Number(e.target.value) || 50)}
+              placeholder='Enter maximum number of students'
             />
           </div>
           <div className='md:col-span-2 space-y-2'>

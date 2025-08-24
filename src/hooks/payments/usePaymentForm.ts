@@ -258,6 +258,25 @@ export const usePaymentForm = ({
     setAmountToPay(maxAmount);
   }, [maxAmount]);
 
+  // Initialize payment details with current date and time when component mounts
+  useEffect(() => {
+    // Initialize for both student payments and admin payment recording
+    const currentDate = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
+    
+    console.log('🔍 [usePaymentForm] Initializing payment details with current date/time:', {
+      currentDate,
+      currentTime,
+      isAdminMode,
+    });
+    
+    setPaymentDetails(prev => ({
+      ...prev,
+      paymentDate: currentDate,
+      paymentTime: currentTime,
+    }));
+  }, [isAdminMode]);
+
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -304,7 +323,17 @@ export const usePaymentForm = ({
 
   const handlePaymentModeChange = useCallback((mode: string) => {
     setSelectedPaymentMode(mode);
-    setPaymentDetails({});
+    
+    // Initialize payment details with current date and time for both student and admin payments
+    const currentDate = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
+    
+    const initialPaymentDetails: PaymentDetails = {
+      paymentDate: currentDate,
+      paymentTime: currentTime,
+    };
+    
+    setPaymentDetails(initialPaymentDetails);
     setUploadedFiles({});
     setErrors(prev => ({
       ...prev,

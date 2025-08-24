@@ -187,7 +187,7 @@ export class PaymentQueryService {
             payment_id: transaction.payment_id,
             amount: transaction.amount,
             payment_date: transaction.payment_date,
-            status: transaction.status === 'success' ? 'paid' : 'pending',
+            status: transaction.status === 'success' ? 'paid' : transaction.status === 'waived' ? 'waived' : 'pending',
             receipt_url:
               transaction.receipt_url || transaction.proof_of_payment_url,
             notes: transaction.notes,

@@ -21,6 +21,8 @@ export const usePaymentsTable = ({ students }: UsePaymentsTableProps) => {
         student.payments?.some(payment => {
           // Map UI status values to database status values
           if (statusFilter === 'paid' && payment.status === 'success') return true;
+          if (statusFilter === 'waived' && payment.status === 'waived') return true;
+          if (statusFilter === 'partially_waived' && payment.status === 'partially_waived') return true;
           if (statusFilter === 'pending' && payment.status === 'pending') return true;
           if (statusFilter === 'verification_pending' && payment.verification_status === 'verification_pending') return true;
           return payment.status === statusFilter;

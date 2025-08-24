@@ -138,7 +138,9 @@ export type PaymentStatus =
   | 'upcoming'
   | 'partially_paid_verification_pending'
   | 'partially_paid_days_left'
-  | 'partially_paid_overdue';
+  | 'partially_paid_overdue'
+  | 'waived'
+  | 'partially_waived';
 
 export type PaymentType = 'admission_fee' | 'program_fee' | 'scholarship';
 

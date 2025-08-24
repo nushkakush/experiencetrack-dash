@@ -481,7 +481,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
           payment => payment.payment_status === 'pending'
         ).length,
         verifiedPayments: data.filter(
-          payment => payment.payment_status === 'paid'
+          payment => payment.payment_status === 'paid' || payment.payment_status === 'waived'
         ).length,
       };
 
@@ -558,6 +558,36 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       if (error) throw error;
 
       return { data: count || 0, error: null };
+    });
+  }
+
+  // Reset payment transaction to pending status
+  async resetPaymentTransaction(
+    transactionId: string,
+    resetBy: string
+  ): Promise<ApiResponse<PaymentTransactionRow>> {
+    return this.executeQuery(async () => {
+      // Update the transaction to reset it back to pending status
+      const updateData = {
+        verification_status: 'verification_pending',
+        verification_notes: null,
+        verified_by: null,
+        verified_at: null,
+        updated_at: new Date().toISOString(),
+        status: 'pending',
+        rejection_reason: null
+      };
+
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .update(updateData)
+        .eq('id', transactionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
     });
   }
 }

@@ -268,7 +268,7 @@ const getPaymentStatus = (student: StudentPaymentSummary): string => {
 
   const totalPayments = student.payments.length;
   const completedPayments = student.payments.filter(
-    p => p.status === 'paid'
+          p => p.status === 'paid' || p.status === 'waived'
   ).length;
   const pendingPayments = student.payments.filter(
     p => p.status === 'pending'
@@ -288,7 +288,7 @@ const getLastPaymentDate = (student: StudentPaymentSummary): string => {
     return 'N/A';
   }
 
-  const paidPayments = student.payments.filter(p => p.status === 'paid');
+          const paidPayments = student.payments.filter(p => p.status === 'paid' || p.status === 'waived');
   if (paidPayments.length === 0) {
     return 'N/A';
   }

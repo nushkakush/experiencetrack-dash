@@ -24,11 +24,13 @@ import {
 import { PaymentMethodSelector } from './PaymentMethodSelector';
 import { FileUploadField } from '@/components/common/payments/FileUploadField';
 import { formatCurrency } from '@/lib/utils';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 export interface PaymentRecordingData {
   amount: number;
   paymentMethod: string;
   paymentDate: string;
+  paymentTime: string; // New field for payment time
   transactionId?: string;
   notes?: string;
   receipt?: File;
@@ -62,6 +64,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> = React.m
     amount: 0,
     paymentMethod: '',
     paymentDate: new Date().toISOString().split('T')[0],
+    paymentTime: new Date().toTimeString().slice(0, 5), // Default to current time (HH:MM)
     transactionId: '',
     notes: '',
   });
@@ -95,6 +98,11 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> = React.m
       if (paymentDate > today) {
         newErrors.paymentDate = 'Payment date cannot be in the future';
       }
+    }
+
+    // Payment time validation
+    if (!formData.paymentTime) {
+      newErrors.paymentTime = 'Payment time is required';
     }
 
     // Transaction ID validation for certain payment methods
@@ -144,7 +152,8 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> = React.m
   const isFormValid = Object.keys(errors).length === 0 && 
                       formData.amount > 0 && 
                       formData.paymentMethod && 
-                      formData.paymentDate;
+                      formData.paymentDate &&
+                      formData.paymentTime;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -160,7 +169,15 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> = React.m
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <Label className="text-muted-foreground">Student</Label>
-              <div className="font-medium">{studentName}</div>
+              <div className="flex items-center gap-2 font-medium">
+                         <UserAvatar
+           avatarUrl={null}
+           name={studentName}
+           size="sm"
+           userId={student.user_id}
+         />
+                {studentName}
+              </div>
             </div>
             <div>
               <Label className="text-muted-foreground">Outstanding Amount</Label>
@@ -217,26 +234,47 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> = React.m
             />
           </div>
 
-          {/* Payment Date */}
-          <div className="space-y-2">
-            <Label htmlFor="paymentDate">
-              Payment Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="paymentDate"
-              type="date"
-              value={formData.paymentDate}
-              onChange={(e) => updateFormData({ paymentDate: e.target.value })}
-              disabled={disabled}
-              max={new Date().toISOString().split('T')[0]}
-              className={errors.paymentDate ? 'border-red-500' : ''}
-            />
-            {errors.paymentDate && (
-              <div className="text-sm text-red-600 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {errors.paymentDate}
-              </div>
-            )}
+          {/* Payment Date and Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="paymentDate">
+                Payment Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={formData.paymentDate}
+                onChange={(e) => updateFormData({ paymentDate: e.target.value })}
+                disabled={disabled}
+                max={new Date().toISOString().split('T')[0]}
+                className={errors.paymentDate ? 'border-red-500' : ''}
+              />
+              {errors.paymentDate && (
+                <div className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.paymentDate}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="paymentTime">
+                Payment Time <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="paymentTime"
+                type="time"
+                value={formData.paymentTime}
+                onChange={(e) => updateFormData({ paymentTime: e.target.value })}
+                disabled={disabled}
+                className={errors.paymentTime ? 'border-red-500' : ''}
+              />
+              {errors.paymentTime && (
+                <div className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.paymentTime}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Transaction ID (conditional) */}

@@ -35,7 +35,11 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
   const [formData, setFormData] = useState<Partial<PaymentSubmissionData>>({
     paymentId,
     amount,
-    paymentMethod: availableMethods[0] || ''
+    paymentMethod: availableMethods[0] || '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentTime: new Date().toTimeString().slice(0, 5), // HH:MM format
+    transferDate: new Date().toISOString().split('T')[0],
+    transferTime: new Date().toTimeString().slice(0, 5) // HH:MM format
   });
 
   const [files, setFiles] = useState<{
@@ -162,14 +166,25 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
                   placeholder="Enter bank branch"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="transferDate">Transfer Date</Label>
-                <Input
-                  id="transferDate"
-                  type="date"
-                  value={formData.transferDate || ''}
-                  onChange={(e) => handleInputChange('transferDate', e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="transferDate">Transfer Date</Label>
+                  <Input
+                    id="transferDate"
+                    type="date"
+                    value={formData.transferDate || ''}
+                    onChange={(e) => handleInputChange('transferDate', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transferTime">Transfer Time</Label>
+                  <Input
+                    id="transferTime"
+                    type="time"
+                    value={formData.transferTime || ''}
+                    onChange={(e) => handleInputChange('transferTime', e.target.value)}
+                  />
+                </div>
               </div>
             </>
           )}

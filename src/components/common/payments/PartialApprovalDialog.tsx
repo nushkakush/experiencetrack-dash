@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 interface PartialApprovalDialogProps {
@@ -13,6 +14,9 @@ interface PartialApprovalDialogProps {
   onOpenChange: (open: boolean) => void;
   transactionId: string;
   studentName: string;
+  studentData?: {
+    avatar_url?: string | null;
+  };
   originalAmount: number;
   expectedAmount: number;
   onApprovePartial: (transactionId: string, approvedAmount: number, notes?: string) => void;
@@ -26,6 +30,7 @@ export const PartialApprovalDialog: React.FC<PartialApprovalDialogProps> = ({
   onOpenChange,
   transactionId,
   studentName,
+  studentData,
   originalAmount,
   expectedAmount,
   onApprovePartial,
@@ -97,9 +102,16 @@ export const PartialApprovalDialog: React.FC<PartialApprovalDialogProps> = ({
         <div className="space-y-4">
           {/* Transaction Summary */}
           <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Student:</span>
-              <span className="font-medium">{studentName}</span>
+              <div className="flex items-center gap-2 font-medium">
+                <UserAvatar
+                  avatarUrl={studentData?.avatar_url}
+                  name={studentName}
+                  size="sm"
+                />
+                {studentName}
+              </div>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Submitted Amount:</span>

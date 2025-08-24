@@ -45,6 +45,8 @@ export function useCohortStudents({ cohortId, enabled = true }: UseCohortStudent
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
+
+
   // Add student mutation
   const addStudentMutation = useApiMutation({
     mutationFn: (studentId: string) => cohortService.addStudentToCohort(cohortId, studentId),
@@ -74,7 +76,11 @@ export function useCohortStudents({ cohortId, enabled = true }: UseCohortStudent
 
     // Apply status filter
     if (filters.status !== 'all') {
-      filtered = filtered.filter(student => student.status === filters.status);
+      if (filters.status === 'active') {
+        filtered = filtered.filter(student => student.dropped_out_status === 'active');
+      } else if (filters.status === 'dropped') {
+        filtered = filtered.filter(student => student.dropped_out_status === 'dropped_out');
+      }
     }
 
     // Apply sorting
@@ -98,9 +104,9 @@ export function useCohortStudents({ cohortId, enabled = true }: UseCohortStudent
       case 'email':
         return student.student?.email || '';
       case 'joined_date':
-        return student.assignment_date || '';
+        return student.created_at || '';
       case 'status':
-        return student.status || '';
+        return student.dropped_out_status || '';
       default:
         return '';
     }

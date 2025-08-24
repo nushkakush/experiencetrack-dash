@@ -1,10 +1,20 @@
-// Payment Calculation Hooks
-export { usePaymentCalculations } from './usePaymentCalculationsRefactored';
-export { useStudentData } from './useStudentData';
-export { usePaymentPlanManagement } from './usePaymentPlanManagement';
+// Main hook
+export { usePaymentSubmissions } from './usePaymentSubmissions';
 
-// Payment Dashboard Hooks
-export { usePaymentDashboard } from '../components/hooks/usePaymentDashboard';
+// Services
+export { StudentPaymentService } from './services/StudentPaymentService';
+export { PaymentTransactionService } from './services/PaymentTransactionService';
+export { PaymentValidationService } from './services/PaymentValidationService';
 
-// Payment Submission Hooks
-export { usePaymentSubmission } from '../hooks/usePaymentSubmission';
+// Handlers
+export { RazorpayPaymentHandler } from './handlers/RazorpayPaymentHandler';
+export { RegularPaymentHandler } from './handlers/RegularPaymentHandler';
+
+// Utilities
+export { uploadReceiptToStorage, uploadMultipleReceipts } from './utils/receiptUploadService';
+export { 
+  generateUUID, 
+  parseSemesterFromId, 
+  normalizePaymentTargeting, 
+  validatePaymentTargeting 
+} from './utils/paymentUtils';

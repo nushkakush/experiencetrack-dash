@@ -1,163 +1,176 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, DollarSign } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 interface SimplePartialApprovalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  transactionId: string;
   studentName: string;
+  studentData?: {
+    avatar_url?: string | null;
+  };
   submittedAmount: number;
   expectedAmount: number;
-  onApprove: (transactionId: string, actualAmount: number) => void;
+  onApprove: (approvedAmount: number) => void;
+  onReject: () => void;
   loading?: boolean;
 }
 
 export const SimplePartialApprovalDialog: React.FC<SimplePartialApprovalDialogProps> = ({
   open,
   onOpenChange,
-  transactionId,
   studentName,
+  studentData,
   submittedAmount,
   expectedAmount,
   onApprove,
+  onReject,
   loading = false
 }) => {
-  const [actualAmount, setActualAmount] = useState(submittedAmount);
-  const [error, setError] = useState('');
+  const [approvalType, setApprovalType] = useState<'full' | 'partial' | 'reject'>('full');
+  const [approvedAmount, setApprovedAmount] = useState(submittedAmount);
 
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (open) {
-      setActualAmount(submittedAmount);
-      setError('');
+  const handleApprove = () => {
+    if (approvalType === 'full') {
+      onApprove(submittedAmount);
+    } else if (approvalType === 'partial') {
+      onApprove(approvedAmount);
     }
-  }, [open, submittedAmount]);
-
-  const validateAmount = (amount: number) => {
-    if (amount <= 0) {
-      return 'Amount must be greater than 0';
-    }
-    if (amount > expectedAmount) {
-      return 'Amount cannot exceed the expected amount';
-    }
-    return '';
   };
 
-  const handleAmountChange = (value: string) => {
-    const amount = parseFloat(value) || 0;
-    setActualAmount(amount);
-    setError(validateAmount(amount));
+  const handleReject = () => {
+    onReject();
   };
 
-  const handleSubmit = () => {
-    const validationError = validateAmount(actualAmount);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    onApprove(transactionId, actualAmount);
-    onOpenChange(false);
-  };
-
-  const isPartialPayment = actualAmount > 0 && actualAmount < expectedAmount;
-  const isFullPayment = actualAmount === expectedAmount;
-  const remainingAmount = expectedAmount - actualAmount;
-
-  const formatAmountForDisplay = (amount: number) => {
-    if (amount === 0) return '';
-    return amount.toString();
-  };
+  const remainingAmount = submittedAmount - approvedAmount;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Approve Payment
-          </DialogTitle>
+          <DialogTitle>Review Payment</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Transaction Summary */}
-          <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Student:</span>
-              <span className="font-medium">{studentName}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Student Submitted:</span>
-              <span className="font-medium">{formatCurrency(submittedAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Expected Amount:</span>
-              <span className="font-medium">{formatCurrency(expectedAmount)}</span>
+          {/* Student Info */}
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <UserAvatar
+              avatarUrl={studentData?.avatar_url}
+              name={studentName}
+              size="md"
+            />
+            <div>
+              <div className="font-medium">{studentName}</div>
+              <div className="text-sm text-muted-foreground">
+                Submitted: {formatCurrency(submittedAmount)}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Expected: {formatCurrency(expectedAmount)}
+              </div>
             </div>
           </div>
 
-          {/* Amount Input */}
-          <div className="space-y-2">
-            <Label htmlFor="actualAmount">Actual Amount Received *</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-                ₹
-              </span>
-              <Input
-                id="actualAmount"
-                type="number"
-                value={formatAmountForDisplay(actualAmount)}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                className={`pl-8 ${error ? 'border-red-500' : ''}`}
-                max={expectedAmount}
+          {/* Approval Options */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Choose Action:</div>
+            
+            <div className="space-y-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="full"
+                  checked={approvalType === 'full'}
+                  onChange={(e) => setApprovalType(e.target.value as 'full')}
+                  className="form-radio"
+                />
+                <span className="text-sm">Approve Full Amount ({formatCurrency(submittedAmount)})</span>
+              </label>
+
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="partial"
+                  checked={approvalType === 'partial'}
+                  onChange={(e) => setApprovalType(e.target.value as 'partial')}
+                  className="form-radio"
+                />
+                <span className="text-sm">Partially Approve</span>
+              </label>
+
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="reject"
+                  checked={approvalType === 'reject'}
+                  onChange={(e) => setApprovalType(e.target.value as 'reject')}
+                  className="form-radio"
+                />
+                <span className="text-sm">Reject Payment</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Partial Approval Amount */}
+          {approvalType === 'partial' && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Approved Amount:</label>
+              <input
+                type="range"
+                min="0"
+                max={submittedAmount}
                 step="0.01"
-                placeholder="Enter actual amount received"
+                value={approvedAmount}
+                onChange={(e) => setApprovedAmount(parseFloat(e.target.value))}
+                className="w-full"
               />
-            </div>
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Enter the exact amount you verified the student has actually paid
-            </p>
-          </div>
-
-          {/* Payment Status Preview */}
-          {actualAmount > 0 && !error && (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                {isFullPayment ? (
-                  <span className="text-green-700">
-                    <strong>Full Payment:</strong> This transaction will be marked as fully paid.
-                  </span>
-                ) : isPartialPayment ? (
-                  <span className="text-orange-700">
-                    <strong>Partial Payment:</strong> {formatCurrency(actualAmount)} will be approved. 
+              <div className="text-center">
+                <span className="text-lg font-bold">{formatCurrency(approvedAmount)}</span>
+                {approvedAmount < submittedAmount && (
+                  <div className="text-sm text-muted-foreground mt-1">
+                    <strong>Partial Payment:</strong> {formatCurrency(approvedAmount)} will be approved.
                     Remaining {formatCurrency(remainingAmount)} will stay pending.
-                  </span>
-                ) : null}
-              </AlertDescription>
-            </Alert>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Rejection Warning */}
+          {approvalType === 'reject' && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="text-sm text-red-700">
+                <strong>Warning:</strong> Rejecting this payment will mark it as invalid and require the student to submit a new payment.
+              </div>
+            </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={loading || !!error || actualAmount <= 0}
-          >
-            {loading ? 'Processing...' : 'Approve Payment'}
-          </Button>
+          {approvalType === 'reject' ? (
+            <Button
+              variant="destructive"
+              onClick={handleReject}
+              disabled={loading}
+            >
+              {loading ? 'Rejecting...' : 'Reject Payment'}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleApprove}
+              disabled={loading}
+            >
+              {loading ? 'Approving...' : 'Approve Payment'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

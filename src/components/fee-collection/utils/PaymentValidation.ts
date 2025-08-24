@@ -11,6 +11,7 @@ export const validatePaymentForm = (
   requiredAmount: number,
   transactionId: string,
   paymentDate: string,
+  paymentTime: string,
   bankName: string,
   bankBranch: string,
   receiptFile: File | null,
@@ -44,6 +45,9 @@ export const validatePaymentForm = (
     case 'cheque':
       if (!paymentDate) {
         errors.push('Please select payment date');
+      }
+      if (!paymentTime) {
+        errors.push('Please select payment time');
       }
       if (!bankName) {
         errors.push('Please select bank name');

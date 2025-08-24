@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Shield, Info, Trophy, TrendingUp, Users, Calendar } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { StatisticsCalculator } from '../utils/statisticsCalculator';
 import type { StudentStats } from '../utils/statisticsCalculator';
 import type { AttendanceRecord } from '@/types/attendance';
@@ -102,9 +103,17 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
             
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between text-lg">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="font-bold">#{stat.rank}</span>
-                  <span>{stat.student.first_name} {stat.student.last_name}</span>
+                  <div className="flex items-center gap-2">
+                                 <UserAvatar
+               avatarUrl={null}
+               name={`${stat.student.first_name} ${stat.student.last_name}`}
+               size="md"
+               userId={stat.student.user_id}
+             />
+                    <span>{stat.student.first_name} {stat.student.last_name}</span>
+                  </div>
                   {isExempted && (
                     <TooltipProvider>
                       <Tooltip>

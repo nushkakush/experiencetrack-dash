@@ -120,6 +120,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
         payment_method: tx.payment_method,
         notes: tx.notes,
         verification_notes: tx.verification_notes,
+        rejection_reason: tx.rejection_reason,
       }));
   };
 
@@ -150,7 +151,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   const currentKey = `${semesterNumber}-${installmentIndex}`;
   const isSelected = selectedInstallmentKey === currentKey;
   // Treat installment as paid only if engine says so. Avoid numeric fallbacks.
-  const isPaid = installment.status === 'paid';
+  const isPaid = installment.status === 'paid' || installment.status === 'waived';
 
   // Check if payment is in verification pending status
   const isVerificationPending =
@@ -158,7 +159,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     installment.status === 'partially_paid_verification_pending';
 
   // Check if payment is fully verified and complete
-  const isFullyVerified = installment.status === 'paid';
+  const isFullyVerified = installment.status === 'paid' || installment.status === 'waived';
 
   // Determine if payment form should be shown automatically
   const shouldShowPaymentForm = () => {
@@ -184,6 +185,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     // - verification in progress
     // - awaiting bank approval flows
     // - complete/paid/on_time/dropped
+    // - waived (scholarship covers the amount)
     const BLOCKED: string[] = [
       'verification_pending',
       'partially_paid_verification_pending',
@@ -193,6 +195,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
       'complete',
       'on_time',
       'dropped',
+      'waived',
     ];
 
     if (BLOCKED.includes(installment.status)) return false;
@@ -232,7 +235,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
       if (
         installment.status === 'paid' ||
         installment.status === 'complete' ||
-        installment.status === 'on_time'
+        installment.status === 'on_time' ||
+        installment.status === 'waived'
       ) {
         return 'paid' as const;
       } else if (
@@ -242,7 +246,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
         return 'overdue' as const;
       } else if (
         installment.status === 'partially_paid_days_left' ||
-        installment.status === 'partially_paid_verification_pending'
+        installment.status === 'partially_paid_verification_pending' ||
+        installment.status === 'partially_waived'
       ) {
         return 'partial' as const;
       } else {
@@ -390,10 +395,14 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                   }`}
                 >
                   {isFullyVerified
-                    ? 'Payment Completed'
+                    ? installment.status === 'waived'
+                      ? 'Scholarship Waived'
+                      : 'Payment Completed'
                     : isVerificationPending
                       ? 'Payment Submitted - Verification Pending'
-                      : 'Payment Completed'}
+                      : installment.status === 'waived'
+                        ? 'Scholarship Waived'
+                        : 'Payment Completed'}
                 </h4>
                 <p
                   className={`text-sm ${
@@ -405,10 +414,14 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                   }`}
                 >
                   {isFullyVerified
-                    ? 'This installment has been fully paid. Thank you for your payment!'
+                    ? installment.status === 'waived'
+                      ? 'This installment has been fully covered by your scholarship. No payment required!'
+                      : 'This installment has been fully paid. Thank you for your payment!'
                     : isVerificationPending
                       ? 'Your payment has been submitted and is awaiting verification. You will be notified once it is approved.'
-                      : 'This installment has been fully paid. Thank you for your payment!'}
+                      : installment.status === 'waived'
+                        ? 'This installment has been fully covered by your scholarship. No payment required!'
+                        : 'This installment has been fully paid. Thank you for your payment!'}
                 </p>
 
                 {/* Payment Method and Proof Details for Verification Pending */}

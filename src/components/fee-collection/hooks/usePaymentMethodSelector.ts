@@ -13,6 +13,7 @@ interface PaymentSubmissionData {
   proofOfPaymentFile?: File;
   transactionScreenshotFile?: File;
   paymentDate?: string;
+  paymentTime?: string;
   bankName?: string;
   bankBranch?: string;
   accountNumber?: string;
@@ -35,7 +36,8 @@ export const usePaymentMethodSelector = ({
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [isPartialPayment, setIsPartialPayment] = useState<boolean>(false);
-  const [paymentDate, setPaymentDate] = useState<string>('');
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [paymentTime, setPaymentTime] = useState<string>(new Date().toTimeString().slice(0, 5));
   const [bankName, setBankName] = useState<string>('');
   const [bankBranch, setBankBranch] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
@@ -69,6 +71,10 @@ export const usePaymentMethodSelector = ({
 
   const handlePaymentDateChange = (value: string) => {
     setPaymentDate(value);
+  };
+
+  const handlePaymentTimeChange = (value: string) => {
+    setPaymentTime(value);
   };
 
   const handleBankNameChange = (value: string) => {
@@ -115,6 +121,7 @@ export const usePaymentMethodSelector = ({
       requiredAmount,
       transactionId,
       paymentDate,
+      paymentTime,
       bankName,
       bankBranch,
       receiptFile,
@@ -141,6 +148,7 @@ export const usePaymentMethodSelector = ({
     // Add bank transfer/cheque specific data
     if (selectedMethod === 'bank_transfer' || selectedMethod === 'cheque') {
       paymentData.paymentDate = paymentDate;
+      paymentData.paymentTime = paymentTime;
       paymentData.bankName = bankName;
       paymentData.bankBranch = bankBranch;
       paymentData.accountNumber = accountNumber;
@@ -156,6 +164,7 @@ export const usePaymentMethodSelector = ({
     amountPaid,
     isPartialPayment,
     paymentDate,
+    paymentTime,
     bankName,
     bankBranch,
     accountNumber,
@@ -169,6 +178,7 @@ export const usePaymentMethodSelector = ({
     handleMethodSelect,
     handleAmountChange,
     handlePaymentDateChange,
+    handlePaymentTimeChange,
     handleBankNameChange,
     handleBankBranchChange,
     handleAccountNumberChange,

@@ -73,14 +73,25 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
     case 'bank_transfer':
       return (
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="paymentDate">Payment Date *</Label>
-            <Input
-              id="paymentDate"
-              type="date"
-              value={String(paymentDetails.paymentDate ?? '')}
-              onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="paymentDate">Payment Date *</Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={String(paymentDetails.paymentDate ?? '')}
+                onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="paymentTime">Payment Time *</Label>
+              <Input
+                id="paymentTime"
+                type="time"
+                value={String(paymentDetails.paymentTime ?? '')}
+                onChange={(e) => handleFieldChange('paymentTime', e.target.value)}
+              />
+            </div>
           </div>
           <BankSelect
             value={String(paymentDetails.bankName ?? '')}
@@ -135,14 +146,25 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
     case 'cash':
       return (
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="paymentDate">Payment Date *</Label>
-            <Input
-              id="paymentDate"
-              type="date"
-              value={String(paymentDetails.paymentDate ?? '')}
-              onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="paymentDate">Payment Date *</Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={String(paymentDetails.paymentDate ?? '')}
+                onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="paymentTime">Payment Time *</Label>
+              <Input
+                id="paymentTime"
+                type="time"
+                value={String(paymentDetails.paymentTime ?? '')}
+                onChange={(e) => handleFieldChange('paymentTime', e.target.value)}
+              />
+            </div>
           </div>
           
           <Separator />
@@ -164,14 +186,25 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
     case 'cheque':
       return (
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="paymentDate">Payment Date *</Label>
-            <Input
-              id="paymentDate"
-              type="date"
-              value={String(paymentDetails.paymentDate ?? '')}
-              onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="paymentDate">Payment Date *</Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={String(paymentDetails.paymentDate ?? '')}
+                onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="paymentTime">Payment Time *</Label>
+              <Input
+                id="paymentTime"
+                type="time"
+                value={String(paymentDetails.paymentTime ?? '')}
+                onChange={(e) => handleFieldChange('paymentTime', e.target.value)}
+              />
+            </div>
           </div>
           <BankSelect
             value={String(paymentDetails.bankName ?? '')}
@@ -287,14 +320,25 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
               onChange={(e) => handleFieldChange('qrCode', e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="paymentDate">Payment Date *</Label>
-            <Input
-              id="paymentDate"
-              type="date"
-              value={String(paymentDetails.paymentDate ?? '')}
-              onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="paymentDate">Payment Date *</Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={String(paymentDetails.paymentDate ?? '')}
+                onChange={(e) => handleFieldChange('paymentDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="paymentTime">Payment Time *</Label>
+              <Input
+                id="paymentTime"
+                type="time"
+                value={String(paymentDetails.paymentTime ?? '')}
+                onChange={(e) => handleFieldChange('paymentTime', e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="payerUpiId">Payer UPI ID *</Label>

@@ -60,8 +60,12 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         transaction_screenshot_url: transactionScreenshotUrl,
         bank_name: paymentData.bankName,
         bank_branch: paymentData.bankBranch,
-        transfer_date: paymentData.transferDate,
-        payment_date: paymentData.transferDate,
+        transfer_date: paymentData.transferDate && paymentData.transferTime 
+          ? `${paymentData.transferDate}T${paymentData.transferTime}:00`
+          : paymentData.transferDate,
+        payment_date: paymentData.paymentDate && paymentData.paymentTime 
+          ? `${paymentData.paymentDate}T${paymentData.paymentTime}:00`
+          : paymentData.paymentDate,
         qr_code_url: paymentData.qrCodeUrl,
         payer_upi_id: paymentData.upiId,
         receiver_bank_name: paymentData.receiverBankName,

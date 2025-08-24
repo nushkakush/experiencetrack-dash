@@ -1,4 +1,4 @@
-import { lazy, ComponentType, Suspense } from 'react';
+import React, { lazy, ComponentType, Suspense } from 'react';
 
 export interface LazyComponentConfig {
   name: string;
@@ -290,5 +290,4 @@ export function useLoadingStats() {
   return stats;
 }
 
-// Import React for hooks
-import React from 'react';
+

@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean;
   profileLoading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,6 +106,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     session,
@@ -112,6 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     profileLoading,
     signOut,
+    refreshProfile,
   };
 
   return (
@@ -134,6 +142,7 @@ export const useAuth = () => {
         loading: true,
         profileLoading: false,
         signOut: async () => {},
+        refreshProfile: async () => {},
       };
     }
     throw new Error('useAuth must be used within an AuthProvider');

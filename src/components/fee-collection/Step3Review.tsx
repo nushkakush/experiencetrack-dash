@@ -69,11 +69,24 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
 
   // Bubble up all plans' date edits to the setup layer so they can be saved as overrides
   React.useEffect(() => {
+    console.log('🔄 Step3Review: Date sync effect triggered', {
+      memoizedDatesByPlan,
+      prevDatesRef: prevDatesRef.current,
+      hasOnDatesChange: !!onDatesChange
+    });
+    
     // Only call onDatesChange if the dates have actually changed
     const allDatesString = JSON.stringify(memoizedDatesByPlan);
     const prevDatesString = JSON.stringify(prevDatesRef.current);
     
+    console.log('📊 Date comparison:', {
+      allDatesString,
+      prevDatesString,
+      datesChanged: allDatesString !== prevDatesString
+    });
+    
     if (allDatesString !== prevDatesString && onDatesChange) {
+      console.log('✅ Calling onDatesChange with updated dates:', memoizedDatesByPlan);
       prevDatesRef.current = { ...memoizedDatesByPlan };
       onDatesChange(memoizedDatesByPlan); // Pass all plans' dates instead of just current
     }

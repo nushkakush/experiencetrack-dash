@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   CalendarDays,
   Users,
@@ -149,8 +150,18 @@ export default function CohortCard({
           </div>
           <div className='flex items-center gap-2'>
             <Users className='h-4 w-4' />
-            <span>{cohort.students_count} students</span>
+            <span>{cohort.students_count}/{cohort.max_students} students</span>
           </div>
+        </div>
+        <div className='space-y-2'>
+          <div className='flex items-center justify-between text-xs text-muted-foreground'>
+            <span>Capacity</span>
+            <span>{Math.round((cohort.students_count / cohort.max_students) * 100)}%</span>
+          </div>
+          <Progress 
+            value={(cohort.students_count / cohort.max_students) * 100} 
+            className='h-2'
+          />
         </div>
         <div className='flex flex-wrap gap-2'>
           {/* Attendance button - only for program_manager and super_admin */}

@@ -141,13 +141,12 @@ export class CohortService {
   async getCohortStudents(cohortId: string): Promise<ApiResponse<CohortStudent[]>> {
     return this.apiClient.query(
       () => this.apiClient
-        .select('cohort_student_assignments', `
+        .select('cohort_students', `
           *,
-          student:students(*),
-          cohort:cohorts(*)
+          student:students(*)
         `)
         .eq('cohort_id', cohortId)
-        .eq('status', 'active')
+        .neq('dropped_out_status', 'dropped_out')
         .order('created_at', { ascending: false }),
       { cache: true }
     );
@@ -157,11 +156,12 @@ export class CohortService {
    * Add student to cohort
    */
   async addStudentToCohort(cohortId: string, studentId: string): Promise<ApiResponse<any>> {
-    return this.apiClient.insert('cohort_student_assignments', {
+    return this.apiClient.insert('cohort_students', {
       cohort_id: cohortId,
       student_id: studentId,
-      status: 'active',
-      assignment_date: new Date().toISOString(),
+      dropped_out_status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
   }
 
@@ -170,9 +170,9 @@ export class CohortService {
    */
   async removeStudentFromCohort(cohortId: string, studentId: string): Promise<ApiResponse<any>> {
     return this.apiClient.update(
-      'cohort_student_assignments',
+      'cohort_students',
       {
-        status: 'inactive',
+        dropped_out_status: 'dropped_out',
         updated_at: new Date().toISOString(),
       },
       (query) => query.eq('cohort_id', cohortId).eq('student_id', studentId)
@@ -197,9 +197,9 @@ export class CohortService {
       const students = studentsResult.data || [];
       const stats: CohortStats = {
         totalStudents: students.length,
-        activeStudents: students.filter(s => s.status === 'active').length,
-        completedStudents: students.filter(s => s.status === 'completed').length,
-        droppedStudents: students.filter(s => s.status === 'dropped').length,
+        activeStudents: students.filter(s => s.dropped_out_status === 'active').length,
+        completedStudents: 0, // Not applicable in new structure
+        droppedStudents: students.filter(s => s.dropped_out_status === 'dropped_out').length,
         averageAttendance: attendanceResult.data?.averageAttendance || 0,
       };
 

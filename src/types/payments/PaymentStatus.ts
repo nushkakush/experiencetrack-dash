@@ -145,6 +145,16 @@ export const PAYMENT_STATUS_CONFIG = {
     color: 'red',
     priority: 4,
   },
+  waived: {
+    label: 'Waived',
+    color: 'green',
+    priority: 0,
+  },
+  partially_waived: {
+    label: 'Partially Waived',
+    color: 'orange',
+    priority: 2,
+  },
 } as const;
 
 /**
@@ -159,7 +169,7 @@ export const isPaymentPending = (status: PaymentStatus): boolean => {
 };
 
 export const isPaymentComplete = (status: PaymentStatus): boolean => {
-  return status === 'paid' || status === 'complete' || status === 'on_time';
+  return status === 'paid' || status === 'complete' || status === 'on_time' || status === 'waived';
 };
 
 export const getPaymentStatusPriority = (status: PaymentStatus): number => {

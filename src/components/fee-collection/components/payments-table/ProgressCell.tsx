@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TableCell } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { formatCurrency } from '@/utils/formatCurrency';
 import type { StudentPaymentSummary } from '@/types/fee';
 import { ProgressCalculator, ProgressCalculationResult } from '@/utils/progressCalculation';
 
@@ -69,11 +70,23 @@ export const ProgressCell: React.FC<ProgressCellProps> = ({ student, feeStructur
     );
   }
 
+  // Debug log to verify our changes are being rendered
+  console.log('🚀 [ProgressCell] Rendering with amounts:', {
+    paid: progressData.paidAmount,
+    total: progressData.totalAmount,
+    percentage: progressData.progressPercentage
+  });
+
   return (
     <TableCell>
-      <div className="flex items-center gap-3 min-w-[140px]">
-        <Progress value={progressData.progressPercentage} className="w-24" />
-        <span className="text-xs text-muted-foreground">{progressData.progressPercentage}%</span>
+      <div className="flex flex-col gap-2 min-w-[140px]">
+        <div className="flex items-center gap-3">
+          <Progress value={progressData.progressPercentage} className="w-24" />
+          <span className="text-xs text-muted-foreground">{progressData.progressPercentage}%</span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {formatCurrency(progressData.paidAmount)} / {formatCurrency(progressData.totalAmount)}
+        </div>
       </div>
     </TableCell>
   );

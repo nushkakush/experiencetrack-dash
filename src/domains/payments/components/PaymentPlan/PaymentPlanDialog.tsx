@@ -14,8 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { PaymentPlanDisplay, PaymentPlanData } from './PaymentPlanDisplay';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PaymentPlanForm, PaymentPlanFormData } from './PaymentPlanForm';
+import { PaymentPlanDisplay, PaymentPlanData } from './PaymentPlanDisplay';
 import { usePaymentPlan } from './usePaymentPlan';
 import { CohortStudent } from '@/types/cohort';
 import { Logger } from '@/lib/logging/Logger';
@@ -165,8 +166,15 @@ export const PaymentPlanDialog: React.FC<PaymentPlanDialogProps> = React.memo(({
 
           {/* Student Info */}
           <div className="pt-4 border-t text-sm text-muted-foreground">
-            <div className="flex justify-between">
-              <span>Student: {student.name}</span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <UserAvatar
+                  avatarUrl={student.avatar_url}
+                  name={student.name}
+                  size="sm"
+                />
+                <span>Student: {student.name}</span>
+              </div>
               <span>ID: {student.id}</span>
             </div>
           </div>

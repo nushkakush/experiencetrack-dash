@@ -92,7 +92,7 @@ export class PaymentService extends BaseService<StudentPaymentRow> {
           overdue_amount: overdueAmount,
           scholarship_name: studentScholarship?.scholarship?.name,
           scholarship_id: studentScholarship?.scholarship?.id,
-          token_fee_paid: studentPayments.some((p: StudentPaymentRow) => p.payment_type === 'admission_fee' && p.status === 'paid'),
+          token_fee_paid: studentPayments.some((p: StudentPaymentRow) => p.payment_type === 'admission_fee' && (p.status === 'paid' || p.status === 'waived')),
           payment_plan: studentPayments[0]?.payment_plan || 'not_selected',
           student,
           payments: studentPayments,

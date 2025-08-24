@@ -37,6 +37,7 @@ interface PaymentsTableProps {
   onSelectAll?: (isSelected: boolean) => void;
   onExportSelected?: () => void;
   onVerificationUpdate?: () => void;
+  onPendingCountUpdate?: () => void;
 }
 
 export const PaymentsTable: React.FC<PaymentsTableProps> = ({
@@ -48,6 +49,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onSelectAll,
   onExportSelected,
   onVerificationUpdate,
+  onPendingCountUpdate,
 }) => {
   const {
     searchTerm,
@@ -93,6 +95,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                 )}
               </TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Progress</TableHead>
               <TableHead>Next Due</TableHead>
@@ -110,6 +113,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
                 onRowSelection={onRowSelection}
                 feeStructure={feeStructure}
                 onVerificationUpdate={onVerificationUpdate}
+                onPendingCountUpdate={onPendingCountUpdate}
               />
             ))}
           </TableBody>

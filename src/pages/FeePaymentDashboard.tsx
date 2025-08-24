@@ -65,6 +65,20 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     refetchPendingCount();
   };
 
+  const handleVerificationUpdate = async () => {
+    // Refresh both pending count and main dashboard data
+    await Promise.all([
+      refetchPendingCount(),
+      loadData()
+    ]);
+  };
+
+  const handlePendingCountUpdate = async () => {
+    // Only refresh pending count, not the entire dashboard state
+    // This prevents modal from closing while still updating the UI
+    await refetchPendingCount();
+  };
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -115,7 +129,8 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
               onRowSelection={handleRowSelection}
               onSelectAll={isSelected => handleSelectAll(isSelected, students)}
               onExportSelected={students => handleExportSelected(students)}
-              onVerificationUpdate={refetchPendingCount}
+              onVerificationUpdate={handleVerificationUpdate}
+              onPendingCountUpdate={handlePendingCountUpdate}
             />
           </TabsContent>
 

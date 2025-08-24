@@ -139,7 +139,7 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = React.mem
                 </DropdownMenuItem>
               )}
               
-              {onRecordPayment && item.status !== 'paid' && (
+              {onRecordPayment && item.status !== 'paid' && item.status !== 'waived' && (
                 <DropdownMenuItem onClick={() => onRecordPayment(item)}>
                   <DollarSign className="mr-2 h-4 w-4" />
                   Record Payment
@@ -153,7 +153,7 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = React.mem
                 </DropdownMenuItem>
               )}
               
-              {item.status === 'paid' && (
+              {(item.status === 'paid' || item.status === 'waived') && (
                 <DropdownMenuItem>
                   <Receipt className="mr-2 h-4 w-4" />
                   Download Receipt

@@ -54,7 +54,7 @@ export const isPaymentVerificationPending = (status: PaymentStatus): boolean => 
  * Check if a payment status indicates paid
  */
 export const isPaymentPaid = (status: PaymentStatus): boolean => {
-  return status === 'paid' || status === 'on_time' || status === 'complete';
+  return status === 'paid' || status === 'on_time' || status === 'complete' || status === 'waived';
 };
 
 /**
@@ -89,6 +89,10 @@ export const getInstallmentStatusDisplay = (status: string): { status: PaymentSt
   switch (status) {
     case 'paid':
       return { status: 'paid' as const, text: 'Paid' };
+    case 'waived':
+      return { status: 'waived' as const, text: 'Waived' };
+    case 'partially_waived':
+      return { status: 'partially_waived' as const, text: 'Partially Waived' };
     case 'overdue':
       return { status: 'overdue' as const, text: 'Overdue' };
     case 'partially_paid_overdue':

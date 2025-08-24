@@ -302,7 +302,7 @@ export const StatusCell: React.FC<StatusCellProps> = ({ student, feeStructure })
     }
 
     // Check for paid payments
-    const paidPayments = actualPayments.filter(p => p.status === 'paid');
+            const paidPayments = actualPayments.filter(p => p.status === 'paid' || p.status === 'waived');
     console.log('🔍 [StatusCell] Payment status analysis:', {
       totalPayments: actualPayments.length,
       paidPayments: paidPayments.length,

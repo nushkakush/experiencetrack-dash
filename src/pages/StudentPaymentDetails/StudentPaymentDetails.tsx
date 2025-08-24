@@ -78,6 +78,7 @@ const StudentPaymentDetails: React.FC = () => {
       <PaymentHeader
         cohortName={cohortData.name}
         studentName={studentData.full_name}
+        studentData={studentData}
         selectedPaymentPlan={selectedPaymentPlan as PaymentPlan}
         onBackToDashboard={handleBackToDashboard}
         getPaymentPlanDisplay={getPaymentPlanDisplay}

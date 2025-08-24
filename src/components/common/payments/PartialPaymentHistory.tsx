@@ -22,6 +22,7 @@ interface PaymentTransaction {
   created_at: string;
   verified_at?: string;
   notes?: string;
+  rejection_reason?: string;
   partial_payment_sequence: number;
 }
 
@@ -313,6 +314,13 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
                   <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs">
                     <span className="text-muted-foreground">Notes:</span>
                     <span className="ml-1">{transaction.notes}</span>
+                  </div>
+                )}
+                
+                {transaction.rejection_reason && (
+                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs">
+                    <span className="text-red-600 font-medium">Rejection Reason:</span>
+                    <span className="ml-1 text-red-600">{transaction.rejection_reason}</span>
                   </div>
                 )}
               </div>

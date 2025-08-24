@@ -109,6 +109,7 @@ export type CohortTable = {
     duration_months: number
     end_date: string
     id: string
+    max_students: number
     name: string
     sessions_per_day: number
     start_date: string
@@ -122,6 +123,7 @@ export type CohortTable = {
     duration_months: number
     end_date: string
     id?: string
+    max_students: number
     name: string
     sessions_per_day?: number
     start_date: string
@@ -135,6 +137,7 @@ export type CohortTable = {
     duration_months?: number
     end_date?: string
     id?: string
+    max_students?: number
     name?: string
     sessions_per_day?: number
     start_date?: string

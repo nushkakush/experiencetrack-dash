@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import DashboardShell from '@/components/DashboardShell';
 import { UserProfile } from '@/types/auth';
+import ProfileAvatarUpload from '@/components/ui/ProfileAvatarUpload';
 
 const ProfilePage = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -61,8 +61,8 @@ const ProfilePage = () => {
       toast.success('Profile updated successfully');
       setIsEditing(false);
       
-      // Refresh the page to get updated profile data
-      window.location.reload();
+      // Refresh the profile data
+      await refreshProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
@@ -82,9 +82,14 @@ const ProfilePage = () => {
     setIsEditing(false);
   };
 
+  const handleAvatarUpdated = async (newAvatarUrl?: string | null) => {
+    // Refresh the profile data
+    await refreshProfile();
+  };
+
   if (!profile) return null;
 
-  const userInitials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
+  const userName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
 
   return (
     <DashboardShell>
@@ -126,11 +131,14 @@ const ProfilePage = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarFallback className="text-lg bg-primary text-primary-foreground">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
+              <ProfileAvatarUpload
+                userId={profile.user_id}
+                currentAvatarUrl={profile.avatar_url}
+                userName={userName}
+                onAvatarUpdated={handleAvatarUpdated}
+                disabled={!isEditing}
+                size="lg"
+              />
               <div>
                 <h3 className="text-lg font-medium">
                   {profile.first_name} {profile.last_name}

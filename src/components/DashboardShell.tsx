@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,6 +36,8 @@ import {
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
 import { useFeatureFlag } from '@/lib/feature-flags/useFeatureFlag';
+import { AvatarService } from '@/services/avatar.service';
+import { cn } from '@/lib/utils';
 
 interface NavigationItem {
   title: string;
@@ -211,6 +213,15 @@ const DashboardShell = ({
                   className='relative h-8 w-8 rounded-full'
                 >
                   <Avatar className='h-8 w-8'>
+                    {profile.avatar_url ? (
+                      <AvatarImage 
+                        src={AvatarService.getAvatarUrl(
+                          AvatarService.getFileNameFromUrl(profile.avatar_url),
+                          { width: 32, height: 32, quality: 80 }
+                        )} 
+                        alt={`${profile.first_name} ${profile.last_name}`}
+                      />
+                    ) : null}
                     <AvatarFallback className='text-xs bg-primary text-primary-foreground'>
                       {userInitials}
                     </AvatarFallback>

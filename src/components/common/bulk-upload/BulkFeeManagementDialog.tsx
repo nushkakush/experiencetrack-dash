@@ -234,7 +234,7 @@ export default function BulkFeeManagementDialog({
                     <ul className="text-sm space-y-1">
                       <li><strong>Required columns:</strong> student_email, scholarship_name</li>
                       <li><strong>Optional columns:</strong> additional_discount_percentage</li>
-                      <li><strong>Additional discount</strong> must be between 0-100 percentage</li>
+                      <li><strong>Need based scholarship</strong> must be between 0-100 percentage</li>
                     </ul>
                     
                     {availableScholarships.length > 0 && (

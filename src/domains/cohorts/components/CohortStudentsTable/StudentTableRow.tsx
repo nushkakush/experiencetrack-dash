@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CohortStudent } from '@/types/cohort';
 import { formatDate } from '@/lib/utils';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface StudentTableRowProps {
   student: CohortStudent;
@@ -35,8 +36,7 @@ interface StudentTableRowProps {
 
 const statusColors = {
   active: 'bg-green-100 text-green-800',
-  completed: 'bg-blue-100 text-blue-800',
-  dropped: 'bg-red-100 text-red-800',
+  dropped_out: 'bg-red-100 text-red-800',
   pending: 'bg-yellow-100 text-yellow-800',
 } as const;
 
@@ -52,11 +52,16 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = React.memo(({
   isRemoving = false,
   showActions = true,
 }) => {
-  const studentData = student.student;
+  // The student object now contains the cohort_students data directly
+  // The user_id is in the student object itself
+  const studentData = student;
   
   if (!studentData) {
     return null;
   }
+
+  // Construct the full name from first_name and last_name
+  const studentName = `${studentData.first_name || ''} ${studentData.last_name || ''}`.trim() || studentData.email;
 
   const handleToggleSelection = () => {
     onToggleSelection(studentData.id);
@@ -77,32 +82,34 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = React.memo(({
         <Checkbox
           checked={isSelected}
           onCheckedChange={handleToggleSelection}
-          aria-label={`Select ${studentData.name}`}
+          aria-label={`Select ${studentName}`}
         />
       </TableCell>
       
       <TableCell className="font-medium">
         <div className="flex items-center space-x-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/10 text-primary">
-              {getInitials(studentData.name)}
-            </AvatarFallback>
-          </Avatar>
+
+          <UserAvatar
+            avatarUrl={null}
+            name={studentName}
+            size="md"
+            userId={studentData.user_id}
+          />
           <div>
-            <div className="font-medium">{studentData.name}</div>
+            <div className="font-medium">{studentName}</div>
             <div className="text-sm text-muted-foreground">{studentData.email}</div>
           </div>
         </div>
       </TableCell>
       
       <TableCell>
-        <Badge className={statusColors[student.status as keyof typeof statusColors] || statusColors.pending}>
-          {student.status}
+        <Badge className={statusColors[student.dropped_out_status as keyof typeof statusColors] || statusColors.pending}>
+          {student.dropped_out_status}
         </Badge>
       </TableCell>
       
       <TableCell className="text-sm text-muted-foreground">
-        {formatDate(student.assignment_date)}
+        {formatDate(student.created_at)}
       </TableCell>
       
       <TableCell className="text-sm">

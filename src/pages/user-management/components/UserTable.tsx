@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -39,6 +39,7 @@ import { UserRole } from '@/types/auth';
 import { UserDetailsDialog, UserDeleteDialog } from './';
 import CohortAssignmentDialog from '@/components/cohorts/CohortAssignmentDialog';
 import { formatDistanceToNow } from 'date-fns';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface UserTableProps {
   showOnlyRegistered?: boolean;
@@ -339,8 +340,15 @@ export const UserTable: React.FC<UserTableProps> = ({
                     />
                   </TableCell>
                   <TableCell>
-                    <div className='font-medium'>
-                      {user.first_name} {user.last_name}
+                    <div className="flex items-center gap-3">
+                      <UserAvatar
+                        avatarUrl={user.avatar_url}
+                        name={`${user.first_name} ${user.last_name}`}
+                        size="md"
+                      />
+                      <div className='font-medium'>
+                        {user.first_name} {user.last_name}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

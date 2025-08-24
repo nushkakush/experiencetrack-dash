@@ -62,7 +62,7 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
         className='max-w-4xl max-h-[90vh] overflow-y-auto'
         aria-describedby='student-details-description'
       >
-        <DialogHeader className='pb-4 border-b'>
+        <DialogHeader className='pb-6 border-b'>
           <div className='flex items-center justify-between'>
             <DialogTitle className='text-xl font-semibold'>
               Student Details
@@ -78,7 +78,7 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
           </div>
         </DialogHeader>
 
-        <div className='space-y-6 p-4'>
+        <div className='space-y-6 px-6 pb-6'>
           <div id='student-details-description' className='sr-only'>
             Student details modal containing financial summary, payment
             schedule, and communication history

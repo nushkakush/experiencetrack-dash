@@ -57,6 +57,15 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         }
       },
       {
+        name: 'paymentTime',
+        label: 'Payment Time',
+        type: 'time',
+        required: true,
+        validation: {
+          message: 'Payment time is required'
+        }
+      },
+      {
         name: 'bankName',
         label: 'Select Bank',
         type: 'select',
@@ -108,7 +117,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       }
     ],
     validation: {
-      required: ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'],
+      required: ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'],
       files: ['bankTransferScreenshot']
     }
   },
@@ -125,6 +134,15 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         validation: {
           message: 'Payment date is required'
         }
+      },
+      {
+        name: 'paymentTime',
+        label: 'Payment Time',
+        type: 'time',
+        required: true,
+        validation: {
+          message: 'Payment time is required'
+        }
       }
     ],
     fileUploads: [
@@ -137,7 +155,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       }
     ],
     validation: {
-      required: ['paymentDate'],
+      required: ['paymentDate', 'paymentTime'],
       files: ['cashAcknowledgment']
     }
   },
@@ -153,6 +171,15 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         required: true,
         validation: {
           message: 'Payment date is required'
+        }
+      },
+      {
+        name: 'paymentTime',
+        label: 'Payment Time',
+        type: 'time',
+        required: true,
+        validation: {
+          message: 'Payment time is required'
         }
       },
       {
@@ -214,7 +241,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       }
     ],
     validation: {
-      required: ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'],
+      required: ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'],
       files: ['chequeImage', 'chequeAcknowledgment']
     }
   },
@@ -244,6 +271,15 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
         }
       },
       {
+        name: 'paymentTime',
+        label: 'Payment Time',
+        type: 'time',
+        required: true,
+        validation: {
+          message: 'Payment time is required'
+        }
+      },
+      {
         name: 'payerUpiId',
         label: 'Payer UPI ID',
         type: 'text',
@@ -264,7 +300,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       }
     ],
     validation: {
-      required: ['paymentDate', 'payerUpiId'],
+      required: ['paymentDate', 'paymentTime', 'payerUpiId'],
       files: ['scanToPayScreenshot']
     }
   }

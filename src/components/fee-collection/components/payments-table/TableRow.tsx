@@ -3,6 +3,7 @@ import { TableRow as UITableRow, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StudentPaymentSummary } from '@/types/fee';
 import { StudentNameCell } from './StudentNameCell';
+import { PhoneCell } from './PhoneCell';
 import { PaymentPlanCell } from './PaymentPlanCell';
 import { ProgressCell } from './ProgressCell';
 import { NextDueCell } from './NextDueCell';
@@ -30,6 +31,7 @@ interface TableRowProps {
   onRowSelection?: (studentId: string, isSelected: boolean) => void;
   feeStructure?: FeeStructureData;
   onVerificationUpdate?: () => void;
+  onPendingCountUpdate?: () => void;
 }
 
 export const TableRow: React.FC<TableRowProps> = ({
@@ -39,6 +41,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   onRowSelection,
   feeStructure,
   onVerificationUpdate,
+  onPendingCountUpdate,
 }) => {
   return (
     <UITableRow className='hover:bg-muted/50'>
@@ -56,6 +59,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <StudentNameCell student={student} />
+      <PhoneCell student={student} />
       <PaymentPlanCell student={student} />
       <ProgressCell student={student} feeStructure={feeStructure} />
       <NextDueCell student={student} feeStructure={feeStructure} />
@@ -64,6 +68,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         student={student}
         onStudentSelect={onStudentSelect}
         onVerificationUpdate={onVerificationUpdate}
+        onPendingCountUpdate={onPendingCountUpdate}
         feeStructure={feeStructure}
       />
     </UITableRow>

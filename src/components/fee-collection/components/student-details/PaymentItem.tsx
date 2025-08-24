@@ -81,7 +81,7 @@ export const PaymentItem: React.FC<PaymentItemProps> = ({
       </div>
 
       <div className="flex gap-2">
-        {payment.status === 'paid' ? (
+        {payment.status === 'paid' || payment.status === 'waived' ? (
           <Button variant="outline" size="sm" className="text-xs h-8 bg-background border-border hover:bg-muted">
             <Download className="h-3 w-3 mr-1" />
             Download Receipt

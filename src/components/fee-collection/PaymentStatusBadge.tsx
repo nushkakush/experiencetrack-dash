@@ -13,6 +13,7 @@ const getStatusConfig = (status: PaymentStatus) => {
     case 'paid':
     case 'complete':
     case 'on_time':
+    case 'waived':
       return {
         variant: 'default' as const,
         className:
@@ -22,7 +23,9 @@ const getStatusConfig = (status: PaymentStatus) => {
             ? 'Paid'
             : status === 'complete'
               ? 'Complete'
-              : 'On-Time',
+              : status === 'waived'
+                ? 'Waived'
+                : 'On-Time',
       };
 
     // 🔵 UPCOMING - Blue (Low urgency)
@@ -55,11 +58,12 @@ const getStatusConfig = (status: PaymentStatus) => {
     // 🟠 PARTIALLY PAID - Orange (Medium-high urgency)
     case 'partially_paid':
     case 'partially_paid_days_left':
+    case 'partially_waived':
       return {
         variant: 'secondary' as const,
         className:
           'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
-        text: 'Partially Paid',
+        text: status === 'partially_waived' ? 'Partially Waived' : 'Partially Paid',
       };
 
     // 🟡 VERIFICATION - Yellow (Medium urgency)

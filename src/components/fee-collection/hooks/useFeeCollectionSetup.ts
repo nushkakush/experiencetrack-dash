@@ -7,6 +7,7 @@ import { Scholarship } from '@/types/fee';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Logger } from '@/lib/logging/Logger';
+import { getPaymentBreakdown } from '@/services/payments/paymentEngineClient';
 
 interface UseFeeCollectionSetupProps {
   cohortId: string;
@@ -47,6 +48,100 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
   useEffect(() => {
     loadExistingData();
   }, [cohortId, studentId]);
+
+  // Preload all payment dates when fee structure data is available
+  useEffect(() => {
+    console.log('🔄 useFeeCollectionSetup: Preloading effect triggered', {
+      totalProgramFee: feeStructureData.total_program_fee,
+      numberOfSemesters: feeStructureData.number_of_semesters,
+      instalmentsPerSemester: feeStructureData.instalments_per_semester,
+      currentEditedDates: editedDates,
+      cohortId
+    });
+
+    const preloadPaymentDates = async () => {
+      // Only preload if we have fee structure data and no existing dates for all plans
+      if (!feeStructureData.total_program_fee) {
+        console.log('⏭️ Skipping preload - no fee structure data');
+        return;
+      }
+
+      // Check if we already have dates for all plans
+      const hasAllDates = Object.keys(editedDates.one_shot).length > 0 && 
+                         Object.keys(editedDates.sem_wise).length > 0 && 
+                         Object.keys(editedDates.instalment_wise).length > 0;
+      
+      if (hasAllDates) {
+        console.log('⏭️ Skipping preload - all dates already present');
+        return;
+      }
+
+      console.log('🚀 useFeeCollectionSetup: Starting payment dates preload...');
+      console.log('📊 Current editedDates state:', editedDates);
+      
+      try {
+        const plans = ['one_shot', 'sem_wise', 'instalment_wise'] as const;
+        const preloadedDates = {
+          one_shot: {} as Record<string, string>,
+          sem_wise: {} as Record<string, string>,
+          instalment_wise: {} as Record<string, string>,
+        };
+
+        for (const plan of plans) {
+          console.log(`📋 Preloading dates for ${plan}...`);
+          
+          try {
+            const result = await getPaymentBreakdown({
+              cohortId,
+              paymentPlan: plan,
+              scholarshipId: null,
+              customDates: undefined,
+              feeStructureData: {
+                total_program_fee: feeStructureData.total_program_fee,
+                admission_fee: feeStructureData.admission_fee,
+                number_of_semesters: feeStructureData.number_of_semesters,
+                instalments_per_semester: feeStructureData.instalments_per_semester,
+                one_shot_discount_percentage: feeStructureData.one_shot_discount_percentage,
+              },
+            });
+
+            // Extract dates from the breakdown
+            const breakdown = result.breakdown;
+            
+            if (plan === 'one_shot' && breakdown?.oneShotPayment?.paymentDate) {
+              preloadedDates.one_shot['one-shot'] = breakdown.oneShotPayment.paymentDate;
+            } else if (plan === 'sem_wise' && breakdown?.semesters) {
+              breakdown.semesters.forEach((semester: any, index: number) => {
+                if (semester.instalments?.[0]?.paymentDate) {
+                  preloadedDates.sem_wise[`semester-${index + 1}-instalment-0`] = semester.instalments[0].paymentDate;
+                }
+              });
+            } else if (plan === 'instalment_wise' && breakdown?.semesters) {
+              breakdown.semesters.forEach((semester: any, semIndex: number) => {
+                semester.instalments?.forEach((instalment: any, instIndex: number) => {
+                  if (instalment.paymentDate) {
+                    preloadedDates.instalment_wise[`semester-${semIndex + 1}-instalment-${instIndex}`] = instalment.paymentDate;
+                  }
+                });
+              });
+            }
+
+            console.log(`✅ Preloaded dates for ${plan}:`, preloadedDates[plan]);
+          } catch (error) {
+            console.error(`❌ Failed to preload ${plan}:`, error);
+          }
+        }
+
+        console.log('🎯 All payment dates preloaded:', preloadedDates);
+        setEditedDates(preloadedDates);
+        
+      } catch (error) {
+        console.error('❌ Failed to preload payment dates:', error);
+      }
+    };
+
+    preloadPaymentDates();
+  }, [feeStructureData.total_program_fee, feeStructureData.number_of_semesters, feeStructureData.instalments_per_semester, cohortId]);
 
   const loadExistingData = async () => {
     try {
@@ -96,6 +191,65 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
   const handleSave = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Fallback: Ensure all payment dates are preloaded before validation
+      const needsPreloading = Object.keys(editedDates.sem_wise).length === 0 || 
+                             Object.keys(editedDates.instalment_wise).length === 0;
+      
+      if (needsPreloading && feeStructureData.total_program_fee) {
+        console.log('🔄 handleSave: Fallback preloading triggered');
+        
+        const plans = ['sem_wise', 'instalment_wise'] as const;
+        const updatedDates = { ...editedDates };
+        
+        for (const plan of plans) {
+          if (Object.keys(updatedDates[plan]).length === 0) {
+            console.log(`📋 Fallback preloading ${plan}...`);
+            
+            try {
+              const result = await getPaymentBreakdown({
+                cohortId,
+                paymentPlan: plan,
+                scholarshipId: null,
+                customDates: undefined,
+                feeStructureData: {
+                  total_program_fee: feeStructureData.total_program_fee,
+                  admission_fee: feeStructureData.admission_fee,
+                  number_of_semesters: feeStructureData.number_of_semesters,
+                  instalments_per_semester: feeStructureData.instalments_per_semester,
+                  one_shot_discount_percentage: feeStructureData.one_shot_discount_percentage,
+                },
+              });
+
+              // Extract dates from the breakdown
+              const breakdown = result.breakdown;
+              
+              if (plan === 'sem_wise' && breakdown?.semesters) {
+                breakdown.semesters.forEach((semester: any, index: number) => {
+                  if (semester.instalments?.[0]?.paymentDate) {
+                    updatedDates.sem_wise[`semester-${index + 1}-instalment-0`] = semester.instalments[0].paymentDate;
+                  }
+                });
+              } else if (plan === 'instalment_wise' && breakdown?.semesters) {
+                breakdown.semesters.forEach((semester: any, semIndex: number) => {
+                  semester.instalments?.forEach((instalment: any, instIndex: number) => {
+                    if (instalment.paymentDate) {
+                      updatedDates.instalment_wise[`semester-${semIndex + 1}-instalment-${instIndex}`] = instalment.paymentDate;
+                    }
+                  });
+                });
+              }
+
+              console.log(`✅ Fallback preloaded ${plan}:`, updatedDates[plan]);
+            } catch (error) {
+              console.error(`❌ Fallback failed to preload ${plan}:`, error);
+            }
+          }
+        }
+        
+        setEditedDates(updatedDates);
+        console.log('🎯 Fallback preloading completed:', updatedDates);
+      }
+
       // Validate scholarships before saving
       const scholarshipsWithData = scholarships.filter(s => 
         s.name?.trim() || 
@@ -134,17 +288,20 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
         editedDates
       });
 
+      // Validate payment dates
+      console.log('🔍 Starting payment dates validation...');
+      console.log('📊 Current editedDates state:', editedDates);
+      console.log('📊 Fee structure data:', feeStructureData);
+      
       // Check if we have any custom dates to save
       const hasCustomDates = Object.values(editedDates).some(planDates => 
         planDates && Object.keys(planDates).length > 0
       );
 
-      logger.info('useFeeCollectionSetup: Date saving analysis', {
+      console.log('📋 Date saving analysis:', {
         hasCustomDates,
         editedDatesKeys: Object.keys(editedDates),
-        oneShotDatesCount: Object.keys(editedDates.one_shot || {}).length,
-        semWiseDatesCount: Object.keys(editedDates.sem_wise || {}).length,
-        instalmentWiseDatesCount: Object.keys(editedDates.instalment_wise || {}).length
+        editedDatesValues: Object.values(editedDates).map(dates => Object.keys(dates || {}))
       });
 
       // Validate that all required dates for each plan are filled
@@ -158,6 +315,13 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
       const validatePlan = (plan: 'one_shot' | 'sem_wise' | 'instalment_wise', map: Record<string, string>) => {
         const expected = calcExpectedCounts(plan);
         let actual = 0;
+        
+        console.log(`🔍 Validating ${plan}:`, {
+          expected,
+          mapKeys: Object.keys(map),
+          mapValues: Object.values(map)
+        });
+        
         if (plan === 'one_shot') {
           actual = map['one-shot'] ? 1 : 0;
         } else if (plan === 'sem_wise') {
@@ -173,6 +337,9 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
             }
           }
         }
+        
+        console.log(`📊 ${plan} validation result:`, { expected, actual, missing: expected - actual });
+        
         if (actual < expected) {
           const missing = expected - actual;
           missingErrors.push(`${plan.replace('_', ' ')}: ${missing} date(s) missing`);
@@ -185,11 +352,13 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
 
       if (missingErrors.length > 0) {
         const message = `Please fill all payment dates before saving:\n- ${missingErrors.join('\n- ')}`;
-        logger.error('useFeeCollectionSetup: Missing dates', { missingErrors });
+        console.error('🚨 Payment dates validation failed:', missingErrors);
         toast.error(message);
         setIsLoading(false);
         return;
       }
+      
+      console.log('✅ Payment dates validation passed');
 
       // First, save the fee structure with actual dates
       const feeStructureToSave = {
@@ -324,6 +493,18 @@ export const useFeeCollectionSetup = ({ cohortId, onComplete, studentId }: UseFe
   const handleStepChange = useCallback((step: number) => {
     setCurrentStep(step);
   }, []);
+
+  const handleDatesChange = useCallback((dates: {
+    one_shot: Record<string, string>;
+    sem_wise: Record<string, string>;
+    instalment_wise: Record<string, string>;
+  }) => {
+    console.log('🔄 useFeeCollectionSetup: handleDatesChange called', {
+      newDates: dates,
+      currentEditedDates: editedDates
+    });
+    setEditedDates(dates);
+  }, [editedDates]);
 
   return {
     currentStep,

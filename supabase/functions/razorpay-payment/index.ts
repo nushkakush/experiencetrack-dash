@@ -417,7 +417,7 @@ async function handleVerifyPayment(supabase: any, data: RazorpayPaymentVerificat
       razorpay_order_id: razorpay_order_id,
       razorpay_payment_id: razorpay_payment_id,
       razorpay_signature: razorpay_signature,
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: new Date().toISOString(),
       installment_id: installmentId || null,
       semester_number: semesterNumber || null,
     };

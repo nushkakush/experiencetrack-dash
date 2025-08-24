@@ -266,7 +266,7 @@ export default function StudentScholarshipDialog({
           <DialogDescription>
             {currentAssignment && !isEditing
               ? 'View the scholarship assigned to this student.'
-              : 'Select a scholarship and optional additional discount for this student.'}
+              : 'Select a scholarship and optional need based scholarship for this student.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -292,7 +292,7 @@ export default function StudentScholarshipDialog({
                   </p>
                   {currentAssignment.additional_discount_percentage > 0 && (
                     <p className='text-sm'>
-                      <span className='font-medium'>Additional Discount:</span>{' '}
+                      <span className='font-medium'>Need Based Scholarship:</span>{' '}
                       {currentAssignment.additional_discount_percentage}%
                     </p>
                   )}
@@ -343,7 +343,7 @@ export default function StudentScholarshipDialog({
                       {currentAssignment.additional_discount_percentage > 0 && (
                         <p className='text-sm text-muted-foreground'>
                           + {currentAssignment.additional_discount_percentage}%
-                          additional discount
+                          need based scholarship
                         </p>
                       )}
                     </div>
@@ -387,11 +387,11 @@ export default function StudentScholarshipDialog({
                 </div>
               </div>
 
-              {/* Additional Discount */}
+              {/* Need Based Scholarship */}
               {selectedScholarshipId && (
                 <div className='space-y-2'>
                   <Label htmlFor='additional-discount'>
-                    Additional Discount (%)
+                    Need Based Scholarship (%)
                     <span className='text-xs text-muted-foreground ml-1'>
                       (Optional extra discount on top of scholarship)
                     </span>
@@ -422,7 +422,7 @@ export default function StudentScholarshipDialog({
                   </p>
                   <p className='text-xs text-blue-700 dark:text-blue-300'>
                     {selectedScholarship.amount_percentage}% scholarship +{' '}
-                    {additionalDiscount}% additional discount
+                    {additionalDiscount}% need based scholarship
                   </p>
                 </div>
               )}

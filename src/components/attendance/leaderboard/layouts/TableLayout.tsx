@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Shield, Info, Trophy, TrendingUp } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { StatisticsCalculator } from '../utils/statisticsCalculator';
 import type { StudentStats } from '../utils/statisticsCalculator';
 import type { AttendanceRecord } from '@/types/attendance';
@@ -115,23 +116,31 @@ export const TableLayout: React.FC<TableLayoutProps> = ({
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {stat.student.first_name} {stat.student.last_name}
-                    {isExempted && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100">
-                              <Shield className="h-3 w-3 mr-1" />
-                              {exemptedCount}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            {getExemptedTooltipContent(stat.student.id)}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                  <div className="flex items-center gap-3">
+                               <UserAvatar
+             avatarUrl={null}
+             name={`${stat.student.first_name} ${stat.student.last_name}`}
+             size="sm"
+             userId={stat.student.user_id}
+           />
+                    <div className="flex items-center gap-2">
+                      {stat.student.first_name} {stat.student.last_name}
+                      {isExempted && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100">
+                                <Shield className="h-3 w-3 mr-1" />
+                                {exemptedCount}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              {getExemptedTooltipContent(stat.student.id)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 {!hideFields.includes('email') && (

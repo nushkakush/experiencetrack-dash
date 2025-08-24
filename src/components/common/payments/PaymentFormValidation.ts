@@ -101,13 +101,13 @@ export const getTodayDateString = (): string => {
 export const getRequiredFieldsForMode = (mode: string): string[] => {
   switch (mode) {
     case 'bank_transfer':
-      return ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'];
+      return ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'];
     case 'cash':
-      return ['paymentDate'];
+      return ['paymentDate', 'paymentTime'];
     case 'cheque':
-      return ['paymentDate', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'];
+      return ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'];
     case 'scan_to_pay':
-      return ['paymentDate', 'payerUpiId'];
+      return ['paymentDate', 'paymentTime', 'payerUpiId'];
     case 'razorpay':
       return []; // No additional fields required for Razorpay
     default:

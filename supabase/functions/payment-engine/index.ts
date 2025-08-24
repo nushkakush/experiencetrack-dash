@@ -186,6 +186,32 @@ const distributeScholarshipBackwards = (
   }
   return scholarshipDistribution;
 };
+
+const distributeScholarshipAcrossSemesters = (
+  totalProgramFee: number,
+  admissionFee: number,
+  numberOfSemesters: number,
+  scholarshipAmount: number
+): number[] => {
+  const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
+  const remainingBaseFee = totalProgramFee - admissionFeeBase;
+  const semesterFee = remainingBaseFee / numberOfSemesters;
+  
+  const scholarshipDistribution = new Array(numberOfSemesters).fill(0);
+  let remainingScholarship = scholarshipAmount;
+  
+  // Distribute scholarship from last semester to first
+  for (let sem = numberOfSemesters; sem >= 1 && remainingScholarship > 0; sem--) {
+    const scholarshipForThisSemester = Math.min(
+      remainingScholarship,
+      semesterFee
+    );
+    scholarshipDistribution[sem - 1] = scholarshipForThisSemester;
+    remainingScholarship -= scholarshipForThisSemester;
+  }
+  
+  return scholarshipDistribution;
+};
 // Date generation removed - edge function only uses database dates
 
 const calculateOneShotPayment = (
@@ -224,7 +250,8 @@ const calculateSemesterPayment = (
   numberOfSemesters: number,
   instalmentsPerSemester: number,
   scholarshipAmount: number,
-  oneShotDiscount: number
+  oneShotDiscount: number,
+  scholarshipDistribution?: number[]
 ): InstallmentView[] => {
   const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
   const remainingBaseFee = totalProgramFee - admissionFeeBase;
@@ -235,17 +262,24 @@ const calculateSemesterPayment = (
   const installmentAmounts = installmentPercentages.map(
     percentage => Math.round(semesterFee * (percentage / 100) * 100) / 100
   );
-  const isLastSemester = semesterNumber === numberOfSemesters;
-  const semesterScholarship = isLastSemester ? scholarshipAmount : 0;
-  const scholarshipDistribution = isLastSemester
-    ? distributeScholarshipBackwards(installmentAmounts, semesterScholarship)
-    : new Array(installmentAmounts.length).fill(0);
+  
+  // Use provided scholarship distribution or calculate for this semester only
+  let semesterScholarship = 0;
+  if (scholarshipDistribution && scholarshipDistribution[semesterNumber - 1] !== undefined) {
+    semesterScholarship = scholarshipDistribution[semesterNumber - 1];
+  } else if (scholarshipAmount > 0) {
+    // Fallback to old logic if no distribution provided
+    const isLastSemester = semesterNumber === numberOfSemesters;
+    semesterScholarship = isLastSemester ? scholarshipAmount : 0;
+  }
+  
+  const installmentScholarshipDistribution = distributeScholarshipBackwards(installmentAmounts, semesterScholarship);
   const semesterDiscount = oneShotDiscount / numberOfSemesters;
   const discountPerInstallment = semesterDiscount / instalmentsPerSemester;
   const installments: InstallmentView[] = [];
   for (let i = 0; i < instalmentsPerSemester; i++) {
     const installmentAmount = installmentAmounts[i];
-    const installmentScholarship = scholarshipDistribution[i];
+    const installmentScholarship = installmentScholarshipDistribution[i];
     const installmentDiscount = discountPerInstallment;
     const installmentAfterDiscount = installmentAmount - installmentDiscount;
     const installmentAfterScholarship =
@@ -731,6 +765,21 @@ const generateFeeStructureReview = async (
   if (paymentPlan === 'sem_wise' || paymentPlan === 'instalment_wise') {
     const installmentsPerSemester =
       paymentPlan === 'sem_wise' ? 1 : feeStructure.instalments_per_semester;
+    
+    // Calculate scholarship distribution across all semesters from last to first
+    const scholarshipDistribution = distributeScholarshipAcrossSemesters(
+      feeStructure.total_program_fee,
+      feeStructure.admission_fee,
+      feeStructure.number_of_semesters,
+      scholarshipAmount
+    );
+    
+    console.log('🎓 Scholarship distribution across semesters:', {
+      totalScholarship: scholarshipAmount,
+      distribution: scholarshipDistribution,
+      semesters: feeStructure.number_of_semesters
+    });
+    
     for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
       const semesterInstallments = calculateSemesterPayment(
         sem,
@@ -739,7 +788,8 @@ const generateFeeStructureReview = async (
         feeStructure.number_of_semesters,
         installmentsPerSemester,
         scholarshipAmount,
-        0
+        0,
+        scholarshipDistribution
       );
       const semesterTotal = {
         scholarshipAmount: semesterInstallments.reduce(
@@ -1209,7 +1259,8 @@ const deriveInstallmentStatus = (
   allocatedPaid: number,
   hasVerificationPendingTx: boolean,
   hasApprovedTx: boolean,
-  approvedAmount: number = 0 // Add approved amount parameter
+  approvedAmount: number = 0, // Add approved amount parameter
+  scholarshipAmount: number = 0 // Add scholarship amount parameter
 ): string => {
   const today = new Date();
   const d0 = new Date(
@@ -1220,19 +1271,42 @@ const deriveInstallmentStatus = (
   const d1 = normalizeDateOnly(dueDate);
   const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
 
-  // Only consider it 'paid' if the approved amount covers the total payable
-  if (hasApprovedTx && approvedAmount >= totalPayable) {
+  // Consider scholarship waivers as a form of payment for status purposes
+  const effectivePaid = allocatedPaid + scholarshipAmount;
+  const effectiveApproved = approvedAmount + scholarshipAmount;
+
+  // If total payable is 0 (fully covered by scholarship), it's waived
+  if (totalPayable <= 0) {
+    return 'waived';
+  }
+
+  // Check if fully covered by scholarship (no actual payments needed)
+  if (scholarshipAmount >= totalPayable) {
+    return 'waived';
+  }
+
+  // Check if partially covered by scholarship
+  if (scholarshipAmount > 0 && scholarshipAmount < totalPayable) {
+    const remainingAfterScholarship = totalPayable - scholarshipAmount;
+    if (effectiveApproved >= totalPayable) {
+      return 'waived'; // Fully covered by scholarship + payments
+    } else if (effectivePaid > 0) {
+      return 'partially_waived'; // Partially covered by scholarship + payments
+    }
+  }
+
+  // Regular payment logic (no scholarship involved)
+  if (hasApprovedTx && effectiveApproved >= totalPayable) {
     return 'paid';
   }
-  if (hasVerificationPendingTx && allocatedPaid > 0) {
-    if (allocatedPaid >= totalPayable) return 'verification_pending';
+  if (hasVerificationPendingTx && effectivePaid > 0) {
+    if (effectivePaid >= totalPayable) return 'verification_pending';
     return 'partially_paid_verification_pending';
   }
-  // Only consider it 'paid' if the approved amount covers the total payable
-  if (approvedAmount >= totalPayable) return 'paid';
+  if (effectiveApproved >= totalPayable) return 'paid';
   if (daysUntilDue < 0)
-    return allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
-  if (allocatedPaid > 0) return 'partially_paid_days_left';
+    return effectivePaid > 0 ? 'partially_paid_overdue' : 'overdue';
+  if (effectivePaid > 0) return 'partially_paid_days_left';
   if (daysUntilDue >= 10) return 'pending_10_plus_days';
   return 'pending';
 };
@@ -1432,7 +1506,8 @@ const enrichWithStatuses = (
         allocated,
         alloc?.hasVerificationPending || false,
         alloc?.hasApproved || false,
-        alloc?.approvedAmount || 0
+        alloc?.approvedAmount || 0,
+        inst.scholarshipAmount || 0
       );
 
       console.log('🔍 [PaymentEngine] Installment status result:', {

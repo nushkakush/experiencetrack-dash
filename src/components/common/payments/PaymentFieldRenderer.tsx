@@ -30,6 +30,15 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(({
   onFieldChange,
   onFileUpload
 }) => {
+  // Debug logging
+  console.log('🔍 [PaymentFieldRenderer] Rendering with:', {
+    configName: config.name,
+    paymentDetails,
+    hasPaymentDate: !!paymentDetails.paymentDate,
+    hasPaymentTime: !!paymentDetails.paymentTime,
+    paymentDateValue: paymentDetails.paymentDate,
+    paymentTimeValue: paymentDetails.paymentTime,
+  });
   // Render custom components
   const renderCustomComponent = () => {
     // Check if this is scan_to_pay mode by looking at the config fields

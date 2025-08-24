@@ -24,9 +24,8 @@ export const CohortHeader: React.FC<CohortHeaderProps> = ({
   };
 
   const getSeatsProgress = () => {
-    // For now, using students_count as filled seats
-    // You might want to add a total_seats field to the cohort
-    const totalSeats = 50; // This should come from cohort data
+    // Use the cohort's max_students value instead of hardcoded 50
+    const totalSeats = cohortData.max_students || 50;
     const progress = Math.round((cohortData.students_count / totalSeats) * 100);
     return progress;
   };
@@ -55,7 +54,7 @@ export const CohortHeader: React.FC<CohortHeaderProps> = ({
             <div>
               <p className="text-sm text-muted-foreground">Seats</p>
               <div className="flex items-center gap-2">
-                <span className="font-medium">Filled {cohortData.students_count}/50</span>
+                <span className="font-medium">Filled {cohortData.students_count}/{cohortData.max_students || 50}</span>
                 <Progress 
                   value={getSeatsProgress()} 
                   className="w-20 h-2 bg-gray-700 [&>div]:bg-green-500" 

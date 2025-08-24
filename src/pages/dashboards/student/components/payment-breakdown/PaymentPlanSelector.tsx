@@ -17,7 +17,7 @@ export const PaymentPlanSelector: React.FC<PaymentPlanSelectorProps> = ({
 }) => {
   // Check if any payments have been made
   const hasMadePayments = studentPayments?.some((payment: StudentPaymentData) => 
-    payment.amount_paid > 0 || payment.status === 'paid' || payment.status === 'complete'
+    payment.amount_paid > 0 || payment.status === 'paid' || payment.status === 'complete' || payment.status === 'waived'
   );
 
   const getPaymentPlanDisplayName = (plan: PaymentPlan) => {

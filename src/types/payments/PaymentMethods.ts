@@ -44,6 +44,7 @@ export interface PaymentSubmissionData {
   paymentMethod: string;
   referenceNumber?: string;
   paymentDate?: string;
+  paymentTime?: string; // New field for payment time
   notes?: string;
   receiptFile?: File;
   proofOfPaymentFile?: File;
@@ -51,6 +52,7 @@ export interface PaymentSubmissionData {
   bankName?: string;
   bankBranch?: string;
   transferDate?: string;
+  transferTime?: string; // New field for transfer time
   qrCodeUrl?: string;
   upiId?: string;
   receiverBankName?: string;

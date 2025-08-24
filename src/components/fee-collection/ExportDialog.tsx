@@ -90,7 +90,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
     const expectedPayments = getExpectedPaymentCount();
     const actualPayments = student.payments || [];
-    const completedPayments = actualPayments.filter(p => p.status === 'paid').length;
+            const completedPayments = actualPayments.filter(p => p.status === 'paid' || p.status === 'waived').length;
     const pendingPayments = actualPayments.filter(p => p.status === 'pending').length;
 
     // If no payments exist yet, show pending

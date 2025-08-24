@@ -8,6 +8,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, MemoryRouterProps } from 'react-router-dom';
 import { vi } from 'vitest';
+import { Cohort } from '@/types/cohort';
 
 // Mock implementations for testing
 export const mockApiClient = {
@@ -286,3 +287,19 @@ export const setupTests = () => {
 export * from '@testing-library/react';
 export * from '@testing-library/user-event';
 export { vi } from 'vitest';
+
+export const createTestCohort = (overrides: Partial<Cohort> = {}): Cohort => ({
+  id: `cohort-${Date.now()}`,
+  cohort_id: `test-cohort-${Date.now()}`,
+  name: 'Test Cohort',
+  start_date: '2025-01-01',
+  duration_months: 6,
+  end_date: '2025-07-01',
+  description: 'A test cohort',
+  sessions_per_day: 1,
+  max_students: 30,
+  created_by: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  ...overrides,
+});

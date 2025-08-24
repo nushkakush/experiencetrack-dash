@@ -7,6 +7,7 @@ export interface Cohort {
   end_date: string; // ISO date string (YYYY-MM-DD)
   description?: string | null;
   sessions_per_day: number;
+  max_students: number;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -40,6 +41,7 @@ export interface NewCohortInput {
   end_date: string; // YYYY-MM-DD
   description?: string;
   sessions_per_day: number;
+  max_students: number;
 }
 
 export interface NewEpicInput {
@@ -59,7 +61,6 @@ export interface CohortStudent {
   first_name?: string | null;
   last_name?: string | null;
   phone?: string | null;
-  avatar_url?: string | null;
   user_id?: string | null;
   invite_status: 'pending' | 'sent' | 'accepted' | 'failed';
   invited_at?: string | null;
@@ -80,7 +81,6 @@ export interface NewStudentInput {
   first_name?: string;
   last_name?: string;
   phone?: string;
-  avatar_url?: string;
   send_invite?: boolean;
   invite?: string; // For bulk upload - 'YES' or 'NO'
 }

@@ -39,6 +39,7 @@ export const CohortStudentsTable: React.FC<CohortStudentsTableProps> = React.mem
   onManageScholarships,
   onSendEmail,
 }) => {
+
   const { hasPermission } = useFeaturePermissions();
   const [showFilters, setShowFilters] = React.useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = React.useState(false);
@@ -61,6 +62,8 @@ export const CohortStudentsTable: React.FC<CohortStudentsTableProps> = React.mem
     bulkRemoveStudents,
     refetch,
   } = useCohortStudents({ cohortId });
+
+
 
   // Render loading state
   if (isLoading) {
