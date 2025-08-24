@@ -150,14 +150,20 @@ export class PaymentQueryService {
       }
 
       // Load fee structure and scholarships for payment engine calls
-      const { feeStructure, scholarships } = await FeeStructureService.getCompleteFeeStructure(cohortId);
-      const { data: studentScholarships } = await studentScholarshipsService.getByCohort(cohortId);
+      const { feeStructure, scholarships } =
+        await FeeStructureService.getCompleteFeeStructure(cohortId);
+      const { data: studentScholarships } =
+        await studentScholarshipsService.getByCohort(cohortId);
 
       // Create summary for each student
       const summary: StudentPaymentSummary[] = await Promise.all(
-        students.map(async (student) => {
-          const studentPayment = payments?.find(p => p.student_id === student.id);
-          const studentScholarship = studentScholarships?.find(s => s.student_id === student.id);
+        students.map(async student => {
+          const studentPayment = payments?.find(
+            p => p.student_id === student.id
+          );
+          const studentScholarship = studentScholarships?.find(
+            s => s.student_id === student.id
+          );
 
           if (!studentPayment) {
             return {
@@ -187,7 +193,12 @@ export class PaymentQueryService {
             payment_id: transaction.payment_id,
             amount: transaction.amount,
             payment_date: transaction.payment_date,
-            status: transaction.status === 'success' ? 'paid' : transaction.status === 'waived' ? 'waived' : 'pending',
+            status:
+              transaction.status === 'success'
+                ? 'paid'
+                : transaction.status === 'waived'
+                  ? 'waived'
+                  : 'pending',
             receipt_url:
               transaction.receipt_url || transaction.proof_of_payment_url,
             notes: transaction.notes,
@@ -204,50 +215,76 @@ export class PaymentQueryService {
           let paymentEngineBreakdown = null;
 
           try {
-            if (studentPayment.payment_plan && studentPayment.payment_plan !== 'not_selected') {
+            if (
+              studentPayment.payment_plan &&
+              studentPayment.payment_plan !== 'not_selected'
+            ) {
               // First, try to get the student's custom fee structure (like FinancialSummary does)
-              const customFeeStructure = await FeeStructureService.getFeeStructure(
-                cohortId,
-                student.id
-              );
-              
+              const customFeeStructure =
+                await FeeStructureService.getFeeStructure(cohortId, student.id);
+
               // Use custom structure if it exists, otherwise use the cohort structure
               const feeStructureToUse = customFeeStructure || feeStructure;
 
               const paymentEngineResult = await getFullPaymentView({
                 studentId: student.id,
                 cohortId: cohortId,
-                paymentPlan: studentPayment.payment_plan as any,
+                paymentPlan: studentPayment.payment_plan as string,
                 scholarshipId: studentScholarship?.scholarship_id,
-                additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+                additionalDiscountPercentage:
+                  studentScholarship?.additional_discount_percentage || 0,
                 feeStructureData: {
-                  total_program_fee: Number(feeStructureToUse.total_program_fee),
+                  total_program_fee: Number(
+                    feeStructureToUse.total_program_fee
+                  ),
                   admission_fee: Number(feeStructureToUse.admission_fee),
-                  number_of_semesters: (feeStructureToUse as any).number_of_semesters,
-                  instalments_per_semester: (feeStructureToUse as any).instalments_per_semester,
-                  one_shot_discount_percentage: (feeStructureToUse as any).one_shot_discount_percentage,
-                  one_shot_dates: (feeStructureToUse as any).one_shot_dates,
-                  sem_wise_dates: (feeStructureToUse as any).sem_wise_dates,
-                  instalment_wise_dates: (feeStructureToUse as any).instalment_wise_dates,
-                }
+                  number_of_semesters: (
+                    feeStructureToUse as Record<string, unknown>
+                  ).number_of_semesters as number,
+                  instalments_per_semester: (
+                    feeStructureToUse as Record<string, unknown>
+                  ).instalments_per_semester as number,
+                  one_shot_discount_percentage: (
+                    feeStructureToUse as Record<string, unknown>
+                  ).one_shot_discount_percentage as number,
+                  one_shot_dates: (feeStructureToUse as Record<string, unknown>)
+                    .one_shot_dates as Record<string, string>,
+                  sem_wise_dates: (feeStructureToUse as Record<string, unknown>)
+                    .sem_wise_dates as Record<string, unknown>,
+                  instalment_wise_dates: (
+                    feeStructureToUse as Record<string, unknown>
+                  ).instalment_wise_dates as Record<string, unknown>,
+                },
               });
 
               // Debug logging to track fee structure data being sent
-              console.log('🔍 [PaymentQueryService] Fee structure data sent to payment engine:', {
-                student_id: student.id,
-                cohort_id: cohortId,
-                payment_plan: studentPayment.payment_plan,
-                scholarship_id: studentScholarship?.scholarship_id,
-                additional_discount_percentage: studentScholarship?.additional_discount_percentage || 0,
-                using_custom_fee_structure: !!customFeeStructure,
-                fee_structure: {
-                  total_program_fee: Number(feeStructureToUse.total_program_fee),
-                  admission_fee: Number(feeStructureToUse.admission_fee),
-                  number_of_semesters: (feeStructureToUse as any).number_of_semesters,
-                  instalments_per_semester: (feeStructureToUse as any).instalments_per_semester,
-                  one_shot_discount_percentage: (feeStructureToUse as any).one_shot_discount_percentage,
+              console.log(
+                '🔍 [PaymentQueryService] Fee structure data sent to payment engine:',
+                {
+                  student_id: student.id,
+                  cohort_id: cohortId,
+                  payment_plan: studentPayment.payment_plan,
+                  scholarship_id: studentScholarship?.scholarship_id,
+                  additional_discount_percentage:
+                    studentScholarship?.additional_discount_percentage || 0,
+                  using_custom_fee_structure: !!customFeeStructure,
+                  fee_structure: {
+                    total_program_fee: Number(
+                      feeStructureToUse.total_program_fee
+                    ),
+                    admission_fee: Number(feeStructureToUse.admission_fee),
+                    number_of_semesters: (
+                      feeStructureToUse as Record<string, unknown>
+                    ).number_of_semesters as number,
+                    instalments_per_semester: (
+                      feeStructureToUse as Record<string, unknown>
+                    ).instalments_per_semester as number,
+                    one_shot_discount_percentage: (
+                      feeStructureToUse as Record<string, unknown>
+                    ).one_shot_discount_percentage as number,
+                  },
                 }
-              });
+              );
 
               if (paymentEngineResult.aggregate) {
                 aggregateStatus = paymentEngineResult.aggregate.paymentStatus;
@@ -255,29 +292,38 @@ export class PaymentQueryService {
                 paidAmount = paymentEngineResult.aggregate.totalPaid;
                 pendingAmount = paymentEngineResult.aggregate.totalPending;
                 paymentEngineBreakdown = paymentEngineResult.breakdown;
-                
+
                 // Include admission fee in paid amount since students have registered
                 // This makes the calculation consistent with FinancialSummary modal
-                const admissionFee = paymentEngineResult.breakdown?.admissionFee?.totalPayable || 0;
+                const admissionFee =
+                  paymentEngineResult.breakdown?.admissionFee?.totalPayable ||
+                  0;
                 paidAmount += admissionFee;
                 pendingAmount = Math.max(0, totalAmount - paidAmount);
-                
+
                 // Calculate overdue amount based on aggregate status
-                if (aggregateStatus === 'overdue' || aggregateStatus === 'partially_paid_overdue') {
+                if (
+                  aggregateStatus === 'overdue' ||
+                  aggregateStatus === 'partially_paid_overdue'
+                ) {
                   overdueAmount = pendingAmount;
                 }
-                
+
                 // Debug logging to track payment engine values
-                console.log('🔍 [PaymentQueryService] Payment engine values for student:', student.id, {
-                  original_total: paymentEngineResult.aggregate.totalPayable,
-                  original_paid: paymentEngineResult.aggregate.totalPaid,
-                  admission_fee: admissionFee,
-                  final_total: totalAmount,
-                  final_paid: paidAmount,
-                  final_pending: pendingAmount,
-                  aggregate_status: aggregateStatus,
-                  has_breakdown: !!paymentEngineBreakdown,
-                });
+                console.log(
+                  '🔍 [PaymentQueryService] Payment engine values for student:',
+                  student.id,
+                  {
+                    original_total: paymentEngineResult.aggregate.totalPayable,
+                    original_paid: paymentEngineResult.aggregate.totalPaid,
+                    admission_fee: admissionFee,
+                    final_total: totalAmount,
+                    final_paid: paidAmount,
+                    final_pending: pendingAmount,
+                    aggregate_status: aggregateStatus,
+                    has_breakdown: !!paymentEngineBreakdown,
+                  }
+                );
               }
             }
           } catch (error) {
@@ -326,12 +372,12 @@ export class PaymentQueryService {
               const paidTransactionCount = studentTransactions.filter(
                 t => t.verification_status === 'approved'
               ).length;
-              
+
               // TODO: Use InstallmentCalculationService for accurate scholarship counting
               // For performance reasons, this is currently just transaction count
               // To get accurate scholarship installment counting, use:
               // InstallmentCalculationService.calculateInstallmentCounts()
-              
+
               return paidTransactionCount;
             })(),
             // Add aggregate status from payment engine

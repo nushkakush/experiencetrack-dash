@@ -3,7 +3,10 @@
  * Handles all cohort-related business logic and data access
  */
 
-import { getApiClient, ApiResponse } from '@/infrastructure/api/base-api-client';
+import {
+  getApiClient,
+  ApiResponse,
+} from '@/infrastructure/api/base-api-client';
 import { Logger } from '@/lib/logging/Logger';
 import { CohortStudent } from '@/types/cohort';
 
@@ -43,7 +46,9 @@ export class CohortService {
   /**
    * Fetch all cohorts with optional filtering
    */
-  async getCohorts(filters: CohortFilters = {}): Promise<ApiResponse<Cohort[]>> {
+  async getCohorts(
+    filters: CohortFilters = {}
+  ): Promise<ApiResponse<Cohort[]>> {
     try {
       let query = this.apiClient.select('cohorts');
 
@@ -70,7 +75,10 @@ export class CohortService {
       }
 
       if (filters.offset) {
-        query = query.range(filters.offset, (filters.offset + (filters.limit || 10)) - 1);
+        query = query.range(
+          filters.offset,
+          filters.offset + (filters.limit || 10) - 1
+        );
       }
 
       const result = await query.order('created_at', { ascending: false });
@@ -103,7 +111,9 @@ export class CohortService {
   /**
    * Create a new cohort
    */
-  async createCohort(cohortData: Omit<Cohort, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Cohort>> {
+  async createCohort(
+    cohortData: Omit<Cohort, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<ApiResponse<Cohort>> {
     return this.apiClient.insert('cohorts', {
       ...cohortData,
       created_at: new Date().toISOString(),
@@ -114,14 +124,17 @@ export class CohortService {
   /**
    * Update an existing cohort
    */
-  async updateCohort(cohortId: string, updates: Partial<Cohort>): Promise<ApiResponse<Cohort>> {
+  async updateCohort(
+    cohortId: string,
+    updates: Partial<Cohort>
+  ): Promise<ApiResponse<Cohort>> {
     return this.apiClient.update(
       'cohorts',
       {
         ...updates,
         updated_at: new Date().toISOString(),
       },
-      (query) => query.eq('id', cohortId)
+      query => query.eq('id', cohortId)
     );
   }
 
@@ -129,25 +142,28 @@ export class CohortService {
    * Delete a cohort
    */
   async deleteCohort(cohortId: string): Promise<ApiResponse<Cohort>> {
-    return this.apiClient.delete(
-      'cohorts',
-      (query) => query.eq('id', cohortId)
-    );
+    return this.apiClient.delete('cohorts', query => query.eq('id', cohortId));
   }
 
   /**
    * Get students in a cohort
    */
-  async getCohortStudents(cohortId: string): Promise<ApiResponse<CohortStudent[]>> {
+  async getCohortStudents(
+    cohortId: string
+  ): Promise<ApiResponse<CohortStudent[]>> {
     return this.apiClient.query(
-      () => this.apiClient
-        .select('cohort_students', `
+      () =>
+        this.apiClient
+          .select(
+            'cohort_students',
+            `
           *,
           student:students(*)
-        `)
-        .eq('cohort_id', cohortId)
-        .neq('dropped_out_status', 'dropped_out')
-        .order('created_at', { ascending: false }),
+        `
+          )
+          .eq('cohort_id', cohortId)
+          .neq('dropped_out_status', 'dropped_out')
+          .order('created_at', { ascending: false }),
       { cache: true }
     );
   }
@@ -155,7 +171,10 @@ export class CohortService {
   /**
    * Add student to cohort
    */
-  async addStudentToCohort(cohortId: string, studentId: string): Promise<ApiResponse<any>> {
+  async addStudentToCohort(
+    cohortId: string,
+    studentId: string
+  ): Promise<ApiResponse<unknown>> {
     return this.apiClient.insert('cohort_students', {
       cohort_id: cohortId,
       student_id: studentId,
@@ -168,14 +187,17 @@ export class CohortService {
   /**
    * Remove student from cohort
    */
-  async removeStudentFromCohort(cohortId: string, studentId: string): Promise<ApiResponse<any>> {
+  async removeStudentFromCohort(
+    cohortId: string,
+    studentId: string
+  ): Promise<ApiResponse<unknown>> {
     return this.apiClient.update(
       'cohort_students',
       {
         dropped_out_status: 'dropped_out',
         updated_at: new Date().toISOString(),
       },
-      (query) => query.eq('cohort_id', cohortId).eq('student_id', studentId)
+      query => query.eq('cohort_id', cohortId).eq('student_id', studentId)
     );
   }
 
@@ -191,15 +213,18 @@ export class CohortService {
       ]);
 
       if (!studentsResult.success) {
-        return studentsResult as any;
+        return studentsResult as ApiResponse<CohortStats>;
       }
 
       const students = studentsResult.data || [];
       const stats: CohortStats = {
         totalStudents: students.length,
-        activeStudents: students.filter(s => s.dropped_out_status === 'active').length,
+        activeStudents: students.filter(s => s.dropped_out_status === 'active')
+          .length,
         completedStudents: 0, // Not applicable in new structure
-        droppedStudents: students.filter(s => s.dropped_out_status === 'dropped_out').length,
+        droppedStudents: students.filter(
+          s => s.dropped_out_status === 'dropped_out'
+        ).length,
         averageAttendance: attendanceResult.data?.averageAttendance || 0,
       };
 
@@ -221,12 +246,15 @@ export class CohortService {
   /**
    * Get cohort attendance statistics
    */
-  private async getCohortAttendanceStats(cohortId: string): Promise<ApiResponse<{ averageAttendance: number }>> {
+  private async getCohortAttendanceStats(
+    cohortId: string
+  ): Promise<ApiResponse<{ averageAttendance: number }>> {
     return this.apiClient.query(
-      () => this.apiClient
-        .select('attendance', 'AVG(attendance_percentage)')
-        .eq('cohort_id', cohortId)
-        .maybeSingle(),
+      () =>
+        this.apiClient
+          .select('attendance', 'AVG(attendance_percentage)')
+          .eq('cohort_id', cohortId)
+          .maybeSingle(),
       { cache: true }
     );
   }
@@ -234,13 +262,17 @@ export class CohortService {
   /**
    * Search cohorts by name or description
    */
-  async searchCohorts(searchTerm: string, limit = 10): Promise<ApiResponse<Cohort[]>> {
+  async searchCohorts(
+    searchTerm: string,
+    limit = 10
+  ): Promise<ApiResponse<Cohort[]>> {
     return this.apiClient.query(
-      () => this.apiClient
-        .select('cohorts')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
-        .limit(limit)
-        .order('name'),
+      () =>
+        this.apiClient
+          .select('cohorts')
+          .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+          .limit(limit)
+          .order('name'),
       { cache: true }
     );
   }
@@ -262,17 +294,21 @@ export class CohortService {
   /**
    * Subscribe to cohort changes
    */
-  subscribeToCohortChanges(cohortId: string, callback: (payload: any) => void) {
+  subscribeToCohortChanges(
+    cohortId: string,
+    callback: (payload: unknown) => void
+  ) {
     const channel = this.apiClient.createChannel(`cohort-${cohortId}`);
-    
+
     channel
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'cohorts',
-          filter: `id=eq.${cohortId}`
-        }, 
+          filter: `id=eq.${cohortId}`,
+        },
         callback
       )
       .subscribe();

@@ -64,9 +64,7 @@ export const TestProviders: React.FC<TestProvidersProps> = ({
 
   return (
     <QueryClientProvider client={client}>
-      <MemoryRouter {...routerProps}>
-        {children}
-      </MemoryRouter>
+      <MemoryRouter {...routerProps}>{children}</MemoryRouter>
     </QueryClientProvider>
   );
 };
@@ -143,17 +141,23 @@ export const createMockCohortStudent = (overrides = {}) => ({
 });
 
 // API response helpers
-export const createApiResponse = <T>(data: T, success = true, error: string | null = null) => ({
+export const createApiResponse = <T,>(
+  data: T,
+  success = true,
+  error: string | null = null
+) => ({
   data: success ? data : null,
   error,
   success,
 });
 
-export const createSuccessResponse = <T>(data: T) => createApiResponse(data, true, null);
-export const createErrorResponse = (error: string) => createApiResponse(null, false, error);
+export const createSuccessResponse = <T,>(data: T) =>
+  createApiResponse(data, true, null);
+export const createErrorResponse = (error: string) =>
+  createApiResponse(null, false, error);
 
 // Async testing utilities
-export const waitForApiCall = async (mockFn: any, timeout = 1000) => {
+export const waitForApiCall = async (mockFn: unknown, timeout = 1000) => {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (mockFn.mock.calls.length > 0) {
@@ -166,8 +170,8 @@ export const waitForApiCall = async (mockFn: any, timeout = 1000) => {
 
 // Form testing helpers
 export const fillFormField = async (
-  getByLabelText: any,
-  userEvent: any,
+  getByLabelText: unknown,
+  userEvent: unknown,
   label: string,
   value: string
 ) => {
@@ -176,7 +180,11 @@ export const fillFormField = async (
   await userEvent.type(field, value);
 };
 
-export const submitForm = async (getByRole: any, userEvent: any, buttonText = 'Submit') => {
+export const submitForm = async (
+  getByRole: unknown,
+  userEvent: unknown,
+  buttonText = 'Submit'
+) => {
   const submitButton = getByRole('button', { name: buttonText });
   await userEvent.click(submitButton);
 };
@@ -191,11 +199,11 @@ export const expectElementToHaveText = (element: HTMLElement, text: string) => {
   expect(element).toHaveTextContent(text);
 };
 
-export const expectLoadingState = (getByText: any) => {
+export const expectLoadingState = (getByText: unknown) => {
   expect(getByText(/loading/i)).toBeInTheDocument();
 };
 
-export const expectErrorState = (getByText: any, errorMessage?: string) => {
+export const expectErrorState = (getByText: unknown, errorMessage?: string) => {
   if (errorMessage) {
     expect(getByText(errorMessage)).toBeInTheDocument();
   } else {
@@ -216,9 +224,10 @@ export const expectAccessibleForm = (container: HTMLElement) => {
   const inputs = container.querySelectorAll('input, textarea, select');
   inputs.forEach(input => {
     // Check for labels
-    const hasLabel = input.getAttribute('aria-label') || 
-                    input.getAttribute('aria-labelledby') ||
-                    container.querySelector(`label[for="${input.id}"]`);
+    const hasLabel =
+      input.getAttribute('aria-label') ||
+      input.getAttribute('aria-labelledby') ||
+      container.querySelector('label[for="' + input.id + '"]');
     expect(hasLabel).toBeTruthy();
   });
 };

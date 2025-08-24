@@ -35,7 +35,7 @@ export class ProfileService extends BaseService {
   ): Promise<ApiResponse<UserProfile>> {
     // Validate updates
     const validatedUpdates = this.validateProfileUpdates(updates);
-    
+
     return this.executeQuery(async () => {
       return await supabase
         .from('profiles')
@@ -51,13 +51,11 @@ export class ProfileService extends BaseService {
    */
   async searchProfiles(filters: FilterParams & { role?: string }) {
     const { role, ...baseFilters } = filters;
-    
-    let query = supabase
-      .from('profiles')
-      .select('*', { count: 'exact' });
+
+    let query = supabase.from('profiles').select('*', { count: 'exact' });
 
     if (role) {
-      query = query.eq('role', role as any);
+      query = query.eq('role', role as string);
     }
 
     return this.fetchPaginated<UserProfile>(baseFilters);
@@ -66,8 +64,8 @@ export class ProfileService extends BaseService {
   /**
    * Apply search filter for profiles
    */
-  protected applySearchFilter(query: any, search: string): any {
-    return query.or(
+  protected applySearchFilter(query: unknown, search: string): unknown {
+    return (query as unknown).or(
       `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
     );
   }
@@ -75,7 +73,9 @@ export class ProfileService extends BaseService {
   /**
    * Validate profile updates
    */
-  private validateProfileUpdates(updates: Partial<UserProfile>): Partial<UserProfile> {
+  private validateProfileUpdates(
+    updates: Partial<UserProfile>
+  ): Partial<UserProfile> {
     const validated: Partial<UserProfile> = {};
 
     if (updates.first_name !== undefined) {
@@ -123,10 +123,14 @@ export class ProfileService extends BaseService {
 
       if (error) throw error;
 
-      const stats = profiles?.reduce((acc, profile) => {
-        acc[profile.role] = (acc[profile.role] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>) || {};
+      const stats =
+        profiles?.reduce(
+          (acc, profile) => {
+            acc[profile.role] = (acc[profile.role] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>
+        ) || {};
 
       return { data: stats, error: null };
     });

@@ -65,26 +65,39 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
     studentId: string
   ): Promise<ApiResponse<PaymentTransactionRow[]>> {
     return this.executeQuery(async () => {
-      console.log('🔍 [paymentTransactionService] getByStudentId called with studentId:', studentId);
-      
+      console.log(
+        '🔍 [paymentTransactionService] getByStudentId called with studentId:',
+        studentId
+      );
+
       // First, get the student_payment_id for this student
-      const { data: studentPaymentData, error: studentPaymentError } = await supabase
-        .from('student_payments')
-        .select('id')
-        .eq('student_id', studentId)
-        .single();
+      const { data: studentPaymentData, error: studentPaymentError } =
+        await supabase
+          .from('student_payments')
+          .select('id')
+          .eq('student_id', studentId)
+          .single();
 
       if (studentPaymentError) {
-        console.log('🔍 [paymentTransactionService] Error getting student payment:', studentPaymentError);
+        console.log(
+          '🔍 [paymentTransactionService] Error getting student payment:',
+          studentPaymentError
+        );
         throw studentPaymentError;
       }
 
       if (!studentPaymentData) {
-        console.log('🔍 [paymentTransactionService] No student payment found for studentId:', studentId);
+        console.log(
+          '🔍 [paymentTransactionService] No student payment found for studentId:',
+          studentId
+        );
         return { data: [], error: null };
       }
 
-      console.log('🔍 [paymentTransactionService] Found student payment:', studentPaymentData);
+      console.log(
+        '🔍 [paymentTransactionService] Found student payment:',
+        studentPaymentData
+      );
 
       // Then get all transactions for this payment_id
       const { data, error } = await supabase
@@ -349,7 +362,13 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
     approvedAmount?: number,
     notes?: string,
     rejectionReason?: string
-  ): Promise<ApiResponse<{ success: boolean; newTransactionId?: string; message?: string }>> {
+  ): Promise<
+    ApiResponse<{
+      success: boolean;
+      newTransactionId?: string;
+      message?: string;
+    }>
+  > {
     return this.executeQuery(async () => {
       // First, get the current transaction to understand its state
       const { data: currentTransaction, error: fetchError } = await supabase
@@ -367,8 +386,9 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       }
 
       // Prepare update data
-      const updateData: any = {
-        verification_status: approvalType === 'reject' ? 'rejected' : 'approved',
+      const updateData: Record<string, unknown> = {
+        verification_status:
+          approvalType === 'reject' ? 'rejected' : 'approved',
         verified_by: verifiedBy,
         verified_at: new Date().toISOString(),
         verification_notes: notes || null,
@@ -376,9 +396,12 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       };
 
       // If this is a partial or full approval, update the amount
-      if ((approvalType === 'partial' || approvalType === 'full') && approvedAmount !== undefined) {
+      if (
+        (approvalType === 'partial' || approvalType === 'full') &&
+        approvedAmount !== undefined
+      ) {
         updateData.amount = approvedAmount;
-        
+
         // For partial payments, set or maintain partial payment sequence
         if (approvalType === 'partial') {
           // If this transaction doesn't have a partial_payment_sequence yet, set it to 1
@@ -386,7 +409,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
           if (!currentTransaction.partial_payment_sequence) {
             updateData.partial_payment_sequence = 1;
           }
-          
+
           // Update notes to indicate this was a partial approval
           updateData.verification_notes = `Partial approval: Original amount ₹${currentTransaction.amount}, Approved amount ₹${approvedAmount}. ${notes || ''}`;
         } else {
@@ -411,21 +434,20 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       return {
         data: {
           success: true,
-          message: approvalType === 'partial' 
-            ? `Partial payment of ₹${approvedAmount} approved`
-            : approvalType === 'full'
-            ? `Full payment of ₹${approvedAmount} approved`
-            : 'Payment rejected'
+          message:
+            approvalType === 'partial'
+              ? `Partial payment of ₹${approvedAmount} approved`
+              : approvalType === 'full'
+                ? `Full payment of ₹${approvedAmount} approved`
+                : 'Payment rejected',
         },
-        error: null
+        error: null,
       };
     });
   }
 
   // Get payment statistics for a student
-  async getPaymentStatistics(
-    studentId: string
-  ): Promise<
+  async getPaymentStatistics(studentId: string): Promise<
     ApiResponse<{
       totalPayments: number;
       totalAmountPaid: number;
@@ -481,7 +503,9 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
           payment => payment.payment_status === 'pending'
         ).length,
         verifiedPayments: data.filter(
-          payment => payment.payment_status === 'paid' || payment.payment_status === 'waived'
+          payment =>
+            payment.payment_status === 'paid' ||
+            payment.payment_status === 'waived'
         ).length,
       };
 
@@ -575,7 +599,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         verified_at: null,
         updated_at: new Date().toISOString(),
         status: 'pending',
-        rejection_reason: null
+        rejection_reason: null,
       };
 
       const { data, error } = await supabase

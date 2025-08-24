@@ -1,10 +1,10 @@
 import { ApiResponse } from '@/infrastructure/api/base-api-client';
 import { Logger } from '@/lib/logging/Logger';
-import { 
-  AttendanceRecord, 
-  AttendanceStats, 
-  AttendanceFilters, 
-  StudentStats 
+import {
+  AttendanceRecord,
+  AttendanceStats,
+  AttendanceFilters,
+  StudentStats,
 } from './types/AttendanceTypes';
 import { AttendanceQueryService } from './AttendanceQueryService';
 
@@ -34,13 +34,14 @@ export class AttendanceStatsService {
         limit: 10000, // Get all records for stats
       };
 
-      const attendanceResult = await this.queryService.getAttendanceRecords(filters);
+      const attendanceResult =
+        await this.queryService.getAttendanceRecords(filters);
       if (!attendanceResult.success) {
-        return attendanceResult as any;
+        return attendanceResult as ApiResponse<AttendanceStats>;
       }
 
       const records = attendanceResult.data || [];
-      
+
       // Calculate statistics
       const stats: AttendanceStats = {
         totalSessions: this.calculateTotalSessions(records),
@@ -78,22 +79,30 @@ export class AttendanceStatsService {
 
   private calculateAverageAttendance(records: AttendanceRecord[]): number {
     if (records.length === 0) return 0;
-    const presentAndLate = records.filter(r => r.status === 'present' || r.status === 'late').length;
+    const presentAndLate = records.filter(
+      r => r.status === 'present' || r.status === 'late'
+    ).length;
     return Math.round((presentAndLate / records.length) * 100);
   }
 
   private calculatePerfectAttendance(records: AttendanceRecord[]): number {
     // Group by student and calculate their attendance percentage
     const studentStats = this.groupByStudent(records);
-    return Object.values(studentStats).filter(student => student.percentage === 100).length;
+    return Object.values(studentStats).filter(
+      student => student.percentage === 100
+    ).length;
   }
 
   private calculatePoorAttendance(records: AttendanceRecord[]): number {
     const studentStats = this.groupByStudent(records);
-    return Object.values(studentStats).filter(student => student.percentage < 75).length;
+    return Object.values(studentStats).filter(
+      student => student.percentage < 75
+    ).length;
   }
 
-  private groupByStudent(records: AttendanceRecord[]): Record<string, StudentStats> {
+  private groupByStudent(
+    records: AttendanceRecord[]
+  ): Record<string, StudentStats> {
     const studentMap: Record<string, StudentStats> = {};
 
     records.forEach(record => {
@@ -110,7 +119,10 @@ export class AttendanceStatsService {
     // Calculate percentages
     Object.keys(studentMap).forEach(studentId => {
       const student = studentMap[studentId];
-      student.percentage = student.total > 0 ? Math.round((student.present / student.total) * 100) : 0;
+      student.percentage =
+        student.total > 0
+          ? Math.round((student.present / student.total) * 100)
+          : 0;
     });
 
     return studentMap;

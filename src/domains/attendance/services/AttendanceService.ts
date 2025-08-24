@@ -6,14 +6,14 @@
 
 import { ApiResponse } from '@/infrastructure/api/base-api-client';
 import { Logger } from '@/lib/logging/Logger';
-import { 
-  AttendanceRecord, 
-  AttendanceSummary, 
-  AttendanceFilters, 
-  AttendanceStats, 
-  SessionInfo, 
+import {
+  AttendanceRecord,
+  AttendanceSummary,
+  AttendanceFilters,
+  AttendanceStats,
+  SessionInfo,
   EpicInfo,
-  BulkAttendanceData 
+  BulkAttendanceData,
 } from './types/AttendanceTypes';
 import { AttendanceMarkingService } from './AttendanceMarkingService';
 import { AttendanceQueryService } from './AttendanceQueryService';
@@ -23,7 +23,7 @@ import { AttendanceSubscriptionService } from './AttendanceSubscriptionService';
 
 export class AttendanceService {
   private logger = Logger.getInstance();
-  
+
   // Focused services for different concerns
   private markingService: AttendanceMarkingService;
   private queryService: AttendanceQueryService;
@@ -62,12 +62,16 @@ export class AttendanceService {
     );
   }
 
-  async bulkMarkAttendance(attendanceData: BulkAttendanceData[]): Promise<ApiResponse<string[]>> {
+  async bulkMarkAttendance(
+    attendanceData: BulkAttendanceData[]
+  ): Promise<ApiResponse<string[]>> {
     return this.markingService.bulkMarkAttendance(attendanceData);
   }
 
   // Attendance Query Operations
-  async getAttendanceRecords(filters: AttendanceFilters = {}): Promise<ApiResponse<AttendanceRecord[]>> {
+  async getAttendanceRecords(
+    filters: AttendanceFilters = {}
+  ): Promise<ApiResponse<AttendanceRecord[]>> {
     return this.queryService.getAttendanceRecords(filters);
   }
 
@@ -77,7 +81,12 @@ export class AttendanceService {
     sessionNumber: number,
     sessionDate: string
   ): Promise<ApiResponse<AttendanceRecord[]>> {
-    return this.queryService.getSessionAttendance(cohortId, epicId, sessionNumber, sessionDate);
+    return this.queryService.getSessionAttendance(
+      cohortId,
+      epicId,
+      sessionNumber,
+      sessionDate
+    );
   }
 
   async getAttendanceSummary(
@@ -98,7 +107,11 @@ export class AttendanceService {
     epicId: string,
     sessionDate: string
   ): Promise<ApiResponse<SessionInfo[]>> {
-    return this.sessionService.getSessionsForDate(cohortId, epicId, sessionDate);
+    return this.sessionService.getSessionsForDate(
+      cohortId,
+      epicId,
+      sessionDate
+    );
   }
 
   async toggleSessionCancellation(
@@ -123,7 +136,12 @@ export class AttendanceService {
     sessionNumber: number,
     sessionDate: string
   ): Promise<ApiResponse<boolean>> {
-    return this.sessionService.isSessionCancelled(cohortId, epicId, sessionNumber, sessionDate);
+    return this.sessionService.isSessionCancelled(
+      cohortId,
+      epicId,
+      sessionNumber,
+      sessionDate
+    );
   }
 
   // Statistics Operations
@@ -133,12 +151,23 @@ export class AttendanceService {
     dateFrom?: string,
     dateTo?: string
   ): Promise<ApiResponse<AttendanceStats>> {
-    return this.statsService.getAttendanceStats(cohortId, epicId, dateFrom, dateTo);
+    return this.statsService.getAttendanceStats(
+      cohortId,
+      epicId,
+      dateFrom,
+      dateTo
+    );
   }
 
   // Subscription Operations
-  subscribeToAttendanceChanges(cohortId: string, callback: (payload: any) => void) {
-    return this.subscriptionService.subscribeToAttendanceChanges(cohortId, callback);
+  subscribeToAttendanceChanges(
+    cohortId: string,
+    callback: (payload: unknown) => void
+  ) {
+    return this.subscriptionService.subscribeToAttendanceChanges(
+      cohortId,
+      callback
+    );
   }
 }
 

@@ -6,17 +6,21 @@ export class AttendanceSubscriptionService {
   /**
    * Subscribe to attendance changes
    */
-  subscribeToAttendanceChanges(cohortId: string, callback: (payload: any) => void) {
+  subscribeToAttendanceChanges(
+    cohortId: string,
+    callback: (payload: unknown) => void
+  ) {
     const channel = this.apiClient.createChannel(`attendance-${cohortId}`);
-    
+
     channel
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'attendance_records',
-          filter: `cohort_id=eq.${cohortId}`
-        }, 
+          filter: `cohort_id=eq.${cohortId}`,
+        },
         callback
       )
       .subscribe();
