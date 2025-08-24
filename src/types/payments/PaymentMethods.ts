@@ -11,6 +11,7 @@ export interface PaymentMethodConfiguration {
   cheque_enabled: boolean;
   scan_to_pay_enabled: boolean;
   razorpay_enabled: boolean;
+  dd_enabled: boolean;
   bank_account_number?: string;
   bank_account_holder?: string;
   ifsc_code?: string;
@@ -49,6 +50,7 @@ export interface PaymentSubmissionData {
   receiptFile?: File;
   proofOfPaymentFile?: File;
   transactionScreenshotFile?: File;
+  ddReceiptFile?: File; // DD-specific receipt file
   bankName?: string;
   bankBranch?: string;
   transferDate?: string;
@@ -60,6 +62,10 @@ export interface PaymentSubmissionData {
   razorpayPaymentId?: string;
   razorpayOrderId?: string;
   razorpaySignature?: string;
+  // DD-specific fields
+  ddNumber?: string;
+  ddBankName?: string;
+  ddBranch?: string;
   studentId?: string;
   cohortId?: string;
   studentUserId?: string; // Student's user_id for created_by field in admin context
@@ -76,7 +82,7 @@ export interface PaymentTransaction {
   payment_id: string;
   transaction_type: 'payment' | 'refund' | 'adjustment';
   amount: number;
-  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque' | 'dd';
   reference_number?: string;
   status: 'success' | 'failed' | 'pending';
   notes?: string;
@@ -108,6 +114,10 @@ export interface PaymentTransaction {
   qr_code_url?: string | null;
   receiver_bank_name?: string | null;
   receiver_bank_logo_url?: string | null;
+  // DD-specific fields
+  dd_number?: string | null;
+  dd_bank_name?: string | null;
+  dd_branch?: string | null;
   verification_notes?: string | null;
   rejection_reason?: string | null;
   payment_date?: string | null;
@@ -135,6 +145,13 @@ export const PAYMENT_METHOD_CONFIG = {
   cheque: {
     label: 'Cheque',
     icon: '📄',
+    requiresReference: true,
+    requiresFile: true,
+    requiresBankDetails: false,
+  },
+  dd: {
+    label: 'Demand Draft',
+    icon: '🏛️',
     requiresReference: true,
     requiresFile: true,
     requiresBankDetails: false,
@@ -185,6 +202,8 @@ export const isPaymentMethodEnabled = (
       return config.bank_transfer_enabled;
     case 'cheque':
       return config.cheque_enabled;
+    case 'dd':
+      return config.dd_enabled;
     case 'scan_to_pay':
       return config.scan_to_pay_enabled;
     case 'razorpay':
@@ -202,6 +221,7 @@ export const getAvailablePaymentMethods = (
   if (config.cash_enabled) methods.push('cash');
   if (config.bank_transfer_enabled) methods.push('bank_transfer');
   if (config.cheque_enabled) methods.push('cheque');
+  if (config.dd_enabled) methods.push('dd');
   if (config.scan_to_pay_enabled) methods.push('scan_to_pay');
   if (config.razorpay_enabled) methods.push('razorpay');
 

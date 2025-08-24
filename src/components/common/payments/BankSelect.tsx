@@ -1,5 +1,11 @@
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,15 +31,30 @@ export const BankSelect: React.FC<BankSelectProps> = ({
   required = false,
   disabled = false,
   error,
-  className
+  className,
 }) => {
   const { banks, loading, error: fetchError, refetch } = useIndianBanks();
+
+  // Debug logging
+  console.log('🔍 [BankSelect] Component rendered:', {
+    label,
+    value,
+    banksCount: banks.length,
+    loading,
+    fetchError,
+    banks: banks.slice(0, 3), // Show first 3 banks for debugging
+  });
 
   if (loading) {
     return (
       <div className={`space-y-2 ${className}`}>
-        {label && <Label>{label}{required && <span className="text-red-500">*</span>}</Label>}
-        <Skeleton className="h-10 w-full" />
+        {label && (
+          <Label>
+            {label}
+            {required && <span className='text-red-500'>*</span>}
+          </Label>
+        )}
+        <Skeleton className='h-10 w-full' />
       </div>
     );
   }
@@ -41,14 +62,19 @@ export const BankSelect: React.FC<BankSelectProps> = ({
   if (fetchError) {
     return (
       <div className={`space-y-2 ${className}`}>
-        {label && <Label>{label}{required && <span className="text-red-500">*</span>}</Label>}
-        <Alert variant="destructive">
-          <RefreshCw className="h-4 w-4" />
+        {label && (
+          <Label>
+            {label}
+            {required && <span className='text-red-500'>*</span>}
+          </Label>
+        )}
+        <Alert variant='destructive'>
+          <RefreshCw className='h-4 w-4' />
           <AlertDescription>
-            Failed to load banks. 
-            <button 
+            Failed to load banks.
+            <button
               onClick={refetch}
-              className="ml-2 underline hover:no-underline"
+              className='ml-2 underline hover:no-underline'
             >
               Try again
             </button>
@@ -60,26 +86,25 @@ export const BankSelect: React.FC<BankSelectProps> = ({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {label && <Label>{label}{required && <span className="text-red-500">*</span>}</Label>}
-      <Select 
-        value={value} 
-        onValueChange={onValueChange}
-        disabled={disabled}
-      >
+      {label && (
+        <Label>
+          {label}
+          {required && <span className='text-red-500'>*</span>}
+        </Label>
+      )}
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger className={error ? 'border-red-500' : ''}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {banks.map((bank) => (
+          {banks.map(bank => (
             <SelectItem key={bank.id} value={bank.bank_name}>
               {bank.bank_name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className='text-sm text-red-500'>{error}</p>}
     </div>
   );
 };

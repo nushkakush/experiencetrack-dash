@@ -11,7 +11,7 @@ interface PaymentDetails {
   paymentDate?: string;
   chequeNumber?: string;
   payerUpiId?: string;
-  [key: string]: any; // For any additional fields
+  [key: string]: string | undefined; // For any additional fields
 }
 
 export const validatePaymentForm = (
@@ -22,11 +22,23 @@ export const validatePaymentForm = (
   uploadedFiles: Record<string, File>
 ): PaymentValidationResult => {
   console.log('🔍 [DEBUG] validatePaymentForm called');
-  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode:', selectedPaymentMode);
-  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode type:', typeof selectedPaymentMode);
-  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode truthy:', !!selectedPaymentMode);
-  console.log('🔍 [DEBUG] validatePaymentForm - selectedPaymentMode length:', selectedPaymentMode?.length);
-  
+  console.log(
+    '🔍 [DEBUG] validatePaymentForm - selectedPaymentMode:',
+    selectedPaymentMode
+  );
+  console.log(
+    '🔍 [DEBUG] validatePaymentForm - selectedPaymentMode type:',
+    typeof selectedPaymentMode
+  );
+  console.log(
+    '🔍 [DEBUG] validatePaymentForm - selectedPaymentMode truthy:',
+    !!selectedPaymentMode
+  );
+  console.log(
+    '🔍 [DEBUG] validatePaymentForm - selectedPaymentMode length:',
+    selectedPaymentMode?.length
+  );
+
   const errors: Record<string, string> = {};
 
   // Validate amount
@@ -37,7 +49,9 @@ export const validatePaymentForm = (
 
   // Validate payment mode
   if (!selectedPaymentMode) {
-    console.log('❌ [DEBUG] Payment mode validation failed - selectedPaymentMode is falsy');
+    console.log(
+      '❌ [DEBUG] Payment mode validation failed - selectedPaymentMode is falsy'
+    );
     errors.paymentMode = 'Please select a payment mode';
   } else {
     console.log('✅ [DEBUG] Payment mode validation passed');
@@ -48,13 +62,14 @@ export const validatePaymentForm = (
     const requiredFields = getRequiredFieldsForMode(selectedPaymentMode);
     for (const field of requiredFields) {
       if (!paymentDetails[field]) {
-        errors[field] = `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
+        errors[field] =
+          `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
       } else if (field === 'paymentDate') {
         // Validate payment date cannot be in the future
         const paymentDate = new Date(paymentDetails[field]);
         const today = new Date();
         today.setHours(23, 59, 59, 999); // End of today
-        
+
         if (paymentDate > today) {
           errors[field] = 'Payment date cannot be in the future';
         }
@@ -72,7 +87,7 @@ export const validatePaymentForm = (
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 };
 
@@ -101,13 +116,35 @@ export const getTodayDateString = (): string => {
 export const getRequiredFieldsForMode = (mode: string): string[] => {
   switch (mode) {
     case 'bank_transfer':
-      return ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'transactionId'];
+      return [
+        'paymentDate',
+        'paymentTime',
+        'bankName',
+        'bankBranch',
+        'accountNumber',
+        'transactionId',
+      ];
     case 'cash':
       return ['paymentDate', 'paymentTime'];
     case 'cheque':
-      return ['paymentDate', 'paymentTime', 'bankName', 'bankBranch', 'accountNumber', 'chequeNumber'];
+      return [
+        'paymentDate',
+        'paymentTime',
+        'bankName',
+        'bankBranch',
+        'accountNumber',
+        'chequeNumber',
+      ];
     case 'scan_to_pay':
       return ['paymentDate', 'paymentTime', 'payerUpiId'];
+    case 'dd':
+      return [
+        'paymentDate',
+        'paymentTime',
+        'ddNumber',
+        'ddBankName',
+        'ddBranch',
+      ];
     case 'razorpay':
       return []; // No additional fields required for Razorpay
     default:
@@ -125,6 +162,8 @@ export const getRequiredFilesForMode = (mode: string): string[] => {
       return ['chequeImage', 'chequeAcknowledgment'];
     case 'scan_to_pay':
       return ['scanToPayScreenshot'];
+    case 'dd':
+      return ['ddReceipt'];
     case 'razorpay':
       return []; // No files required for online payment
     default:

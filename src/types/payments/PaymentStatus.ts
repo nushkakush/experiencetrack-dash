@@ -34,17 +34,26 @@ export type TransactionStatus = 'success' | 'failed' | 'pending';
 
 export type TransactionType = 'payment' | 'refund' | 'adjustment';
 
-export type PaymentMethod = 'online' | 'bank_transfer' | 'cash' | 'cheque';
+export type PaymentMethod =
+  | 'online'
+  | 'bank_transfer'
+  | 'cash'
+  | 'cheque'
+  | 'dd';
 
-export type VerificationStatus = 'pending' | 'verification_pending' | 'approved' | 'rejected';
+export type VerificationStatus =
+  | 'pending'
+  | 'verification_pending'
+  | 'approved'
+  | 'rejected';
 
-export type CommunicationType = 
-  | 'reminder' 
-  | 'receipt' 
-  | 'notification' 
-  | 'verification_request' 
-  | 'payment_confirmation' 
-  | 'overdue_notice' 
+export type CommunicationType =
+  | 'reminder'
+  | 'receipt'
+  | 'notification'
+  | 'verification_request'
+  | 'payment_confirmation'
+  | 'overdue_notice'
   | 'plan_change_notification';
 
 export type CommunicationChannel = 'email' | 'whatsapp' | 'sms' | 'in_app';
@@ -169,7 +178,12 @@ export const isPaymentPending = (status: PaymentStatus): boolean => {
 };
 
 export const isPaymentComplete = (status: PaymentStatus): boolean => {
-  return status === 'paid' || status === 'complete' || status === 'on_time' || status === 'waived';
+  return (
+    status === 'paid' ||
+    status === 'complete' ||
+    status === 'on_time' ||
+    status === 'waived'
+  );
 };
 
 export const getPaymentStatusPriority = (status: PaymentStatus): number => {

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { validatePaymentForm, showValidationErrors } from '../utils/PaymentValidation';
+import {
+  validatePaymentForm,
+  showValidationErrors,
+} from '../utils/PaymentValidation';
 import { Logger } from '@/lib/logging/Logger';
 
 interface PaymentSubmissionData {
@@ -18,6 +21,10 @@ interface PaymentSubmissionData {
   bankBranch?: string;
   accountNumber?: string;
   transactionId?: string;
+  // DD-specific fields
+  ddNumber?: string;
+  ddBankName?: string;
+  ddBranch?: string;
 }
 
 export interface UsePaymentMethodSelectorProps {
@@ -31,28 +38,51 @@ export const usePaymentMethodSelector = ({
   paymentId,
   requiredAmount,
   onPaymentSubmit,
-  paymentMethods = []
+  paymentMethods = [],
 }: UsePaymentMethodSelectorProps) => {
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [isPartialPayment, setIsPartialPayment] = useState<boolean>(false);
-  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [paymentTime, setPaymentTime] = useState<string>(new Date().toTimeString().slice(0, 5));
+  const [paymentDate, setPaymentDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [paymentTime, setPaymentTime] = useState<string>(
+    new Date().toTimeString().slice(0, 5)
+  );
   const [bankName, setBankName] = useState<string>('');
   const [bankBranch, setBankBranch] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
   const [transactionId, setTransactionId] = useState<string>('');
+  // DD-specific fields
+  const [ddNumber, setDDNumber] = useState<string>('');
+  const [ddBankName, setDDBankName] = useState<string>('');
+  const [ddBranch, setDDBranch] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [proofOfPaymentFile, setProofOfPaymentFile] = useState<File | null>(null);
-  const [transactionScreenshotFile, setTransactionScreenshotFile] = useState<File | null>(null);
+  const [proofOfPaymentFile, setProofOfPaymentFile] = useState<File | null>(
+    null
+  );
+  const [transactionScreenshotFile, setTransactionScreenshotFile] =
+    useState<File | null>(null);
 
   // Default payment methods if none provided
-  const defaultPaymentMethods = ['cash', 'bank_transfer', 'cheque', 'scan_to_pay', 'razorpay'];
-  const availablePaymentMethods = (paymentMethods && paymentMethods.length > 0) ? paymentMethods : defaultPaymentMethods;
+  const defaultPaymentMethods = [
+    'cash',
+    'bank_transfer',
+    'cheque',
+    'dd',
+    'scan_to_pay',
+    'razorpay',
+  ];
+  const availablePaymentMethods =
+    paymentMethods && paymentMethods.length > 0
+      ? paymentMethods
+      : defaultPaymentMethods;
 
   // Ensure we have valid payment methods
-  const validPaymentMethods = availablePaymentMethods.filter(method => typeof method === 'string' && method.trim() !== '');
+  const validPaymentMethods = availablePaymentMethods.filter(
+    method => typeof method === 'string' && method.trim() !== ''
+  );
 
   // Detect partial payment when amount changes
   useEffect(() => {
@@ -91,6 +121,19 @@ export const usePaymentMethodSelector = ({
 
   const handleTransactionIdChange = (value: string) => {
     setTransactionId(value);
+  };
+
+  // DD-specific handlers
+  const handleDDNumberChange = (value: string) => {
+    setDDNumber(value);
+  };
+
+  const handleDDBankNameChange = (value: string) => {
+    setDDBankName(value);
+  };
+
+  const handleDDBranchChange = (value: string) => {
+    setDDBranch(value);
   };
 
   const handleReceiptFileChange = (file: File | null) => {
@@ -155,6 +198,15 @@ export const usePaymentMethodSelector = ({
       paymentData.transactionId = transactionId;
     }
 
+    // Add DD specific data
+    if (selectedMethod === 'dd') {
+      paymentData.paymentDate = paymentDate;
+      paymentData.paymentTime = paymentTime;
+      paymentData.ddNumber = ddNumber;
+      paymentData.ddBankName = ddBankName;
+      paymentData.ddBranch = ddBranch;
+    }
+
     onPaymentSubmit(paymentData);
   };
 
@@ -169,6 +221,9 @@ export const usePaymentMethodSelector = ({
     bankBranch,
     accountNumber,
     transactionId,
+    ddNumber,
+    ddBankName,
+    ddBranch,
     notes,
     receiptFile,
     proofOfPaymentFile,
@@ -183,11 +238,14 @@ export const usePaymentMethodSelector = ({
     handleBankBranchChange,
     handleAccountNumberChange,
     handleTransactionIdChange,
+    handleDDNumberChange,
+    handleDDBankNameChange,
+    handleDDBranchChange,
     handleReceiptFileChange,
     handleProofOfPaymentFileChange,
     handleTransactionScreenshotFileChange,
     handleNotesChange,
     handleRazorpayPayment,
-    handleSubmit
+    handleSubmit,
   };
 };

@@ -22,7 +22,7 @@ export interface PaymentTransactionRow {
   payment_id: string;
   transaction_type: 'payment' | 'refund' | 'adjustment';
   amount: number;
-  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque';
+  payment_method: 'online' | 'bank_transfer' | 'cash' | 'cheque' | 'dd';
   reference_number: string | null;
   status: 'success' | 'failed' | 'pending';
   notes: string | null;
@@ -53,6 +53,10 @@ export interface PaymentTransactionRow {
   qr_code_url: string | null;
   receiver_bank_name: string | null;
   receiver_bank_logo_url: string | null;
+  // DD-specific fields
+  dd_number: string | null;
+  dd_bank_name: string | null;
+  dd_branch: string | null;
   verification_notes: string | null;
   rejection_reason: string | null;
   payment_date: string | null;

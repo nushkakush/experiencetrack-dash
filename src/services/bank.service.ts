@@ -13,20 +13,32 @@ export interface IndianBank {
 export class BankService {
   static async getIndianBanks(): Promise<IndianBank[]> {
     try {
+      console.log('🔍 [BankService] Fetching Indian banks from database...');
       const { data, error } = await supabase
         .from('indian_banks')
         .select('*')
         .eq('is_active', true)
         .order('bank_name');
 
+      console.log('🔍 [BankService] Database response:', {
+        dataCount: data?.length || 0,
+        error: error?.message,
+        hasData: !!data,
+      });
+
       if (error) {
-        console.error('Error fetching Indian banks:', error);
+        console.error('🔍 [BankService] Database error:', error);
         throw new Error('Failed to fetch Indian banks');
       }
 
+      console.log('🔍 [BankService] Returning banks:', {
+        count: data?.length || 0,
+        banks: data?.slice(0, 3) || [],
+      });
+
       return data || [];
     } catch (error) {
-      console.error('Error in getIndianBanks:', error);
+      console.error('🔍 [BankService] Error in getIndianBanks:', error);
       throw error;
     }
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { CashPaymentFields } from './CashPaymentFields';
 import { BankTransferFields } from './BankTransferFields';
+import { DDFields } from './DDFields';
 import { ScanToPayFields } from './ScanToPayFields';
 import { RazorpayFields } from './RazorpayFields';
 import { NotesField } from './NotesField';
@@ -15,6 +16,10 @@ interface PaymentMethodFieldFactoryProps {
   bankBranch: string;
   accountNumber: string;
   transactionId: string;
+  // DD-specific fields
+  ddNumber: string;
+  ddBankName: string;
+  ddBranch: string;
   // File uploads
   receiptFile: File | null;
   proofOfPaymentFile: File | null;
@@ -31,11 +36,17 @@ interface PaymentMethodFieldFactoryProps {
   onReceiptFileChange: (file: File | null) => void;
   onProofOfPaymentFileChange: (file: File | null) => void;
   onTransactionScreenshotFileChange: (file: File | null) => void;
+  // DD-specific handlers
+  onDDNumberChange: (value: string) => void;
+  onDDBankNameChange: (value: string) => void;
+  onDDBranchChange: (value: string) => void;
   onNotesChange: (value: string) => void;
   onRazorpayPayment: () => void;
 }
 
-export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps> = ({
+export const PaymentMethodFieldFactory: React.FC<
+  PaymentMethodFieldFactoryProps
+> = ({
   selectedMethod,
   amountPaid,
   paymentDate,
@@ -44,6 +55,9 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
   bankBranch,
   accountNumber,
   transactionId,
+  ddNumber,
+  ddBankName,
+  ddBranch,
   receiptFile,
   proofOfPaymentFile,
   transactionScreenshotFile,
@@ -57,8 +71,11 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
   onReceiptFileChange,
   onProofOfPaymentFileChange,
   onTransactionScreenshotFileChange,
+  onDDNumberChange,
+  onDDBankNameChange,
+  onDDBranchChange,
   onNotesChange,
-  onRazorpayPayment
+  onRazorpayPayment,
 }) => {
   if (!selectedMethod || amountPaid <= 0) {
     return null;
@@ -73,7 +90,7 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
             onReceiptFileChange={onReceiptFileChange}
           />
         );
-      
+
       case 'bank_transfer':
         return (
           <BankTransferFields
@@ -93,7 +110,7 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
             onProofOfPaymentFileChange={onProofOfPaymentFileChange}
           />
         );
-      
+
       case 'cheque':
         return (
           <BankTransferFields
@@ -113,36 +130,49 @@ export const PaymentMethodFieldFactory: React.FC<PaymentMethodFieldFactoryProps>
             onProofOfPaymentFileChange={onProofOfPaymentFileChange}
           />
         );
-      
+
+      case 'dd':
+        return (
+          <DDFields
+            paymentDate={paymentDate}
+            paymentTime={paymentTime}
+            ddNumber={ddNumber}
+            ddBankName={ddBankName}
+            ddBranch={ddBranch}
+            proofOfPaymentFile={proofOfPaymentFile}
+            onPaymentDateChange={onPaymentDateChange}
+            onPaymentTimeChange={onPaymentTimeChange}
+            onDDNumberChange={onDDNumberChange}
+            onDDBankNameChange={onDDBankNameChange}
+            onDDBranchChange={onDDBranchChange}
+            onProofOfPaymentFileChange={onProofOfPaymentFileChange}
+          />
+        );
+
       case 'scan_to_pay':
         return (
           <ScanToPayFields
             transactionScreenshotFile={transactionScreenshotFile}
-            onTransactionScreenshotFileChange={onTransactionScreenshotFileChange}
+            onTransactionScreenshotFileChange={
+              onTransactionScreenshotFileChange
+            }
           />
         );
-      
+
       case 'razorpay':
-        return (
-          <RazorpayFields
-            onRazorpayPayment={onRazorpayPayment}
-          />
-        );
-      
+        return <RazorpayFields onRazorpayPayment={onRazorpayPayment} />;
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {renderMethodFields()}
-      
+
       {/* Notes Field */}
-      <NotesField
-        notes={notes}
-        onNotesChange={onNotesChange}
-      />
+      <NotesField notes={notes} onNotesChange={onNotesChange} />
     </div>
   );
 };

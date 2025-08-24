@@ -9,22 +9,31 @@ export const useIndianBanks = () => {
   useEffect(() => {
     const fetchBanks = async () => {
       try {
+        console.log('🔍 [useIndianBanks] Starting to fetch banks...');
         setLoading(true);
         setError(null);
         const banksData = await BankService.getIndianBanks();
+        console.log('🔍 [useIndianBanks] Banks fetched successfully:', {
+          count: banksData.length,
+          banks: banksData.slice(0, 3), // Show first 3 banks
+        });
         setBanks(banksData);
       } catch (err) {
+        console.error('🔍 [useIndianBanks] Error fetching banks:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch banks');
         console.error('Error fetching Indian banks:', err);
       } finally {
         setLoading(false);
+        console.log('🔍 [useIndianBanks] Loading finished');
       }
     };
 
     fetchBanks();
   }, []);
 
-  const getBankByName = async (bankName: string): Promise<IndianBank | null> => {
+  const getBankByName = async (
+    bankName: string
+  ): Promise<IndianBank | null> => {
     try {
       return await BankService.getBankByName(bankName);
     } catch (err) {
@@ -43,8 +52,10 @@ export const useIndianBanks = () => {
       setError(null);
       BankService.getIndianBanks()
         .then(setBanks)
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to fetch banks'))
+        .catch(err =>
+          setError(err instanceof Error ? err.message : 'Failed to fetch banks')
+        )
         .finally(() => setLoading(false));
-    }
+    },
   };
 };

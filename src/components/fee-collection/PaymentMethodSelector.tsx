@@ -1,16 +1,12 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  CreditCard, 
-  CheckCircle,
-  Clock
-} from 'lucide-react';
-import { 
-  PaymentMethodButtons, 
-  PaymentAmountInput, 
-  PaymentMethodFields, 
-  usePaymentMethodSelector 
+import { CreditCard, CheckCircle, Clock } from 'lucide-react';
+import {
+  PaymentMethodButtons,
+  PaymentAmountInput,
+  PaymentMethodFields,
+  usePaymentMethodSelector,
 } from './components';
 
 interface PaymentMethodSelectorProps {
@@ -49,7 +45,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   requiredAmount,
   onPaymentSubmit,
   isSubmitting,
-  paymentMethods = []
+  paymentMethods = [],
 }) => {
   const {
     // State
@@ -79,23 +75,23 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
     handleTransactionScreenshotFileChange,
     handleNotesChange,
     handleRazorpayPayment,
-    handleSubmit
+    handleSubmit,
   } = usePaymentMethodSelector({
     paymentId,
     requiredAmount,
     onPaymentSubmit,
-    paymentMethods
+    paymentMethods,
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
+        <CardTitle className='flex items-center gap-2'>
+          <CreditCard className='h-5 w-5' />
           Payment Method Selection
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className='space-y-6'>
         {/* Payment Method Selection */}
         <PaymentMethodButtons
           selectedMethod={selectedMethod}
@@ -121,6 +117,9 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           bankBranch={bankBranch}
           accountNumber={accountNumber}
           transactionId={transactionId}
+          ddNumber={ddNumber}
+          ddBankName={ddBankName}
+          ddBranch={ddBranch}
           receiptFile={receiptFile}
           proofOfPaymentFile={proofOfPaymentFile}
           transactionScreenshotFile={transactionScreenshotFile}
@@ -131,9 +130,14 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           onBankBranchChange={handleBankBranchChange}
           onAccountNumberChange={handleAccountNumberChange}
           onTransactionIdChange={handleTransactionIdChange}
+          onDDNumberChange={handleDDNumberChange}
+          onDDBankNameChange={handleDDBankNameChange}
+          onDDBranchChange={handleDDBranchChange}
           onReceiptFileChange={handleReceiptFileChange}
           onProofOfPaymentFileChange={handleProofOfPaymentFileChange}
-          onTransactionScreenshotFileChange={handleTransactionScreenshotFileChange}
+          onTransactionScreenshotFileChange={
+            handleTransactionScreenshotFileChange
+          }
           onNotesChange={handleNotesChange}
           onRazorpayPayment={handleRazorpayPayment}
         />
@@ -143,17 +147,17 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="w-full"
-            size="lg"
+            className='w-full'
+            size='lg'
           >
             {isSubmitting ? (
               <>
-                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                <Clock className='h-4 w-4 mr-2 animate-spin' />
                 Submitting Payment...
               </>
             ) : (
               <>
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className='h-4 w-4 mr-2' />
                 Submit Payment
               </>
             )}

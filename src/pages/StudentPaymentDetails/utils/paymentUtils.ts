@@ -24,6 +24,22 @@ export const getPaymentMethods = (): PaymentMethod[] => {
       },
     },
     {
+      id: 'dd',
+      name: 'Demand Draft',
+      description: 'Pay using a demand draft',
+      instructions: [
+        'Get a DD made in favor of "Disruptive Edu Private Limited"',
+        'Include your student ID as reference',
+        'Submit the DD receipt at our office',
+      ],
+      accountDetails: {
+        bankName: 'HDFC Bank Limited',
+        accountNumber: '50200082405270',
+        ifscCode: 'HDFC0001079',
+        accountHolder: 'Disruptive Edu Private Limited',
+      },
+    },
+    {
       id: 'upi',
       name: 'UPI',
       description: 'Pay using any UPI app',

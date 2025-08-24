@@ -22,6 +22,7 @@ export interface PaymentMethodConfiguration {
   cheque_enabled: boolean;
   scan_to_pay_enabled: boolean;
   razorpay_enabled: boolean;
+  dd_enabled: boolean;
   bank_account_number?: string;
   bank_account_holder?: string;
   ifsc_code?: string;
@@ -168,6 +169,10 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         razorpay_payment_id: paymentData.razorpayPaymentId,
         razorpay_order_id: paymentData.razorpayOrderId,
         razorpay_signature: paymentData.razorpaySignature,
+        // DD-specific fields
+        dd_number: paymentData.ddNumber,
+        dd_bank_name: paymentData.ddBankName,
+        dd_branch: paymentData.ddBranch,
       };
 
       const { data, error } = await supabase

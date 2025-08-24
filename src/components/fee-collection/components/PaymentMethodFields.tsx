@@ -11,6 +11,10 @@ export interface PaymentMethodFieldsProps {
   bankBranch: string;
   accountNumber: string;
   transactionId: string;
+  // DD-specific fields
+  ddNumber: string;
+  ddBankName: string;
+  ddBranch: string;
   // File uploads
   receiptFile: File | null;
   proofOfPaymentFile: File | null;
@@ -24,6 +28,10 @@ export interface PaymentMethodFieldsProps {
   onBankBranchChange: (value: string) => void;
   onAccountNumberChange: (value: string) => void;
   onTransactionIdChange: (value: string) => void;
+  // DD-specific handlers
+  onDDNumberChange: (value: string) => void;
+  onDDBankNameChange: (value: string) => void;
+  onDDBranchChange: (value: string) => void;
   onReceiptFileChange: (file: File | null) => void;
   onProofOfPaymentFileChange: (file: File | null) => void;
   onTransactionScreenshotFileChange: (file: File | null) => void;
@@ -31,6 +39,8 @@ export interface PaymentMethodFieldsProps {
   onRazorpayPayment: () => void;
 }
 
-export const PaymentMethodFields: React.FC<PaymentMethodFieldsProps> = (props) => {
+export const PaymentMethodFields: React.FC<
+  PaymentMethodFieldsProps
+> = props => {
   return <PaymentMethodFieldFactory {...props} />;
 };
