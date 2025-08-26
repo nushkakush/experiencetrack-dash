@@ -119,7 +119,7 @@ export default function UserInvitationPage() {
         userId = data.user.id;
       } else {
         // New user - create account
-        // Validate email domain before creating account
+        // Validate email format before creating account
         if (!ValidationUtils.isValidSignupEmail(invitation.email)) {
           toast.error(ValidationUtils.getEmailDomainError());
           return;
@@ -257,11 +257,14 @@ export default function UserInvitationPage() {
         </CardHeader>
         <CardContent className='space-y-4'>
           <div className='text-center'>
-            <div className="flex justify-center mb-3">
+            <div className='flex justify-center mb-3'>
               <UserAvatar
                 avatarUrl={null}
-                name={`${invitation.first_name || ''} ${invitation.last_name || ''}`.trim() || invitation.email}
-                size="lg"
+                name={
+                  `${invitation.first_name || ''} ${invitation.last_name || ''}`.trim() ||
+                  invitation.email
+                }
+                size='lg'
               />
             </div>
             <p className='text-sm text-muted-foreground'>

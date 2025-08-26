@@ -32,78 +32,81 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
   onFirstNameChange,
   onLastNameChange,
   onTogglePassword,
-  onSubmit
+  onSubmit,
 }) => {
-  // Validate email domain
-  const isEmailValid = email === '' || ValidationUtils.isValidSignupEmail(email);
+  // Validate email format
+  const isEmailValid =
+    email === '' || ValidationUtils.isValidSignupEmail(email);
   const showEmailError = email !== '' && !isEmailValid;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="firstName" className="text-left block">First Name</Label>
+    <form onSubmit={onSubmit} className='space-y-4'>
+      <div className='grid grid-cols-2 gap-4'>
+        <div className='space-y-2'>
+          <Label htmlFor='firstName' className='text-left block'>
+            First Name
+          </Label>
           <Input
-            id="firstName"
+            id='firstName'
             value={firstName}
             onChange={onFirstNameChange}
-            placeholder="Enter first name"
-            autoComplete="given-name"
+            placeholder='Enter first name'
+            autoComplete='given-name'
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName" className="text-left block">Last Name</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='lastName' className='text-left block'>
+            Last Name
+          </Label>
           <Input
-            id="lastName"
+            id='lastName'
             value={lastName}
             onChange={onLastNameChange}
-            placeholder="Enter last name"
-            autoComplete="family-name"
+            placeholder='Enter last name'
+            autoComplete='family-name'
             required
           />
         </div>
       </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="signupEmail" className="text-left block">
-          Email <span className="text-sm text-muted-foreground">(@litschool.in only)</span>
+
+      <div className='space-y-2'>
+        <Label htmlFor='signupEmail' className='text-left block'>
+          Email
         </Label>
         <Input
-          id="signupEmail"
-          type="email"
+          id='signupEmail'
+          type='email'
           value={email}
           onChange={onEmailChange}
-          placeholder="Enter your @litschool.in email"
-          autoComplete="email"
+          placeholder='Enter your email address'
+          autoComplete='email'
           required
-          className={showEmailError ? 'border-red-500 focus:border-red-500' : ''}
+          className={
+            showEmailError ? 'border-red-500 focus:border-red-500' : ''
+          }
         />
         {showEmailError && (
-          <p className="text-sm text-red-500 mt-1">
+          <p className='text-sm text-red-500 mt-1'>
             {ValidationUtils.getEmailDomainError()}
           </p>
         )}
+        <p className='text-xs text-muted-foreground'>
+          {ValidationUtils.getLitschoolDomainMessage()}
+        </p>
       </div>
-      
+
       <PasswordField
-        id="signupPassword"
-        label="Password"
-        value={password}
-        onChange={onPasswordChange}
-        placeholder="Create a password"
+        password={password}
         showPassword={showSignupPassword}
+        onPasswordChange={onPasswordChange}
         onTogglePassword={onTogglePassword}
-        autoComplete="new-password"
+        placeholder='Create a password'
         required
       />
-      
-      <Button 
-        type="submit" 
-        className="w-full" 
-        disabled={loading || !isEmailValid || !email}
-      >
-        {loading ? 'Creating account...' : 'Sign Up'}
+
+      <Button type='submit' className='w-full' disabled={loading}>
+        {loading ? 'Creating Account...' : 'Create Account'}
       </Button>
     </form>
   );

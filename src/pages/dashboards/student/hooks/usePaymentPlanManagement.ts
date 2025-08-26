@@ -2,6 +2,7 @@ import { studentPaymentsService } from '@/services/studentPayments.service';
 import { CohortStudent } from '@/types/cohort';
 import { PaymentPlan } from '@/types/fee';
 import { logger } from '@/lib/logging/Logger';
+import { useFeatureFlag } from '@/lib/feature-flags';
 
 interface UsePaymentPlanManagementProps {
   studentData: CohortStudent;
@@ -16,6 +17,11 @@ export const usePaymentPlanManagement = ({
   setSelectedPaymentPlan,
   reloadStudentPayments,
 }: UsePaymentPlanManagementProps) => {
+  const { isEnabled: isCashDisabled } = useFeatureFlag(
+    'cash-payment-disabled',
+    { defaultValue: false }
+  );
+
   const handlePaymentPlanSelection = async (plan: string) => {
     if (!studentData?.cohort_id) return;
 
@@ -50,7 +56,13 @@ export const usePaymentPlanManagement = ({
 
   const getPaymentMethods = (): string[] => {
     // All payment plans now support all payment methods
-    return ['cash', 'bank_transfer', 'cheque', 'scan_to_pay', 'razorpay'];
+    return [
+      ...(isCashDisabled ? [] : ['cash']),
+      'bank_transfer',
+      'cheque',
+      'scan_to_pay',
+      'razorpay',
+    ];
   };
 
   return {

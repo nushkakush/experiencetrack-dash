@@ -7,7 +7,10 @@ export interface UseFeatureFlagOptions {
   context?: Partial<FeatureFlagContext>;
 }
 
-export function useFeatureFlag(flagId: string, options: UseFeatureFlagOptions = {}) {
+export function useFeatureFlag(
+  flagId: string,
+  options: UseFeatureFlagOptions = {}
+) {
   const { profile } = useAuth();
   const [isEnabled, setIsEnabled] = useState(options.defaultValue ?? false);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,8 +21,11 @@ export function useFeatureFlag(flagId: string, options: UseFeatureFlagOptions = 
       const context: FeatureFlagContext = {
         userId: profile?.user_id,
         userRole: profile?.role,
-        cohortId: profile?.cohort_id,
-        environment: process.env.NODE_ENV as 'development' | 'staging' | 'production',
+        userEmail: profile?.email,
+        environment: process.env.NODE_ENV as
+          | 'development'
+          | 'staging'
+          | 'production',
         ...options.context,
       };
 
@@ -46,7 +52,10 @@ export function useFeatureFlag(flagId: string, options: UseFeatureFlagOptions = 
 }
 
 // Hook for multiple feature flags
-export function useFeatureFlags(flagIds: string[], options: UseFeatureFlagOptions = {}) {
+export function useFeatureFlags(
+  flagIds: string[],
+  options: UseFeatureFlagOptions = {}
+) {
   const { profile } = useAuth();
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -57,18 +66,21 @@ export function useFeatureFlags(flagIds: string[], options: UseFeatureFlagOption
       const context: FeatureFlagContext = {
         userId: profile?.user_id,
         userRole: profile?.role,
-        cohortId: profile?.cohort_id,
-        environment: process.env.NODE_ENV as 'development' | 'staging' | 'production',
+        userEmail: profile?.email,
+        environment: process.env.NODE_ENV as
+          | 'development'
+          | 'staging'
+          | 'production',
         ...options.context,
       };
 
       featureFlagService.setContext(context);
-      
+
       const flagStates: Record<string, boolean> = {};
       flagIds.forEach(flagId => {
         flagStates[flagId] = featureFlagService.isEnabled(flagId);
       });
-      
+
       setFlags(flagStates);
     } catch (error) {
       console.error('Error checking feature flags:', error);
@@ -95,14 +107,19 @@ export function useFeatureFlags(flagIds: string[], options: UseFeatureFlagOption
 
 // Hook for feature flag metadata
 export function useFeatureFlagMetadata(flagId: string) {
-  const [metadata, setMetadata] = useState<Record<string, any> | null>(null);
+  const [metadata, setMetadata] = useState<Record<string, unknown> | null>(
+    null
+  );
 
   useEffect(() => {
     try {
       const flagMetadata = featureFlagService.getMetadata(flagId);
       setMetadata(flagMetadata);
     } catch (error) {
-      console.error(`Error getting metadata for feature flag '${flagId}':`, error);
+      console.error(
+        `Error getting metadata for feature flag '${flagId}':`,
+        error
+      );
       setMetadata(null);
     }
   }, [flagId]);
@@ -112,13 +129,15 @@ export function useFeatureFlagMetadata(flagId: string) {
 
 // Hook for all feature flags
 export function useAllFeatureFlags() {
-  const [allFlags, setAllFlags] = useState<Array<{
-    id: string;
-    name: string;
-    description: string;
-    enabled: boolean;
-    rolloutPercentage: number;
-  }>>([]);
+  const [allFlags, setAllFlags] = useState<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      enabled: boolean;
+      rolloutPercentage: number;
+    }>
+  >([]);
 
   useEffect(() => {
     try {

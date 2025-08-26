@@ -1,5 +1,10 @@
 import React from 'react';
-import { PaymentPlan, Scholarship, StudentScholarshipWithDetails, FeeStructure } from '@/types/fee';
+import {
+  PaymentPlan,
+  Scholarship,
+  StudentScholarshipWithDetails,
+  FeeStructure,
+} from '@/types/fee';
 import { supabase } from '@/integrations/supabase/client';
 import { AdmissionFeeSection } from '@/components/fee-collection/components/AdmissionFeeSection';
 import { OneShotPaymentSection } from '@/components/fee-collection/components/OneShotPaymentSection';
@@ -130,71 +135,102 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
     const run = async () => {
       try {
         setReviewLoading(true);
-        
+
         console.log('🎯 Student preview - Full fee structure received:', {
           feeStructure: feeStructure,
           hasOneShotDates: !!(feeStructure as any)?.one_shot_dates,
           hasSemWiseDates: !!(feeStructure as any)?.sem_wise_dates,
-          hasInstalmentWiseDates: !!(feeStructure as any)?.instalment_wise_dates,
+          hasInstalmentWiseDates: !!(feeStructure as any)
+            ?.instalment_wise_dates,
           oneShotDatesValue: (feeStructure as any)?.one_shot_dates,
           semWiseDatesValue: (feeStructure as any)?.sem_wise_dates,
-          instalmentWiseDatesValue: (feeStructure as any)?.instalment_wise_dates,
+          instalmentWiseDatesValue: (feeStructure as any)
+            ?.instalment_wise_dates,
         });
-        
-        console.log('🎯 Student preview calling payment engine with saved database dates:', {
-          cohortId: String(cohortId),
-          paymentPlan: selectedPlan,
-          scholarshipId: effectiveScholarshipId === 'no_scholarship' ? undefined : effectiveScholarshipId,
-          additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
-          feeStructureData: {
-            total_program_fee: feeStructure.total_program_fee,
-            admission_fee: feeStructure.admission_fee,
-            number_of_semesters: feeStructure.number_of_semesters,
-            instalments_per_semester: feeStructure.instalments_per_semester,
-            one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
-            one_shot_dates: (feeStructure as any).one_shot_dates,
-            sem_wise_dates: (feeStructure as any).sem_wise_dates,
-            instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
+
+        console.log(
+          '🎯 Student preview calling payment engine with saved database dates:',
+          {
+            cohortId: String(cohortId),
+            paymentPlan: selectedPlan,
+            scholarshipId:
+              effectiveScholarshipId === 'no_scholarship'
+                ? undefined
+                : effectiveScholarshipId,
+            additionalDiscountPercentage:
+              studentScholarship?.additional_discount_percentage || 0,
+            feeStructureData: {
+              total_program_fee: feeStructure.total_program_fee,
+              admission_fee: feeStructure.admission_fee,
+              number_of_semesters: feeStructure.number_of_semesters,
+              instalments_per_semester: feeStructure.instalments_per_semester,
+              one_shot_discount_percentage:
+                feeStructure.one_shot_discount_percentage,
+              program_fee_includes_gst:
+                (feeStructure as any).program_fee_includes_gst ?? true,
+              equal_scholarship_distribution:
+                (feeStructure as any).equal_scholarship_distribution ?? false,
+              one_shot_dates: (feeStructure as any).one_shot_dates,
+              sem_wise_dates: (feeStructure as any).sem_wise_dates,
+              instalment_wise_dates: (feeStructure as any)
+                .instalment_wise_dates,
+            },
           }
-        });
-        
+        );
+
         const paymentResult = await getFullPaymentView({
           cohortId: String(cohortId),
           paymentPlan: selectedPlan,
-          scholarshipId: effectiveScholarshipId === 'no_scholarship' ? undefined : effectiveScholarshipId,
-          additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+          scholarshipId:
+            effectiveScholarshipId === 'no_scholarship'
+              ? undefined
+              : effectiveScholarshipId,
+          additionalDiscountPercentage:
+            studentScholarship?.additional_discount_percentage || 0,
           // Pass complete fee structure data including saved dates to payment engine
           feeStructureData: {
             total_program_fee: feeStructure.total_program_fee,
             admission_fee: feeStructure.admission_fee,
             number_of_semesters: feeStructure.number_of_semesters,
             instalments_per_semester: feeStructure.instalments_per_semester,
-            one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
+            one_shot_discount_percentage:
+              feeStructure.one_shot_discount_percentage,
+            program_fee_includes_gst:
+              (feeStructure as any).program_fee_includes_gst ?? true,
+            equal_scholarship_distribution:
+              (feeStructure as any).equal_scholarship_distribution ?? false,
             one_shot_dates: (feeStructure as any).one_shot_dates,
             sem_wise_dates: (feeStructure as any).sem_wise_dates,
             instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
-          }
+          },
         });
-        
+
         const { breakdown } = paymentResult;
-        
+
         console.log('🎯 Payment engine RESPONSE breakdown received:', {
           breakdown: breakdown,
           admissionFeeDate: breakdown?.admissionFee,
           oneShotPaymentDate: breakdown?.oneShotPayment?.paymentDate,
           oneShotPaymentFull: breakdown?.oneShotPayment,
-          firstSemesterFirstInstallment: breakdown?.semesters?.[0]?.instalments?.[0]?.paymentDate,
+          firstSemesterFirstInstallment:
+            breakdown?.semesters?.[0]?.instalments?.[0]?.paymentDate,
           allSemesterDates: breakdown?.semesters?.map(s => ({
             semesterNumber: s.semesterNumber,
-            installmentDates: s.instalments?.map(inst => inst.paymentDate)
+            installmentDates: s.instalments?.map(inst => inst.paymentDate),
           })),
-          debugInfoFromPaymentEngine: (paymentResult as any)?.debug
+          debugInfoFromPaymentEngine: (paymentResult as any)?.debug,
         });
-        
+
         if (!cancelled) setFeeReview(breakdown);
       } catch (err) {
         console.error('payment-engine preview failed', err);
-        try { (await import('sonner')).toast?.error?.('Failed to load fee preview.'); } catch (_) {}
+        try {
+          (await import('sonner')).toast?.error?.(
+            'Failed to load fee preview.'
+          );
+        } catch (_) {
+          /* Ignore toast error */
+        }
         if (!cancelled) setFeeReview(null);
       } finally {
         if (!cancelled) setReviewLoading(false);
@@ -204,42 +240,19 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [cohortId, selectedPlan, cohortStartDate, effectiveScholarshipId, studentScholarship?.additional_discount_percentage, feeStructure]);
-
-  const computedReview = React.useMemo(() => {
-    if (!feeReview) return null;
-    const review = JSON.parse(JSON.stringify(feeReview));
-    if (studentScholarship && studentScholarship.scholarship) {
-      const baseScholarshipPercentage = studentScholarship.scholarship.amount_percentage || 0;
-      const additionalDiscountPercentage = studentScholarship.additional_discount_percentage || 0;
-      const totalDiscountPercentage = baseScholarshipPercentage + additionalDiscountPercentage;
-      const totalScholarshipAmount = (Number(feeStructure.total_program_fee) * totalDiscountPercentage) / 100;
-      review.overallSummary.totalScholarship = totalScholarshipAmount;
-      if (review.oneShotPayment) {
-        review.oneShotPayment.scholarshipAmount = totalScholarshipAmount;
-        const baseAmount = review.oneShotPayment.baseAmount;
-        const discountAmount = review.oneShotPayment.discountAmount;
-        const amountAfterDiscount = baseAmount - discountAmount;
-        const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
-        const gstAmount = (amountAfterScholarship * 18) / 100;
-        review.oneShotPayment.amountPayable = Math.max(0, amountAfterScholarship + gstAmount);
-        review.oneShotPayment.gstAmount = gstAmount;
-      }
-      const totalProgramFee = Number(feeStructure.total_program_fee);
-      const totalDiscount = review.overallSummary.totalDiscount;
-      const amountAfterDiscount = totalProgramFee - totalDiscount;
-      const amountAfterScholarship = amountAfterDiscount - totalScholarshipAmount;
-      const totalBaseGST = (amountAfterScholarship * 18) / 100;
-      review.overallSummary.totalGST = totalBaseGST;
-      review.overallSummary.totalAmountPayable = Math.max(0, amountAfterScholarship + totalBaseGST);
-    }
-    return review;
-  }, [feeReview, studentScholarship, feeStructure]);
+  }, [
+    cohortId,
+    selectedPlan,
+    cohortStartDate,
+    effectiveScholarshipId,
+    studentScholarship?.additional_discount_percentage,
+    feeStructure,
+  ]);
 
   const noop = () => {};
 
-  // Ensure all hooks are called before any early returns
-  const reviewData = React.useMemo(() => (computedReview || feeReview), [computedReview, feeReview]);
+  // Use payment engine results directly - no client-side overrides
+  const reviewData = feeReview;
 
   if (loading && (!scholarships || scholarships.length === 0)) {
     return (
@@ -278,7 +291,7 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
             cohortStartDate: cohortStartDate,
             oneShotPaymentFull: reviewData?.oneShotPayment,
             expectedCustomDate: '2025-08-19',
-            actualDateBeingRendered: reviewData?.oneShotPayment?.paymentDate
+            actualDateBeingRendered: reviewData?.oneShotPayment?.paymentDate,
           })}
           <OneShotPaymentSection
             oneShotPayment={reviewData?.oneShotPayment as OneShotPaymentData}
@@ -294,19 +307,27 @@ export const AdminLikePlanPreview: React.FC<AdminLikePlanPreviewProps> = ({
 
       {(selectedPlan === 'sem_wise' || selectedPlan === 'instalment_wise') && (
         <>
-          {console.log('🎯 UI RENDERING Semester/Installment Payment with dates:', {
-            selectedPlan: selectedPlan,
-            semesters: reviewData?.semesters,
-            firstSemesterDates: reviewData?.semesters?.[0]?.instalments?.map(inst => ({
-              installmentNumber: inst.installmentNumber || 'unknown',
-              paymentDate: inst.paymentDate,
-            })),
-            expectedCustomDates: selectedPlan === 'instalment_wise' ? ['2025-08-18', '2025-08-19', '2025-08-20'] : 'sem_wise_dates',
-            allSemesterInstallmentDates: reviewData?.semesters?.map(s => ({
-              semester: s.semesterNumber,
-              installments: s.instalments?.map(inst => inst.paymentDate)
-            }))
-          })}
+          {console.log(
+            '🎯 UI RENDERING Semester/Installment Payment with dates:',
+            {
+              selectedPlan: selectedPlan,
+              semesters: reviewData?.semesters,
+              firstSemesterDates: reviewData?.semesters?.[0]?.instalments?.map(
+                inst => ({
+                  installmentNumber: inst.installmentNumber || 'unknown',
+                  paymentDate: inst.paymentDate,
+                })
+              ),
+              expectedCustomDates:
+                selectedPlan === 'instalment_wise'
+                  ? ['2025-08-18', '2025-08-19', '2025-08-20']
+                  : 'sem_wise_dates',
+              allSemesterInstallmentDates: reviewData?.semesters?.map(s => ({
+                semester: s.semesterNumber,
+                installments: s.instalments?.map(inst => inst.paymentDate),
+              })),
+            }
+          )}
           {reviewData?.semesters.map((semester: SemesterData) => (
             <SemesterSection
               key={semester.semesterNumber}

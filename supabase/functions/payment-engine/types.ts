@@ -1,5 +1,11 @@
 // Types for the payment engine
-export type Action = 'breakdown' | 'status' | 'full' | 'partial_calculation' | 'admin_partial_approval' | 'partial_config';
+export type Action =
+  | 'breakdown'
+  | 'status'
+  | 'full'
+  | 'partial_calculation'
+  | 'admin_partial_approval'
+  | 'partial_config';
 
 export type PaymentPlan = 'one_shot' | 'sem_wise' | 'instalment_wise';
 
@@ -33,8 +39,9 @@ export type EdgeRequest = {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
+    program_fee_includes_gst: boolean;
+    equal_scholarship_distribution: boolean;
     // Custom dates configuration (optional in preview mode)
-    custom_dates_enabled?: boolean;
     one_shot_dates?: Record<string, unknown>; // JSON data for one-shot payment dates
     sem_wise_dates?: Record<string, unknown>; // JSON data for semester-wise payment dates
     instalment_wise_dates?: Record<string, unknown>; // JSON data for installment-wise payment dates
@@ -46,6 +53,8 @@ export type InstallmentView = {
   baseAmount: number;
   scholarshipAmount: number;
   discountAmount: number;
+  baseDiscountAmount: number; // Base one-shot discount only
+  additionalDiscountAmount: number; // Additional discount only
   gstAmount: number;
   amountPayable: number;
   // enriched
@@ -103,7 +112,9 @@ export type EdgeResponse = {
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
     is_setup_complete: boolean;
-    custom_dates_enabled: boolean;
+    program_fee_includes_gst: boolean;
+    equal_scholarship_distribution: boolean;
+
     one_shot_dates: Record<string, unknown>;
     sem_wise_dates: Record<string, unknown>;
     instalment_wise_dates: Record<string, unknown>;
@@ -132,7 +143,9 @@ export type FeeStructure = {
   instalments_per_semester: number;
   one_shot_discount_percentage: number;
   is_setup_complete?: boolean;
-  custom_dates_enabled?: boolean;
+  program_fee_includes_gst: boolean;
+  equal_scholarship_distribution: boolean;
+
   one_shot_dates?: Record<string, unknown>;
   sem_wise_dates?: Record<string, unknown>;
   instalment_wise_dates?: Record<string, unknown>;

@@ -33,6 +33,18 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
   student,
   feeStructure,
 }) => {
+  console.log('🔍 [NextDueCell] Component rendered with:', {
+    student_id: student.student_id,
+    payment_plan: student.payment_plan,
+    total_amount: student.total_amount,
+    paid_amount: student.paid_amount,
+    has_payment_engine_breakdown: !!(
+      student as { payment_engine_breakdown?: unknown }
+    ).payment_engine_breakdown,
+    payment_engine_breakdown: (
+      student as { payment_engine_breakdown?: unknown }
+    ).payment_engine_breakdown,
+  });
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -106,21 +118,56 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       return null;
     }
 
-    // Use payment engine breakdown if available (more accurate)
-    if ((student as any).payment_engine_breakdown) {
-      const breakdown = (student as any).payment_engine_breakdown;
-      
+    // FIXED: Use payment engine breakdown if available (more accurate)
+    if (
+      (student as { payment_engine_breakdown?: unknown })
+        .payment_engine_breakdown
+    ) {
+      const breakdown = (student as { payment_engine_breakdown?: unknown })
+        .payment_engine_breakdown;
+
+      console.log('🔍 [NextDueCell] Using payment engine breakdown:', {
+        student_id: student.student_id,
+        has_breakdown: !!breakdown,
+        has_semesters: !!(
+          breakdown?.semesters && Array.isArray(breakdown.semesters)
+        ),
+        semesters_count: breakdown?.semesters?.length || 0,
+      });
+
       // Find the next pending installment from the breakdown
       if (breakdown.semesters && Array.isArray(breakdown.semesters)) {
         for (const semester of breakdown.semesters) {
           if (semester.instalments && Array.isArray(semester.instalments)) {
             for (const installment of semester.instalments) {
-              // Check if this installment is pending (not paid)
-              if (installment.status !== 'paid' && installment.amountPending > 0) {
+              console.log('🔍 [NextDueCell] Checking installment:', {
+                semester_number: semester.semesterNumber,
+                installment_number: installment.installmentNumber,
+                status: installment.status,
+                amountPayable: installment.amountPayable,
+                amountPending: installment.amountPending,
+                amountPaid: installment.amountPaid,
+              });
+
+              // Check if this installment is pending (not paid) and has pending amount
+              if (
+                installment.status !== 'paid' &&
+                (installment.amountPending > 0 || installment.amountPayable > 0)
+              ) {
+                console.log('🔍 [NextDueCell] Found next due installment:', {
+                  semester_number: semester.semesterNumber,
+                  installment_number: installment.installmentNumber,
+                  amount_payable: installment.amountPayable,
+                  due_date: installment.paymentDate,
+                });
+
                 return {
                   payment_type: 'program_fee' as PaymentType,
-                  due_date: installment.paymentDate || new Date().toISOString().split('T')[0],
-                  amount_payable: installment.amountPayable || installment.amountPending,
+                  due_date:
+                    installment.paymentDate ||
+                    new Date().toISOString().split('T')[0],
+                  amount_payable:
+                    installment.amountPayable || installment.amountPending,
                   installment_number: installment.installmentNumber,
                   semester_number: semester.semesterNumber,
                 };
@@ -136,11 +183,14 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       // Calculate which installment should be next based on total paid amount
       const totalPaid = Number(student.paid_amount) || 0;
       const totalPayable = Number(student.total_amount) || 0;
-      const scheduleInstallments = Array.isArray(student.payment_schedule?.installments)
+      const scheduleInstallments = Array.isArray(
+        student.payment_schedule?.installments
+      )
         ? student.payment_schedule!.installments.length
         : 12; // default to 12 when unknown
       const totalInstallments = Math.max(1, scheduleInstallments);
-      const installmentAmount = totalInstallments > 0 ? totalPayable / totalInstallments : 0;
+      const installmentAmount =
+        totalInstallments > 0 ? totalPayable / totalInstallments : 0;
 
       if (!isFinite(installmentAmount) || installmentAmount <= 0) {
         const today = new Date();
@@ -167,7 +217,8 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
             payment_type: 'program_fee' as PaymentType,
             due_date: nextInstallment.due_date,
             amount_payable: Number(nextInstallment.amount) || installmentAmount,
-            installment_number: nextInstallment.installment_number || nextInstallmentNumber,
+            installment_number:
+              nextInstallment.installment_number || nextInstallmentNumber,
           };
         }
       }
@@ -175,7 +226,9 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       // Fallback calculation with guard against invalid dates
       const nextDueDate = new Date();
       if (isFinite(nextInstallmentNumber)) {
-        nextDueDate.setMonth(nextDueDate.getMonth() + (nextInstallmentNumber - 1));
+        nextDueDate.setMonth(
+          nextDueDate.getMonth() + (nextInstallmentNumber - 1)
+        );
       }
       const dueDateStr = isNaN(nextDueDate.getTime())
         ? new Date().toISOString().split('T')[0]
@@ -195,7 +248,8 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
         p.status !== 'pending' &&
         p.status !== 'overdue' &&
         p.status !== 'partially_paid_overdue'
-      ) return false;
+      )
+        return false;
       if (!p.due_date) return false;
       const t = new Date(p.due_date).getTime();
       return !isNaN(t);

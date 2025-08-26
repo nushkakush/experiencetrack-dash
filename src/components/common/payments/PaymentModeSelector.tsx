@@ -15,6 +15,7 @@ import {
   CreditCard,
   QrCode,
 } from 'lucide-react';
+import { useFeatureFlag } from '@/lib/feature-flags';
 
 export interface PaymentModeSelectorProps {
   selectedPaymentMode: string;
@@ -37,6 +38,11 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
   onRemoveFile,
   errors,
 }) => {
+  const { isEnabled: isCashDisabled } = useFeatureFlag(
+    'cash-payment-disabled',
+    { defaultValue: false }
+  );
+
   const handlePaymentModeChange = (mode: string) => {
     console.log(
       '🔍 [DEBUG] PaymentModeSelector - handlePaymentModeChange called with mode:',
@@ -68,12 +74,14 @@ export const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
                 Bank Transfer
               </div>
             </SelectItem>
-            <SelectItem value='cash'>
-              <div className='flex items-center gap-2'>
-                <DollarSign className='h-4 w-4' />
-                Cash
-              </div>
-            </SelectItem>
+            {!isCashDisabled && (
+              <SelectItem value='cash'>
+                <div className='flex items-center gap-2'>
+                  <DollarSign className='h-4 w-4' />
+                  Cash
+                </div>
+              </SelectItem>
+            )}
             <SelectItem value='cheque'>
               <div className='flex items-center gap-2'>
                 <FileText className='h-4 w-4' />

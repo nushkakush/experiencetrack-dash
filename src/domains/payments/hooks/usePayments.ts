@@ -5,7 +5,12 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useApiQuery, useApiMutation } from '@/shared/hooks/useApiQuery';
-import { paymentService, PaymentFilters, Payment, PaymentStats } from '../services/PaymentService';
+import {
+  paymentService,
+  PaymentFilters,
+  Payment,
+  PaymentStats,
+} from '../services/PaymentService';
 
 export interface UsePaymentsOptions {
   cohortId?: string;
@@ -16,7 +21,7 @@ export interface UsePaymentsOptions {
 
 export function usePayments(options: UsePaymentsOptions = {}) {
   const { cohortId, studentId, enabled = true, autoRefresh = false } = options;
-  
+
   const [filters, setFilters] = useState<PaymentFilters>({
     cohortId,
     studentId,
@@ -38,12 +43,16 @@ export function usePayments(options: UsePaymentsOptions = {}) {
   });
 
   // Payment statistics
-  const {
-    data: stats,
-    isLoading: statsLoading,
-  } = useApiQuery({
+  const { data: stats, isLoading: statsLoading } = useApiQuery({
     queryKey: ['paymentStats', cohortId],
-    queryFn: () => cohortId ? paymentService.getCohortPaymentStats(cohortId) : Promise.resolve({ data: null, success: false, error: 'No cohort ID' }),
+    queryFn: () =>
+      cohortId
+        ? paymentService.getCohortPaymentStats(cohortId)
+        : Promise.resolve({
+            data: null,
+            success: false,
+            error: 'No cohort ID',
+          }),
     enabled: !!cohortId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -57,9 +66,13 @@ export function usePayments(options: UsePaymentsOptions = {}) {
 
   // Update payment status mutation
   const updateStatusMutation = useApiMutation({
-    mutationFn: ({ paymentId, status, transactionId }: { 
-      paymentId: string; 
-      status: Payment['status']; 
+    mutationFn: ({
+      paymentId,
+      status,
+      transactionId,
+    }: {
+      paymentId: string;
+      status: Payment['status'];
       transactionId?: string;
     }) => paymentService.updatePaymentStatus(paymentId, status, transactionId),
     successMessage: 'Payment status updated',
@@ -75,18 +88,23 @@ export function usePayments(options: UsePaymentsOptions = {}) {
 
   // Reject payment mutation
   const rejectPaymentMutation = useApiMutation({
-    mutationFn: ({ paymentId, reason }: { paymentId: string; reason?: string }) => 
-      paymentService.rejectPayment(paymentId, reason),
+    mutationFn: ({
+      paymentId,
+      reason,
+    }: {
+      paymentId: string;
+      reason?: string;
+    }) => paymentService.rejectPayment(paymentId, reason),
     successMessage: 'Payment rejected',
     invalidateQueries: [['payments'], ['paymentStats']],
   });
 
   // Filter and sort payments
   const filteredPayments = useMemo(() => {
-    let filtered = [...payments];
+    const filtered = [...payments];
 
     // Additional client-side filtering can be added here
-    
+
     return filtered;
   }, [payments]);
 
@@ -118,27 +136,43 @@ export function usePayments(options: UsePaymentsOptions = {}) {
   }, []);
 
   // Actions
-  const submitPayment = useCallback((paymentData: Parameters<typeof paymentService.submitPayment>[0]) => {
-    return submitPaymentMutation.mutateAsync(paymentData);
-  }, [submitPaymentMutation]);
+  const submitPayment = useCallback(
+    (paymentData: Parameters<typeof paymentService.submitPayment>[0]) => {
+      return submitPaymentMutation.mutateAsync(paymentData);
+    },
+    [submitPaymentMutation]
+  );
 
-  const updatePaymentStatus = useCallback((paymentId: string, status: Payment['status'], transactionId?: string) => {
-    return updateStatusMutation.mutateAsync({ paymentId, status, transactionId });
-  }, [updateStatusMutation]);
+  const updatePaymentStatus = useCallback(
+    (paymentId: string, status: Payment['status'], transactionId?: string) => {
+      return updateStatusMutation.mutateAsync({
+        paymentId,
+        status,
+        transactionId,
+      });
+    },
+    [updateStatusMutation]
+  );
 
-  const approvePayment = useCallback((paymentId: string) => {
-    return approvePaymentMutation.mutateAsync(paymentId);
-  }, [approvePaymentMutation]);
+  const approvePayment = useCallback(
+    (paymentId: string) => {
+      return approvePaymentMutation.mutateAsync(paymentId);
+    },
+    [approvePaymentMutation]
+  );
 
-  const rejectPayment = useCallback((paymentId: string, reason?: string) => {
-    return rejectPaymentMutation.mutateAsync({ paymentId, reason });
-  }, [rejectPaymentMutation]);
+  const rejectPayment = useCallback(
+    (paymentId: string, reason?: string) => {
+      return rejectPaymentMutation.mutateAsync({ paymentId, reason });
+    },
+    [rejectPaymentMutation]
+  );
 
   return {
     // Data
     payments: filteredPayments,
     stats: stats as PaymentStats | undefined,
-    
+
     // Loading states
     isLoading,
     statsLoading,
@@ -146,10 +180,10 @@ export function usePayments(options: UsePaymentsOptions = {}) {
     isUpdatingStatus: updateStatusMutation.isPending,
     isApprovingPayment: approvePaymentMutation.isPending,
     isRejectingPayment: rejectPaymentMutation.isPending,
-    
+
     // Error states
     error,
-    
+
     // Filters and pagination
     filters,
     updateFilters,
@@ -157,7 +191,7 @@ export function usePayments(options: UsePaymentsOptions = {}) {
     prevPage,
     goToPage,
     currentPage: Math.floor((filters.offset || 0) / (filters.limit || 50)) + 1,
-    
+
     // Actions
     submitPayment,
     updatePaymentStatus,
@@ -184,14 +218,27 @@ export function usePaymentVerifications(cohortId?: string) {
   const approveMutation = useApiMutation({
     mutationFn: paymentService.approvePayment.bind(paymentService),
     successMessage: 'Payment approved',
-    invalidateQueries: [['pendingVerifications'], ['payments'], ['paymentStats']],
+    invalidateQueries: [
+      ['pendingVerifications'],
+      ['payments'],
+      ['paymentStats'],
+    ],
   });
 
   const rejectMutation = useApiMutation({
-    mutationFn: ({ paymentId, reason }: { paymentId: string; reason?: string }) => 
-      paymentService.rejectPayment(paymentId, reason),
+    mutationFn: ({
+      paymentId,
+      reason,
+    }: {
+      paymentId: string;
+      reason?: string;
+    }) => paymentService.rejectPayment(paymentId, reason),
     successMessage: 'Payment rejected',
-    invalidateQueries: [['pendingVerifications'], ['payments'], ['paymentStats']],
+    invalidateQueries: [
+      ['pendingVerifications'],
+      ['payments'],
+      ['paymentStats'],
+    ],
   });
 
   return {
@@ -220,12 +267,12 @@ export function useStudentPaymentPlan(studentId: string) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const {
-    data: schedule = [],
-    isLoading: scheduleLoading,
-  } = useApiQuery({
+  const { data: schedule = [], isLoading: scheduleLoading } = useApiQuery({
     queryKey: ['paymentSchedule', paymentPlan?.id],
-    queryFn: () => paymentPlan?.id ? paymentService.getPaymentSchedule(paymentPlan.id) : Promise.resolve({ data: [], success: true, error: null }),
+    queryFn: () =>
+      paymentPlan?.id
+        ? paymentService.getPaymentSchedule(paymentPlan.id)
+        : Promise.resolve({ data: [], success: true, error: null }),
     enabled: !!paymentPlan?.id,
     staleTime: 5 * 60 * 1000,
   });

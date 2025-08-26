@@ -10,7 +10,7 @@ import {
   AttendanceManagementSection,
   FeeManagementSection,
   SystemAdministrationSection,
-  PermissionTestingSection
+  PermissionTestingSection,
 } from './feature-permission';
 
 /**
@@ -38,33 +38,31 @@ export const FeaturePermissionExample: React.FC = () => {
   };
 
   const testPermission = (feature: string) => {
-    const hasAccess = hasPermission(feature as any);
-    toast(
-      hasAccess ? 'Permission granted' : 'Permission denied',
-      {
-        description: `Testing: ${feature}`,
-        icon: hasAccess ? '✅' : '❌',
-      }
-    );
+    const hasAccess = hasPermission(feature as string);
+    toast(hasAccess ? 'Permission granted' : 'Permission denied', {
+      description: `Testing: ${feature}`,
+      icon: hasAccess ? '✅' : '❌',
+    });
   };
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className='flex items-center justify-between'>
         <div>
-          <h1 className="text-3xl font-bold">Feature Permission System Demo</h1>
-          <p className="text-muted-foreground">
-            This page demonstrates the scalable and maintainable feature permission system
+          <h1 className='text-3xl font-bold'>Feature Permission System Demo</h1>
+          <p className='text-muted-foreground'>
+            This page demonstrates the scalable and maintainable feature
+            permission system
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+        <div className='flex gap-2'>
+          <Button
+            variant='outline'
             onClick={() => setShowDebug(!showDebug)}
-            className="gap-2"
+            className='gap-2'
           >
-            <Shield className="h-4 w-4" />
+            <Shield className='h-4 w-4' />
             {showDebug ? 'Hide' : 'Show'} Debug Panel
           </Button>
         </div>
@@ -72,7 +70,10 @@ export const FeaturePermissionExample: React.FC = () => {
 
       {/* Debug Panel */}
       {showDebug && (
-        <FeaturePermissionDebug show={showDebug} onClose={() => setShowDebug(false)} />
+        <FeaturePermissionDebug
+          show={showDebug}
+          onClose={() => setShowDebug(false)}
+        />
       )}
 
       {/* Permission Overview */}

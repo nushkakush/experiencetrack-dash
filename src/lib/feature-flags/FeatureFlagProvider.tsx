@@ -4,9 +4,11 @@ import React, {
   useEffect,
   useState,
   ReactNode,
+  useMemo,
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { featureFlagService, FeatureFlagContext } from './FeatureFlagService';
+import { featureFlagService } from './FeatureFlagService';
+import type { FeatureFlagContext } from './FeatureFlagService';
 
 interface FeatureFlagContextType {
   isEnabled: (flagId: string) => boolean;
@@ -33,30 +35,25 @@ export function FeatureFlagProvider({
   initialContext = {},
 }: FeatureFlagProviderProps) {
   const { profile } = useAuth();
-  const [context, setContext] = useState<FeatureFlagContext>({
-    environment: process.env.NODE_ENV as
-      | 'development'
-      | 'staging'
-      | 'production',
-    ...initialContext,
-  });
 
-  useEffect(() => {
-    // Update context when profile changes
-    const newContext: FeatureFlagContext = {
+  // Create context directly without state management
+  const contextValue: FeatureFlagContext = useMemo(
+    () => ({
       userId: profile?.user_id,
       userRole: profile?.role,
-      cohortId: profile?.cohort_id,
+      userEmail: profile?.email,
       environment: process.env.NODE_ENV as
         | 'development'
         | 'staging'
         | 'production',
-      ...initialContext,
-    };
+    }),
+    [profile?.user_id, profile?.role, profile?.email]
+  );
 
-    setContext(newContext);
-    featureFlagService.setContext(newContext);
-  }, [profile, initialContext]);
+  // Update the service context when context changes
+  useEffect(() => {
+    featureFlagService.setContext(contextValue);
+  }, [contextValue]);
 
   const isEnabled = (flagId: string): boolean => {
     return featureFlagService.isEnabled(flagId);
@@ -70,12 +67,15 @@ export function FeatureFlagProvider({
     return featureFlagService.getAllFlags();
   };
 
-  const value: FeatureFlagContextType = {
-    isEnabled,
-    getMetadata,
-    getAllFlags,
-    context,
-  };
+  const value: FeatureFlagContextType = useMemo(
+    () => ({
+      isEnabled,
+      getMetadata,
+      getAllFlags,
+      context: contextValue,
+    }),
+    [contextValue]
+  );
 
   return (
     <FeatureFlagContext.Provider value={value}>

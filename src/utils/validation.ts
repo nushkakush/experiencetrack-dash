@@ -15,17 +15,20 @@ export class ValidationUtils {
   }
 
   /**
-   * Validate email domain for signup (only @litschool.in allowed)
+   * Validate email domain for signup (any domain allowed)
    */
   static isValidSignupEmail(email: string): boolean {
     const trimmedEmail = email.trim().toLowerCase();
-    
-    // First check if it's a valid email format
-    if (!this.isValidEmail(trimmedEmail)) {
-      return false;
-    }
-    
-    // Check if the domain is @litschool.in
+
+    // Check if it's a valid email format
+    return this.isValidEmail(trimmedEmail);
+  }
+
+  /**
+   * Check if email is from litschool.in domain
+   */
+  static isLitschoolEmail(email: string): boolean {
+    const trimmedEmail = email.trim().toLowerCase();
     return trimmedEmail.endsWith('@litschool.in');
   }
 
@@ -33,7 +36,14 @@ export class ValidationUtils {
    * Get email domain validation error message
    */
   static getEmailDomainError(): string {
-    return 'Only @litschool.in email addresses are allowed for signup';
+    return 'Please enter a valid email address';
+  }
+
+  /**
+   * Get litschool domain requirement message
+   */
+  static getLitschoolDomainMessage(): string {
+    return 'Only @litschool.in email addresses have full dashboard access';
   }
 
   /**
@@ -83,7 +93,10 @@ export class ValidationUtils {
   /**
    * Validate required fields
    */
-  static validateRequired(value: unknown, fieldName: string): ValidationError | null {
+  static validateRequired(
+    value: unknown,
+    fieldName: string
+  ): ValidationError | null {
     if (value === null || value === undefined || value === '') {
       return {
         field: fieldName,
@@ -125,7 +138,7 @@ export class ValidationUtils {
    * Validate phone number format
    */
   static isValidPhone(phone: string): boolean {
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+    const phoneRegex = /^\+?[\d\s\-()]{10,}$/;
     return phoneRegex.test(phone.trim());
   }
 
@@ -163,7 +176,11 @@ export class ValidationUtils {
     } = {}
   ): ValidationError[] {
     const errors: ValidationError[] = [];
-    const { maxSize = 5 * 1024 * 1024, allowedTypes = [], allowedExtensions = [] } = options;
+    const {
+      maxSize = 5 * 1024 * 1024,
+      allowedTypes = [],
+      allowedExtensions = [],
+    } = options;
 
     if (file.size > maxSize) {
       errors.push({
@@ -195,7 +212,9 @@ export class ValidationUtils {
   /**
    * Combine multiple validation results
    */
-  static combineValidationResults(...results: (ValidationError | ValidationError[] | null)[]): ValidationError[] {
+  static combineValidationResults(
+    ...results: (ValidationError | ValidationError[] | null)[]
+  ): ValidationError[] {
     const allErrors: ValidationError[] = [];
 
     results.forEach(result => {

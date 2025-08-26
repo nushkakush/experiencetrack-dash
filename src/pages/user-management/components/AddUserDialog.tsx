@@ -213,11 +213,11 @@ export default function AddUserDialog({
               type='email'
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
-              placeholder='user@litschool.in'
+              placeholder='user@example.com'
               className='w-full'
             />
             <p className='text-xs text-muted-foreground'>
-              Only @litschool.in email addresses are allowed for signup
+              {ValidationUtils.getLitschoolDomainMessage()}
             </p>
           </div>
 

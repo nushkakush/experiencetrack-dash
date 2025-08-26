@@ -68,6 +68,8 @@ export interface PaymentTransactionRow {
   partial_payment_sequence: number | null;
   // User tracking fields
   recorded_by_user_id: string | null; // Who initiated/recorded the payment (student vs admin)
+  // Admin invoice tracking
+  lit_invoice_id: string | null; // Reference to admin-uploaded invoice in payment_invoices table
 }
 
 // Communication History Types (from CommunicationHistoryTable)
@@ -110,6 +112,22 @@ export interface CohortScholarshipRow {
   start_percentage: number;
   end_percentage: number;
   created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Payment Invoice Types (from PaymentInvoiceTable)
+export interface PaymentInvoiceRow {
+  id: string;
+  payment_transaction_id: string;
+  student_id: string;
+  cohort_id: string;
+  invoice_file_url: string;
+  invoice_file_name: string;
+  invoice_file_size: number;
+  invoice_file_type: string;
+  uploaded_by: string;
+  uploaded_at: string;
   created_at: string;
   updated_at: string;
 }

@@ -28,7 +28,9 @@ interface CohortStudentsTableProps {
     studentId: string,
     updates: Partial<CohortStudent>
   ) => void;
+  onScholarshipAssigned?: () => void;
   loading?: boolean;
+  isRefreshing?: boolean;
   cohortName?: string;
 }
 
@@ -37,7 +39,9 @@ export default function CohortStudentsTable({
   scholarships = [],
   onStudentDeleted,
   onStudentUpdated,
+  onScholarshipAssigned,
   loading = false,
+  isRefreshing = false,
   cohortName,
 }: CohortStudentsTableProps) {
   const {
@@ -93,6 +97,7 @@ export default function CohortStudentsTable({
     scholarships,
     onStudentDeleted,
     onStudentUpdated,
+    onScholarshipAssigned,
     cohortName,
   });
 
@@ -148,16 +153,26 @@ export default function CohortStudentsTable({
             onClearFilters={clearFilters}
           />
 
-          <div className="text-center py-8">
-            <div className="h-12 w-12 text-gray-400 mx-auto mb-4">
-              <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <div className='text-center py-8'>
+            <div className='h-12 w-12 text-gray-400 mx-auto mb-4'>
+              <svg
+                className='h-12 w-12'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>
               No Students Match Your Search
             </h3>
-            <p className="text-gray-600">
+            <p className='text-gray-600'>
               Try adjusting your search terms or filters.
             </p>
           </div>
@@ -186,8 +201,16 @@ export default function CohortStudentsTable({
 
       {/* Results Summary */}
       <div className='flex items-center justify-between'>
-        <div className='text-sm text-muted-foreground'>
-          {filteredStudents.length} of {students.length} students
+        <div className='flex items-center gap-2'>
+          <div className='text-sm text-muted-foreground'>
+            {filteredStudents.length} of {students.length} students
+          </div>
+          {isRefreshing && (
+            <div className='flex items-center gap-1 text-xs text-blue-600'>
+              <div className='h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent'></div>
+              <span>Refreshing...</span>
+            </div>
+          )}
         </div>
       </div>
 

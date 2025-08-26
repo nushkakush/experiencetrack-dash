@@ -247,6 +247,13 @@ export class PaymentQueryService {
                   one_shot_discount_percentage: (
                     feeStructureToUse as Record<string, unknown>
                   ).one_shot_discount_percentage as number,
+                  // FIXED: Add missing toggle fields for accurate payment engine calculations
+                  program_fee_includes_gst:
+                    (feeStructureToUse as Record<string, unknown>)
+                      .program_fee_includes_gst ?? true,
+                  equal_scholarship_distribution:
+                    (feeStructureToUse as Record<string, unknown>)
+                      .equal_scholarship_distribution ?? false,
                   one_shot_dates: (feeStructureToUse as Record<string, unknown>)
                     .one_shot_dates as Record<string, string>,
                   sem_wise_dates: (feeStructureToUse as Record<string, unknown>)
@@ -282,6 +289,13 @@ export class PaymentQueryService {
                     one_shot_discount_percentage: (
                       feeStructureToUse as Record<string, unknown>
                     ).one_shot_discount_percentage as number,
+                    // FIXED: Include toggle fields in debug logging
+                    program_fee_includes_gst:
+                      (feeStructureToUse as Record<string, unknown>)
+                        .program_fee_includes_gst ?? true,
+                    equal_scholarship_distribution:
+                      (feeStructureToUse as Record<string, unknown>)
+                        .equal_scholarship_distribution ?? false,
                   },
                 }
               );

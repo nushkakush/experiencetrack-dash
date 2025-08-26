@@ -7,8 +7,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://ghmpaghyasyllfvamfna.supabase.co";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "your-service-role-key";
+const SUPABASE_URL = 'https://ghmpaghyasyllfvamfna.supabase.co';
+const SUPABASE_SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key';
 
 const COHORT_ID = 'f56dfcd5-197d-4186-97e9-712311c73bc9';
 
@@ -16,8 +17,8 @@ const COHORT_ID = 'f56dfcd5-197d-4186-97e9-712311c73bc9';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 interface PaymentInstallment {
@@ -46,13 +47,18 @@ interface PaymentSchedule {
 
 function calculatePaymentSchedule(
   paymentPlan: string,
-  feeStructure: any,
+  feeStructure: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+  },
   startDate: string,
   scholarshipPercentage: number
 ): PaymentSchedule {
   const totalProgramFee = Number(feeStructure.total_program_fee);
   const admissionFee = Number(feeStructure.admission_fee);
-  
+
   const totalDiscount = scholarshipPercentage;
   const discountAmount = (totalProgramFee * totalDiscount) / 100;
   const finalProgramFee = totalProgramFee - discountAmount;
@@ -68,15 +74,15 @@ function calculatePaymentSchedule(
       amount: totalAmount,
       status: 'pending',
       amount_paid: 0,
-      amount_pending: totalAmount
+      amount_pending: totalAmount,
     });
   } else if (paymentPlan === 'sem_wise') {
     const semesterAmount = finalProgramFee / feeStructure.number_of_semesters;
-    
+
     for (let i = 0; i < feeStructure.number_of_semesters; i++) {
       const dueDate = new Date(startDateObj);
-      dueDate.setMonth(startDateObj.getMonth() + (i * 6));
-      
+      dueDate.setMonth(startDateObj.getMonth() + i * 6);
+
       installments.push({
         installment_number: i + 1,
         semester_number: i + 1,
@@ -84,19 +90,21 @@ function calculatePaymentSchedule(
         amount: semesterAmount,
         status: 'pending',
         amount_paid: 0,
-        amount_pending: semesterAmount
+        amount_pending: semesterAmount,
       });
     }
   } else if (paymentPlan === 'instalment_wise') {
-    const totalInstallments = feeStructure.number_of_semesters * feeStructure.instalments_per_semester;
+    const totalInstallments =
+      feeStructure.number_of_semesters * feeStructure.instalments_per_semester;
     const installmentAmount = finalProgramFee / totalInstallments;
-    
+
     for (let i = 0; i < totalInstallments; i++) {
       const dueDate = new Date(startDateObj);
       dueDate.setMonth(startDateObj.getMonth() + i);
-      
-      const semesterNumber = Math.floor(i / feeStructure.instalments_per_semester) + 1;
-      
+
+      const semesterNumber =
+        Math.floor(i / feeStructure.instalments_per_semester) + 1;
+
       installments.push({
         installment_number: i + 1,
         semester_number: semesterNumber,
@@ -104,7 +112,7 @@ function calculatePaymentSchedule(
         amount: installmentAmount,
         status: 'pending',
         amount_paid: 0,
-        amount_pending: installmentAmount
+        amount_pending: installmentAmount,
       });
     }
   }
@@ -119,12 +127,14 @@ function calculatePaymentSchedule(
       total_installments: installments.length,
       next_due_date: installments[0]?.due_date,
       next_due_amount: installments[0]?.amount,
-      completion_percentage: 0
-    }
+      completion_percentage: 0,
+    },
   };
 }
 
-async function getScholarshipPercentage(scholarshipId: string): Promise<number> {
+async function getScholarshipPercentage(
+  scholarshipId: string
+): Promise<number> {
   try {
     const { data: scholarship, error } = await supabase
       .from('cohort_scholarships')
@@ -147,7 +157,7 @@ async function getScholarshipPercentage(scholarshipId: string): Promise<number> 
 async function fixPaymentSchedules() {
   try {
     console.log('🔄 Starting payment schedule fix for cohort:', COHORT_ID);
-    
+
     // Get all student payments for the cohort
     const { data: studentPayments, error: fetchError } = await supabase
       .from('student_payments')
@@ -164,7 +174,9 @@ async function fixPaymentSchedules() {
       return;
     }
 
-    console.log(`📊 Found ${studentPayments.length} student payments to update`);
+    console.log(
+      `📊 Found ${studentPayments.length} student payments to update`
+    );
 
     // Get fee structure and cohort data
     const { data: feeStructure, error: feeError } = await supabase
@@ -196,11 +208,13 @@ async function fixPaymentSchedules() {
     for (const studentPayment of studentPayments) {
       try {
         console.log(`🔄 Processing student: ${studentPayment.student_id}`);
-        
+
         // Get scholarship percentage if applicable
         let scholarshipPercentage = 0;
         if (studentPayment.scholarship_id) {
-          scholarshipPercentage = await getScholarshipPercentage(studentPayment.scholarship_id);
+          scholarshipPercentage = await getScholarshipPercentage(
+            studentPayment.scholarship_id
+          );
           console.log(`💰 Scholarship percentage: ${scholarshipPercentage}%`);
         }
 
@@ -212,7 +226,9 @@ async function fixPaymentSchedules() {
           scholarshipPercentage
         );
 
-        console.log(`📅 New schedule has ${newPaymentSchedule.installments.length} installments across ${feeStructure.number_of_semesters} semesters`);
+        console.log(
+          `📅 New schedule has ${newPaymentSchedule.installments.length} installments across ${feeStructure.number_of_semesters} semesters`
+        );
 
         // Update the payment record
         const { error: updateError } = await supabase
@@ -220,36 +236,45 @@ async function fixPaymentSchedules() {
           .update({
             payment_schedule: newPaymentSchedule,
             total_amount_payable: newPaymentSchedule.total_amount,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', studentPayment.id);
 
         if (updateError) {
-          console.error(`❌ Error updating student payment ${studentPayment.student_id}:`, updateError);
+          console.error(
+            `❌ Error updating student payment ${studentPayment.student_id}:`,
+            updateError
+          );
           errorCount++;
         } else {
-          console.log(`✅ Updated student payment: ${studentPayment.student_id}`);
+          console.log(
+            `✅ Updated student payment: ${studentPayment.student_id}`
+          );
           updatedCount++;
         }
       } catch (error) {
-        console.error(`❌ Error processing student payment ${studentPayment.student_id}:`, error);
+        console.error(
+          `❌ Error processing student payment ${studentPayment.student_id}:`,
+          error
+        );
         errorCount++;
       }
     }
 
     console.log('🎉 Payment schedule fix completed!');
     console.log(`📊 Updated: ${updatedCount}, Errors: ${errorCount}`);
-    
   } catch (error) {
     console.error('💥 Error running payment schedule fix:', error);
   }
 }
 
 // Run the script
-fixPaymentSchedules().then(() => {
-  console.log('🎉 Script execution completed');
-  process.exit(0);
-}).catch((error) => {
-  console.error('💥 Script execution failed:', error);
-  process.exit(1);
-});
+fixPaymentSchedules()
+  .then(() => {
+    console.log('🎉 Script execution completed');
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('💥 Script execution failed:', error);
+    process.exit(1);
+  });

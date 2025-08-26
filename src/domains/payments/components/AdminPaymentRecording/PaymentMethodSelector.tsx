@@ -15,6 +15,7 @@ import {
   Wallet,
   AlertTriangle,
 } from 'lucide-react';
+import { useFeatureFlag } from '@/lib/feature-flags';
 
 export interface PaymentMethod {
   id: string;
@@ -85,13 +86,20 @@ interface PaymentMethodSelectorProps {
 
 export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> =
   React.memo(({ value, onChange, disabled = false, error }) => {
+    const { isEnabled: isCashDisabled } = useFeatureFlag(
+      'cash-payment-disabled',
+      { defaultValue: false }
+    );
+
     const selectedMethod = PAYMENT_METHODS.find(method => method.id === value);
 
     const digitalMethods = PAYMENT_METHODS.filter(
       method => method.category === 'digital'
     );
     const traditionalMethods = PAYMENT_METHODS.filter(
-      method => method.category === 'traditional'
+      method =>
+        method.category === 'traditional' &&
+        (!isCashDisabled || method.id !== 'cash')
     );
 
     return (

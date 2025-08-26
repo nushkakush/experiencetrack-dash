@@ -8,6 +8,7 @@ export type PaymentStatus =
   | 'pending_10_plus_days'
   | 'verification_pending'
   | 'paid'
+  | 'complete'
   | 'overdue'
   | 'not_setup'
   | 'awaiting_bank_approval_e_nach'
@@ -16,12 +17,13 @@ export type PaymentStatus =
   | 'setup_request_failed_physical_mandate'
   | 'on_time'
   | 'failed_5_days_left'
-  | 'complete'
   | 'dropped'
   | 'upcoming'
   | 'partially_paid_verification_pending'
   | 'partially_paid_days_left'
-  | 'partially_paid_overdue';
+  | 'partially_paid_overdue'
+  | 'waived'
+  | 'partially_waived';
 
 export type PaymentPlan =
   | 'one_shot'

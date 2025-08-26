@@ -159,6 +159,9 @@ export default function StudentScholarshipDialog({
             : 'remove',
         });
 
+        // Immediately call the callback to update parent state
+        onScholarshipAssigned();
+
         // Refresh the current assignment data before closing
         await loadCurrentAssignment();
 
@@ -166,8 +169,7 @@ export default function StudentScholarshipDialog({
         setTimeout(() => {
           setOpen(false);
           setIsEditing(false);
-          onScholarshipAssigned();
-        }, 500);
+        }, 300);
       } else {
         logger.error('Admin: Failed to assign/update scholarship', {
           error: result.error,
@@ -223,9 +225,11 @@ export default function StudentScholarshipDialog({
             cohortId: student.cohort_id,
           }
         );
+        // Immediately call the callback to update parent state
+        onScholarshipAssigned();
+
         setOpen(false);
         setIsEditing(false);
-        onScholarshipAssigned();
       } else {
         logger.error('Admin: Failed to remove scholarship (by assignmentId)', {
           error: result.error,
@@ -292,7 +296,9 @@ export default function StudentScholarshipDialog({
                   </p>
                   {currentAssignment.additional_discount_percentage > 0 && (
                     <p className='text-sm'>
-                      <span className='font-medium'>Need Based Scholarship:</span>{' '}
+                      <span className='font-medium'>
+                        Need Based Scholarship:
+                      </span>{' '}
                       {currentAssignment.additional_discount_percentage}%
                     </p>
                   )}

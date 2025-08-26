@@ -18,6 +18,7 @@ export interface FeatureFlagContext {
   userId?: string;
   userRole?: string;
   cohortId?: string;
+  userEmail?: string;
   environment?: 'development' | 'staging' | 'production';
 }
 
@@ -123,6 +124,36 @@ export class FeatureFlagService {
         rolloutPercentage: 0,
         targetRoles: ['student'],
       },
+      {
+        id: 'dashboard-access-control',
+        name: 'Dashboard Access Control',
+        description:
+          'Control dashboard access based on email domains - restrict non-student roles to @litschool.in',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: [
+          'super_admin',
+          'program_manager',
+          'fee_collector',
+          'partnerships_head',
+          'placement_coordinator',
+        ],
+        metadata: {
+          allowedDomains: ['litschool.in'],
+          restrictedDomains: [],
+          accessLevel: 'domain-based',
+          studentExemption: true,
+        },
+      },
+      {
+        id: 'cash-payment-disabled',
+        name: 'Cash Payment Disabled',
+        description:
+          'Temporarily disable cash payment method for both students and admins',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['student', 'admin', 'super_admin', 'fee_collector'],
+      },
     ];
 
     defaultFlags.forEach(flag => {
@@ -145,11 +176,6 @@ export class FeatureFlagService {
     if (!flag) {
       console.warn(`Feature flag '${flagId}' not found`);
       return false;
-    }
-
-    // Development override for student-payment-dashboard
-    if (flagId === 'student-payment-dashboard' && this.context.environment === 'development') {
-      return true; // Always enable in development
     }
 
     if (!flag.enabled) {
@@ -184,6 +210,84 @@ export class FeatureFlagService {
       if (!flag.targetCohorts.includes(this.context.cohortId)) {
         return false;
       }
+    }
+
+    // Special handling for dashboard-access-control flag
+    if (flagId === 'dashboard-access-control') {
+      // Ensure we have the required context for evaluation
+      if (!this.context.userEmail || !this.context.userRole) {
+        console.log(
+          '⚠️ Dashboard access control: Missing context - userEmail or userRole not set'
+        );
+        return false; // Default to restricted when context is incomplete
+      }
+
+      const userEmail = this.context.userEmail.toLowerCase();
+      const allowedDomains = (flag.metadata?.allowedDomains as string[]) || [
+        'litschool.in',
+      ];
+      const restrictedDomains =
+        (flag.metadata?.restrictedDomains as string[]) || [];
+      const studentExemption =
+        (flag.metadata?.studentExemption as boolean) || false;
+
+      console.log('🔍 Feature Flag Debug (dashboard-access-control):', {
+        flagId,
+        userEmail,
+        userRole: this.context.userRole,
+        allowedDomains,
+        restrictedDomains,
+        studentExemption,
+        isLitschoolEmail: userEmail.endsWith('@litschool.in'),
+        isStudent: this.context.userRole === 'student',
+        targetRoles: flag.targetRoles,
+      });
+
+      // Check if user's role is in target roles (admin roles)
+      const isTargetRole =
+        flag.targetRoles &&
+        flag.targetRoles.includes(this.context.userRole || '');
+
+      // If user is not a target role (i.e., is a student), allow access
+      if (!isTargetRole) {
+        console.log('✅ Not a target role (student) - allowing access');
+        return true;
+      }
+
+      // If user is a student and student exemption is enabled, allow access
+      if (studentExemption && this.context.userRole === 'student') {
+        console.log('✅ Student exemption - allowing access');
+        return true; // Students can use any email domain
+      }
+
+      // For target roles (admin roles), check email domain
+      console.log(
+        '🔍 Checking email domain for admin role:',
+        this.context.userRole
+      );
+
+      // Check if user's email domain is in restricted domains
+      if (restrictedDomains.some(domain => userEmail.endsWith(`@${domain}`))) {
+        console.log('❌ Email domain is restricted');
+        return false;
+      }
+
+      // Check if user's email domain is in allowed domains
+      if (allowedDomains.length > 0) {
+        const hasAllowedDomain = allowedDomains.some(domain =>
+          userEmail.endsWith(`@${domain}`)
+        );
+        console.log('🔍 Domain check result:', {
+          hasAllowedDomain,
+          allowedDomains,
+          userEmail,
+        });
+        return hasAllowedDomain;
+      }
+
+      // If no allowed domains specified, deny access
+      console.log('❌ No allowed domains specified - denying access');
+      return false;
     }
 
     // Check rollout percentage

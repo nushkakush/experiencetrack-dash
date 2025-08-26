@@ -3,6 +3,8 @@
  * Centralized payment method definitions and configurations
  */
 
+import { featureFlagService } from '@/lib/feature-flags/FeatureFlagService';
+
 export interface PaymentMethodConfiguration {
   id: string;
   cohort_id: string;
@@ -195,6 +197,17 @@ export const isPaymentMethodEnabled = (
   config: PaymentMethodConfiguration,
   method: string
 ): boolean => {
+  // Check if cash payment is disabled via feature flag
+  if (method === 'cash') {
+    const isCashDisabled = featureFlagService.isEnabled(
+      'cash-payment-disabled'
+    );
+    if (isCashDisabled) {
+      return false;
+    }
+    return config.cash_enabled;
+  }
+
   switch (method) {
     case 'cash':
       return config.cash_enabled;
@@ -218,7 +231,10 @@ export const getAvailablePaymentMethods = (
 ): string[] => {
   const methods: string[] = [];
 
-  if (config.cash_enabled) methods.push('cash');
+  // Check if cash payment is disabled via feature flag
+  const isCashDisabled = featureFlagService.isEnabled('cash-payment-disabled');
+
+  if (config.cash_enabled && !isCashDisabled) methods.push('cash');
   if (config.bank_transfer_enabled) methods.push('bank_transfer');
   if (config.cheque_enabled) methods.push('cheque');
   if (config.dd_enabled) methods.push('dd');

@@ -28,12 +28,12 @@ test.describe('Cohorts Management', () => {
 
     // Click on first cohort (if exists)
     const firstCohort = page.locator('[data-testid="cohort-card"]').first();
-    
+
     if (await firstCohort.isVisible()) {
       await firstCohort.click();
-      
+
       // Should navigate to cohort details page
-      await expect(page).toHaveURL(/\/cohorts\/[^\/]+$/);
+      await expect(page).toHaveURL(/\/cohorts\/[^/]+$/);
       await expect(page.getByRole('heading')).toBeVisible();
     }
   });
@@ -105,10 +105,18 @@ test.describe('Cohort Details', () => {
     await page.waitForLoadState('networkidle');
 
     // Check table headers
-    await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Email' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Phone' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Invite Status' })).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Name' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Email' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Phone' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Invite Status' })
+    ).toBeVisible();
   });
 
   test('should handle student deletion', async ({ page }) => {
@@ -116,7 +124,7 @@ test.describe('Cohort Details', () => {
 
     // Find delete button for first student
     const deleteButton = page.locator('[data-testid="delete-student"]').first();
-    
+
     if (await deleteButton.isVisible()) {
       await deleteButton.click();
 
@@ -126,7 +134,7 @@ test.describe('Cohort Details', () => {
 
       // Cancel deletion
       await page.getByRole('button', { name: /cancel/i }).click();
-      
+
       // Dialog should be closed
       await expect(page.getByRole('dialog')).not.toBeVisible();
     }
@@ -158,7 +166,7 @@ test.describe('Responsive Design', () => {
     const firstCohort = page.locator('[data-testid="cohort-card"]').first();
     if (await firstCohort.isVisible()) {
       await firstCohort.click();
-      
+
       // Should still work on mobile
       await expect(page.getByRole('heading')).toBeVisible();
     }
@@ -172,7 +180,7 @@ test.describe('Accessibility', () => {
 
     // Tab through the page
     await page.keyboard.press('Tab');
-    
+
     // Should be able to navigate with keyboard
     await expect(page.locator(':focus')).toBeVisible();
   });

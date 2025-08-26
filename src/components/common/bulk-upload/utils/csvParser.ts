@@ -9,37 +9,43 @@ export class CsvParser {
   static async parseFile<T>(
     file: File,
     config: CsvParseConfig,
-    validateRow: (data: any, row: number) => string[]
+    validateRow: (data: Record<string, string>, row: number) => string[]
   ): Promise<ValidationResult<T>> {
     const text = await file.text();
     const lines = text.trim().split('\n');
-    
+
     if (lines.length === 0) {
       throw new Error('File is empty');
     }
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    
+
     // Validate headers
-    const missingHeaders = config.requiredHeaders.filter(h => !headers.includes(h));
+    const missingHeaders = config.requiredHeaders.filter(
+      h => !headers.includes(h)
+    );
     if (missingHeaders.length > 0) {
       throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
     }
 
     const valid: T[] = [];
-    const invalid: Array<{ data: any; errors: string[]; row: number }> = [];
+    const invalid: Array<{
+      data: Record<string, string>;
+      errors: string[];
+      row: number;
+    }> = [];
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim());
       if (values.length < config.requiredHeaders.length) continue; // Skip empty lines
 
-      const rowData: any = {};
-      
+      const rowData: Record<string, string> = {};
+
       // Add required headers
       config.requiredHeaders.forEach(header => {
         rowData[header] = values[headers.indexOf(header)] || '';
       });
-      
+
       // Add optional headers if present
       config.optionalHeaders?.forEach(header => {
         if (headers.includes(header)) {
@@ -48,14 +54,14 @@ export class CsvParser {
       });
 
       const errors = validateRow(rowData, i + 1);
-      
+
       if (errors.length === 0) {
         valid.push(rowData as T);
       } else {
         invalid.push({
           data: rowData,
           errors,
-          row: i + 1
+          row: i + 1,
         });
       }
     }
@@ -63,16 +69,26 @@ export class CsvParser {
     return { valid, invalid, duplicates: [] };
   }
 
-  static generateTemplateContent(config: CsvParseConfig, sampleData?: string): string {
-    const allHeaders = [...config.requiredHeaders, ...(config.optionalHeaders || [])];
+  static generateTemplateContent(
+    config: CsvParseConfig,
+    sampleData?: string
+  ): string {
+    const allHeaders = [
+      ...config.requiredHeaders,
+      ...(config.optionalHeaders || []),
+    ];
     return sampleData || allHeaders.join(',');
   }
 
-  static downloadTemplate(config: CsvParseConfig, filename: string, sampleData?: string): void {
+  static downloadTemplate(
+    config: CsvParseConfig,
+    filename: string,
+    sampleData?: string
+  ): void {
     const content = this.generateTemplateContent(config, sampleData);
     const blob = new Blob([content], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;

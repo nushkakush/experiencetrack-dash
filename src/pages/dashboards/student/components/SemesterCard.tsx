@@ -93,8 +93,23 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
   onInstallmentClick,
   onPaymentSubmission,
 }) => {
-  const isCompleted = isSemesterCompleted(semester);
+  // Debug logging for payment transactions
+  console.log('🔍 [SemesterCard] Component props:', {
+    semesterNumber: semester.semesterNumber,
+    paymentTransactionsCount: paymentTransactions?.length || 0,
+    paymentTransactions:
+      paymentTransactions?.map(t => ({
+        id: t.id,
+        lit_invoice_id: t.lit_invoice_id,
+        installment_id: t.installment_id,
+        semester_number: t.semester_number,
+        verification_status: t.verification_status,
+      })) || [],
+    instalmentsCount: semester.instalments?.length || 0,
+  });
+
   const isExpanded = expandedSemesters.has(semester.semesterNumber);
+  const isCompleted = isSemesterCompleted(semester);
 
   return (
     <Card
@@ -125,9 +140,7 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
               <p className='text-sm text-muted-foreground'>
                 {formatCurrency(
                   Number(
-                    semester.total?.totalPayable ??
-                      semester.totalPayable ??
-                      0
+                    semester.total?.totalPayable ?? semester.totalPayable ?? 0
                   )
                 )}
               </p>
@@ -138,12 +151,13 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
               <div className='text-right'>
                 <p className='text-xs text-muted-foreground'>Status</p>
                 <p className='text-xs text-green-600 font-medium'>
-                  {semester.instalments?.every(inst => inst.status === 'waived') 
-                    ? 'Waived' 
-                    : semester.instalments?.some(inst => inst.status === 'waived')
+                  {semester.instalments?.every(inst => inst.status === 'waived')
+                    ? 'Waived'
+                    : semester.instalments?.some(
+                          inst => inst.status === 'waived'
+                        )
                       ? 'Mixed'
-                      : 'Paid'
-                  }
+                      : 'Paid'}
                 </p>
               </div>
             )}
@@ -169,14 +183,9 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
             {semester.instalments?.map(
               (inst: DatabaseInstallment, index: number) => {
                 const totalPayable = Number(
-                  inst.totalPayable ??
-                    inst.amountPayable ??
-                    inst.amount ??
-                    0
+                  inst.totalPayable ?? inst.amountPayable ?? inst.amount ?? 0
                 );
-                const instNumber = Number(
-                  inst.installmentNumber ?? index + 1
-                );
+                const instNumber = Number(inst.installmentNumber ?? index + 1);
                 const instKey = `${semester.semesterNumber ?? 1}-${instNumber}`;
 
                 // Compute paid FOR THIS INSTALLMENT ONLY from targeted transactions
@@ -197,8 +206,7 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
                         Number(semester.semesterNumber ?? 1);
                       // Prefer exact key match; allow semester match as soft fallback if key not present
                       return (
-                        matchesKey ||
-                        (!!txKey === false && matchesSemester)
+                        matchesKey || (!!txKey === false && matchesSemester)
                       );
                     })
                   : [];
@@ -234,9 +242,7 @@ export const SemesterCard: React.FC<SemesterCardProps> = ({
                   scholarshipAmount: Number(inst.scholarshipAmount ?? 0),
                   discountAmount: Number(inst.discountAmount ?? 0),
                   gstAmount: Number(inst.gstAmount ?? 0),
-                  amountPayable: Number(
-                    inst.amountPayable ?? totalPayable
-                  ),
+                  amountPayable: Number(inst.amountPayable ?? totalPayable),
                   totalPayable: totalPayable,
                   paymentDate: null,
                 };

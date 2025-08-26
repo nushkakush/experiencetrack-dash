@@ -86,10 +86,7 @@ beforeAll(() => {
 
   console.warn = vi.fn((...args) => {
     // Suppress React warnings about deprecated methods
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning:')
-    ) {
+    if (typeof args[0] === 'string' && args[0].includes('Warning:')) {
       return;
     }
     originalConsoleWarn(...args);
@@ -114,8 +111,12 @@ global.testUtils = {
   // Mock Supabase client
   mockSupabase: {
     auth: {
-      getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
-      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn(() =>
+        Promise.resolve({ data: { session: null }, error: null })
+      ),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
       signOut: vi.fn(() => Promise.resolve({ error: null })),
     },
     from: vi.fn(() => ({
@@ -130,14 +131,14 @@ global.testUtils = {
       range: vi.fn().mockReturnThis(),
     })),
   },
-  
+
   // Mock React Query
   mockQueryClient: {
     invalidateQueries: vi.fn(),
     setQueryData: vi.fn(),
     getQueryData: vi.fn(),
   },
-  
+
   // Test data factories
   createMockUser: (overrides = {}) => ({
     id: 'test-user-id',
@@ -149,7 +150,7 @@ global.testUtils = {
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
   }),
-  
+
   createMockCohort: (overrides = {}) => ({
     id: 'test-cohort-id',
     cohort_id: 'TEST-2024-01',
@@ -163,7 +164,7 @@ global.testUtils = {
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
   }),
-  
+
   createMockStudent: (overrides = {}) => ({
     id: 'test-student-id',
     cohort_id: 'test-cohort-id',
@@ -180,6 +181,7 @@ global.testUtils = {
 
 // Extend expect matchers
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace jest {
     interface Matchers<R> {
       toBeInTheDocument(): R;
@@ -194,12 +196,14 @@ declare global {
       toHaveFocus(): R;
     }
   }
-  
+
   var testUtils: {
     mockSupabase: {
       auth: {
         getSession: () => Promise<{ data: { session: any }; error: any }>;
-        onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } };
+        onAuthStateChange: () => {
+          data: { subscription: { unsubscribe: () => void } };
+        };
         signOut: () => Promise<{ error: any }>;
       };
       from: () => {

@@ -63,7 +63,12 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       try {
         const { data: epicsData, error: epicsError } = await supabase
           .from('cohort_epics')
-          .select('*')
+          .select(
+            `
+            *,
+            epic:epics(*)
+          `
+          )
           .eq('cohort_id', cohortData.id)
           .order('position', { ascending: true });
 
@@ -75,6 +80,13 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
         const activeEpic =
           epicsData?.find(epic => epic.is_active) || epicsData?.[0] || null;
         setCurrentEpic(activeEpic);
+
+        // Debug logging
+        console.log('Epic data loaded:', {
+          epicsData: epicsData?.length || 0,
+          activeEpic: activeEpic?.id,
+          epicName: activeEpic?.epic?.name || activeEpic?.name,
+        });
       } catch (err) {
         console.error('Error loading epics:', err);
         setError('Failed to load epics');
@@ -112,6 +124,14 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
         if (recordsError) throw recordsError;
         setAttendanceRecords(recordsData || []);
+
+        // Debug logging
+        console.log('Attendance records loaded:', {
+          cohortId: cohortData.id,
+          epicId: currentEpic.id,
+          recordsCount: recordsData?.length || 0,
+          currentStudentId: studentData?.id,
+        });
       } catch (err) {
         console.error('Error loading attendance records:', err);
         setError('Failed to load attendance records');
@@ -126,6 +146,20 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       const studentRecords = attendanceRecords.filter(
         record => record.student_id === studentData.id
       );
+
+      // Debug logging
+      console.log('Student stats calculation:', {
+        studentData: {
+          id: studentData.id,
+          name: `${studentData.first_name} ${studentData.last_name}`,
+        },
+        currentEpic: {
+          id: currentEpic.id,
+          name: currentEpic.epic?.name || currentEpic.name,
+        },
+        totalAttendanceRecords: attendanceRecords.length,
+        studentRecords: studentRecords.length,
+      });
 
       // Calculate basic stats - treat exempted absences as present for analytics
       const totalSessions = studentRecords.length;
@@ -200,7 +234,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
       return {
         totalSessions,
-        presentSessions: attendedSessions,
+        presentSessions,
         absentSessions: regularAbsentSessions,
         lateSessions,
         attendancePercentage,
@@ -461,7 +495,12 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                     <TrendingUp className='h-5 w-5' />
                     Class Leaderboard
                   </CardTitle>
-                  <CardDescription>Class performance rankings</CardDescription>
+                  <CardDescription>
+                    Class performance rankings for{' '}
+                    <span className='font-medium'>
+                      {currentEpic.epic?.name || currentEpic.name}
+                    </span>
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <AttendanceLeaderboard

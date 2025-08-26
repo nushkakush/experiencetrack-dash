@@ -103,13 +103,52 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   const getAllRelevantTransactions = () => {
     if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
     const instKey = `${semesterNumber}-${installment.installmentNumber}`;
-    
-    return paymentTransactions
+
+    const transactions = paymentTransactions
       .filter(tx => {
-        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const txKey =
+          typeof tx?.installment_id === 'string'
+            ? String(tx.installment_id)
+            : '';
         const matchesKey = txKey === instKey;
-        const matchesSemester = Number(tx?.semester_number) === Number(semesterNumber);
-        return matchesKey || (!!txKey === false && matchesSemester);
+        const matchesSemester =
+          Number(tx?.semester_number) === Number(semesterNumber);
+
+        // Debug logging for transaction matching
+        console.log('🔍 [InstallmentCard] Transaction matching:', {
+          transactionId: tx.id,
+          transactionInstallmentId: txKey,
+          transactionSemester: tx?.semester_number,
+          currentInstKey: instKey,
+          currentSemester: semesterNumber,
+          matchesKey,
+          matchesSemester,
+          lit_invoice_id: tx.lit_invoice_id,
+          // Special check for the specific transaction we know has an invoice
+          isSpecificTransaction:
+            tx.id === 'b66ca684-abf6-4bac-b293-277af106d3b4',
+        });
+
+        // For one-shot payments, be more inclusive - match by semester if installment_id doesn't match
+        const isOneShotPayment = selectedPaymentPlan === 'one_shot';
+        const shouldInclude =
+          matchesKey || (isOneShotPayment && matchesSemester);
+
+        // Special case: if this transaction has an invoice, always include it for this installment
+        if (tx.lit_invoice_id) {
+          console.log(
+            '🔍 [InstallmentCard] Including transaction with invoice:',
+            {
+              transactionId: tx.id,
+              lit_invoice_id: tx.lit_invoice_id,
+              installmentKey: instKey,
+              shouldInclude: true,
+            }
+          );
+          return true;
+        }
+
+        return shouldInclude;
       })
       .map(tx => ({
         id: tx.id,
@@ -121,7 +160,43 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
         notes: tx.notes,
         verification_notes: tx.verification_notes,
         rejection_reason: tx.rejection_reason,
+        lit_invoice_id: tx.lit_invoice_id, // Include this for invoice checking
       }));
+
+    // Debug logging for this specific installment
+    console.log(
+      '🔍 [InstallmentCard] getAllRelevantTransactions for installment:',
+      {
+        installmentKey: instKey,
+        semesterNumber,
+        installmentNumber: installment.installmentNumber,
+        selectedPaymentPlan,
+        allPaymentTransactions: paymentTransactions?.length || 0,
+        filteredTransactions: transactions.length,
+        transactions: transactions.map(t => ({
+          id: t.id,
+          amount: t.amount,
+          status: t.verification_status,
+          lit_invoice_id: t.lit_invoice_id,
+          installment_id: paymentTransactions?.find(pt => pt.id === t.id)
+            ?.installment_id,
+        })),
+        // Special check for the specific transaction with invoice
+        specificTransactionFound: transactions.find(
+          t => t.id === 'b66ca684-abf6-4bac-b293-277af106d3b4'
+        ),
+        allPaymentTransactionsWithInvoices: paymentTransactions
+          ?.filter(pt => pt.lit_invoice_id)
+          .map(pt => ({
+            id: pt.id,
+            lit_invoice_id: pt.lit_invoice_id,
+            installment_id: pt.installment_id,
+            semester_number: pt.semester_number,
+          })),
+      }
+    );
+
+    return transactions;
   };
 
   const relevantTransactions = getRelevantTransactions();
@@ -151,7 +226,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
   const currentKey = `${semesterNumber}-${installmentIndex}`;
   const isSelected = selectedInstallmentKey === currentKey;
   // Treat installment as paid only if engine says so. Avoid numeric fallbacks.
-  const isPaid = installment.status === 'paid' || installment.status === 'waived';
+  const isPaid =
+    installment.status === 'paid' || installment.status === 'waived';
 
   // Check if payment is in verification pending status
   const isVerificationPending =
@@ -159,7 +235,8 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
     installment.status === 'partially_paid_verification_pending';
 
   // Check if payment is fully verified and complete
-  const isFullyVerified = installment.status === 'paid' || installment.status === 'waived';
+  const isFullyVerified =
+    installment.status === 'paid' || installment.status === 'waived';
 
   // Determine if payment form should be shown automatically
   const shouldShowPaymentForm = () => {
@@ -516,7 +593,6 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
               selectedPaymentPlan={selectedPaymentPlan}
               paymentBreakdown={paymentBreakdown}
               selectedInstallment={convertedInstallment}
-              cohortData={cohortData}
             />
           </div>
         )}
@@ -536,46 +612,93 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
         {(() => {
           const transactions = getAllRelevantTransactions();
           const totalPaid = transactions
-            .filter(t => t.verification_status === 'approved' || t.verification_status === 'partially_approved')
-            .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0);
-          
+            .filter(
+              t =>
+                t.verification_status === 'approved' ||
+                t.verification_status === 'partially_approved'
+            )
+            .reduce(
+              (sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0),
+              0
+            );
+
           // Only show payment history if:
           // 1. There are multiple transactions, OR
-          // 2. There's a partial payment (amount paid < expected amount)
-          // NOTE: We do NOT show for single complete payments, even if pending verification
+          // 2. There's a partial payment (amount paid < expected amount), OR
+          // 3. There are rejected transactions (to show rejection reasons), OR
+          // 4. There are transactions with invoices (to show download options), OR
+          // 5. There's a single complete payment with an invoice (to show download option)
           const hasMultipleTransactions = transactions.length > 1;
-          const hasPartialPayment = totalPaid > 0 && totalPaid < convertedInstallment.amountPayable;
-          
+          const hasPartialPayment =
+            totalPaid > 0 && totalPaid < convertedInstallment.amountPayable;
+          const hasRejectedTransactions = transactions.some(
+            t => t.verification_status === 'rejected'
+          );
+          const hasTransactionsWithInvoices = transactions.some(
+            t => t.lit_invoice_id
+          );
+
           // For single transactions, check if it's a complete payment (regardless of status)
-          const isSingleCompletePayment = transactions.length === 1 && 
+          const isSingleCompletePayment =
+            transactions.length === 1 &&
             transactions[0].amount >= convertedInstallment.amountPayable;
-          
-          const shouldShowHistory = hasMultipleTransactions || hasPartialPayment;
-          
+
+          // Show history for single complete payments that have invoices
+          const hasSingleCompletePaymentWithInvoice =
+            isSingleCompletePayment && transactions[0].lit_invoice_id;
+
+          // Show history if any transaction has an invoice (this is the key condition)
+          const shouldShowHistory =
+            hasMultipleTransactions ||
+            hasPartialPayment ||
+            hasRejectedTransactions ||
+            hasTransactionsWithInvoices;
+
           // DEBUG LOGGING
-          console.log('🔍 [InstallmentCard] Payment History Visibility Check:', {
-            installmentId: `${semesterNumber}-${installment.installmentNumber}`,
-            transactionsCount: transactions.length,
-            totalPaid,
-            expectedAmount: convertedInstallment.amountPayable,
-            hasMultipleTransactions,
-            hasPartialPayment,
-            isSingleCompletePayment,
-            shouldShowHistory,
-            transactions: transactions.map(t => ({
-              id: t.id,
-              amount: t.amount,
-              status: t.verification_status,
-              partial_sequence: t.partial_payment_sequence
-            }))
-          });
-          
+          console.log(
+            '🔍 [InstallmentCard] Payment History Visibility Check:',
+            {
+              installmentId: `${semesterNumber}-${installment.installmentNumber}`,
+              transactionsCount: transactions.length,
+              totalPaid,
+              expectedAmount: convertedInstallment.amountPayable,
+              hasMultipleTransactions,
+              hasPartialPayment,
+              hasRejectedTransactions,
+              hasTransactionsWithInvoices,
+              isSingleCompletePayment,
+              hasSingleCompletePaymentWithInvoice,
+              shouldShowHistory,
+              transactions: transactions.map(t => ({
+                id: t.id,
+                amount: t.amount,
+                status: t.verification_status,
+                partial_sequence: t.partial_payment_sequence,
+                lit_invoice_id: t.lit_invoice_id,
+              })),
+              // Add more detailed logging for the specific transaction we know has an invoice
+              specificTransactionCheck: transactions.find(
+                t => t.id === 'b66ca684-abf6-4bac-b293-277af106d3b4'
+              ),
+              allPaymentTransactions: paymentTransactions?.map(t => ({
+                id: t.id,
+                lit_invoice_id: t.lit_invoice_id,
+                installment_id: t.installment_id,
+                semester_number: t.semester_number,
+              })),
+            }
+          );
+
           if (!shouldShowHistory) {
-            console.log('✅ [InstallmentCard] HIDING Payment History - Single complete payment');
+            console.log(
+              '✅ [InstallmentCard] HIDING Payment History - No special conditions met'
+            );
             return null;
           }
-          
-          console.log('📋 [InstallmentCard] SHOWING Payment History - Complex payment scenario');
+
+          console.log(
+            '📋 [InstallmentCard] SHOWING Payment History - Complex payment scenario or invoice available'
+          );
           return (
             <div className='mt-4'>
               <PartialPaymentHistory
@@ -584,8 +707,17 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 totalPaid={totalPaid}
                 remainingAmount={convertedInstallment.amountPayable - totalPaid}
                 totalPending={transactions
-                  .filter(t => t.verification_status === 'verification_pending' || t.verification_status === 'pending')
-                  .reduce((sum, t) => sum + (Number.isFinite(t.amount) ? t.amount : 0), 0)}
+                  .filter(
+                    t =>
+                      t.verification_status === 'verification_pending' ||
+                      t.verification_status === 'pending'
+                  )
+                  .reduce(
+                    (sum, t) =>
+                      sum + (Number.isFinite(t.amount) ? t.amount : 0),
+                    0
+                  )}
+                studentId={studentData?.id}
               />
             </div>
           );

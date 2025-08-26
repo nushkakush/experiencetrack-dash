@@ -74,21 +74,28 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
     }, [studentPayments, studentData?.id, studentData?.cohort_id]);
 
     // Generate payment breakdown based on selected plan
-    const [paymentBreakdown, setPaymentBreakdown] = React.useState<PaymentBreakdown | undefined>(undefined);
+    const [paymentBreakdown, setPaymentBreakdown] = React.useState<
+      PaymentBreakdown | undefined
+    >(undefined);
 
     React.useEffect(() => {
       let cancelled = false;
       const compute = async () => {
-        console.log('🔄 [FeePaymentSection] Payment breakdown calculation triggered:', {
-          hasFeeStructure: !!feeStructure,
-          hasSelectedPlan,
-          selectedPaymentPlan,
-          studentDataId: studentData?.id,
-          cohortDataId: cohortData?.id,
-        });
-        
+        console.log(
+          '🔄 [FeePaymentSection] Payment breakdown calculation triggered:',
+          {
+            hasFeeStructure: !!feeStructure,
+            hasSelectedPlan,
+            selectedPaymentPlan,
+            studentDataId: studentData?.id,
+            cohortDataId: cohortData?.id,
+          }
+        );
+
         if (!feeStructure || !hasSelectedPlan) {
-          console.log('🔄 [FeePaymentSection] Skipping payment breakdown - missing data');
+          console.log(
+            '🔄 [FeePaymentSection] Skipping payment breakdown - missing data'
+          );
           setPaymentBreakdown(undefined);
           return;
         }
@@ -101,8 +108,11 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         }
 
         try {
-          const toEnginePlan = (p: PaymentPlan): EnginePaymentPlan | undefined => {
-            if (p === 'one_shot' || p === 'sem_wise' || p === 'instalment_wise') return p as EnginePaymentPlan;
+          const toEnginePlan = (
+            p: PaymentPlan
+          ): EnginePaymentPlan | undefined => {
+            if (p === 'one_shot' || p === 'sem_wise' || p === 'instalment_wise')
+              return p as EnginePaymentPlan;
             return undefined;
           };
           const enginePlan = toEnginePlan(selectedPaymentPlan as PaymentPlan);
@@ -112,27 +122,41 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
             cohortId: String(cohortData?.id),
             paymentPlan: enginePlan,
             scholarshipId,
-            additionalDiscountPercentage: studentScholarship?.additional_discount_percentage || 0,
+            additionalDiscountPercentage:
+              studentScholarship?.additional_discount_percentage || 0,
             // Pass complete fee structure data including saved dates to payment engine
             feeStructureData: {
               total_program_fee: Number(feeStructure.total_program_fee),
               admission_fee: Number(feeStructure.admission_fee),
               number_of_semesters: (feeStructure as any).number_of_semesters,
-              instalments_per_semester: (feeStructure as any).instalments_per_semester,
-              one_shot_discount_percentage: (feeStructure as any).one_shot_discount_percentage,
-
+              instalments_per_semester: (feeStructure as any)
+                .instalments_per_semester,
+              one_shot_discount_percentage: (feeStructure as any)
+                .one_shot_discount_percentage,
+              program_fee_includes_gst:
+                (feeStructure as any).program_fee_includes_gst ?? true,
+              equal_scholarship_distribution:
+                (feeStructure as any).equal_scholarship_distribution ?? false,
               one_shot_dates: (feeStructure as any).one_shot_dates,
               sem_wise_dates: (feeStructure as any).sem_wise_dates,
-              instalment_wise_dates: (feeStructure as any).instalment_wise_dates,
+              instalment_wise_dates: (feeStructure as any)
+                .instalment_wise_dates,
+            },
+          });
+          console.log(
+            '🔄 [FeePaymentSection] Payment breakdown calculated successfully:',
+            {
+              hasBreakdown: !!breakdown,
+              breakdownType: typeof breakdown,
             }
-          });
-          console.log('🔄 [FeePaymentSection] Payment breakdown calculated successfully:', {
-            hasBreakdown: !!breakdown,
-            breakdownType: typeof breakdown,
-          });
-          if (!cancelled) setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
+          );
+          if (!cancelled)
+            setPaymentBreakdown(breakdown as unknown as PaymentBreakdown);
         } catch (err) {
-          console.error('🔄 [FeePaymentSection] Payment engine call failed:', err);
+          console.error(
+            '🔄 [FeePaymentSection] Payment engine call failed:',
+            err
+          );
           if (!cancelled) {
             setPaymentBreakdown(undefined);
             toast.error('Failed to load payment schedule. Please try again.');
@@ -437,6 +461,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
         paymentSubmissions={paymentSubmissions}
         submittingPayments={submittingPayments}
         onPaymentSubmission={handlePaymentSubmission}
+        onRefresh={refetch} // Add refresh callback
       />
     );
   }

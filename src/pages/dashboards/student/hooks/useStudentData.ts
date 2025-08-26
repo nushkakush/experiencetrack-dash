@@ -44,10 +44,18 @@ export const useStudentData = (): StudentData => {
   const [studentPayments, setStudentPayments] = useState<
     StudentPaymentRow[] | null
   >(null);
-  const [paymentTransactions, setPaymentTransactions] = useState<any[] | null>(null);
-  const [studentScholarship, setStudentScholarship] = useState<any | null>(null);
+  const [paymentTransactions, setPaymentTransactions] = useState<any[] | null>(
+    null
+  );
+  const [studentScholarship, setStudentScholarship] = useState<any | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [noCohort, setNoCohort] = useState<boolean>(false);
+
+  // Add auto-refresh mechanism for payment transactions
+  const [autoRefreshInterval, setAutoRefreshInterval] =
+    React.useState<NodeJS.Timeout | null>(null);
 
   // Use localStorage to persist data loaded state across component re-mounts
   const getDataLoadedKey = (userId: string) => `studentDataLoaded_${userId}`;
@@ -146,7 +154,10 @@ export const useStudentData = (): StudentData => {
 
       // Get fee structure - prioritize custom plan for this student if it exists
       const { feeStructure: feeData, scholarships: scholarshipData } =
-        await FeeStructureService.getCompleteFeeStructure(student.cohort_id, student.id);
+        await FeeStructureService.getCompleteFeeStructure(
+          student.cohort_id,
+          student.id
+        );
 
       setFeeStructure(feeData as any);
       setScholarships(scholarshipData as CohortScholarshipRow[]);
@@ -165,16 +176,50 @@ export const useStudentData = (): StudentData => {
       });
       if (paymentsResult.success) {
         setStudentPayments(paymentsResult.data || []);
-        
+
         // Fetch payment transactions for each payment record
         const allTransactions: any[] = [];
         for (const payment of paymentsResult.data || []) {
-          const transactionsResult = await studentPaymentsService.getPaymentTransactions(payment.id);
+          const transactionsResult =
+            await studentPaymentsService.getPaymentTransactions(payment.id);
           if (transactionsResult.success && transactionsResult.data) {
             allTransactions.push(...transactionsResult.data);
           }
         }
         setPaymentTransactions(allTransactions);
+
+        // Debug logging for invoice transaction
+        const invoiceTransaction = allTransactions.find(
+          t => t.id === 'b66ca684-abf6-4bac-b293-277af106d3b4'
+        );
+        console.log('🔍 [useStudentData] Invoice transaction check:', {
+          totalTransactions: allTransactions.length,
+          invoiceTransactionFound: !!invoiceTransaction,
+          invoiceTransaction: invoiceTransaction
+            ? {
+                id: invoiceTransaction.id,
+                lit_invoice_id: invoiceTransaction.lit_invoice_id,
+                installment_id: invoiceTransaction.installment_id,
+                semester_number: invoiceTransaction.semester_number,
+                verification_status: invoiceTransaction.verification_status,
+              }
+            : null,
+          allTransactions: allTransactions.map(t => ({
+            id: t.id,
+            lit_invoice_id: t.lit_invoice_id,
+            installment_id: t.installment_id,
+            semester_number: t.semester_number,
+          })),
+          // Check for any transactions with invoices
+          transactionsWithInvoices: allTransactions
+            .filter(t => t.lit_invoice_id)
+            .map(t => ({
+              id: t.id,
+              lit_invoice_id: t.lit_invoice_id,
+              installment_id: t.installment_id,
+              semester_number: t.semester_number,
+            })),
+        });
       } else {
         logger.error('Failed to load student payments:', {
           error: paymentsResult.error,
@@ -186,7 +231,9 @@ export const useStudentData = (): StudentData => {
       }
 
       // Get student scholarship record for this specific student
-      const scholarshipResult = await studentScholarshipsService.getByStudent(student.id);
+      const scholarshipResult = await studentScholarshipsService.getByStudent(
+        student.id
+      );
       if (scholarshipResult.success && scholarshipResult.data) {
         setStudentScholarship(scholarshipResult.data);
       } else {
@@ -210,13 +257,70 @@ export const useStudentData = (): StudentData => {
         err instanceof Error ? err.message : 'Failed to load student data'
       );
       // If we couldn't resolve a student record/cohort, mark as noCohort
-      if (err instanceof Error && /No linked cohort|ensure you have accepted/i.test(err.message)) {
+      if (
+        err instanceof Error &&
+        /No linked cohort|ensure you have accepted/i.test(err.message)
+      ) {
         setNoCohort(true);
       }
     } finally {
       setLoading(false);
     }
   }, [profile?.user_id]); // Remove loading dependency to prevent circular dependency
+
+  // Set up auto-refresh for payment transactions (every 30 seconds)
+  React.useEffect(() => {
+    if (profile?.user_id && studentData?.id) {
+      const interval = setInterval(async () => {
+        console.log(
+          '🔄 [useStudentData] Auto-refreshing payment transactions...'
+        );
+        try {
+          // Only refresh payment transactions, not the entire student data
+          const paymentsResult =
+            await studentPaymentsService.getStudentPayments(
+              studentData.cohort_id
+            );
+
+          if (paymentsResult.success && paymentsResult.data) {
+            // Fetch updated payment transactions
+            const allTransactions: any[] = [];
+            for (const payment of paymentsResult.data) {
+              const transactionsResult =
+                await studentPaymentsService.getPaymentTransactions(payment.id);
+              if (transactionsResult.success && transactionsResult.data) {
+                allTransactions.push(...transactionsResult.data);
+              }
+            }
+            setPaymentTransactions(allTransactions);
+            console.log(
+              '🔄 [useStudentData] Payment transactions refreshed:',
+              allTransactions.length
+            );
+          }
+        } catch (error) {
+          console.error('🔄 [useStudentData] Auto-refresh failed:', error);
+        }
+      }, 30000); // 30 seconds
+
+      setAutoRefreshInterval(interval);
+
+      return () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
+    }
+  }, [profile?.user_id, studentData?.id, studentData?.cohort_id]);
+
+  // Clean up interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
+  }, [autoRefreshInterval]);
 
   useEffect(() => {
     // Only load data if we have a profile and haven't loaded data yet

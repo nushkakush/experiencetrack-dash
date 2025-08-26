@@ -1,21 +1,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import type { 
-  PaymentPlan, 
-  Breakdown, 
+import type {
+  PaymentPlan,
+  Breakdown,
   FeeStructure,
-  EdgeRequest 
+  EdgeRequest,
 } from './types.ts';
-import { 
-  extractBaseAmountFromTotal, 
+import {
+  extractBaseAmountFromTotal,
   extractGSTFromTotal,
   calculateOneShotPayment,
   calculateSemesterPayment,
-  distributeScholarshipAcrossSemesters
+  distributeScholarshipAcrossSemesters,
 } from './calculations.ts';
-import { 
+import {
   convertPlanSpecificJsonToDateKeys,
   generateDefaultUiDateKeys,
-  applyDateOverrides
+  applyDateOverrides,
 } from './date-utils.ts';
 
 export const generateFeeStructureReview = async (
@@ -23,7 +23,7 @@ export const generateFeeStructureReview = async (
   cohortId: string,
   paymentPlan: PaymentPlan,
   selectedScholarshipId: string | null | undefined,
-  additionalScholarshipPercentage: number,
+  additionalDiscountPercentage: number,
   studentId?: string,
   customDates?: Record<string, string>,
   previewFeeStructureData?: Record<string, unknown>,
@@ -42,10 +42,6 @@ export const generateFeeStructureReview = async (
       cohort_id: cohortId,
       ...previewFeeStructureData,
       structure_type: 'cohort',
-      // Preserve any provided custom date configuration in preview data
-      custom_dates_enabled:
-        (previewFeeStructureData as Record<string, unknown>)
-          ?.custom_dates_enabled ?? false,
       one_shot_dates:
         (previewFeeStructureData as Record<string, unknown>)?.one_shot_dates ??
         {},
@@ -62,7 +58,7 @@ export const generateFeeStructureReview = async (
       const { data: customFsExact } = await supabase
         .from('fee_structures')
         .select(
-          'cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type,student_id'
+          'cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type,student_id,program_fee_includes_gst,equal_scholarship_distribution'
         )
         .eq('cohort_id', cohortId)
         .eq('structure_type', 'custom')
@@ -74,7 +70,7 @@ export const generateFeeStructureReview = async (
       const { data: cohortFs, error: fsErr2 } = await supabase
         .from('fee_structures')
         .select(
-          'cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,custom_dates_enabled,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type'
+          'cohort_id,total_program_fee,admission_fee,number_of_semesters,instalments_per_semester,one_shot_discount_percentage,one_shot_dates,sem_wise_dates,instalment_wise_dates,structure_type,program_fee_includes_gst,equal_scholarship_distribution'
         )
         .eq('cohort_id', cohortId)
         .eq('structure_type', 'cohort')
@@ -90,10 +86,12 @@ export const generateFeeStructureReview = async (
     // Check if we have temporary scholarship data (for preview mode)
     if (scholarshipData && selectedScholarshipId.startsWith('temp-')) {
       const basePct = scholarshipData.amount_percentage;
-      const totalPct = basePct + (additionalScholarshipPercentage || 0);
+      // Calculate scholarship on base amount (without GST)
+      const programFeeBaseAmount = feeStructure.program_fee_includes_gst
+        ? extractBaseAmountFromTotal(feeStructure.total_program_fee as number)
+        : (feeStructure.total_program_fee as number);
       scholarshipAmount =
-        Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) /
-        100;
+        Math.round(programFeeBaseAmount * (basePct / 100) * 100) / 100;
       console.log(
         `Using temporary scholarship: ${scholarshipData.name} (${basePct}%) = ₹${scholarshipAmount}`
       );
@@ -106,10 +104,12 @@ export const generateFeeStructureReview = async (
         .single();
       if (!schErr && sch && typeof sch.amount_percentage === 'number') {
         const basePct = sch.amount_percentage;
-        const totalPct = basePct + (additionalScholarshipPercentage || 0);
+        // Calculate scholarship on base amount (without GST)
+        const programFeeBaseAmount = feeStructure.program_fee_includes_gst
+          ? extractBaseAmountFromTotal(feeStructure.total_program_fee as number)
+          : (feeStructure.total_program_fee as number);
         scholarshipAmount =
-          Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) /
-          100;
+          Math.round(programFeeBaseAmount * (basePct / 100) * 100) / 100;
         console.log(
           `Using saved scholarship: ID ${selectedScholarshipId} (${basePct}%) = ₹${scholarshipAmount}`
         );
@@ -119,13 +119,6 @@ export const generateFeeStructureReview = async (
         );
       }
     }
-  } else if (
-    additionalScholarshipPercentage &&
-    additionalScholarshipPercentage > 0
-  ) {
-    const totalPct = additionalScholarshipPercentage;
-    scholarshipAmount =
-      Math.round((feeStructure.total_program_fee as number) * (totalPct / 100) * 100) / 100;
   }
 
   // Admission fee block
@@ -134,27 +127,41 @@ export const generateFeeStructureReview = async (
   );
   const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
 
+  // Extract new toggle values from fee structure
+  const programFeeIncludesGST = feeStructure.program_fee_includes_gst;
+  const equalScholarshipDistribution =
+    feeStructure.equal_scholarship_distribution;
+
+  console.log('🔍 Scholarship distribution toggle debug:', {
+    equalScholarshipDistribution,
+    feeStructureEqualScholarshipDistribution:
+      feeStructure.equal_scholarship_distribution,
+    scholarshipAmount,
+  });
+
   const semesters: any[] = [];
   let oneShotPayment: any = undefined;
 
   if (paymentPlan === 'sem_wise' || paymentPlan === 'instalment_wise') {
     const installmentsPerSemester =
       paymentPlan === 'sem_wise' ? 1 : feeStructure.instalments_per_semester;
-    
-    // Calculate scholarship distribution across all semesters from last to first
+
+    // Calculate scholarship distribution based on the toggle
     const scholarshipDistribution = distributeScholarshipAcrossSemesters(
       feeStructure.total_program_fee,
       feeStructure.admission_fee,
       feeStructure.number_of_semesters,
-      scholarshipAmount
+      scholarshipAmount,
+      equalScholarshipDistribution
     );
-    
+
     console.log('🎓 Scholarship distribution across semesters:', {
       totalScholarship: scholarshipAmount,
       distribution: scholarshipDistribution,
-      semesters: feeStructure.number_of_semesters
+      semesters: feeStructure.number_of_semesters,
+      equalDistribution: equalScholarshipDistribution,
     });
-    
+
     for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
       const semesterInstallments = calculateSemesterPayment(
         sem,
@@ -164,7 +171,9 @@ export const generateFeeStructureReview = async (
         installmentsPerSemester,
         scholarshipAmount,
         0,
-        scholarshipDistribution
+        scholarshipDistribution,
+        programFeeIncludesGST,
+        equalScholarshipDistribution
       );
       const semesterTotal = {
         scholarshipAmount: semesterInstallments.reduce(
@@ -201,7 +210,9 @@ export const generateFeeStructureReview = async (
       feeStructure.total_program_fee,
       feeStructure.admission_fee,
       feeStructure.one_shot_discount_percentage,
-      scholarshipAmount
+      scholarshipAmount,
+      programFeeIncludesGST,
+      additionalDiscountPercentage
     );
   }
 
@@ -218,10 +229,79 @@ export const generateFeeStructureReview = async (
 
   let databaseDates: Record<string, string> = {};
 
-  // PRIORITY 1: Use custom dates for preview mode
+  // PRIORITY 1: Use custom dates for preview mode, but generate missing dates if needed
   if (customDates && Object.keys(customDates).length > 0) {
-    databaseDates = customDates;
-    console.log('✅ PRIORITY 1: Using custom dates from preview parameter:', databaseDates);
+    databaseDates = { ...customDates };
+    console.log(
+      '✅ PRIORITY 1: Using custom dates from preview parameter:',
+      databaseDates
+    );
+
+    // Check if we have all required dates for the payment plan
+    let hasAllRequiredDates = true;
+    const requiredDateKeys: string[] = [];
+
+    // Generate all required date keys for the payment plan
+    if (paymentPlan === 'one_shot') {
+      requiredDateKeys.push('one-shot');
+    } else if (paymentPlan === 'sem_wise') {
+      for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
+        requiredDateKeys.push(`semester-${sem}-instalment-0`);
+      }
+    } else if (paymentPlan === 'instalment_wise') {
+      for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
+        for (let i = 0; i < feeStructure.instalments_per_semester; i++) {
+          requiredDateKeys.push(`semester-${sem}-instalment-${i}`);
+        }
+      }
+    }
+
+    // Check which required dates are missing
+    const missingDates = requiredDateKeys.filter(key => !databaseDates[key]);
+
+    if (missingDates.length > 0) {
+      console.log('⚠️ Custom dates incomplete, missing dates:', missingDates);
+      hasAllRequiredDates = false;
+
+      // Generate missing dates using cohort start date
+      try {
+        const { data: cohortRow } = await supabase
+          .from('cohorts')
+          .select('start_date')
+          .eq('id', cohortId)
+          .maybeSingle();
+        const cohortStart =
+          (cohortRow as { start_date?: string })?.start_date ||
+          new Date().toISOString().split('T')[0];
+
+        // Generate all dates and fill in missing ones
+        const allGeneratedDates = generateDefaultUiDateKeys(
+          paymentPlan,
+          cohortStart,
+          feeStructure.number_of_semesters,
+          feeStructure.instalments_per_semester
+        );
+
+        // Fill in missing dates with generated ones
+        missingDates.forEach(key => {
+          if (allGeneratedDates[key]) {
+            databaseDates[key] = allGeneratedDates[key];
+            console.log(
+              `✅ Filled missing date for ${key}: ${allGeneratedDates[key]}`
+            );
+          }
+        });
+
+        console.log(
+          '✅ PRIORITY 1: Custom dates supplemented with generated dates:',
+          databaseDates
+        );
+      } catch (e) {
+        console.log('⚠️ Could not generate missing dates:', e);
+      }
+    } else {
+      console.log('✅ PRIORITY 1: Custom dates are complete');
+    }
   }
   // PRIORITY 2: Use saved dates from database
   else {
@@ -238,7 +318,10 @@ export const generateFeeStructureReview = async (
       feeStructure.instalment_wise_dates
     ) {
       planSpecificDates = feeStructure.instalment_wise_dates;
-      console.log('🔍 Found instalment_wise_dates in database:', planSpecificDates);
+      console.log(
+        '🔍 Found instalment_wise_dates in database:',
+        planSpecificDates
+      );
     }
 
     if (planSpecificDates && Object.keys(planSpecificDates).length > 0) {
@@ -246,30 +329,40 @@ export const generateFeeStructureReview = async (
         planSpecificDates,
         paymentPlan
       );
-      console.log('✅ PRIORITY 2: Using saved dates from database:', databaseDates);
+      console.log(
+        '✅ PRIORITY 2: Using saved dates from database:',
+        databaseDates
+      );
     }
   }
 
   // PRIORITY 3: Fallback to auto-generation only if no saved dates exist
   if (!databaseDates || Object.keys(databaseDates).length === 0) {
-    console.log('🔄 PRIORITY 3: No saved dates found, generating defaults from cohort start_date');
+    console.log(
+      '🔄 PRIORITY 3: No saved dates found, generating defaults from cohort start_date'
+    );
     try {
       const { data: cohortRow } = await supabase
         .from('cohorts')
         .select('start_date')
         .eq('id', cohortId)
         .maybeSingle();
-      const cohortStart = (cohortRow as { start_date?: string })?.start_date || new Date().toISOString().split('T')[0];
+      const cohortStart =
+        (cohortRow as { start_date?: string })?.start_date ||
+        new Date().toISOString().split('T')[0];
       databaseDates = generateDefaultUiDateKeys(
         paymentPlan,
         cohortStart,
         feeStructure.number_of_semesters,
         feeStructure.instalments_per_semester
       );
-      console.log('✅ PRIORITY 3: Generated default dates from cohort start_date:', {
-        cohortStart,
-        databaseDates,
-      });
+      console.log(
+        '✅ PRIORITY 3: Generated default dates from cohort start_date:',
+        {
+          cohortStart,
+          databaseDates,
+        }
+      );
     } catch (e) {
       console.log('⚠️ Could not generate default dates:', e);
     }
@@ -306,9 +399,9 @@ export const generateFeeStructureReview = async (
     0
   );
   const totalAmountPayable =
-    feeStructure.admission_fee +
     totalSemesterAmount +
-    (oneShotPayment?.amountPayable || 0);
+    (oneShotPayment?.amountPayable || 0) -
+    feeStructure.admission_fee; // Subtract admission fee from total amount payable
 
   const breakdown: Breakdown = {
     admissionFee: {
@@ -317,15 +410,20 @@ export const generateFeeStructureReview = async (
       discountAmount: 0,
       gstAmount: admissionFeeGST,
       totalPayable: feeStructure.admission_fee,
-      paymentDate: (databaseDates as any)?.__admission_date || (databaseDates as any)?.admission || undefined,
+      paymentDate:
+        (databaseDates as any)?.__admission_date ||
+        (databaseDates as any)?.admission ||
+        undefined,
     },
     semesters,
     oneShotPayment,
     overallSummary: {
-      totalProgramFee: feeStructure.total_program_fee,
+      totalProgramFee: programFeeIncludesGST
+        ? extractBaseAmountFromTotal(feeStructure.total_program_fee)
+        : feeStructure.total_program_fee,
       admissionFee: feeStructure.admission_fee,
       totalGST:
-        totalSemesterGST + admissionFeeGST + (oneShotPayment?.gstAmount || 0),
+        totalSemesterGST + (oneShotPayment?.gstAmount || 0) + admissionFeeGST, // Include both program fee GST and admission fee GST
       totalDiscount:
         totalSemesterDiscount + (oneShotPayment?.discountAmount || 0),
       totalScholarship:
@@ -356,7 +454,7 @@ export const generateFeeStructureReview = async (
       instalments_per_semester: feeStructure.instalments_per_semester,
       one_shot_discount_percentage: feeStructure.one_shot_discount_percentage,
       is_setup_complete: feeStructure.is_setup_complete || false,
-      custom_dates_enabled: feeStructure.custom_dates_enabled || false,
+
       one_shot_dates: feeStructure.one_shot_dates || {},
       sem_wise_dates: feeStructure.sem_wise_dates || {},
       instalment_wise_dates: feeStructure.instalment_wise_dates || {},

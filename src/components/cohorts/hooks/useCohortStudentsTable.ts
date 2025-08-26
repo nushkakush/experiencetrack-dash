@@ -15,7 +15,11 @@ interface UseCohortStudentsTableProps {
   students: CohortStudent[];
   scholarships?: Scholarship[];
   onStudentDeleted: () => void;
-  onStudentUpdated?: (studentId: string, updates: Partial<CohortStudent>) => void;
+  onStudentUpdated?: (
+    studentId: string,
+    updates: Partial<CohortStudent>
+  ) => void;
+  onScholarshipAssigned?: () => void;
   cohortName?: string;
 }
 
@@ -24,9 +28,9 @@ export const useCohortStudentsTable = ({
   scholarships = [],
   onStudentDeleted,
   onStudentUpdated,
+  onScholarshipAssigned,
   cohortName,
 }: UseCohortStudentsTableProps) => {
-
   const { profile } = useAuth();
   const { hasPermission } = useFeaturePermissions();
 
@@ -38,8 +42,12 @@ export const useCohortStudentsTable = ({
   const [showFilters, setShowFilters] = useState(false);
 
   // Student management state
-  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
-  const [invitingStudentId, setInvitingStudentId] = useState<string | null>(null);
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(
+    null
+  );
+  const [invitingStudentId, setInvitingStudentId] = useState<string | null>(
+    null
+  );
   const [emailConfirmationDialog, setEmailConfirmationDialog] = useState<{
     open: boolean;
     student: CohortStudent | null;
@@ -75,7 +83,8 @@ export const useCohortStudentsTable = ({
 
   // Dropout state
   const [droppedOutDialogOpen, setDroppedOutDialogOpen] = useState(false);
-  const [selectedStudentForDropout, setSelectedStudentForDropout] = useState<CohortStudent | null>(null);
+  const [selectedStudentForDropout, setSelectedStudentForDropout] =
+    useState<CohortStudent | null>(null);
 
   // Permissions
   const canManageStudents = hasPermission('cohorts.manage_students');
@@ -87,29 +96,49 @@ export const useCohortStudentsTable = ({
     return students.filter(student => {
       // Search filter
       const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch =
+        searchQuery === '' ||
         student.first_name?.toLowerCase().includes(searchLower) ||
         student.last_name?.toLowerCase().includes(searchLower) ||
         student.email?.toLowerCase().includes(searchLower);
 
       // Status filter
-      const matchesStatus = statusFilter === 'all' || student.invite_status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'all' || student.invite_status === statusFilter;
 
       // Scholarship filter
       const hasScholarship = scholarshipAssignments[student.id];
-      const matchesScholarship = scholarshipFilter === 'all' || 
+      const matchesScholarship =
+        scholarshipFilter === 'all' ||
         (scholarshipFilter === 'assigned' && hasScholarship) ||
         (scholarshipFilter === 'not_assigned' && !hasScholarship);
 
       // Payment plan filter
-      const hasPaymentPlan = paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan;
-      const matchesPaymentPlan = paymentPlanFilter === 'all' || 
+      const hasPaymentPlan =
+        paymentPlanAssignments[student.id] &&
+        paymentPlanDetails[student.id]?.payment_plan;
+      const matchesPaymentPlan =
+        paymentPlanFilter === 'all' ||
         (paymentPlanFilter === 'assigned' && hasPaymentPlan) ||
         (paymentPlanFilter === 'not_assigned' && !hasPaymentPlan);
 
-      return matchesSearch && matchesStatus && matchesScholarship && matchesPaymentPlan;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesScholarship &&
+        matchesPaymentPlan
+      );
     });
-  }, [students, searchQuery, statusFilter, scholarshipFilter, paymentPlanFilter, scholarshipAssignments, paymentPlanAssignments, paymentPlanDetails]);
+  }, [
+    students,
+    searchQuery,
+    statusFilter,
+    scholarshipFilter,
+    paymentPlanFilter,
+    scholarshipAssignments,
+    paymentPlanAssignments,
+    paymentPlanDetails,
+  ]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -120,18 +149,23 @@ export const useCohortStudentsTable = ({
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || scholarshipFilter !== 'all' || paymentPlanFilter !== 'all';
+  const hasActiveFilters =
+    searchQuery !== '' ||
+    statusFilter !== 'all' ||
+    scholarshipFilter !== 'all' ||
+    paymentPlanFilter !== 'all';
 
   // Check if fee setup is complete for this cohort
   const checkFeeSetupCompletion = useCallback(async () => {
     if (!students.length) return;
-    
+
     try {
       setLoadingFeeSetup(true);
       const cohortId = students[0]?.cohort_id;
       if (!cohortId) return;
 
-      const { feeStructure } = await FeeStructureService.getCompleteFeeStructure(cohortId);
+      const { feeStructure } =
+        await FeeStructureService.getCompleteFeeStructure(cohortId);
       setIsFeeSetupComplete(!!(feeStructure && feeStructure.is_setup_complete));
     } catch (error) {
       console.error('Error checking fee setup completion:', error);
@@ -152,7 +186,9 @@ export const useCohortStudentsTable = ({
 
       for (const student of students) {
         try {
-          const result = await studentScholarshipsService.getByStudent(student.id);
+          const result = await studentScholarshipsService.getByStudent(
+            student.id
+          );
           if (result.success && result.data) {
             assignments[student.id] = true;
             details[student.id] = result.data;
@@ -160,7 +196,10 @@ export const useCohortStudentsTable = ({
             assignments[student.id] = false;
           }
         } catch (error) {
-          console.error(`Error loading scholarship for student ${student.id}:`, error);
+          console.error(
+            `Error loading scholarship for student ${student.id}:`,
+            error
+          );
           assignments[student.id] = false;
         }
       }
@@ -186,7 +225,9 @@ export const useCohortStudentsTable = ({
 
       for (const student of students) {
         try {
-          const result = await studentPaymentPlanService.getByStudent(student.id);
+          const result = await studentPaymentPlanService.getByStudent(
+            student.id
+          );
           if (result.success && result.data) {
             assignments[student.id] = true;
             details[student.id] = result.data;
@@ -195,7 +236,10 @@ export const useCohortStudentsTable = ({
             assignments[student.id] = false;
           }
         } catch (error) {
-          console.error(`Error loading payment plan for student ${student.id}:`, error);
+          console.error(
+            `Error loading payment plan for student ${student.id}:`,
+            error
+          );
           assignments[student.id] = false;
         }
       }
@@ -211,25 +255,62 @@ export const useCohortStudentsTable = ({
   }, [students]);
 
   // Handle scholarship assignment
-  const handleScholarshipAssigned = useCallback(async (studentId: string) => {
-    try {
-      const result = await studentScholarshipsService.getByStudent(studentId);
-      if (result.success && result.data) {
-        setScholarshipAssignments(prev => ({ ...prev, [studentId]: true }));
-        setScholarshipDetails(prev => ({ ...prev, [studentId]: result.data }));
-      } else {
-        // If no scholarship data, mark as not assigned
+  const handleScholarshipAssigned = useCallback(
+    async (studentId: string) => {
+      try {
+        console.log(
+          '🔄 [DEBUG] handleScholarshipAssigned called for student:',
+          studentId
+        );
+
+        const result = await studentScholarshipsService.getByStudent(studentId);
+        console.log('🔄 [DEBUG] Scholarship result:', result);
+
+        if (result.success && result.data) {
+          console.log(
+            '🔄 [DEBUG] Setting scholarship assignment to true for student:',
+            studentId
+          );
+          setScholarshipAssignments(prev => ({ ...prev, [studentId]: true }));
+          setScholarshipDetails(prev => ({
+            ...prev,
+            [studentId]: result.data,
+          }));
+        } else {
+          console.log(
+            '🔄 [DEBUG] Setting scholarship assignment to false for student:',
+            studentId
+          );
+          // If no scholarship data, mark as not assigned
+          setScholarshipAssignments(prev => ({ ...prev, [studentId]: false }));
+          setScholarshipDetails(prev => {
+            const newDetails = { ...prev };
+            delete newDetails[studentId];
+            return newDetails;
+          });
+        }
+
+        // Call parent callback to refresh main data
+        onScholarshipAssigned?.();
+      } catch (error) {
+        console.error(
+          '🔄 [DEBUG] Error updating scholarship assignment:',
+          error
+        );
+        // On error, still update the state to reflect the change
         setScholarshipAssignments(prev => ({ ...prev, [studentId]: false }));
         setScholarshipDetails(prev => {
           const newDetails = { ...prev };
           delete newDetails[studentId];
           return newDetails;
         });
+
+        // Call parent callback even on error to ensure data is refreshed
+        onScholarshipAssigned?.();
       }
-    } catch (error) {
-      console.error('Error updating scholarship assignment:', error);
-    }
-  }, []);
+    },
+    [onScholarshipAssigned]
+  );
 
   // Handle payment plan update
   const handlePaymentPlanUpdated = useCallback(async (studentId: string) => {
@@ -238,9 +319,9 @@ export const useCohortStudentsTable = ({
       if (result.success && result.data) {
         setPaymentPlanAssignments(prev => ({ ...prev, [studentId]: true }));
         setPaymentPlanDetails(prev => ({ ...prev, [studentId]: result.data }));
-        setCustomFeeStructures(prev => ({ 
-          ...prev, 
-          [studentId]: false // TODO: Implement custom fee structure check
+        setCustomFeeStructures(prev => ({
+          ...prev,
+          [studentId]: false, // TODO: Implement custom fee structure check
         }));
       } else {
         // If no payment plan data, mark as not assigned
@@ -276,7 +357,9 @@ export const useCohortStudentsTable = ({
         );
 
         if (emailResult.success) {
-          toast.success(`Invitation sent to ${student.first_name} ${student.last_name}`);
+          toast.success(
+            `Invitation sent to ${student.first_name} ${student.last_name}`
+          );
           onStudentUpdated?.(student.id, { invite_status: 'sent' });
         } else {
           toast.error('Failed to send invitation email');
@@ -316,7 +399,9 @@ export const useCohortStudentsTable = ({
 
   // Check if email option should be shown
   const shouldShowEmailOption = (student: CohortStudent) => {
-    return student.invite_status === 'pending' || student.invite_status === 'sent';
+    return (
+      student.invite_status === 'pending' || student.invite_status === 'sent'
+    );
   };
 
   // Handle delete student
@@ -359,7 +444,11 @@ export const useCohortStudentsTable = ({
     checkFeeSetupCompletion();
     loadScholarshipAssignments();
     loadPaymentPlanAssignments();
-  }, [checkFeeSetupCompletion, loadScholarshipAssignments, loadPaymentPlanAssignments]);
+  }, [
+    checkFeeSetupCompletion,
+    loadScholarshipAssignments,
+    loadPaymentPlanAssignments,
+  ]);
 
   return {
     // State

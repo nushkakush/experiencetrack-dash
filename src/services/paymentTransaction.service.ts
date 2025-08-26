@@ -112,6 +112,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
         dataLength: data?.length || 0,
         data: data?.slice(0, 3), // Show first 3 transactions
         error: error?.message,
+        lit_invoice_ids: data?.map(t => t.lit_invoice_id).filter(Boolean),
       });
 
       if (error) throw error;

@@ -68,10 +68,11 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
     handleResetClick,
     handleResetConfirm,
     handlePartialApprovalClick,
-    handlePartialApprovalSubmit,
+    handlePartialApprovalWrapper,
   } = useActionsCell({
     student,
     onPendingCountUpdate,
+    onVerificationUpdate, // Pass onVerificationUpdate to the hook
     feeStructure,
   });
 
@@ -159,11 +160,13 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       <SimplePartialApprovalDialog
         open={showPartialApprovalDialog}
         onOpenChange={setShowPartialApprovalDialog}
-        transactionId={partialApprovalTransaction?.id || ''}
         studentName={`${student.student?.first_name || ''} ${student.student?.last_name || ''}`.trim()}
         submittedAmount={partialApprovalTransaction?.amount || 0}
         expectedAmount={expectedAmount}
-        onApprove={handlePartialApprovalSubmit}
+        onApprove={handlePartialApprovalWrapper}
+        onReject={() =>
+          handleVerify(partialApprovalTransaction?.id || '', 'rejected')
+        }
         loading={verifyingId === partialApprovalTransaction?.id}
       />
     </TableCell>

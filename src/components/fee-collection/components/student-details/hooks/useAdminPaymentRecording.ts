@@ -3,6 +3,7 @@ import { StudentPaymentSummary } from '@/types/fee';
 import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { studentScholarshipsService } from '@/services/studentScholarships.service';
 import { useAuth } from '@/hooks/useAuth';
 import { usePaymentSubmissions } from '@/pages/dashboards/student/hooks/usePaymentSubmissions';
 import { PaymentSubmissionData } from '@/types/components/PaymentFormTypes';
@@ -12,7 +13,15 @@ interface PaymentScheduleItem {
   type: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'pending_10_plus_days' | 'verification_pending' | 'paid' | 'overdue' | 'partially_paid_days_left' | 'partially_paid_overdue' | 'partially_paid_verification_pending';
+  status:
+    | 'pending'
+    | 'pending_10_plus_days'
+    | 'verification_pending'
+    | 'paid'
+    | 'overdue'
+    | 'partially_paid_days_left'
+    | 'partially_paid_overdue'
+    | 'partially_paid_verification_pending';
   paymentDate?: string;
   verificationStatus?: string;
   semesterNumber?: number;
@@ -40,6 +49,8 @@ interface UseAdminPaymentRecordingProps {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
+    program_fee_includes_gst?: boolean;
+    equal_scholarship_distribution?: boolean;
     one_shot_dates?: Record<string, string>;
     sem_wise_dates?: Record<string, string | Record<string, unknown>>;
     instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
@@ -54,75 +65,99 @@ export const useAdminPaymentRecording = ({
   onOpenChange,
   feeStructure,
 }: UseAdminPaymentRecordingProps) => {
-  const [adminPaymentBreakdown, setAdminPaymentBreakdown] = useState<AdminPaymentBreakdown | null>(null);
-  const [studentPaymentBreakdown, setStudentPaymentBreakdown] = useState<any>(null);
+  const [adminPaymentBreakdown, setAdminPaymentBreakdown] =
+    useState<AdminPaymentBreakdown | null>(null);
+  const [studentPaymentBreakdown, setStudentPaymentBreakdown] =
+    useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [existingTransactions, setExistingTransactions] = useState<any[]>([]);
   const [pendingAmount, setPendingAmount] = useState<number>(0);
+  const [studentScholarship, setStudentScholarship] = useState<any>(null);
   const { profile } = useAuth();
 
   // Transform student data for PaymentForm
-  const studentData = useMemo(() => ({
-    id: student.student_id,
-    email: student.student?.email || '',
-    first_name: student.student?.first_name || null,
-    last_name: student.student?.last_name || null,
-    phone: student.student?.phone || null,
-    cohort_id: student.student?.cohort_id || '',
-    user_id: student.student?.user_id || null,
-    invite_status: 'accepted' as const,
-    dropped_out_status: 'active' as const,
-    invited_at: null,
-    accepted_at: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }), [student]);
+  const studentData = useMemo(
+    () => ({
+      id: student.student_id,
+      email: student.student?.email || '',
+      first_name: student.student?.first_name || null,
+      last_name: student.student?.last_name || null,
+      phone: student.student?.phone || null,
+      cohort_id: student.student?.cohort_id || '',
+      user_id: student.student?.user_id || null,
+      invite_status: 'accepted' as const,
+      dropped_out_status: 'active' as const,
+      invited_at: null,
+      accepted_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    [student]
+  );
 
   // Fetch existing transactions for this student to calculate pending amount
   const fetchExistingTransactions = useCallback(async () => {
     if (!student?.student_id) return;
 
-    console.log('🔍 [AdminPaymentDialog] fetchExistingTransactions called with:', {
-      studentId: student.student_id,
-      paymentItem: paymentItem ? {
-        id: paymentItem.id,
-        type: paymentItem.type,
-        amount: paymentItem.amount,
-        semesterNumber: paymentItem.semesterNumber,
-        installmentNumber: paymentItem.installmentNumber,
-      } : null,
-    });
+    console.log(
+      '🔍 [AdminPaymentDialog] fetchExistingTransactions called with:',
+      {
+        studentId: student.student_id,
+        paymentItem: paymentItem
+          ? {
+              id: paymentItem.id,
+              type: paymentItem.type,
+              amount: paymentItem.amount,
+              semesterNumber: paymentItem.semesterNumber,
+              installmentNumber: paymentItem.installmentNumber,
+            }
+          : null,
+      }
+    );
 
     try {
-      const result = await paymentTransactionService.getByStudentId(student.student_id);
+      const result = await paymentTransactionService.getByStudentId(
+        student.student_id
+      );
       console.log('🔍 [AdminPaymentDialog] Transaction fetch result:', {
         success: result.success,
         dataLength: result.data?.length || 0,
         data: result.data?.slice(0, 3), // Show first 3 transactions
       });
-      
+
       if (result.success && result.data) {
         setExistingTransactions(result.data);
-        
+
         // Calculate pending amount for the specific installment
         if (paymentItem && result.data.length > 0) {
           const installmentKey = `${paymentItem.semesterNumber || 1}-${paymentItem.installmentNumber || 0}`;
-          
+
           const relevantTransactions = result.data.filter(tx => {
-            const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+            const txKey =
+              typeof tx?.installment_id === 'string'
+                ? String(tx.installment_id)
+                : '';
             const matchesKey = txKey === installmentKey;
-            const matchesSemester = Number(tx?.semester_number) === Number(paymentItem.semesterNumber);
+            const matchesSemester =
+              Number(tx?.semester_number) ===
+              Number(paymentItem.semesterNumber);
             return matchesKey || (!!txKey === false && matchesSemester);
           });
 
-          const approvedTransactions = relevantTransactions.filter(tx => 
-            tx.verification_status === 'approved'
+          const approvedTransactions = relevantTransactions.filter(
+            tx => tx.verification_status === 'approved'
           );
 
-          const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+          const totalPaid = approvedTransactions.reduce(
+            (sum, tx) => sum + Number(tx.amount),
+            0
+          );
           const originalAmount = paymentItem.amount || 0;
-          const calculatedPendingAmount = Math.max(0, originalAmount - totalPaid);
-          
+          const calculatedPendingAmount = Math.max(
+            0,
+            originalAmount - totalPaid
+          );
+
           console.log('🔍 [AdminPaymentDialog] Calculated pending amount:', {
             originalAmount,
             totalPaid,
@@ -138,10 +173,12 @@ export const useAdminPaymentRecording = ({
               semester_number: tx.semester_number,
             })),
           });
-          
+
           setPendingAmount(calculatedPendingAmount);
         } else {
-          console.log('🔍 [AdminPaymentDialog] No paymentItem or no transactions found');
+          console.log(
+            '🔍 [AdminPaymentDialog] No paymentItem or no transactions found'
+          );
           setPendingAmount(0);
         }
       }
@@ -149,6 +186,25 @@ export const useAdminPaymentRecording = ({
       console.error('Error fetching existing transactions:', error);
     }
   }, [student?.student_id, paymentItem]);
+
+  // Fetch student scholarship data
+  const fetchStudentScholarship = useCallback(async () => {
+    if (!student?.student_id) return;
+
+    try {
+      const scholarshipResult = await studentScholarshipsService.getByStudent(
+        student.student_id
+      );
+      if (scholarshipResult.success && scholarshipResult.data) {
+        setStudentScholarship(scholarshipResult.data);
+      } else {
+        setStudentScholarship(null);
+      }
+    } catch (error) {
+      console.error('Error fetching student scholarship:', error);
+      setStudentScholarship(null);
+    }
+  }, [student?.student_id]);
 
   // Fetch payment breakdown from payment engine
   const fetchPaymentBreakdown = useCallback(async () => {
@@ -178,25 +234,59 @@ export const useAdminPaymentRecording = ({
         String(student.student?.cohort_id),
         String(student.student_id)
       );
-      
+
       // Use custom structure if it exists, otherwise use the provided cohort structure
       const feeStructureToUse = customFeeStructure || feeStructure;
-      
+
+      // Get scholarship ID and additional discount percentage
+      let scholarshipId = undefined as string | undefined;
+      let additionalDiscountPercentage = 0;
+
+      // Fetch scholarship data directly to avoid circular dependency
+      try {
+        const scholarshipResult = await studentScholarshipsService.getByStudent(
+          student.student_id
+        );
+        if (scholarshipResult.success && scholarshipResult.data) {
+          scholarshipId = scholarshipResult.data.scholarship_id;
+          additionalDiscountPercentage =
+            scholarshipResult.data.additional_discount_percentage || 0;
+        } else if (student.scholarship_id) {
+          scholarshipId = student.scholarship_id;
+        }
+      } catch (error) {
+        console.error(
+          'Error fetching scholarship data in payment breakdown:',
+          error
+        );
+        // Fallback to student scholarship ID if available
+        if (student.scholarship_id) {
+          scholarshipId = student.scholarship_id;
+        }
+      }
+
       // Get the full payment breakdown from the payment engine
       const response = await getFullPaymentView({
         studentId: student.student_id,
         cohortId: student.student?.cohort_id,
         paymentPlan: student.payment_plan,
+        scholarshipId,
+        additionalDiscountPercentage,
         feeStructureData: {
           total_program_fee: feeStructureToUse.total_program_fee,
           admission_fee: feeStructureToUse.admission_fee,
           number_of_semesters: feeStructureToUse.number_of_semesters,
           instalments_per_semester: feeStructureToUse.instalments_per_semester,
-          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+          one_shot_discount_percentage:
+            feeStructureToUse.one_shot_discount_percentage,
+          program_fee_includes_gst:
+            feeStructureToUse.program_fee_includes_gst ?? true,
+          equal_scholarship_distribution:
+            feeStructureToUse.equal_scholarship_distribution ?? false,
           one_shot_dates: feeStructureToUse.one_shot_dates,
           sem_wise_dates: feeStructureToUse.sem_wise_dates,
           instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-        }
+        },
       });
 
       console.log('🔍 [AdminPaymentDialog] Payment engine response:', {
@@ -224,7 +314,8 @@ export const useAdminPaymentRecording = ({
             baseAmount: response.breakdown.admissionFee.baseAmount || 0,
             gstAmount: response.breakdown.admissionFee.gstAmount || 0,
             discountAmount: response.breakdown.admissionFee.discountAmount || 0,
-            scholarshipAmount: response.breakdown.admissionFee.scholarshipAmount || 0,
+            scholarshipAmount:
+              response.breakdown.admissionFee.scholarshipAmount || 0,
             totalAmount: response.breakdown.admissionFee.totalPayable || 0,
             paymentDate: response.breakdown.admissionFee.paymentDate,
           };
@@ -241,7 +332,7 @@ export const useAdminPaymentRecording = ({
           if (oneShotPayment) {
             // For one-shot payments, use the overall summary to show the correct breakdown
             const overallSummary = response.breakdown.overallSummary;
-            
+
             breakdown = {
               baseAmount: overallSummary.totalProgramFee, // Full program fee
               gstAmount: overallSummary.totalGST, // Total GST
@@ -251,7 +342,10 @@ export const useAdminPaymentRecording = ({
               paymentDate: oneShotPayment?.paymentDate,
             };
           }
-        } else if (paymentItem.semesterNumber && paymentItem.installmentNumber) {
+        } else if (
+          paymentItem.semesterNumber &&
+          paymentItem.installmentNumber
+        ) {
           // Find the specific semester and installment
           const semester = response.breakdown.semesters?.find(
             s => s.semesterNumber === paymentItem.semesterNumber
@@ -260,17 +354,20 @@ export const useAdminPaymentRecording = ({
             i => i.installmentNumber === paymentItem.installmentNumber
           );
 
-          console.log('🔍 [AdminPaymentDialog] Processing Installment Payment:', {
-            targetSemester: paymentItem.semesterNumber,
-            targetInstallment: paymentItem.installmentNumber,
-            foundSemester: !!semester,
-            foundInstallment: !!installment,
-            availableSemesters: response.breakdown.semesters?.map(s => ({
-              semesterNumber: s.semesterNumber,
-              installmentCount: s.instalments?.length,
-            })),
-            installment,
-          });
+          console.log(
+            '🔍 [AdminPaymentDialog] Processing Installment Payment:',
+            {
+              targetSemester: paymentItem.semesterNumber,
+              targetInstallment: paymentItem.installmentNumber,
+              foundSemester: !!semester,
+              foundInstallment: !!installment,
+              availableSemesters: response.breakdown.semesters?.map(s => ({
+                semesterNumber: s.semesterNumber,
+                installmentCount: s.instalments?.length,
+              })),
+              installment,
+            }
+          );
 
           if (installment) {
             breakdown = {
@@ -302,28 +399,38 @@ export const useAdminPaymentRecording = ({
     } finally {
       setLoading(false);
     }
-  }, [paymentItem, student.student_id, student.student?.cohort_id, student.payment_plan, feeStructure]);
+  }, [
+    paymentItem,
+    student.student_id,
+    student.student?.cohort_id,
+    student.payment_plan,
+    feeStructure,
+  ]);
 
   // Transform payment item for PaymentForm - MEMOIZED to prevent infinite re-renders
   const selectedInstallment = useMemo(() => {
     if (!paymentItem) return undefined;
 
     // Calculate the amount - use pending amount if available, otherwise prefer breakdown total, fallback to paymentItem amount
-    const calculatedAmount = pendingAmount > 0 
-      ? pendingAmount 
-      : (adminPaymentBreakdown?.totalAmount ?? paymentItem.amount);
+    const calculatedAmount =
+      pendingAmount > 0
+        ? pendingAmount
+        : (adminPaymentBreakdown?.totalAmount ?? paymentItem.amount);
 
-    console.log('🔍 [AdminPaymentDialog] selectedInstallment amount calculation:', {
-      adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
-      paymentItemAmount: paymentItem.amount,
-      pendingAmount,
-      calculatedAmount,
-      isNaN: isNaN(calculatedAmount),
-      paymentItemSemesterNumber: paymentItem.semesterNumber,
-      paymentItemInstallmentNumber: paymentItem.installmentNumber,
-      usePendingAmount: pendingAmount > 0,
-      finalAmount: calculatedAmount,
-    });
+    console.log(
+      '🔍 [AdminPaymentDialog] selectedInstallment amount calculation:',
+      {
+        adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
+        paymentItemAmount: paymentItem.amount,
+        pendingAmount,
+        calculatedAmount,
+        isNaN: isNaN(calculatedAmount),
+        paymentItemSemesterNumber: paymentItem.semesterNumber,
+        paymentItemInstallmentNumber: paymentItem.installmentNumber,
+        usePendingAmount: pendingAmount > 0,
+        finalAmount: calculatedAmount,
+      }
+    );
 
     return {
       id: paymentItem.id,
@@ -342,14 +449,18 @@ export const useAdminPaymentRecording = ({
     if (!paymentItem || !selectedInstallment) return undefined;
 
     // Use the same amount calculation as selectedInstallment
-    const calculatedAmount = adminPaymentBreakdown?.totalAmount ?? paymentItem.amount;
+    const calculatedAmount =
+      adminPaymentBreakdown?.totalAmount ?? paymentItem.amount;
 
-    console.log('🔍 [AdminPaymentDialog] paymentBreakdownForForm amount calculation:', {
-      adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
-      paymentItemAmount: paymentItem.amount,
-      calculatedAmount,
-      selectedInstallmentAmount: selectedInstallment.amount,
-    });
+    console.log(
+      '🔍 [AdminPaymentDialog] paymentBreakdownForForm amount calculation:',
+      {
+        adminBreakdownTotal: adminPaymentBreakdown?.totalAmount,
+        paymentItemAmount: paymentItem.amount,
+        calculatedAmount,
+        selectedInstallmentAmount: selectedInstallment.amount,
+      }
+    );
 
     return {
       totalAmount: calculatedAmount,
@@ -370,7 +481,9 @@ export const useAdminPaymentRecording = ({
   }, [paymentItem, selectedInstallment, adminPaymentBreakdown?.totalAmount]);
 
   // Handle payment submission with admin context
-  const handlePaymentSubmission = async (paymentData: PaymentSubmissionData) => {
+  const handlePaymentSubmission = async (
+    paymentData: PaymentSubmissionData
+  ) => {
     try {
       // Convert PaymentFormTypes.PaymentSubmissionData to PaymentMethods.PaymentSubmissionData
       const adminPaymentData = {
@@ -384,9 +497,10 @@ export const useAdminPaymentRecording = ({
         cohortId: studentData.cohort_id,
         studentUserId: studentData.user_id,
         // Construct installmentId in the same format as usePaymentForm
-        installmentId: paymentItem?.semesterNumber && paymentItem?.installmentNumber 
-          ? `${paymentItem.semesterNumber}-${paymentItem.installmentNumber}`
-          : paymentItem?.id, // Fallback to original id for one-shot payments
+        installmentId:
+          paymentItem?.semesterNumber && paymentItem?.installmentNumber
+            ? `${paymentItem.semesterNumber}-${paymentItem.installmentNumber}`
+            : paymentItem?.id, // Fallback to original id for one-shot payments
         semesterNumber: paymentItem?.semesterNumber,
         isAdminRecorded: true,
         recordedByUserId: profile?.user_id,
@@ -416,7 +530,13 @@ export const useAdminPaymentRecording = ({
       fetchPaymentBreakdown();
       fetchExistingTransactions();
     }
-  }, [open, paymentItem, student, fetchPaymentBreakdown, fetchExistingTransactions]);
+  }, [
+    open,
+    paymentItem,
+    student,
+    fetchPaymentBreakdown,
+    fetchExistingTransactions,
+  ]);
 
   // Debug logging when dialog opens
   useEffect(() => {

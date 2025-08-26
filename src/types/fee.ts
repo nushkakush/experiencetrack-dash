@@ -15,6 +15,8 @@ export interface FeeStructure {
   one_shot_dates: Record<string, string>; // Custom dates for one-shot payment plan (jsonb)
   sem_wise_dates: Record<string, string | { [key: string]: unknown }>; // Custom dates for semester-wise payment plan (jsonb)
   instalment_wise_dates: Record<string, string | { [key: string]: unknown }>; // Custom dates for installment-wise payment plan (jsonb)
+  program_fee_includes_gst: boolean;
+  equal_scholarship_distribution: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -40,6 +42,8 @@ export interface NewFeeStructureInput {
   number_of_semesters: number;
   instalments_per_semester: number;
   one_shot_discount_percentage: number;
+  program_fee_includes_gst: boolean;
+  equal_scholarship_distribution: boolean;
 }
 
 export interface NewScholarshipInput {

@@ -28,6 +28,7 @@ import {
 import { FeeStructure } from '@/types/payments/PaymentCalculationTypes';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { toast } from 'sonner';
+import { useFeatureFlag } from '@/lib/feature-flags';
 import { PaymentPlanPreviewModal } from './PaymentPlanPreviewModal';
 
 interface PaymentPlanSelectionProps {
@@ -162,10 +163,15 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
     setSelectedPlan(null);
   };
 
+  const { isEnabled: isCashDisabled } = useFeatureFlag(
+    'cash-payment-disabled',
+    { defaultValue: false }
+  );
+
   const getPaymentMethods = (plan: PaymentPlan) => {
     const baseMethods = [
       { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦' },
-      { value: 'cash', label: 'Cash', icon: '💵' },
+      ...(isCashDisabled ? [] : [{ value: 'cash', label: 'Cash', icon: '💵' }]),
       { value: 'cheque', label: 'Cheque', icon: '📄' },
       { value: 'dd', label: 'Demand Draft', icon: '🏛️' },
     ];

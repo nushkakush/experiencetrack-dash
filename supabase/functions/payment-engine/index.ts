@@ -2,14 +2,19 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Import types and modules
-import type { EdgeRequest, EdgeResponse, PaymentPlan, Transaction } from './types.ts';
+import type {
+  EdgeRequest,
+  EdgeResponse,
+  PaymentPlan,
+  Transaction,
+} from './types.ts';
 import { generateFeeStructureReview } from './business-logic.ts';
 import { enrichWithStatuses } from './status-management.ts';
-import { 
-  calculatePartialPaymentSummary, 
-  processAdminPartialApproval, 
-  updatePartialPaymentConfig, 
-  getPartialPaymentConfig 
+import {
+  calculatePartialPaymentSummary,
+  processAdminPartialApproval,
+  updatePartialPaymentConfig,
+  getPartialPaymentConfig,
 } from './partial-payments.ts';
 
 // CORS headers
@@ -59,18 +64,26 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
   // Handle partial payment specific actions
   if (action === 'partial_calculation') {
     if (!studentId || !installmentId) {
-      throw new Error('studentId and installmentId are required for partial calculation');
+      throw new Error(
+        'studentId and installmentId are required for partial calculation'
+      );
     }
-    
-    const result = await calculatePartialPaymentSummary(supabase, studentId, installmentId);
+
+    const result = await calculatePartialPaymentSummary(
+      supabase,
+      studentId,
+      installmentId
+    );
     return { success: true, data: result };
   }
 
   if (action === 'admin_partial_approval') {
     if (!transactionId || !approvalType) {
-      throw new Error('transactionId and approvalType are required for admin approval');
+      throw new Error(
+        'transactionId and approvalType are required for admin approval'
+      );
     }
-    
+
     const result = await processAdminPartialApproval(
       supabase,
       transactionId,
@@ -83,10 +96,16 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
   }
 
   if (action === 'partial_config') {
-    console.log('🔧 [partial_config] Starting with:', { studentId, installmentId, allowPartialPayments });
-    
+    console.log('🔧 [partial_config] Starting with:', {
+      studentId,
+      installmentId,
+      allowPartialPayments,
+    });
+
     if (!studentId || !installmentId) {
-      throw new Error('studentId and installmentId are required for partial payment config');
+      throw new Error(
+        'studentId and installmentId are required for partial payment config'
+      );
     }
 
     // Get student payment ID
@@ -97,7 +116,9 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
       .single();
 
     if (studentPaymentError) {
-      throw new Error(`Student payment lookup failed: ${studentPaymentError.message}`);
+      throw new Error(
+        `Student payment lookup failed: ${studentPaymentError.message}`
+      );
     }
 
     if (!studentPayment) {
@@ -107,32 +128,32 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
     if (allowPartialPayments !== undefined) {
       // Update partial payment setting
       const result = await updatePartialPaymentConfig(
-        supabase, 
-        studentPayment.id, 
-        installmentId, 
+        supabase,
+        studentPayment.id,
+        installmentId,
         allowPartialPayments
       );
-      
+
       // Verify the update was successful
       const verifyResult = await getPartialPaymentConfig(
-        supabase, 
-        studentPayment.id, 
+        supabase,
+        studentPayment.id,
         installmentId
       );
-      
-      return { 
-        success: true, 
-        data: { 
-          ...result, 
+
+      return {
+        success: true,
+        data: {
+          ...result,
           verified: verifyResult,
-          allowPartialPayments: verifyResult.allowPartialPayments 
-        } 
+          allowPartialPayments: verifyResult.allowPartialPayments,
+        },
       };
     } else {
       // Get partial payment setting
       const result = await getPartialPaymentConfig(
-        supabase, 
-        studentPayment.id, 
+        supabase,
+        studentPayment.id,
         installmentId
       );
       return { success: true, data: result };
@@ -149,23 +170,52 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
   let effectiveScholarshipId = scholarshipId;
 
   if (studentId) {
-    const { data: sp } = await supabase
+    console.log('🔍 [PAYMENT ENGINE] Looking for student_payments record:', {
+      studentId,
+      cohortId,
+    });
+
+    const { data: sp, error: spError } = await supabase
       .from('student_payments')
       .select('id, payment_plan, scholarship_id')
       .eq('student_id', studentId)
       .eq('cohort_id', cohortId)
       .maybeSingle();
+
+    console.log('🔍 [PAYMENT ENGINE] Student payments query result:', {
+      sp,
+      spError,
+      hasStudentPayment: !!sp,
+    });
+
     if (sp) {
       studentPaymentId = sp.id;
+      console.log('✅ [PAYMENT ENGINE] Found student payment record:', {
+        studentPaymentId: sp.id,
+        payment_plan: sp.payment_plan,
+        scholarship_id: sp.scholarship_id,
+      });
+
       if (!resolvedPlan && sp.payment_plan)
         resolvedPlan = sp.payment_plan as PaymentPlan;
       if (!effectiveScholarshipId && sp.scholarship_id)
         effectiveScholarshipId = sp.scholarship_id as string;
+    } else {
+      console.log('⚠️ [PAYMENT ENGINE] No student payment record found for:', {
+        studentId,
+        cohortId,
+      });
     }
+  } else {
+    console.log(
+      '⚠️ [PAYMENT ENGINE] No studentId provided, skipping student payment lookup'
+    );
   }
 
   if (!resolvedPlan) {
-    throw new Error('paymentPlan is required when no student payment record exists');
+    throw new Error(
+      'paymentPlan is required when no student payment record exists'
+    );
   }
 
   // Build breakdown and fee structure
@@ -188,11 +238,50 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
   // Load transactions if we need statuses/aggregates
   let transactions: Transaction[] = [];
   if (studentPaymentId) {
-    const { data: tx } = await supabase
+    console.log(
+      '🔍 [PAYMENT ENGINE] Looking for transactions with studentPaymentId:',
+      studentPaymentId
+    );
+    const { data: tx, error: txError } = await supabase
       .from('payment_transactions')
-      .select('amount, verification_status, installment_id, semester_number')
+      .select(
+        'id, amount, verification_status, installment_id, semester_number, payment_method, reference_number'
+      )
       .eq('payment_id', studentPaymentId);
+
+    console.log('🔍 [PAYMENT ENGINE] Transaction query result:', {
+      tx,
+      txError,
+      transactionCount: Array.isArray(tx) ? tx.length : 0,
+    });
+
+    if (txError) {
+      console.log('❌ [PAYMENT ENGINE] Error fetching transactions:', txError);
+    } else if (Array.isArray(tx) && tx.length > 0) {
+      console.log(
+        '✅ [PAYMENT ENGINE] Found transactions:',
+        tx.map(t => ({
+          id: t.id,
+          amount: t.amount,
+          verification_status: t.verification_status,
+          installment_id: t.installment_id,
+          semester_number: t.semester_number,
+          payment_method: t.payment_method,
+          reference_number: t.reference_number,
+        }))
+      );
+    } else {
+      console.log(
+        '⚠️ [PAYMENT ENGINE] No transactions found for studentPaymentId:',
+        studentPaymentId
+      );
+    }
+
     transactions = Array.isArray(tx) ? (tx as unknown[]) : [];
+  } else {
+    console.log(
+      '⚠️ [PAYMENT ENGINE] No studentPaymentId found, skipping transaction lookup'
+    );
   }
 
   const { breakdown: enriched, aggregate } = enrichWithStatuses(
@@ -213,7 +302,7 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
     aggregate,
     debug: {
       receivedFeeStructureData: !!feeStructureData,
-      customDatesEnabled: feeStructureData?.custom_dates_enabled,
+
       oneShotDatesFromRequest: feeStructureData?.one_shot_dates,
       paymentPlan: resolvedPlan,
       finalOneShotDate: enriched?.oneShotPayment?.paymentDate,
@@ -230,7 +319,7 @@ serve(async req => {
   try {
     const request: EdgeRequest = await req.json();
     const response = await handleRequest(request);
-    
+
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

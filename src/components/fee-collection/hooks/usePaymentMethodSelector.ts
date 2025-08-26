@@ -5,6 +5,7 @@ import {
   showValidationErrors,
 } from '../utils/PaymentValidation';
 import { Logger } from '@/lib/logging/Logger';
+import { useFeatureFlag } from '@/lib/feature-flags';
 
 interface PaymentSubmissionData {
   paymentId: string;
@@ -40,6 +41,11 @@ export const usePaymentMethodSelector = ({
   onPaymentSubmit,
   paymentMethods = [],
 }: UsePaymentMethodSelectorProps) => {
+  const { isEnabled: isCashDisabled } = useFeatureFlag(
+    'cash-payment-disabled',
+    { defaultValue: false }
+  );
+
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [isPartialPayment, setIsPartialPayment] = useState<boolean>(false);
@@ -67,7 +73,7 @@ export const usePaymentMethodSelector = ({
 
   // Default payment methods if none provided
   const defaultPaymentMethods = [
-    'cash',
+    ...(isCashDisabled ? [] : ['cash']),
     'bank_transfer',
     'cheque',
     'dd',

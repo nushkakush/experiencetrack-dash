@@ -17,6 +17,7 @@ export default function CohortDetailsPage() {
 
   const {
     loading,
+    isRefreshing,
     students,
     cohort,
     deletingStudentId,
@@ -56,6 +57,11 @@ export default function CohortDetailsPage() {
   ) => {
     // Update the student locally without reloading from server
     updateStudent(studentId, updates);
+  };
+
+  const handleScholarshipAssigned = () => {
+    // Refresh the main data to ensure scholarship information is updated
+    loadData();
   };
 
   const bulkUploadConfig: BulkUploadConfig<NewStudentInput> = {
@@ -117,6 +123,7 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
           bulkUploadConfig={bulkUploadConfig}
           onFeeManagementSuccess={loadData}
           studentCount={students.length}
+          isRefreshing={isRefreshing}
         />
 
         <CohortStudentsTable
@@ -124,7 +131,9 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
           scholarships={scholarships}
           onStudentDeleted={loadData}
           onStudentUpdated={handleStudentUpdated}
+          onScholarshipAssigned={handleScholarshipAssigned}
           loading={loading}
+          isRefreshing={isRefreshing}
           cohortName={cohort?.name}
         />
       </div>

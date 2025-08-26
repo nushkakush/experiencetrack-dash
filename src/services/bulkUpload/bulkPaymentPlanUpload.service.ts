@@ -1,9 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Logger } from '@/lib/logging/Logger';
-import { 
-  BulkPaymentPlanUpload, 
+import {
+  BulkPaymentPlanUpload,
   BulkPaymentPlanUploadResult,
-  BulkUploadOperationConfig 
+  BulkUploadOperationConfig,
 } from '@/types/payments/BulkUploadTypes';
 import { PaymentPlan } from '@/types/payments/PaymentPlans';
 import { Scholarship } from '@/types/fee';
@@ -28,21 +28,25 @@ export class BulkPaymentPlanUploadService {
     if (!data.payment_plan || typeof data.payment_plan !== 'string') {
       errors.push('Payment plan is required and must be a string');
     } else {
-      const validPlans: PaymentPlan[] = ['one_shot', 'sem_wise', 'instalment_wise', 'not_selected'];
+      const validPlans: PaymentPlan[] = [
+        'one_shot',
+        'sem_wise',
+        'instalment_wise',
+        'not_selected',
+      ];
       if (!validPlans.includes(data.payment_plan as PaymentPlan)) {
         errors.push(`Payment plan must be one of: ${validPlans.join(', ')}`);
       }
     }
 
-
-
     // Validate custom_dates (optional JSON)
     if (data.custom_dates !== undefined && data.custom_dates !== '') {
       try {
-        const customDates = typeof data.custom_dates === 'string' 
-          ? JSON.parse(data.custom_dates) 
-          : data.custom_dates;
-        
+        const customDates =
+          typeof data.custom_dates === 'string'
+            ? JSON.parse(data.custom_dates)
+            : data.custom_dates;
+
         if (typeof customDates !== 'object' || customDates === null) {
           errors.push('Custom dates must be a valid JSON object');
         }
@@ -60,12 +64,18 @@ export class BulkPaymentPlanUploadService {
   static async checkDuplicatePaymentPlans(
     data: BulkPaymentPlanUpload[],
     cohortId: string
-  ): Promise<Array<{ data: BulkPaymentPlanUpload; row: number; existingData?: any }>> {
-    const duplicates: Array<{ data: BulkPaymentPlanUpload; row: number; existingData?: any }> = [];
+  ): Promise<
+    Array<{ data: BulkPaymentPlanUpload; row: number; existingData?: any }>
+  > {
+    const duplicates: Array<{
+      data: BulkPaymentPlanUpload;
+      row: number;
+      existingData?: any;
+    }> = [];
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      
+
       // Get student ID from email
       const { data: student } = await supabase
         .from('cohort_students')
@@ -87,7 +97,7 @@ export class BulkPaymentPlanUploadService {
           duplicates.push({
             data: row,
             row: i + 2, // +2 because CSV has header and we're 0-indexed
-            existingData: existingPaymentPlan
+            existingData: existingPaymentPlan,
           });
         }
       }
@@ -103,7 +113,11 @@ export class BulkPaymentPlanUploadService {
     data: BulkPaymentPlanUpload[],
     config: BulkUploadOperationConfig,
     duplicateHandling: 'ignore' | 'overwrite'
-  ): Promise<{ success: boolean; message: string; results: BulkPaymentPlanUploadResult[] }> {
+  ): Promise<{
+    success: boolean;
+    message: string;
+    results: BulkPaymentPlanUploadResult[];
+  }> {
     const results: BulkPaymentPlanUploadResult[] = [];
     let successCount = 0;
     let errorCount = 0;
@@ -140,7 +154,9 @@ export class BulkPaymentPlanUploadService {
       });
 
       // Get fee structure for the cohort
-      const feeStructure = await FeeStructureService.getFeeStructure(config.cohortId);
+      const feeStructure = await FeeStructureService.getFeeStructure(
+        config.cohortId
+      );
       if (!feeStructure) {
         throw new Error('Fee structure not found for cohort');
       }
@@ -155,13 +171,11 @@ export class BulkPaymentPlanUploadService {
               student_id: '',
               payment_plan: row.payment_plan,
               success: false,
-              error: `Student with email ${row.student_email} not found in cohort`
+              error: `Student with email ${row.student_email} not found in cohort`,
             });
             errorCount++;
             continue;
           }
-
-
 
           // Check if student already has a payment plan
           const { data: existingPaymentPlan } = await supabase
@@ -176,7 +190,7 @@ export class BulkPaymentPlanUploadService {
               student_id: student.id,
               payment_plan: existingPaymentPlan.payment_plan as PaymentPlan,
               success: true,
-              error: 'Skipped - student already has a payment plan'
+              error: 'Skipped - student already has a payment plan',
             });
             continue;
           }
@@ -193,15 +207,18 @@ export class BulkPaymentPlanUploadService {
           // Create or update payment plan
           const { data: newPaymentPlan, error: planError } = await supabase
             .from('student_payments')
-            .upsert({
-              student_id: student.id,
-              cohort_id: config.cohortId,
-              payment_plan: row.payment_plan,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'student_id,cohort_id'
-            })
+            .upsert(
+              {
+                student_id: student.id,
+                cohort_id: config.cohortId,
+                payment_plan: row.payment_plan,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'student_id,cohort_id',
+              }
+            )
             .select()
             .single();
 
@@ -209,13 +226,12 @@ export class BulkPaymentPlanUploadService {
             throw planError;
           }
 
-
-
           // Handle custom dates if specified
           if (row.custom_dates && config.customDateValidation) {
-            const customDates = typeof row.custom_dates === 'string' 
-              ? JSON.parse(row.custom_dates) 
-              : row.custom_dates;
+            const customDates =
+              typeof row.custom_dates === 'string'
+                ? JSON.parse(row.custom_dates)
+                : row.custom_dates;
 
             await FeeStructureService.upsertCustomPlanForStudent({
               cohortId: config.cohortId,
@@ -225,17 +241,21 @@ export class BulkPaymentPlanUploadService {
                 total_program_fee: feeStructure.total_program_fee,
                 number_of_semesters: feeStructure.number_of_semesters,
                 instalments_per_semester: feeStructure.instalments_per_semester,
-                one_shot_discount_percentage: feeStructure.one_shot_discount_percentage
+                one_shot_discount_percentage:
+                  feeStructure.one_shot_discount_percentage,
+                program_fee_includes_gst: feeStructure.program_fee_includes_gst,
+                equal_scholarship_distribution:
+                  feeStructure.equal_scholarship_distribution,
               },
               selectedPlan: row.payment_plan,
-              editedDates: customDates
+              editedDates: customDates,
             });
           }
 
           results.push({
             student_id: student.id,
             payment_plan: row.payment_plan,
-            success: true
+            success: true,
           });
           successCount++;
 
@@ -245,17 +265,19 @@ export class BulkPaymentPlanUploadService {
             Logger.getInstance().info('Payment plan assigned', {
               studentId: student.id,
               paymentPlan: row.payment_plan,
-              scholarshipId
+              scholarshipId,
             });
           }
-
         } catch (error) {
-          Logger.getInstance().error('Error processing payment plan row', { error, row });
+          Logger.getInstance().error('Error processing payment plan row', {
+            error,
+            row,
+          });
           results.push({
             student_id: '',
             payment_plan: row.payment_plan,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
           errorCount++;
         }
@@ -264,11 +286,13 @@ export class BulkPaymentPlanUploadService {
       return {
         success: errorCount === 0,
         message: `Successfully assigned ${successCount} payment plans${errorCount > 0 ? `, ${errorCount} errors` : ''}`,
-        results
+        results,
       };
-
     } catch (error) {
-      Logger.getInstance().error('Bulk payment plan upload failed', { error, config });
+      Logger.getInstance().error('Bulk payment plan upload failed', {
+        error,
+        config,
+      });
       throw error;
     }
   }

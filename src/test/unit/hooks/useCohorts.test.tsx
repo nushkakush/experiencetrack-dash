@@ -3,6 +3,7 @@
  * Tests hook behavior and data fetching
  */
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,9 +34,7 @@ const createTestQueryClient = () => {
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = createTestQueryClient();
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
@@ -46,12 +45,22 @@ describe('useCohorts', () => {
 
   it('should fetch and return cohorts successfully', async () => {
     const mockCohorts = [
-      createTestCohort({ id: 'cohort-1', name: 'Test Cohort 1', students_count: 5 }),
-      createTestCohort({ id: 'cohort-2', name: 'Test Cohort 2', students_count: 3 }),
+      createTestCohort({
+        id: 'cohort-1',
+        name: 'Test Cohort 1',
+        students_count: 5,
+      }),
+      createTestCohort({
+        id: 'cohort-2',
+        name: 'Test Cohort 2',
+        students_count: 3,
+      }),
     ];
 
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockResolvedValue({
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       success: true,
       data: mockCohorts,
       error: null,
@@ -76,7 +85,9 @@ describe('useCohorts', () => {
 
   it('should handle API errors gracefully', async () => {
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockResolvedValue({
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       success: false,
       data: null,
       error: 'Failed to fetch cohorts',
@@ -95,9 +106,9 @@ describe('useCohorts', () => {
 
   it('should handle network errors', async () => {
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockRejectedValue(
-      new Error('Network error')
-    );
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useCohorts(), { wrapper });
 
@@ -112,7 +123,9 @@ describe('useCohorts', () => {
 
   it('should return empty array when no cohorts exist', async () => {
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockResolvedValue({
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       success: true,
       data: [],
       error: null,
@@ -134,7 +147,9 @@ describe('useCohorts', () => {
     ];
 
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockResolvedValue({
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       success: true,
       data: mockCohorts,
       error: null,
@@ -147,11 +162,11 @@ describe('useCohorts', () => {
     });
 
     expect(typeof result.current.refetch).toBe('function');
-    
+
     // Test refetch
     const refetchPromise = result.current.refetch();
     expect(cohortsService.listAllWithCounts).toHaveBeenCalledTimes(2);
-    
+
     await refetchPromise;
   });
 
@@ -161,7 +176,9 @@ describe('useCohorts', () => {
     ];
 
     const { cohortsService } = await import('@/services/cohorts.service');
-    (cohortsService.listAllWithCounts as any).mockResolvedValue({
+    (
+      cohortsService.listAllWithCounts as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
       success: true,
       data: mockCohorts,
       error: null,

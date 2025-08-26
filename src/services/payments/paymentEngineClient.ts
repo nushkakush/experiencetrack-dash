@@ -18,6 +18,8 @@ export interface PaymentEngineParams {
     number_of_semesters: number;
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
+    program_fee_includes_gst: boolean;
+    equal_scholarship_distribution: boolean;
     // Custom dates configuration
 
     one_shot_dates?: Record<string, string>; // JSON data for one-shot payment dates

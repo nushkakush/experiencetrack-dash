@@ -366,6 +366,43 @@ export function useCohortDetails(cohortId: string | undefined) {
           loadData(true);
         }
       )
+      // Add real-time subscription for student_scholarships table
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'student_scholarships',
+        },
+        payload => {
+          // Refresh data when a scholarship is assigned
+          loadData(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'student_scholarships',
+        },
+        payload => {
+          // Refresh data when a scholarship is updated
+          loadData(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'student_scholarships',
+        },
+        payload => {
+          // Refresh data when a scholarship is removed
+          loadData(true);
+        }
+      )
       .subscribe();
 
     return () => {

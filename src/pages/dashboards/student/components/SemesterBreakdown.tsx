@@ -10,11 +10,7 @@ import {
 } from '@/types/payments/DatabaseAlignedTypes';
 import { PaymentBreakdown as PaymentBreakdownType } from '@/types/payments';
 import { useSemesterBreakdown } from './hooks/useSemesterBreakdown';
-import {
-  AdmissionFeeCard,
-  SemesterCard,
-  NoPaymentScheduleCard,
-} from './index';
+import { AdmissionFeeCard, SemesterCard, NoPaymentScheduleCard } from './index';
 
 // Define the installment type that includes scholarship amounts
 interface DatabaseInstallment {
@@ -98,6 +94,22 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
   onInstallmentClick,
   onPaymentSubmission,
 }) => {
+  // Debug logging for payment transactions
+  console.log('🔍 [SemesterBreakdown] Component props:', {
+    hasPaymentBreakdown: !!paymentBreakdown,
+    selectedPaymentPlan,
+    paymentTransactionsCount: paymentTransactions?.length || 0,
+    paymentTransactions:
+      paymentTransactions?.map(t => ({
+        id: t.id,
+        lit_invoice_id: t.lit_invoice_id,
+        installment_id: t.installment_id,
+        semester_number: t.semester_number,
+        verification_status: t.verification_status,
+      })) || [],
+    semestersCount: paymentBreakdown?.semesters?.length || 0,
+  });
+
   const {
     formatCurrency,
     isSemesterCompleted,
@@ -129,7 +141,9 @@ export const SemesterBreakdown: React.FC<SemesterBreakdownProps> = ({
 
           {/* Admission Fee Card */}
           <AdmissionFeeCard
-            admissionFeeAmount={paymentBreakdown.admissionFee?.totalPayable || 0}
+            admissionFeeAmount={
+              paymentBreakdown.admissionFee?.totalPayable || 0
+            }
             formatCurrency={formatCurrency}
           />
 

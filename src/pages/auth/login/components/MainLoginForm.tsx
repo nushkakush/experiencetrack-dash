@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
 import { SignInForm } from './SignInForm';
+import { ValidationUtils } from '@/utils/validation';
 
 interface MainLoginFormProps {
   email: string;
@@ -44,8 +45,8 @@ export const MainLoginForm: React.FC<MainLoginFormProps> = ({
           </CardDescription>
           <div className='mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800'>
             <p className='text-xs text-blue-700 dark:text-blue-300'>
-              <strong>Note:</strong> Only @litschool.in email addresses are
-              allowed for signup
+              <strong>Note:</strong>{' '}
+              {ValidationUtils.getLitschoolDomainMessage()}
             </p>
           </div>
         </CardHeader>

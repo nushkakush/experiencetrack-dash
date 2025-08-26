@@ -41,7 +41,7 @@ export class ProgressCalculator {
     try {
       // Validate required data
       const validPaymentPlans = ['one_shot', 'sem_wise', 'instalment_wise'];
-      
+
       if (
         !student.student_id ||
         student.student_id === 'undefined' ||
@@ -53,13 +53,16 @@ export class ProgressCalculator {
         !validPaymentPlans.includes(student.payment_plan) ||
         !feeStructure
       ) {
-        console.log('🔍 [ProgressCalculator] Skipping payment engine - missing required data:', {
-          student_id: student.student_id,
-          cohort_id: student.student?.cohort_id,
-          payment_plan: student.payment_plan,
-          hasFeeStructure: !!feeStructure
-        });
-        
+        console.log(
+          '🔍 [ProgressCalculator] Skipping payment engine - missing required data:',
+          {
+            student_id: student.student_id,
+            cohort_id: student.student?.cohort_id,
+            payment_plan: student.payment_plan,
+            hasFeeStructure: !!feeStructure,
+          }
+        );
+
         return this.calculateWithDatabase(student);
       }
 
@@ -68,7 +71,7 @@ export class ProgressCalculator {
         String(student.student?.cohort_id),
         String(student.student_id)
       );
-      
+
       const feeStructureToUse = customFeeStructure || feeStructure;
 
       // Get additional discount percentage from database
@@ -82,8 +85,12 @@ export class ProgressCalculator {
             .eq('scholarship_id', student.scholarship_id)
             .maybeSingle();
 
-          if (scholarship && typeof scholarship.additional_discount_percentage === 'number') {
-            additionalDiscountPercentage = scholarship.additional_discount_percentage;
+          if (
+            scholarship &&
+            typeof scholarship.additional_discount_percentage === 'number'
+          ) {
+            additionalDiscountPercentage =
+              scholarship.additional_discount_percentage;
           }
         } catch (error) {
           console.warn('Error fetching additional discount percentage:', error);
@@ -94,7 +101,10 @@ export class ProgressCalculator {
       const { breakdown: feeReview } = await getFullPaymentView({
         studentId: String(student.student_id),
         cohortId: String(student.student?.cohort_id),
-        paymentPlan: student.payment_plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+        paymentPlan: student.payment_plan as
+          | 'one_shot'
+          | 'sem_wise'
+          | 'instalment_wise',
         scholarshipId: student.scholarship_id || undefined,
         additionalDiscountPercentage,
         feeStructureData: {
@@ -102,15 +112,23 @@ export class ProgressCalculator {
           admission_fee: feeStructureToUse.admission_fee,
           number_of_semesters: feeStructureToUse.number_of_semesters,
           instalments_per_semester: feeStructureToUse.instalments_per_semester,
-          one_shot_discount_percentage: feeStructureToUse.one_shot_discount_percentage,
+          one_shot_discount_percentage:
+            feeStructureToUse.one_shot_discount_percentage,
+          // FIXED: Add missing toggle fields for accurate payment engine calculations
+          program_fee_includes_gst:
+            (feeStructureToUse as any).program_fee_includes_gst ?? true,
+          equal_scholarship_distribution:
+            (feeStructureToUse as any).equal_scholarship_distribution ?? false,
           one_shot_dates: feeStructureToUse.one_shot_dates,
           sem_wise_dates: feeStructureToUse.sem_wise_dates,
           instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
-        }
+        },
       });
 
       const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
-      const admissionFee = feeReview?.admissionFee?.totalPayable || feeStructureToUse.admission_fee;
+      const admissionFee =
+        feeReview?.admissionFee?.totalPayable ||
+        feeStructureToUse.admission_fee;
 
       // Get verified payments
       let verifiedPayments = 0;
@@ -119,14 +137,18 @@ export class ProgressCalculator {
           student.student_payment_id
         );
 
-        const txs = txResponse?.success && Array.isArray(txResponse.data) ? txResponse.data : [];
+        const txs =
+          txResponse?.success && Array.isArray(txResponse.data)
+            ? txResponse.data
+            : [];
 
         if (txs.length > 0) {
           const relevantTransactions = txs.filter(
-            t => t?.verification_status === 'approved' || t?.verification_status === 'verification_pending'
+            t => t?.verification_status === 'approved' // Only count approved payments, not verification pending
           );
           verifiedPayments = relevantTransactions.reduce(
-            (sum, t) => sum + Number(t?.amount || 0), 0
+            (sum, t) => sum + Number(t?.amount || 0),
+            0
           );
         }
       }
@@ -134,16 +156,18 @@ export class ProgressCalculator {
       // Calculate paid amount (including admission fee since students are registered)
       const paidAmount = verifiedPayments + admissionFee;
       const pendingAmount = Math.max(0, totalAmount - paidAmount);
-      const progressPercentage = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
+      const progressPercentage =
+        totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
 
       // Calculate installments
-      const { totalInstallments, paidInstallments } = this.calculateInstallments(
-        student.payment_plan,
-        feeStructureToUse,
-        totalAmount,
-        admissionFee,
-        verifiedPayments
-      );
+      const { totalInstallments, paidInstallments } =
+        this.calculateInstallments(
+          student.payment_plan,
+          feeStructureToUse,
+          totalAmount,
+          admissionFee,
+          verifiedPayments
+        );
 
       return {
         totalAmount,
@@ -155,9 +179,8 @@ export class ProgressCalculator {
         admissionFee,
         admissionFeePaid: true, // Students are registered, so admission fee is considered paid
         verifiedPayments,
-        calculationMethod: 'payment_engine'
+        calculationMethod: 'payment_engine',
       };
-
     } catch (error) {
       console.error('Error calculating progress with payment engine:', error);
       return this.calculateWithDatabase(student);
@@ -167,11 +190,14 @@ export class ProgressCalculator {
   /**
    * Calculate progress using database values (fallback)
    */
-  static calculateWithDatabase(student: StudentPaymentSummary): ProgressCalculationResult {
+  static calculateWithDatabase(
+    student: StudentPaymentSummary
+  ): ProgressCalculationResult {
     const totalAmount = Number(student.total_amount) || 0;
     const paidAmount = Number(student.paid_amount) || 0;
     const pendingAmount = Math.max(0, totalAmount - paidAmount);
-    const progressPercentage = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
+    const progressPercentage =
+      totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
 
     return {
       totalAmount,
@@ -183,7 +209,7 @@ export class ProgressCalculator {
       admissionFee: 0, // Not available from database
       admissionFeePaid: false,
       verifiedPayments: paidAmount,
-      calculationMethod: 'database'
+      calculationMethod: 'database',
     };
   }
 
@@ -203,25 +229,29 @@ export class ProgressCalculator {
     if (paymentPlan === 'one_shot') {
       return {
         totalInstallments: 1,
-        paidInstallments: verifiedPayments > 0 ? 1 : 0
+        paidInstallments: verifiedPayments > 0 ? 1 : 0,
       };
     } else if (paymentPlan === 'sem_wise') {
       const totalInstallments = feeStructure.number_of_semesters;
-      const installmentAmount = (totalAmount - admissionFee) / totalInstallments;
+      const installmentAmount =
+        (totalAmount - admissionFee) / totalInstallments;
       const paidInstallments = Math.floor(verifiedPayments / installmentAmount);
-      
+
       return {
         totalInstallments,
-        paidInstallments: Math.min(paidInstallments, totalInstallments)
+        paidInstallments: Math.min(paidInstallments, totalInstallments),
       };
     } else if (paymentPlan === 'instalment_wise') {
-      const totalInstallments = feeStructure.number_of_semesters * feeStructure.instalments_per_semester;
-      const installmentAmount = (totalAmount - admissionFee) / totalInstallments;
+      const totalInstallments =
+        feeStructure.number_of_semesters *
+        feeStructure.instalments_per_semester;
+      const installmentAmount =
+        (totalAmount - admissionFee) / totalInstallments;
       const paidInstallments = Math.floor(verifiedPayments / installmentAmount);
-      
+
       return {
         totalInstallments,
-        paidInstallments: Math.min(paidInstallments, totalInstallments)
+        paidInstallments: Math.min(paidInstallments, totalInstallments),
       };
     }
 

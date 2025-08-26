@@ -46,10 +46,12 @@ export interface AsyncStateComputed {
 
 // Async State Update Types
 export type AsyncStateUpdate<T = unknown> = Partial<AsyncState<T>>;
-export type AsyncStateOptionsUpdate<T = unknown> = Partial<UseAsyncStateOptions<T>>;
+export type AsyncStateOptionsUpdate<T = unknown> = Partial<
+  UseAsyncStateOptions<T>
+>;
 
 // Generic Async State Hook Interface
-export interface UseAsyncState<T = unknown> extends UseAsyncStateReturn<T> {}
+export type UseAsyncState<T = unknown> = UseAsyncStateReturn<T>;
 
 // Async State with Loading Interface
 export interface AsyncStateWithLoading<T = unknown> extends AsyncState<T> {
@@ -69,11 +71,11 @@ export interface AsyncStateWithSuccess<T = unknown> extends AsyncState<T> {
 }
 
 // Complete Async State Interface
-export interface CompleteAsyncState<T = unknown> 
-  extends AsyncState<T>, 
-  AsyncStateWithLoading<T>, 
-  AsyncStateWithError<T>, 
-  AsyncStateWithSuccess<T> {}
+export interface CompleteAsyncState<T = unknown>
+  extends AsyncState<T>,
+    AsyncStateWithLoading<T>,
+    AsyncStateWithError<T>,
+    AsyncStateWithSuccess<T> {}
 
 // Async State Configuration Interface
 export interface AsyncStateConfig {

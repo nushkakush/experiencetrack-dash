@@ -8,6 +8,8 @@ export type FeeStructureTable = {
     instalments_per_semester: number;
     one_shot_discount_percentage: number;
     is_setup_complete: boolean;
+    program_fee_includes_gst: boolean;
+    equal_scholarship_distribution: boolean;
     created_by: string | null;
     created_at: string;
     updated_at: string;
@@ -21,6 +23,8 @@ export type FeeStructureTable = {
     instalments_per_semester?: number;
     one_shot_discount_percentage?: number;
     is_setup_complete?: boolean;
+    program_fee_includes_gst: boolean;
+    equal_scholarship_distribution: boolean;
     created_by?: string | null;
     created_at?: string;
     updated_at?: string;
@@ -34,6 +38,8 @@ export type FeeStructureTable = {
     instalments_per_semester?: number;
     one_shot_discount_percentage?: number;
     is_setup_complete?: boolean;
+    program_fee_includes_gst?: boolean;
+    equal_scholarship_distribution?: boolean;
     created_by?: string | null;
     created_at?: string;
     updated_at?: string;

@@ -19,16 +19,9 @@ export const formatDate = (dateString: string) => {
   });
 };
 
-export const getStatusBadge = (status: string, verificationStatus?: string) => {
-  if (verificationStatus === 'verification_pending') {
-    return (
-      <Badge className='bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-xs'>
-        Verification Pending
-      </Badge>
-    );
-  }
-
-  // Use centralized payment status utility for consistent display
+export const getStatusBadge = (status: string) => {
+  // FIXED: Always use the status from payment engine, don't override with verificationStatus
+  // The payment engine is the single source of truth for all status calculations
   const statusDisplay = getInstallmentStatusDisplay(status);
 
   // Map status to appropriate badge styling

@@ -12,8 +12,8 @@ export const Logo: React.FC<LogoProps> = ({
   size = 'md',
   showText = false,
 }) => {
-  const { theme } = useTheme();
-  
+  const { resolvedTheme } = useTheme();
+
   const sizeClasses = {
     sm: 'h-6 w-6',
     md: 'h-8 w-8',
@@ -26,10 +26,11 @@ export const Logo: React.FC<LogoProps> = ({
     lg: 'text-xl',
   };
 
-  // Choose logo based on theme
-  const logoSrc = theme === 'dark' 
-    ? 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/lit-nav/lit-logo.svg'
-    : 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/lit-nav/lit-logo-dark.svg';
+  // Choose logo based on resolved theme
+  const logoSrc =
+    resolvedTheme === 'dark'
+      ? 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/lit-nav/lit-logo.svg'
+      : 'https://ghmpaghyasyllfvamfna.supabase.co/storage/v1/object/public/lit-nav/lit-logo-dark.svg';
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

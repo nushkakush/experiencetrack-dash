@@ -3,19 +3,26 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { StudentPaymentSummary } from '@/types/fee';
 import { PaymentForm } from '@/components/common/payments/PaymentForm';
 import { useAdminPaymentRecording } from './hooks/useAdminPaymentRecording';
-import {
-  PaymentBreakdownCard,
-  AdminDialogHeader,
-} from './components';
+import { PaymentBreakdownCard, AdminDialogHeader } from './components';
 
 interface PaymentScheduleItem {
   id: string;
   type: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'pending_10_plus_days' | 'verification_pending' | 'paid' | 'overdue' | 'partially_paid_days_left' | 'partially_paid_overdue' | 'partially_paid_verification_pending' | 'waived' | 'partially_waived';
+  status:
+    | 'pending'
+    | 'pending_10_plus_days'
+    | 'verification_pending'
+    | 'paid'
+    | 'overdue'
+    | 'partially_paid_days_left'
+    | 'partially_paid_overdue'
+    | 'partially_paid_verification_pending'
+    | 'waived'
+    | 'partially_waived';
   paymentDate?: string;
-  verificationStatus?: string;
+  // FIXED: Remove verificationStatus field - payment engine status is the single source of truth
   semesterNumber?: number;
   installmentNumber?: number;
 }
@@ -48,7 +55,14 @@ interface AdminPaymentBreakdown {
 
 export const AdminPaymentRecordingDialog: React.FC<
   AdminPaymentRecordingDialogProps
-> = ({ open, onOpenChange, student, paymentItem, onPaymentRecorded, feeStructure }) => {
+> = ({
+  open,
+  onOpenChange,
+  student,
+  paymentItem,
+  onPaymentRecorded,
+  feeStructure,
+}) => {
   const {
     // State
     adminPaymentBreakdown,
@@ -94,21 +108,29 @@ export const AdminPaymentRecordingDialog: React.FC<
 
           {/* Payment Form */}
           <div className='space-y-4'>
-            {console.log('🔍 [AdminPaymentDialog] Passing selectedInstallment to PaymentForm:', {
-              selectedInstallmentDetails: selectedInstallment ? {
-                id: selectedInstallment.id,
-                semesterNumber: selectedInstallment.semesterNumber,
-                installmentNumber: selectedInstallment.installmentNumber,
-                amount: selectedInstallment.amount,
-                status: selectedInstallment.status,
-              } : null,
-              pendingAmountCalculated: pendingAmount,
-              adminPaymentBreakdownTotalAmount: adminPaymentBreakdown?.totalAmount,
-              paymentBreakdownForForm: paymentBreakdownForForm ? {
-                totalAmount: paymentBreakdownForForm.totalAmount,
-                pendingAmount: paymentBreakdownForForm.pendingAmount,
-              } : null,
-            })}
+            {console.log(
+              '🔍 [AdminPaymentDialog] Passing selectedInstallment to PaymentForm:',
+              {
+                selectedInstallmentDetails: selectedInstallment
+                  ? {
+                      id: selectedInstallment.id,
+                      semesterNumber: selectedInstallment.semesterNumber,
+                      installmentNumber: selectedInstallment.installmentNumber,
+                      amount: selectedInstallment.amount,
+                      status: selectedInstallment.status,
+                    }
+                  : null,
+                pendingAmountCalculated: pendingAmount,
+                adminPaymentBreakdownTotalAmount:
+                  adminPaymentBreakdown?.totalAmount,
+                paymentBreakdownForForm: paymentBreakdownForForm
+                  ? {
+                      totalAmount: paymentBreakdownForForm.totalAmount,
+                      pendingAmount: paymentBreakdownForForm.pendingAmount,
+                    }
+                  : null,
+              }
+            )}
             <PaymentForm
               paymentSubmissions={new Map()}
               submittingPayments={submittingPayments}

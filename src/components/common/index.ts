@@ -6,8 +6,6 @@ export {
   InlineLoader,
   ButtonLoader,
 } from './LoadingSpinner';
-
-// Feature permission components
 export {
   FeatureGate,
   CohortFeatureGate,
@@ -28,6 +26,7 @@ export {
   FeeManagementProtectedRoute,
   AttendanceManagementProtectedRoute,
 } from './FeatureProtectedRoute';
+export { DashboardAccessControl } from './DashboardAccessControl';
 export { FeaturePermissionDebug } from './FeaturePermissionDebug';
 
 // SEO components

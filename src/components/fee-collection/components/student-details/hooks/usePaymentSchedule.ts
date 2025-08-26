@@ -24,7 +24,7 @@ interface PaymentScheduleItem {
     | 'waived'
     | 'partially_waived';
   paymentDate?: string;
-  verificationStatus?: string;
+  // FIXED: Remove verificationStatus field - payment engine status is the single source of truth
   semesterNumber?: number;
   installmentNumber?: number;
 }
@@ -47,10 +47,13 @@ export const usePaymentSchedule = ({
   student,
   feeStructure,
 }: UsePaymentScheduleProps) => {
-  const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleItem[]>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleItem[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [recordingPayment, setRecordingPayment] = useState<string | null>(null);
-  const [selectedPaymentItem, setSelectedPaymentItem] = useState<PaymentScheduleItem | null>(null);
+  const [selectedPaymentItem, setSelectedPaymentItem] =
+    useState<PaymentScheduleItem | null>(null);
   const [showRecordingDialog, setShowRecordingDialog] = useState(false);
   const [paymentTransactions, setPaymentTransactions] = useState<any[]>([]);
 
@@ -62,7 +65,8 @@ export const usePaymentSchedule = ({
       const studentPaymentId = (student as any).student_payment_id;
       if (!studentPaymentId) return;
 
-      const result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      const result =
+        await paymentTransactionService.getByPaymentId(studentPaymentId);
       if (result.success && result.data) {
         setPaymentTransactions(result.data);
       }
@@ -72,19 +76,60 @@ export const usePaymentSchedule = ({
   }, [student]);
 
   // Get relevant transactions for a specific installment
-  const getRelevantTransactions = useCallback((item: PaymentScheduleItem) => {
-    if (!paymentTransactions || !Array.isArray(paymentTransactions)) return [];
-    
-    const instKey = `${item.semesterNumber || 1}-${item.installmentNumber || 0}`;
-    
-    return paymentTransactions
-      .filter(tx => {
-        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+  const getRelevantTransactions = useCallback(
+    (item: PaymentScheduleItem) => {
+      if (!paymentTransactions || !Array.isArray(paymentTransactions))
+        return [];
+
+      const instKey = `${item.semesterNumber || 1}-${item.installmentNumber || 0}`;
+
+      console.log(
+        '🔍 [getRelevantTransactions] Looking for transactions with key:',
+        instKey
+      );
+      console.log(
+        '🔍 [getRelevantTransactions] All transactions:',
+        paymentTransactions.map(tx => ({
+          id: tx.id,
+          installment_id: tx.installment_id,
+          semester_number: tx.semester_number,
+          verification_status: tx.verification_status,
+          lit_invoice_id: tx.lit_invoice_id,
+        }))
+      );
+
+      const filteredTransactions = paymentTransactions.filter(tx => {
+        const txKey =
+          typeof tx?.installment_id === 'string'
+            ? String(tx.installment_id)
+            : '';
         const matchesKey = txKey === instKey;
-        const matchesSemester = Number(tx?.semester_number) === Number(item.semesterNumber);
-        return matchesKey || (!!txKey === false && matchesSemester);
-      })
-      .map(tx => ({
+        const matchesSemester =
+          Number(tx?.semester_number) === Number(item.semesterNumber);
+
+        // Only include transactions that match the installment, not all transactions with invoices
+        const shouldInclude =
+          matchesKey || (!!txKey === false && matchesSemester);
+
+        console.log('🔍 [getRelevantTransactions] Transaction filter:', {
+          txId: tx.id,
+          txKey,
+          instKey,
+          matchesKey,
+          matchesSemester,
+          hasInvoice: !!tx.lit_invoice_id,
+          shouldInclude,
+        });
+
+        return shouldInclude;
+      });
+
+      console.log(
+        '🔍 [getRelevantTransactions] Filtered transactions:',
+        filteredTransactions.length
+      );
+
+      return filteredTransactions.map(tx => ({
         id: tx.id,
         amount: Number(tx.amount),
         partial_payment_sequence: tx.partial_payment_sequence || 0,
@@ -94,10 +139,15 @@ export const usePaymentSchedule = ({
         notes: tx.notes,
         verification_notes: tx.verification_notes,
         rejection_reason: tx.rejection_reason,
+        lit_invoice_id: tx.lit_invoice_id, // Include this for invoice checking
       }));
-  }, [paymentTransactions]);
+    },
+    [paymentTransactions]
+  );
 
-  const calculatePaymentSchedule = useCallback(async (): Promise<PaymentScheduleItem[]> => {
+  const calculatePaymentSchedule = useCallback(async (): Promise<
+    PaymentScheduleItem[]
+  > => {
     const validPaymentPlans = ['one_shot', 'sem_wise', 'instalment_wise'];
 
     if (
@@ -192,6 +242,11 @@ export const usePaymentSchedule = ({
               feeStructureToUse.instalments_per_semester,
             one_shot_discount_percentage:
               feeStructureToUse.one_shot_discount_percentage,
+            program_fee_includes_gst:
+              (feeStructureToUse as any).program_fee_includes_gst ?? true,
+            equal_scholarship_distribution:
+              (feeStructureToUse as any).equal_scholarship_distribution ??
+              false,
             one_shot_dates: feeStructureToUse.one_shot_dates,
             sem_wise_dates: feeStructureToUse.sem_wise_dates,
             instalment_wise_dates: feeStructureToUse.instalment_wise_dates,
@@ -234,7 +289,8 @@ export const usePaymentSchedule = ({
         id: 'admission_fee',
         type: 'Admission Fee',
         amount: responseFeeStructure.admission_fee,
-        dueDate: feeReview.admissionFee?.paymentDate || new Date().toISOString(),
+        dueDate:
+          feeReview.admissionFee?.paymentDate || new Date().toISOString(),
         status: 'paid',
         paymentDate: new Date().toISOString(),
       });
@@ -276,10 +332,7 @@ export const usePaymentSchedule = ({
             new Date().toISOString(),
           status: statusFromEngine || 'pending',
           paymentDate: undefined,
-          verificationStatus:
-            statusFromEngine === 'verification_pending'
-              ? 'verification_pending'
-              : undefined,
+          // FIXED: Remove verificationStatus field - payment engine status is the single source of truth
           semesterNumber: 1,
           installmentNumber: 1,
         });
@@ -299,20 +352,20 @@ export const usePaymentSchedule = ({
             | 'waived'
             | 'partially_waived'
             | undefined;
-          schedule.push({
+
+          const scheduleItem = {
             id: `semester_${index + 1}`,
             type: `Program Fee (Semester ${index + 1})`,
             amount: semester.total.totalPayable,
             dueDate: inst?.paymentDate || new Date().toISOString(),
             status: statusFromEngine || 'pending',
             paymentDate: undefined,
-            verificationStatus:
-              statusFromEngine === 'verification_pending'
-                ? 'verification_pending'
-                : undefined,
+            // FIXED: Remove verificationStatus field - payment engine status is the single source of truth
             semesterNumber: semester.semesterNumber,
             installmentNumber: 1, // sem_wise always has 1 installment per semester
-          });
+          };
+
+          schedule.push(scheduleItem);
         });
       } else if (student.payment_plan === 'instalment_wise') {
         // Use engine statuses per installment
@@ -339,10 +392,7 @@ export const usePaymentSchedule = ({
               dueDate: installment.paymentDate,
               status: statusFromEngine || 'pending',
               paymentDate: undefined,
-              verificationStatus:
-                statusFromEngine === 'verification_pending'
-                  ? 'verification_pending'
-                  : undefined,
+              // FIXED: Remove verificationStatus field - payment engine status is the single source of truth
               semesterNumber: semester.semesterNumber,
               installmentNumber:
                 installment.installmentNumber || installmentIndex,
@@ -377,18 +427,21 @@ export const usePaymentSchedule = ({
   }, [calculatePaymentSchedule]);
 
   // Function to handle recording payment for an installment
-  const handleRecordPayment = useCallback(async (paymentItem: PaymentScheduleItem) => {
-    console.log('🔍 [PaymentSchedule] handleRecordPayment called with:', {
-      paymentItem,
-      amount: paymentItem.amount,
-      type: paymentItem.type,
-      semesterNumber: paymentItem.semesterNumber,
-      installmentNumber: paymentItem.installmentNumber,
-      status: paymentItem.status,
-    });
-    setSelectedPaymentItem(paymentItem);
-    setShowRecordingDialog(true);
-  }, []);
+  const handleRecordPayment = useCallback(
+    async (paymentItem: PaymentScheduleItem) => {
+      console.log('🔍 [PaymentSchedule] handleRecordPayment called with:', {
+        paymentItem,
+        amount: paymentItem.amount,
+        type: paymentItem.type,
+        semesterNumber: paymentItem.semesterNumber,
+        installmentNumber: paymentItem.installmentNumber,
+        status: paymentItem.status,
+      });
+      setSelectedPaymentItem(paymentItem);
+      setShowRecordingDialog(true);
+    },
+    []
+  );
 
   // Function to handle payment recording completion
   const handlePaymentRecorded = useCallback(() => {
@@ -406,24 +459,29 @@ export const usePaymentSchedule = ({
   }, []);
 
   // Helper to determine if a payment can be recorded by admin
-  const canRecordPayment = useCallback((status: string, verificationStatus?: string) => {
-    // Admin can record payments for pending/overdue payments only
-    // Don't allow recording for already paid, waived, or verification pending payments
-    return (
-      canCollectFees &&
-      (status === 'pending' ||
-        status === 'pending_10_plus_days' ||
-        status === 'overdue' ||
-        status === 'partially_paid_overdue' ||
-        status === 'partially_paid_days_left') &&
-      status !== 'waived' &&
-      status !== 'partially_waived' &&
-      !verificationStatus
-    );
-  }, [canCollectFees]);
+  const canRecordPayment = useCallback(
+    (status: string) => {
+      // Admin can record payments for pending/overdue/partially waived payments
+      // Don't allow recording for fully paid, fully waived, or verification pending payments
+      return (
+        canCollectFees &&
+        (status === 'pending' ||
+          status === 'pending_10_plus_days' ||
+          status === 'overdue' ||
+          status === 'partially_paid_overdue' ||
+          status === 'partially_paid_days_left' ||
+          status === 'partially_waived') && // ✅ Allow recording for partially waived (scholarship applied)
+        status !== 'waived' && // Only exclude fully waived
+        status !== 'verification_pending' && // Don't allow recording for verification pending
+        status !== 'partially_paid_verification_pending' // Don't allow recording for partially paid verification pending
+      );
+    },
+    [canCollectFees]
+  );
 
   // Check if payment plan is selected
-  const hasPaymentPlan = student.payment_plan && student.payment_plan !== 'not_selected';
+  const hasPaymentPlan =
+    student.payment_plan && student.payment_plan !== 'not_selected';
 
   // Initialize data
   useEffect(() => {

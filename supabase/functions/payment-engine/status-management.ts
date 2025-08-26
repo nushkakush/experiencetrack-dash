@@ -1,4 +1,11 @@
-import type { Breakdown, PaymentPlan, Transaction, InstallmentAllocation, DueItem, SemesterView } from './types.ts';
+import type {
+  Breakdown,
+  PaymentPlan,
+  Transaction,
+  InstallmentAllocation,
+  DueItem,
+  SemesterView,
+} from './types.ts';
 
 // Status derivation helpers
 export const normalizeDateOnly = (isoDate: string): number => {
@@ -25,7 +32,8 @@ export const deriveInstallmentStatus = (
   const d1 = normalizeDateOnly(dueDate);
   const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
 
-  // Consider scholarship waivers as a form of payment for status purposes
+  // For status calculation, we need to consider both actual payments and scholarship
+  // But scholarship should only affect status if there are actual payments made
   const effectivePaid = allocatedPaid + scholarshipAmount;
   const effectiveApproved = approvedAmount + scholarshipAmount;
 
@@ -39,28 +47,60 @@ export const deriveInstallmentStatus = (
     return 'waived';
   }
 
-  // Check if partially covered by scholarship
-  if (scholarshipAmount > 0 && scholarshipAmount < totalPayable) {
-    const remainingAfterScholarship = totalPayable - scholarshipAmount;
+  // Check if there are actual payments made (not just scholarship)
+  if (allocatedPaid > 0) {
+    // PRIORITY 1: Check for verification pending status first (regardless of scholarship)
+    if (hasVerificationPendingTx) {
+      if (allocatedPaid >= totalPayable) {
+        return 'verification_pending';
+      } else {
+        return 'partially_paid_verification_pending';
+      }
+    }
+
+    // PRIORITY 2: Check if fully paid (scholarship + payments)
     if (effectiveApproved >= totalPayable) {
-      return 'waived'; // Fully covered by scholarship + payments
-    } else if (effectivePaid > 0) {
-      return 'partially_waived'; // Partially covered by scholarship + payments
+      return 'paid'; // Fully paid (scholarship + payments)
+    }
+
+    // PRIORITY 3: Check for partial payment status (with or without scholarship)
+    if (scholarshipAmount > 0) {
+      // If there are actual payments made (not just scholarship), show partially paid
+      if (allocatedPaid > 0) {
+        if (daysUntilDue < 0) {
+          return 'partially_paid_overdue';
+        } else {
+          return 'partially_paid_days_left';
+        }
+      } else {
+        // Only scholarship, no actual payments
+        return 'partially_waived';
+      }
+    } else {
+      // Only payments, no scholarship
+      if (daysUntilDue < 0) {
+        return 'partially_paid_overdue';
+      } else {
+        return 'partially_paid_days_left';
+      }
     }
   }
+
+  // No actual payments made - use due date logic regardless of scholarship
+  // Scholarship will reduce the amount payable but won't affect the status
 
   // Regular payment logic (no scholarship involved)
   if (hasApprovedTx && effectiveApproved >= totalPayable) {
     return 'paid';
   }
-  if (hasVerificationPendingTx && effectivePaid > 0) {
-    if (effectivePaid >= totalPayable) return 'verification_pending';
+  if (hasVerificationPendingTx && allocatedPaid > 0) {
+    if (allocatedPaid >= totalPayable) return 'verification_pending';
     return 'partially_paid_verification_pending';
   }
   if (effectiveApproved >= totalPayable) return 'paid';
   if (daysUntilDue < 0)
-    return effectivePaid > 0 ? 'partially_paid_overdue' : 'overdue';
-  if (effectivePaid > 0) return 'partially_paid_days_left';
+    return allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
+  if (allocatedPaid > 0) return 'partially_paid_days_left';
   if (daysUntilDue >= 10) return 'pending_10_plus_days';
   return 'pending';
 };
@@ -83,8 +123,7 @@ export const enrichWithStatuses = (
     ? transactions.reduce((sum, t) => {
         if (
           t &&
-          (t.verification_status === 'approved' ||
-            t.verification_status === 'verification_pending')
+          t.verification_status === 'approved' // Only count approved payments, not verification pending
         ) {
           return sum + (Number(t.amount) || 0);
         }
@@ -128,10 +167,9 @@ export const enrichWithStatuses = (
       )
     : [];
 
-  const generalPaidAmount = generalPayments.reduce(
-    (sum, t) => sum + (Number(t.amount) || 0),
-    0
-  );
+  const generalPaidAmount = generalPayments
+    .filter(t => t.verification_status === 'approved') // Only count approved payments for amount
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   // Initialize installment-specific payment tracking per installment
   const installmentPayments = new Map<string, InstallmentAllocation>(); // key: semesterNumber-installmentNumber
@@ -162,7 +200,11 @@ export const enrichWithStatuses = (
         };
         const next: InstallmentAllocation = {
           amount: prev.amount + (Number(payment.amount) || 0),
-          approvedAmount: prev.approvedAmount + (payment.verification_status === 'approved' ? (Number(payment.amount) || 0) : 0),
+          approvedAmount:
+            prev.approvedAmount +
+            (payment.verification_status === 'approved'
+              ? Number(payment.amount) || 0
+              : 0),
           hasVerificationPending:
             prev.hasVerificationPending ||
             payment.verification_status === 'verification_pending',
@@ -200,23 +242,27 @@ export const enrichWithStatuses = (
     // Convert one-shot payment to semester structure for consistent processing
     const oneShotAsSemester: SemesterView = {
       semesterNumber: 1,
-      instalments: [{
-        ...breakdown.oneShotPayment,
-        installmentNumber: 1,
-      }],
+      instalments: [
+        {
+          ...breakdown.oneShotPayment,
+          installmentNumber: 1,
+        },
+      ],
       total: {
         baseAmount: breakdown.oneShotPayment.baseAmount,
         scholarshipAmount: breakdown.oneShotPayment.scholarshipAmount,
         discountAmount: breakdown.oneShotPayment.discountAmount,
         gstAmount: breakdown.oneShotPayment.gstAmount,
         totalPayable: breakdown.oneShotPayment.amountPayable,
-      }
+      },
     };
-    
+
     // Add to semesters array for processing
     breakdown.semesters = [oneShotAsSemester];
-    
-    console.log('🔄 [DEBUG] Converted one-shot payment to semester 1, installment 1 format');
+
+    console.log(
+      '🔄 [DEBUG] Converted one-shot payment to semester 1, installment 1 format'
+    );
   }
 
   // Apply installment-specific payments first
@@ -229,26 +275,26 @@ export const enrichWithStatuses = (
       const alloc = installmentPayments.get(installmentKey);
       const installmentSpecificAmount = alloc?.amount || 0;
 
-      // ONLY apply installment-specific payments - NO fallback to general payments
-      const allocated = installmentSpecificAmount;
+      // Use approvedAmount for allocated calculation (only count approved payments)
+      const allocated = alloc?.approvedAmount || 0;
 
       console.log('🔍 [PaymentEngine] Installment status calculation:', {
         semester: sem.semesterNumber,
         installment: inst.installmentNumber,
         total,
-        allocated,
-        approvedAmount: alloc?.approvedAmount || 0,
+        allocated: alloc?.amount || 0, // Show total allocated amount for status logic
+        approvedAmount: alloc?.approvedAmount || 0, // Show approved amount for progress
         hasVerificationPending: alloc?.hasVerificationPending || false,
-        hasApproved: alloc?.hasApproved || false
+        hasApproved: alloc?.hasApproved || false,
       });
 
       const status = deriveInstallmentStatus(
         String(inst.paymentDate || new Date().toISOString().split('T')[0]),
         total,
-        allocated,
+        alloc?.amount || 0, // Use total allocated amount (including verification pending) for status logic
         alloc?.hasVerificationPending || false,
         alloc?.hasApproved || false,
-        alloc?.approvedAmount || 0,
+        alloc?.approvedAmount || 0, // Keep approvedAmount for progress calculations
         inst.scholarshipAmount || 0
       );
 
@@ -258,12 +304,12 @@ export const enrichWithStatuses = (
         status,
         total,
         allocated,
-        approvedAmount: alloc?.approvedAmount || 0
+        approvedAmount: alloc?.approvedAmount || 0,
       });
 
       inst.status = status;
-      inst.amountPaid = allocated;
-      inst.amountPending = Math.max(0, total - allocated);
+      inst.amountPaid = alloc?.approvedAmount || 0; // Use approvedAmount, not allocated
+      inst.amountPending = Math.max(0, total - (alloc?.approvedAmount || 0)); // Use approvedAmount for pending calculation
       totalPayableSchedule += total;
       dueItems.push({
         dueDate: inst.paymentDate,
@@ -278,7 +324,8 @@ export const enrichWithStatuses = (
           installment: inst.installmentNumber,
           total,
           installmentSpecificAmount,
-          allocated,
+          allocated: alloc?.amount || 0, // Show total allocated amount for status logic
+          approvedAmount: alloc?.approvedAmount || 0, // Show approved amount for progress
           status,
           hasGeneralPayments: generalPayments.length > 0,
         }
@@ -292,8 +339,8 @@ export const enrichWithStatuses = (
       sem: sem.semesterNumber,
       items: (sem.instalments || []).map(inst => ({
         i: inst.installmentNumber,
-        paid: inst.amountPaid,
-        pending: inst.amountPending,
+        paid: inst.amountPaid, // This now uses approvedAmount
+        pending: inst.amountPending, // This now uses approvedAmount for calculation
         status: inst.status,
       })),
     }));
@@ -328,15 +375,25 @@ export const enrichWithStatuses = (
         (a, b) => normalizeDateOnly(a.dueDate) - normalizeDateOnly(b.dueDate)
       )[0]?.dueDate || null;
 
-  // Aggregate status
+  // Aggregate status - This should reflect the overall payment situation, not individual installments
   let aggStatus = 'pending';
   const anyOverdue = dueItems.some(
     d => d.status === 'overdue' || d.status === 'partially_paid_overdue'
   );
-  
+
   // Check if all installments are fully paid (no pending amounts)
   const allInstallmentsPaid = totalPending <= 0;
-  
+
+  // Check if there are any partially paid installments
+  const hasPartiallyPaidInstallments = dueItems.some(
+    d =>
+      d.status === 'partially_paid_days_left' ||
+      d.status === 'partially_paid_overdue'
+  );
+
+  // Check if there are any pending installments (due in <10 days)
+  const hasPendingInstallments = dueItems.some(d => d.status === 'pending');
+
   console.log('🔍 [PaymentEngine] Aggregate status calculation:', {
     totalPayable,
     totalPaid,
@@ -345,16 +402,34 @@ export const enrichWithStatuses = (
     hasApprovedTx,
     hasVerificationPendingTx,
     anyOverdue,
-    dueItemsCount: dueItems.length
+    hasPartiallyPaidInstallments,
+    hasPendingInstallments,
+    dueItemsCount: dueItems.length,
+    dueItems: dueItems.map(d => ({ status: d.status, pending: d.pending })),
   });
-  
-  if (allInstallmentsPaid && (hasApprovedTx || !hasVerificationPendingTx))
+
+  // PRIORITY 1: Check for verification pending first (highest priority)
+  if (hasVerificationPendingTx) {
+    aggStatus = 'verification_pending';
+  }
+  // PRIORITY 2: Check for partially paid installments (second highest)
+  else if (hasPartiallyPaidInstallments) {
+    aggStatus = 'partially_paid_days_left';
+  }
+  // PRIORITY 3: Check if all pending installments are paid (due in <10 days)
+  else if (allInstallmentsPaid && hasApprovedTx) {
     aggStatus = 'paid';
-  else if (hasVerificationPendingTx) aggStatus = 'verification_pending';
-  else if (anyOverdue) aggStatus = 'overdue';
-  else if (totalPaid > 0 && totalPending > 0) aggStatus = 'partially_paid_days_left';
+  }
+  // PRIORITY 4: Check for overdue payments
+  else if (anyOverdue) {
+    aggStatus = 'overdue';
+  }
+  // PRIORITY 5: Check for pending installments (due in <10 days)
+  else if (hasPendingInstallments) {
+    aggStatus = 'pending';
+  }
+  // PRIORITY 6: Derive based on nearest due date (lowest priority)
   else {
-    // derive based on nearest due
     if (nextDue) {
       const today = new Date();
       const d0 = new Date(
@@ -366,15 +441,20 @@ export const enrichWithStatuses = (
       const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
       aggStatus = daysUntilDue >= 10 ? 'pending_10_plus_days' : 'pending';
     } else {
-      aggStatus = 'pending';
+      // If no next due date and all installments are paid, it's complete
+      if (allInstallmentsPaid) {
+        aggStatus = 'complete';
+      } else {
+        aggStatus = 'pending';
+      }
     }
   }
-  
+
   console.log('🔍 [PaymentEngine] Final aggregate status:', aggStatus);
 
   // Find the current installment status (the most recently completed or currently being processed)
   let currentInstallmentStatus = 'pending';
-  
+
   // First, check if there are any fully paid installments
   const paidInstallments = dueItems.filter(d => d.status === 'paid');
   if (paidInstallments.length > 0) {
@@ -400,7 +480,11 @@ export const enrichWithStatuses = (
   console.log('🔍 [PaymentEngine] Current installment status:', {
     nextDue,
     currentInstallmentStatus,
-    dueItems: dueItems.map(d => ({ dueDate: d.dueDate, pending: d.pending, status: d.status }))
+    dueItems: dueItems.map(d => ({
+      dueDate: d.dueDate,
+      pending: d.pending,
+      status: d.status,
+    })),
   });
 
   return {
@@ -410,7 +494,7 @@ export const enrichWithStatuses = (
       totalPaid,
       totalPending,
       nextDueDate: nextDue,
-      paymentStatus: currentInstallmentStatus, // Use current installment status instead of aggregate
+      paymentStatus: aggStatus, // Use aggregate status instead of current installment status
     },
   };
 };

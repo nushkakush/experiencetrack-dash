@@ -13,7 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CohortStudent } from '@/types/cohort';
-import { CreditCard, CheckCircle, Calendar, DollarSign, Edit2 } from 'lucide-react';
+import {
+  CreditCard,
+  CheckCircle,
+  Calendar,
+  DollarSign,
+  Edit2,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   studentPaymentPlanService,
@@ -59,8 +65,11 @@ export default function PaymentPlanDialog({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentPaymentPlan, setCurrentPaymentPlan] = useState<StudentPaymentPlan | null>(null);
-  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<PaymentPlan | ''>('');
+  const [currentPaymentPlan, setCurrentPaymentPlan] =
+    useState<StudentPaymentPlan | null>(null);
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<
+    PaymentPlan | ''
+  >('');
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [hasCustomPlan, setHasCustomPlan] = useState(false);
@@ -106,20 +115,27 @@ export default function PaymentPlanDialog({
             student.cohort_id,
             student.id
           );
-          const hasCustom = !!customStructure && customStructure.structure_type === 'custom';
+          const hasCustom =
+            !!customStructure && customStructure.structure_type === 'custom';
           logger.info('Custom fee structure check', {
             studentId: student.id,
             cohortId: student.cohort_id,
-            customStructure: customStructure ? {
-              id: customStructure.id,
-              structure_type: customStructure.structure_type,
-              student_id: customStructure.student_id
-            } : null,
-            hasCustom
+            customStructure: customStructure
+              ? {
+                  id: customStructure.id,
+                  structure_type: customStructure.structure_type,
+                  student_id: customStructure.student_id,
+                }
+              : null,
+            hasCustom,
           });
           setHasCustomPlan(hasCustom);
         } catch (error) {
-          logger.error('Error checking custom fee structure', { studentId: student.id }, error as Error);
+          logger.error(
+            'Error checking custom fee structure',
+            { studentId: student.id },
+            error as Error
+          );
           setHasCustomPlan(false);
         }
         // Only set form values if we're editing
@@ -176,29 +192,32 @@ export default function PaymentPlanDialog({
         currentPaymentPlan: currentPaymentPlan?.id,
       });
 
-      // If user has a custom plan and is setting a plan (without customization), 
+      // If user has a custom plan and is setting a plan (without customization),
       // delete the custom plan to switch back to cohort plan
       if (currentPaymentPlan && hasCustomPlan) {
         logger.info('Admin: Deleting custom plan due to plan selection', {
           studentId: student.id,
           currentPlan: currentPaymentPlan.payment_plan,
           selectedPlan: selectedPaymentPlan,
-          reason: currentPaymentPlan.payment_plan !== selectedPaymentPlan ? 'plan_change' : 'same_plan_no_customization'
+          reason:
+            currentPaymentPlan.payment_plan !== selectedPaymentPlan
+              ? 'plan_change'
+              : 'same_plan_no_customization',
         });
-        
+
         await FeeStructureService.deleteCustomPlanForStudent(
           student.cohort_id,
           student.id
         );
         setHasCustomPlan(false);
-        
+
         // Reload current payment plan data to ensure UI reflects the cohort plan
         await loadCurrentPaymentPlan();
-        
+
         logger.info('Admin: Custom plan deleted, refreshing parent component', {
           studentId: student.id,
         });
-        
+
         // Refresh parent component to update the table display
         onPaymentPlanUpdated();
       }
@@ -261,6 +280,8 @@ export default function PaymentPlanDialog({
       number_of_semesters: number;
       instalments_per_semester: number;
       one_shot_discount_percentage: number;
+      program_fee_includes_gst: boolean;
+      equal_scholarship_distribution: boolean;
     },
     editedDates: Record<string, string>
   ) => {
@@ -292,8 +313,6 @@ export default function PaymentPlanDialog({
     }
   };
 
-
-
   const handleRemovePaymentPlan = async () => {
     if (!currentPaymentPlan) return;
 
@@ -308,30 +327,36 @@ export default function PaymentPlanDialog({
         currentPaymentPlan: currentPaymentPlan.payment_plan,
       });
 
-              // If student has a custom plan, delete it first
-        if (hasCustomPlan) {
-        logger.info('Admin: Deleting custom plan before removing payment plan', {
-          studentId: student.id,
-        });
-        
-        const deleteResult = await FeeStructureService.deleteCustomPlanForStudent(
-          student.cohort_id,
-          student.id
+      // If student has a custom plan, delete it first
+      if (hasCustomPlan) {
+        logger.info(
+          'Admin: Deleting custom plan before removing payment plan',
+          {
+            studentId: student.id,
+          }
         );
-        
+
+        const deleteResult =
+          await FeeStructureService.deleteCustomPlanForStudent(
+            student.cohort_id,
+            student.id
+          );
+
         logger.info('Admin: Custom plan deletion result', {
           studentId: student.id,
           deleteResult,
         });
-        
-        setHasCustomPlan(false);
-              } else {
-          logger.info('Admin: No custom plan to delete', {
-            studentId: student.id,
-          });
-        }
 
-      const result = await studentPaymentPlanService.removePaymentPlan(student.id);
+        setHasCustomPlan(false);
+      } else {
+        logger.info('Admin: No custom plan to delete', {
+          studentId: student.id,
+        });
+      }
+
+      const result = await studentPaymentPlanService.removePaymentPlan(
+        student.id
+      );
 
       logger.info('Admin: removePaymentPlan result', { result });
 
@@ -365,7 +390,9 @@ export default function PaymentPlanDialog({
 
   const getCurrentOptionDisplay = () => {
     if (!currentPaymentPlan || !currentPaymentPlan.payment_plan) return null;
-    return PAYMENT_PLAN_OPTIONS.find(option => option.value === currentPaymentPlan.payment_plan);
+    return PAYMENT_PLAN_OPTIONS.find(
+      option => option.value === currentPaymentPlan.payment_plan
+    );
   };
 
   const currentOption = getCurrentOptionDisplay();
@@ -404,7 +431,9 @@ export default function PaymentPlanDialog({
                   <CheckCircle className='h-5 w-5 text-green-600' />
                   <div>
                     <p className='font-medium text-green-900 dark:text-green-100'>
-                      {hasCustomPlan ? `Custom ${currentOption?.label}` : currentOption?.label}
+                      {hasCustomPlan
+                        ? `Custom ${currentOption?.label}`
+                        : currentOption?.label}
                     </p>
                     <p className='text-sm text-green-700 dark:text-green-300'>
                       {currentOption?.description}
@@ -433,7 +462,7 @@ export default function PaymentPlanDialog({
                     Remove
                   </Button>
                 </div>
-                
+
                 {hasCustomPlan && (
                   <Button
                     variant='default'
@@ -453,7 +482,10 @@ export default function PaymentPlanDialog({
               {currentPaymentPlan && isEditing && currentOption && (
                 <div className='p-3 bg-muted/50 rounded-lg'>
                   <p className='text-sm text-muted-foreground'>
-                    Current: {hasCustomPlan ? `Custom ${currentOption.label}` : currentOption.label}
+                    Current:{' '}
+                    {hasCustomPlan
+                      ? `Custom ${currentOption.label}`
+                      : currentOption.label}
                   </p>
                 </div>
               )}
@@ -465,7 +497,7 @@ export default function PaymentPlanDialog({
                   {PAYMENT_PLAN_OPTIONS.map(option => {
                     const IconComponent = option.icon;
                     const isSelected = selectedPaymentPlan === option.value;
-                    
+
                     return (
                       <Button
                         key={option.value}
@@ -495,7 +527,11 @@ export default function PaymentPlanDialog({
           {currentPaymentPlan && !isEditing ? (
             // Read-only view footer
             <div className='flex gap-2 w-full'>
-              <Button variant='outline' onClick={() => setOpen(false)} className='ml-auto'>
+              <Button
+                variant='outline'
+                onClick={() => setOpen(false)}
+                className='ml-auto'
+              >
                 Close
               </Button>
             </div>
@@ -532,8 +568,8 @@ export default function PaymentPlanDialog({
               >
                 Customize Plan
               </Button>
-              <Button 
-                onClick={handleSetPaymentPlan} 
+              <Button
+                onClick={handleSetPaymentPlan}
                 disabled={loading || !selectedPaymentPlan}
               >
                 {loading
@@ -552,7 +588,10 @@ export default function PaymentPlanDialog({
           open={customizeOpen}
           onOpenChange={setCustomizeOpen}
           cohortId={student.cohort_id}
-          cohortStartDate={(student as any).cohort_start_date || new Date().toISOString()}
+          cohortStartDate={
+            (student as { cohort_start_date?: string }).cohort_start_date ||
+            new Date().toISOString()
+          }
           onSetupComplete={async () => {
             // After saving custom plan, assign the chosen plan to the student
             try {
@@ -581,7 +620,7 @@ export default function PaymentPlanDialog({
           mode='edit'
           variant='student-custom'
           studentId={student.id}
-          initialSelectedPlan={selectedPaymentPlan as any}
+          initialSelectedPlan={selectedPaymentPlan as string}
           restrictPaymentPlanToSelected
         />
       )}
