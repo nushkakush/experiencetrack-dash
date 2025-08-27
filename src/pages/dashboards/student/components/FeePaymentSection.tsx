@@ -28,6 +28,8 @@ interface FeePaymentSectionProps {
   cohortData: Cohort;
 }
 
+// This component is protected by the 'student-payment-dashboard' feature flag
+// Access is controlled in the parent StudentDashboard component
 export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
   ({ studentData, cohortData }) => {
     const {

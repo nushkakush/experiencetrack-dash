@@ -321,11 +321,11 @@ const App = () => {
                         element={<UserInvitationPage />}
                       />
                       <Route
-                        path='/leaderboard/:cohortId/:epicId'
+                        path='/public/leaderboard/:cohortId/:epicId'
                         element={<PublicLeaderboard />}
                       />
                       <Route
-                        path='/leaderboards/:cohortIds'
+                        path='/public/leaderboards/:cohortIds'
                         element={<PublicCombinedLeaderboard />}
                       />
                       <Route
