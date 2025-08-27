@@ -16,6 +16,7 @@ import { PARTNERSHIP_FEATURES } from './partnerships';
 import { PLACEMENT_FEATURES } from './placements';
 import { HOLIDAY_FEATURES } from './holidays';
 import { STUDENT_FEATURES } from './student';
+import { EQUIPMENT_FEATURES } from './equipment';
 
 // Combine all features into a single metadata object
 export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
@@ -28,6 +29,7 @@ export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
   ...PLACEMENT_FEATURES,
   ...HOLIDAY_FEATURES,
   ...STUDENT_FEATURES,
+  ...EQUIPMENT_FEATURES,
 };
 
 // Role-based permissions configuration
@@ -123,6 +125,33 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
     ],
   },
   {
+    role: 'equipment_manager',
+    features: [
+      // Cohort Management (view only - no edit/delete access)
+      'cohorts.view',
+      'cohorts.set_active_epic', // Allow setting active epic for equipment management
+
+      // Equipment Management (full access)
+      'equipment.view',
+      'equipment.create',
+      'equipment.edit',
+      'equipment.delete',
+      'equipment.borrow',
+      'equipment.return',
+      'equipment.manage_blacklist',
+      'equipment.reports',
+      'equipment.inventory',
+      'equipment.borrowing_history',
+      'equipment.manage',
+
+      // Student Features (for viewing)
+      'student.progress',
+      'student.assignments',
+      'student.programs',
+      'student.avatar_upload', // Can view avatars but not upload
+    ],
+  },
+  {
     role: 'super_admin',
     features: Object.keys(FEATURE_METADATA) as FeatureKey[], // All features
   },
@@ -184,6 +213,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     category: 'student',
     features: Object.keys(STUDENT_FEATURES) as FeatureKey[],
   },
+  {
+    name: 'Equipment Management',
+    description: 'Manage equipment inventory and borrowing',
+    category: 'equipment',
+    features: Object.keys(EQUIPMENT_FEATURES) as FeatureKey[],
+  },
 ];
 
 // Export individual domain features for specific use cases
@@ -197,4 +232,5 @@ export {
   PLACEMENT_FEATURES,
   HOLIDAY_FEATURES,
   STUDENT_FEATURES,
+  EQUIPMENT_FEATURES,
 };

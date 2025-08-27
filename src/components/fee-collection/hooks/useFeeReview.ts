@@ -522,7 +522,7 @@ export const useFeeReview = ({
 
       preloadPlans();
     }
-  }, [isPreloaded, feeStructure, getCacheKey]);
+  }, [isPreloaded, feeStructure, getCacheKey, datesByPlan]);
 
   // Sync external prop with internal state
   React.useEffect(() => {

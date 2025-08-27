@@ -74,6 +74,19 @@ export type FeatureKey =
   | 'holidays.global_manage'
   | 'holidays.manage'
 
+  // Equipment features
+  | 'equipment.view'
+  | 'equipment.create'
+  | 'equipment.edit'
+  | 'equipment.delete'
+  | 'equipment.borrow'
+  | 'equipment.return'
+  | 'equipment.manage_blacklist'
+  | 'equipment.reports'
+  | 'equipment.inventory'
+  | 'equipment.borrowing_history'
+  | 'equipment.manage'
+
   // Student features
   | 'student.progress'
   | 'student.assignments'
@@ -97,6 +110,7 @@ export interface FeatureMetadata {
     | 'partnerships'
     | 'placements'
     | 'holidays'
+    | 'equipment'
     | 'student';
   requiresAuthentication: boolean;
   deprecated?: boolean;

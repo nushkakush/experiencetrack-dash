@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, connectionManager } from '@/integrations/supabase/client';
 import type { AttendanceRecord } from '@/types/attendance';
 
-export const useEpicAttendanceData = (cohortId: string | undefined, epicId: string | undefined) => {
-  const [epicAttendanceRecords, setEpicAttendanceRecords] = useState<AttendanceRecord[]>([]);
+export const useEpicAttendanceData = (
+  cohortId: string | undefined,
+  epicId: string | undefined
+) => {
+  const [epicAttendanceRecords, setEpicAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadEpicAttendanceData = async () => {
+  const loadEpicAttendanceData = useCallback(async () => {
     if (!cohortId || !epicId) {
       setEpicAttendanceRecords([]);
       return;
@@ -15,7 +20,7 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
 
     setLoading(true);
     setError(null);
-    
+
     try {
       // Get all attendance records for this cohort and epic
       const { data: records, error: recordsError } = await supabase
@@ -35,11 +40,11 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId, epicId]);
 
   useEffect(() => {
     loadEpicAttendanceData();
-  }, [cohortId, epicId]);
+  }, [cohortId, epicId, loadEpicAttendanceData]);
 
   // Set up real-time subscription for epic attendance changes
   useEffect(() => {
@@ -48,7 +53,8 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
     const channelName = `epic-attendance-${cohortId}-${epicId}`;
 
     // Set up real-time subscription for attendance records with unique channel name
-    const channel = connectionManager.createChannel(channelName)
+    const channel = connectionManager
+      .createChannel(channelName)
       .on(
         'postgres_changes',
         {
@@ -57,7 +63,7 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
           table: 'attendance_records',
           filter: `cohort_id=eq.${cohortId} and epic_id=eq.${epicId}`,
         },
-        (payload) => {
+        payload => {
           // Reload epic attendance data when attendance records change
           loadEpicAttendanceData();
         }
@@ -68,7 +74,7 @@ export const useEpicAttendanceData = (cohortId: string | undefined, epicId: stri
     return () => {
       connectionManager.removeChannel(channelName);
     };
-  }, [cohortId, epicId]);
+  }, [cohortId, epicId, loadEpicAttendanceData]);
 
   return {
     epicAttendanceRecords,

@@ -11,110 +11,115 @@ export const queryClient = new QueryClient({
     queries: {
       // Cache time (how long to keep data in cache)
       gcTime: APP_CONFIG.CACHE.DEFAULT_CACHE_TIME,
-      
+
       // Stale time (how long data is considered fresh)
       staleTime: APP_CONFIG.CACHE.DEFAULT_STALE_TIME,
-      
+
       // Retry configuration
       retry: (failureCount, error) => {
         // Don't retry on 4xx errors (client errors)
-        if (error && 'status' in error && typeof (error as any).status === 'number') {
+        if (
+          error &&
+          'status' in error &&
+          typeof (error as any).status === 'number'
+        ) {
           return (error as any).status >= 500 && failureCount < 3;
         }
         return failureCount < 3;
       },
-      
+
       // Retry delay with exponential backoff
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+
       // Background refetching
       refetchOnWindowFocus: false, // Disable to prevent unnecessary refetches
-      refetchOnReconnect: false,   // Disable refetch on reconnect to prevent reloads
-      refetchOnMount: false,       // Disable refetch on mount to prevent reloads
-      
+      refetchOnReconnect: false, // Disable refetch on reconnect to prevent reloads
+      refetchOnMount: false, // Disable refetch on mount to prevent reloads
+
       // Network mode
       networkMode: 'online',
-      
+
       // Suspense mode for better loading states
       suspense: false,
-      
+
       // Throw on error (let error boundaries handle it)
       throwOnError: false,
-      
+
       // Optimistic updates
       placeholderData: undefined,
-      
-      // Query function timeout
-      queryFn: async (context) => {
-        const { signal } = context;
-        
-        // Add timeout to query functions
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Query timeout')), 30000);
-        });
-        
-        // Your actual query function would go here
-        // For now, we'll just return a placeholder
-        return Promise.resolve(null);
-      },
-      
+
       // Query logging
       onSuccess: (data, query) => {
         queryLogger.logQuerySuccess(query.queryHash, data, {
           queryKey: query.queryKey,
           staleTime: query.options.staleTime,
-          gcTime: query.options.gcTime
+          gcTime: query.options.gcTime,
         });
       },
-      
+
       onError: (error, query) => {
         queryLogger.logQueryError(query.queryHash, error as Error, {
           queryKey: query.queryKey,
-          failureCount: query.state.failureCount
+          failureCount: query.state.failureCount,
         });
       },
-      
+
       onSettled: (data, error, query) => {
         if (!error) {
           queryLogger.logQueryStart(query.queryHash, {
             queryKey: query.queryKey,
             isStale: query.state.isStale,
-            isFetching: query.state.isFetching
+            isFetching: query.state.isFetching,
           });
         }
       },
     },
-    
+
     mutations: {
       // Retry mutations once
       retry: 1,
-      
+
       // Retry delay for mutations
       retryDelay: 1000,
-      
+
       // Network mode for mutations
       networkMode: 'online',
-      
+
       // Throw on error for mutations
       throwOnError: false,
-      
+
       // Optimistic updates for mutations
       onMutate: undefined,
       onSuccess: undefined,
       onError: undefined,
       onSettled: undefined,
-      
+
       // Mutation logging
       onMutate: (variables, mutation) => {
-        queryLogger.logMutationStart(mutation.options.mutationKey as string, variables);
+        if (mutation?.options?.mutationKey) {
+          queryLogger.logMutationStart(
+            mutation.options.mutationKey as string,
+            variables
+          );
+        }
       },
-      
+
       onSuccess: (data, variables, context, mutation) => {
-        queryLogger.logMutationSuccess(mutation.options.mutationKey as string, data);
+        if (mutation?.options?.mutationKey) {
+          queryLogger.logMutationSuccess(
+            mutation.options.mutationKey as string,
+            data
+          );
+        }
       },
-      
+
       onError: (error, variables, context, mutation) => {
-        queryLogger.logMutationError(mutation.options.mutationKey as string, error as Error);
+        if (mutation?.options?.mutationKey) {
+          queryLogger.logMutationError(
+            mutation.options.mutationKey as string,
+            error as Error
+          );
+        }
       },
     },
   },
@@ -207,17 +212,22 @@ export const queryClientUtils = {
 export const useQueryUtils = () => {
   return {
     // Invalidate related queries
-    invalidateCohorts: () => queryClient.invalidateQueries({ queryKey: ['cohorts'] }),
-    invalidateAttendance: (cohortId: string) => 
-      queryClient.invalidateQueries({ queryKey: ['attendance', 'records', cohortId] }),
-    invalidatePayments: (cohortId: string) => 
-      queryClient.invalidateQueries({ queryKey: ['payments', 'cohort', cohortId] }),
-    
+    invalidateCohorts: () =>
+      queryClient.invalidateQueries({ queryKey: ['cohorts'] }),
+    invalidateAttendance: (cohortId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: ['attendance', 'records', cohortId],
+      }),
+    invalidatePayments: (cohortId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: ['payments', 'cohort', cohortId],
+      }),
+
     // Prefetch common data
     prefetchCohort: (cohortId: string) => {
       // This would prefetch cohort data when needed
     },
-    
+
     // Optimistic updates
     optimisticUpdate: <T>(
       queryKey: readonly unknown[],

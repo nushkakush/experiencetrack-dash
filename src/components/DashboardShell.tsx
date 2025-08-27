@@ -32,10 +32,16 @@ import {
   Calendar,
   CreditCard,
   Menu,
+  Package,
+  Clock,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
 import { useFeatureFlag } from '@/lib/feature-flags/useFeatureFlag';
+import {
+  useEquipmentPermissions,
+  EquipmentPermissions,
+} from '@/domains/equipment/hooks/useEquipmentPermissions';
 import { AvatarService } from '@/services/avatar.service';
 import { cn } from '@/lib/utils';
 
@@ -54,7 +60,8 @@ interface DashboardShellProps {
 const getNavigationItems = (
   role: UserRole,
   navigate: (path: string) => void,
-  showStudentPaymentDashboard: boolean = false
+  showStudentPaymentDashboard: boolean = false,
+  equipmentPermissions?: EquipmentPermissions
 ): NavigationItem[] => {
   const baseItems: NavigationItem[] = [
     { title: 'Dashboard', onClick: () => navigate('/dashboard'), icon: Home },
@@ -68,11 +75,15 @@ const getNavigationItems = (
         icon: Calendar,
       },
       // Fee Payment menu - controlled by feature flag
-      ...(showStudentPaymentDashboard ? [{
-        title: 'Fee Payment',
-        onClick: () => navigate('/dashboard/fee-payment'),
-        icon: CreditCard,
-      }] : []),
+      ...(showStudentPaymentDashboard
+        ? [
+            {
+              title: 'Fee Payment',
+              onClick: () => navigate('/dashboard/fee-payment'),
+              icon: CreditCard,
+            },
+          ]
+        : []),
     ],
     super_admin: [
       {
@@ -85,6 +96,25 @@ const getNavigationItems = (
         onClick: () => navigate('/user-management'),
         icon: Users,
       },
+      // Equipment management items for super_admin
+      ...(equipmentPermissions?.canAccessInventory
+        ? [
+            {
+              title: 'Equipment Inventory',
+              onClick: () => navigate('/equipment-inventory'),
+              icon: Package,
+            },
+          ]
+        : []),
+      ...(equipmentPermissions?.canViewBorrowingHistory
+        ? [
+            {
+              title: 'Borrowing History',
+              onClick: () => navigate('/borrowing-history'),
+              icon: Clock,
+            },
+          ]
+        : []),
     ],
     program_manager: [
       {
@@ -117,6 +147,18 @@ const getNavigationItems = (
       { title: 'Statistics', url: '#', icon: BarChart3 },
       { title: 'Students', url: '#', icon: GraduationCap },
     ],
+    equipment_manager: [
+      {
+        title: 'Equipment Inventory',
+        onClick: () => navigate('/equipment-inventory'),
+        icon: Package,
+      },
+      {
+        title: 'Borrowing History',
+        onClick: () => navigate('/borrowing-history'),
+        icon: Clock,
+      },
+    ],
   };
 
   // For students, don't include the base Dashboard item
@@ -134,15 +176,26 @@ const DashboardShell = ({
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  
+
   // Check if student payment dashboard feature flag is enabled
-  const { isEnabled: showStudentPaymentDashboard } = useFeatureFlag('student-payment-dashboard', {
-    defaultValue: false,
-  });
+  const { isEnabled: showStudentPaymentDashboard } = useFeatureFlag(
+    'student-payment-dashboard',
+    {
+      defaultValue: false,
+    }
+  );
+
+  // Get equipment permissions
+  const equipmentPermissions = useEquipmentPermissions();
 
   if (!profile) return null;
 
-  const navigationItems = getNavigationItems(profile.role, navigate, showStudentPaymentDashboard);
+  const navigationItems = getNavigationItems(
+    profile.role,
+    navigate,
+    showStudentPaymentDashboard,
+    equipmentPermissions
+  );
   const userInitials =
     `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
 
@@ -214,11 +267,11 @@ const DashboardShell = ({
                 >
                   <Avatar className='h-8 w-8'>
                     {profile.avatar_url ? (
-                      <AvatarImage 
+                      <AvatarImage
                         src={AvatarService.getAvatarUrl(
                           AvatarService.getFileNameFromUrl(profile.avatar_url),
                           { width: 32, height: 32, quality: 80 }
-                        )} 
+                        )}
                         alt={`${profile.first_name} ${profile.last_name}`}
                       />
                     ) : null}

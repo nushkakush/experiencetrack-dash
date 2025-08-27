@@ -162,7 +162,7 @@ export default function PaymentPlanDialog({
         setSelectedPaymentPlan('');
       }
     }
-  }, [student.id, isEditing]);
+  }, [student.id, student.cohort_id, isEditing]);
 
   useEffect(() => {
     if (open) {

@@ -54,6 +54,11 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
       description: 'Coordinate student placements and career services',
     },
     {
+      value: 'equipment_manager',
+      label: 'Equipment Manager',
+      description: 'Manage equipment inventory and student borrowing',
+    },
+    {
       value: 'super_admin',
       label: 'Super Admin',
       description: 'Full system access and user management',

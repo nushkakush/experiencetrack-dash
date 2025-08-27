@@ -19,8 +19,12 @@ import CohortAttendancePage from './pages/CohortAttendancePage';
 import CohortAttendanceDashboard from './pages/dashboards/CohortAttendanceDashboard';
 import FeePaymentDashboard from './pages/FeePaymentDashboard';
 import UserManagementPage from './pages/user-management/UserManagementPage';
+import EquipmentInventoryPage from './pages/EquipmentInventoryPage';
+import BorrowingHistoryPage from './pages/BorrowingHistoryPage';
+import { EquipmentAccessControl } from './components/equipment';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import PublicCombinedLeaderboard from './pages/PublicCombinedLeaderboard';
+import PublicEquipmentIssuePage from './pages/public/PublicEquipmentIssuePage';
 import InvitationPage from './pages/InvitationPage';
 import UserInvitationPage from './pages/UserInvitationPage';
 
@@ -279,6 +283,30 @@ const App = () => {
                           </ProtectedRoute>
                         }
                       />
+                      <Route
+                        path='/equipment-inventory'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <EquipmentAccessControl requiredPermission='equipment.inventory'>
+                                <EquipmentInventoryPage />
+                              </EquipmentAccessControl>
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/borrowing-history'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <EquipmentAccessControl requiredPermission='equipment.borrowing_history'>
+                                <BorrowingHistoryPage />
+                              </EquipmentAccessControl>
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route path='/profile' element={<ProfilePage />} />
                       <Route
                         path='/invitation/:token'
@@ -299,6 +327,10 @@ const App = () => {
                       <Route
                         path='/leaderboards/:cohortIds'
                         element={<PublicCombinedLeaderboard />}
+                      />
+                      <Route
+                        path='/public/equipment/issue'
+                        element={<PublicEquipmentIssuePage />}
                       />
                       <Route
                         path='/test/logo-theme'

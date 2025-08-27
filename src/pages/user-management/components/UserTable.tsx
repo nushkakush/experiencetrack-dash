@@ -64,9 +64,13 @@ export const UserTable: React.FC<UserTableProps> = ({
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [cohortAssignmentDialogOpen, setCohortAssignmentDialogOpen] = useState(false);
-  const [userForCohortAssignment, setUserForCohortAssignment] = useState<UserProfile | null>(null);
-  const [userCohortAssignments, setUserCohortAssignments] = useState<Record<string, string[]>>({});
+  const [cohortAssignmentDialogOpen, setCohortAssignmentDialogOpen] =
+    useState(false);
+  const [userForCohortAssignment, setUserForCohortAssignment] =
+    useState<UserProfile | null>(null);
+  const [userCohortAssignments, setUserCohortAssignments] = useState<
+    Record<string, string[]>
+  >({});
   const { loadAssignedCohortsForUser } = useCohortAssignments();
 
   // Update selectedUser when user data changes (e.g., after refresh)
@@ -96,53 +100,75 @@ export const UserTable: React.FC<UserTableProps> = ({
   const handleAssignmentChanged = async () => {
     // Refresh cohort assignments for all users
     const assignments: Record<string, string[]> = {};
-    
+
     for (const user of state.users) {
       if (canAssignCohortsToUser(user)) {
         try {
-          const result = await CohortAssignmentService.getAssignedCohortsForUser(user.user_id);
+          const result =
+            await CohortAssignmentService.getAssignedCohortsForUser(
+              user.user_id
+            );
           if (result.success && result.data && result.data.length > 0) {
             assignments[user.user_id] = result.data.map(cohort => cohort.name);
           } else {
             assignments[user.user_id] = [];
           }
         } catch (error) {
-          console.error(`Error loading assignments for user ${user.user_id}:`, error);
+          console.error(
+            `Error loading assignments for user ${user.user_id}:`,
+            error
+          );
           assignments[user.user_id] = [];
         }
       }
     }
-    
+
     setUserCohortAssignments(assignments);
   };
 
-  const canManageCohortAssignments = hasPermission('users.manage') || profile?.role === 'super_admin';
-  const canAssignCohortsToUser = useCallback((user: UserProfile) => {
-    return canManageCohortAssignments && 
-           (user.role === 'program_manager' || user.role === 'fee_collector');
-  }, [canManageCohortAssignments]);
+  const canManageCohortAssignments =
+    hasPermission('users.manage') || profile?.role === 'super_admin';
+  const canAssignCohortsToUser = useCallback(
+    (user: UserProfile) => {
+      return (
+        canManageCohortAssignments &&
+        (user.role === 'program_manager' ||
+          user.role === 'fee_collector' ||
+          user.role === 'equipment_manager')
+      );
+    },
+    [canManageCohortAssignments]
+  );
 
   // Load cohort assignments for all users
   useEffect(() => {
     const loadAllCohortAssignments = async () => {
       const assignments: Record<string, string[]> = {};
-      
+
       for (const user of state.users) {
         if (canAssignCohortsToUser(user)) {
           try {
-            const result = await CohortAssignmentService.getAssignedCohortsForUser(user.user_id);
+            const result =
+              await CohortAssignmentService.getAssignedCohortsForUser(
+                user.user_id
+              );
             if (result.success && result.data && result.data.length > 0) {
-              assignments[user.user_id] = result.data.map(cohort => cohort.name);
+              assignments[user.user_id] = result.data.map(
+                cohort => cohort.name
+              );
             } else {
               assignments[user.user_id] = [];
             }
           } catch (error) {
-            console.error(`Error loading assignments for user ${user.user_id}:`, error);
+            console.error(
+              `Error loading assignments for user ${user.user_id}:`,
+              error
+            );
             assignments[user.user_id] = [];
           }
         }
       }
-      
+
       setUserCohortAssignments(assignments);
     };
 
@@ -159,6 +185,7 @@ export const UserTable: React.FC<UserTableProps> = ({
       fee_collector: 'bg-yellow-100 text-yellow-800',
       partnerships_head: 'bg-purple-100 text-purple-800',
       placement_coordinator: 'bg-indigo-100 text-indigo-800',
+      equipment_manager: 'bg-orange-100 text-orange-800',
     };
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
@@ -316,10 +343,10 @@ export const UserTable: React.FC<UserTableProps> = ({
               if (filteredUsers.length === 0) {
                 return (
                   <TableRow>
-                                      <TableCell
-                    colSpan={8}
-                    className='text-center py-8 text-muted-foreground'
-                  >
+                    <TableCell
+                      colSpan={8}
+                      className='text-center py-8 text-muted-foreground'
+                    >
                       {showOnlyRegistered
                         ? 'No registered users found'
                         : showOnlyInvited
@@ -340,11 +367,11 @@ export const UserTable: React.FC<UserTableProps> = ({
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <div className='flex items-center gap-3'>
                       <UserAvatar
-                        avatarUrl={user.avatar_url}
+                        avatarUrl={undefined}
                         name={`${user.first_name} ${user.last_name}`}
-                        size="md"
+                        size='md'
                       />
                       <div className='font-medium'>
                         {user.first_name} {user.last_name}
@@ -366,24 +393,33 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </TableCell>
                   <TableCell>
                     {canAssignCohortsToUser(user) ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div className='flex flex-wrap gap-1'>
                         {userCohortAssignments[user.user_id]?.length > 0 ? (
-                          userCohortAssignments[user.user_id].slice(0, 2).map((cohortName, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {cohortName}
-                            </Badge>
-                          ))
+                          userCohortAssignments[user.user_id]
+                            .slice(0, 2)
+                            .map((cohortName, index) => (
+                              <Badge
+                                key={index}
+                                variant='outline'
+                                className='text-xs'
+                              >
+                                {cohortName}
+                              </Badge>
+                            ))
                         ) : (
-                          <span className="text-xs text-muted-foreground">No cohorts assigned</span>
+                          <span className='text-xs text-muted-foreground'>
+                            No cohorts assigned
+                          </span>
                         )}
                         {userCohortAssignments[user.user_id]?.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{userCohortAssignments[user.user_id].length - 2} more
+                          <Badge variant='outline' className='text-xs'>
+                            +{userCohortAssignments[user.user_id].length - 2}{' '}
+                            more
                           </Badge>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">-</span>
+                      <span className='text-xs text-muted-foreground'>-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -420,7 +456,9 @@ export const UserTable: React.FC<UserTableProps> = ({
                         {canAssignCohortsToUser(user) && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleManageCohorts(user)}>
+                            <DropdownMenuItem
+                              onClick={() => handleManageCohorts(user)}
+                            >
                               <BookOpen className='h-4 w-4 mr-2' />
                               Manage Cohorts
                             </DropdownMenuItem>
@@ -512,14 +550,14 @@ export const UserTable: React.FC<UserTableProps> = ({
       {userForCohortAssignment && (
         <CohortAssignmentDialog
           open={cohortAssignmentDialogOpen}
-          onOpenChange={(open) => {
+          onOpenChange={open => {
             setCohortAssignmentDialogOpen(open);
             if (!open) {
               // Refresh cohort assignments when dialog closes
               handleAssignmentChanged();
             }
           }}
-          mode="assign-to-user"
+          mode='assign-to-user'
           targetId={userForCohortAssignment.user_id}
           userDetails={{
             user_id: userForCohortAssignment.user_id,

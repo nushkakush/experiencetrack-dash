@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getTotalDiscountPercentage } from '@/utils/scholarshipUtils';
-import { ProgressCalculator, ProgressCalculationResult } from '@/utils/progressCalculation';
+import {
+  ProgressCalculator,
+  ProgressCalculationResult,
+} from '@/utils/progressCalculation';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
@@ -30,7 +33,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   student,
   feeStructure,
 }) => {
-  const [totalScholarshipPercentage, setTotalScholarshipPercentage] = useState<number>(0);
+  const [totalScholarshipPercentage, setTotalScholarshipPercentage] =
+    useState<number>(0);
   const [financialData, setFinancialData] = useState<CalculatedFinancialData>({
     totalAmount: 0,
     paidAmount: 0,
@@ -44,6 +48,39 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     admissionFeePaid: false,
   });
   const [loading, setLoading] = useState(true);
+
+  const calculateFinancialData =
+    useCallback(async (): Promise<CalculatedFinancialData> => {
+      try {
+        // Use the centralized progress calculator
+        const progressResult = await ProgressCalculator.getProgress(
+          student,
+          feeStructure
+        );
+
+        console.log('🔍 [FinancialSummary] Progress calculation result:', {
+          student_id: student.student_id,
+          calculation_method: progressResult.calculationMethod,
+          total_amount: progressResult.totalAmount,
+          paid_amount: progressResult.paidAmount,
+          progress_percentage: progressResult.progressPercentage,
+        });
+
+        return {
+          ...progressResult,
+          overdueAmount: 0, // TODO: Calculate based on due dates
+        };
+      } catch (error) {
+        console.error('Error calculating financial data:', error);
+
+        // Fallback to database calculation
+        const fallback = ProgressCalculator.calculateWithDatabase(student);
+        return {
+          ...fallback,
+          overdueAmount: 0,
+        };
+      }
+    }, [student, feeStructure]);
 
   useEffect(() => {
     const fetchFinancialData = async () => {
@@ -80,36 +117,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     };
 
     fetchFinancialData();
-  }, [student]);
-
-  const calculateFinancialData = async (): Promise<CalculatedFinancialData> => {
-    try {
-      // Use the centralized progress calculator
-      const progressResult = await ProgressCalculator.getProgress(student, feeStructure);
-      
-      console.log('🔍 [FinancialSummary] Progress calculation result:', {
-        student_id: student.student_id,
-        calculation_method: progressResult.calculationMethod,
-        total_amount: progressResult.totalAmount,
-        paid_amount: progressResult.paidAmount,
-        progress_percentage: progressResult.progressPercentage,
-      });
-
-      return {
-        ...progressResult,
-        overdueAmount: 0, // TODO: Calculate based on due dates
-      };
-    } catch (error) {
-      console.error('Error calculating financial data:', error);
-      
-      // Fallback to database calculation
-      const fallback = ProgressCalculator.calculateWithDatabase(student);
-      return {
-        ...fallback,
-        overdueAmount: 0,
-      };
-    }
-  };
+  }, [calculateFinancialData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {

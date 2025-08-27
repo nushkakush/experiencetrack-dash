@@ -1,30 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PaymentTransaction, CommunicationHistory } from '@/types/fee';
 import { studentPaymentsService } from '@/services/studentPayments.service';
 import { toast } from 'sonner';
 
 interface UseStudentDetailsProps {
-  student: any;
+  student: unknown;
 }
 
 export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [communications, setCommunications] = useState<CommunicationHistory[]>([]);
+  const [communications, setCommunications] = useState<CommunicationHistory[]>(
+    []
+  );
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (student) {
-      loadStudentData();
-    }
-  }, [student]);
-
-  const loadStudentData = async () => {
+  const loadStudentData = useCallback(async () => {
     setLoading(true);
     try {
       // Load transactions for all payments
       const allTransactions: PaymentTransaction[] = [];
       for (const payment of student.payments || []) {
-        const result = await studentPaymentsService.getPaymentTransactions(payment.id);
+        const result = await studentPaymentsService.getPaymentTransactions(
+          payment.id
+        );
         if (result.success && result.data) {
           allTransactions.push(...result.data);
         }
@@ -32,7 +30,9 @@ export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
       setTransactions(allTransactions);
 
       // Load communication history
-      const commResult = await studentPaymentsService.getCommunicationHistory(student.student_id);
+      const commResult = await studentPaymentsService.getCommunicationHistory(
+        student.student_id
+      );
       if (commResult.success && commResult.data) {
         setCommunications(commResult.data);
       }
@@ -42,11 +42,17 @@ export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [student]);
+
+  useEffect(() => {
+    if (student) {
+      loadStudentData();
+    }
+  }, [loadStudentData]);
 
   return {
     transactions,
     communications,
-    loading
+    loading,
   };
 };

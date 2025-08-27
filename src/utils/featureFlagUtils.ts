@@ -106,6 +106,56 @@ if (process.env.NODE_ENV === 'development') {
     },
 
     /**
+     * Toggle the equipment create super admin only feature flag
+     */
+    toggleEquipmentCreateSuperAdminOnly: () => {
+      const result = featureFlagService.toggleFlag(
+        'equipment-create-super-admin-only'
+      );
+      console.log(
+        `Equipment Create Super Admin Only: ${result ? 'ENABLED' : 'DISABLED'}`
+      );
+      window.location.reload();
+      return result;
+    },
+
+    /**
+     * Enable the equipment create super admin only feature flag
+     */
+    enableEquipmentCreateSuperAdminOnly: () => {
+      const result = featureFlagService.setFlagState(
+        'equipment-create-super-admin-only',
+        true
+      );
+      console.log('Equipment Create Super Admin Only: ENABLED');
+      window.location.reload();
+      return result;
+    },
+
+    /**
+     * Disable the equipment create super admin only feature flag
+     */
+    disableEquipmentCreateSuperAdminOnly: () => {
+      const result = featureFlagService.setFlagState(
+        'equipment-create-super-admin-only',
+        false
+      );
+      console.log('Equipment Create Super Admin Only: DISABLED');
+      window.location.reload();
+      return result;
+    },
+
+    /**
+     * Get the current state of the equipment create super admin only feature flag
+     */
+    getEquipmentCreateSuperAdminOnlyState: () => {
+      const flag = featureFlagService
+        .getAllFlags()
+        .find(f => f.id === 'equipment-create-super-admin-only');
+      return flag?.enabled || false;
+    },
+
+    /**
      * Toggle any feature flag by ID
      */
     toggle: (flagId: string) => {

@@ -46,7 +46,11 @@ export const SemesterTable: React.FC<SemesterTableProps> = ({ semester }) => {
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'MMM dd, yyyy');
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
   return (

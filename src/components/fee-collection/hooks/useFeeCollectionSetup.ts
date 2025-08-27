@@ -55,10 +55,63 @@ export const useFeeCollectionSetup = ({
     string[]
   >([]);
 
+  const loadExistingData = useCallback(async () => {
+    try {
+      let feeStructure = null;
+
+      if (studentId) {
+        // Try to get student's custom structure first
+        feeStructure = await FeeStructureService.getFeeStructure(
+          cohortId,
+          studentId
+        );
+
+        // If no custom structure exists, fall back to cohort structure as baseline
+        if (!feeStructure) {
+          feeStructure = await FeeStructureService.getFeeStructure(cohortId);
+        }
+      } else {
+        // No studentId, get cohort structure
+        feeStructure = await FeeStructureService.getFeeStructure(cohortId);
+      }
+
+      if (feeStructure) {
+        setExistingFeeStructure(feeStructure);
+        setFeeStructureData({
+          admission_fee: feeStructure.admission_fee,
+          total_program_fee: feeStructure.total_program_fee,
+          number_of_semesters: feeStructure.number_of_semesters,
+          instalments_per_semester: feeStructure.instalments_per_semester,
+          one_shot_discount_percentage:
+            feeStructure.one_shot_discount_percentage,
+          program_fee_includes_gst:
+            feeStructure.program_fee_includes_gst ?? true,
+          equal_scholarship_distribution:
+            feeStructure.equal_scholarship_distribution ?? false,
+        });
+
+        // Note: Date loading is now handled by useFeeReview per payment plan
+        // We'll pass the full fee structure so it can load plan-specific dates
+      }
+
+      // Load existing scholarships for this cohort
+      const { data: schData } = await supabase
+        .from('cohort_scholarships')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .order('start_percentage', { ascending: true });
+      const list = (schData || []) as Scholarship[];
+      setScholarships(list);
+      setOriginalScholarshipIds(list.map(s => s.id));
+    } catch (error) {
+      console.error('Error loading existing data:', error);
+    }
+  }, [cohortId, studentId]);
+
   // Load existing data when component mounts
   useEffect(() => {
     loadExistingData();
-  }, [cohortId, studentId]);
+  }, [loadExistingData]);
 
   // Preload all payment dates when fee structure data is available
   useEffect(() => {
@@ -186,59 +239,6 @@ export const useFeeCollectionSetup = ({
     feeStructureData.instalments_per_semester,
     cohortId,
   ]);
-
-  const loadExistingData = async () => {
-    try {
-      let feeStructure = null;
-
-      if (studentId) {
-        // Try to get student's custom structure first
-        feeStructure = await FeeStructureService.getFeeStructure(
-          cohortId,
-          studentId
-        );
-
-        // If no custom structure exists, fall back to cohort structure as baseline
-        if (!feeStructure) {
-          feeStructure = await FeeStructureService.getFeeStructure(cohortId);
-        }
-      } else {
-        // No studentId, get cohort structure
-        feeStructure = await FeeStructureService.getFeeStructure(cohortId);
-      }
-
-      if (feeStructure) {
-        setExistingFeeStructure(feeStructure);
-        setFeeStructureData({
-          admission_fee: feeStructure.admission_fee,
-          total_program_fee: feeStructure.total_program_fee,
-          number_of_semesters: feeStructure.number_of_semesters,
-          instalments_per_semester: feeStructure.instalments_per_semester,
-          one_shot_discount_percentage:
-            feeStructure.one_shot_discount_percentage,
-          program_fee_includes_gst:
-            feeStructure.program_fee_includes_gst ?? true,
-          equal_scholarship_distribution:
-            feeStructure.equal_scholarship_distribution ?? false,
-        });
-
-        // Note: Date loading is now handled by useFeeReview per payment plan
-        // We'll pass the full fee structure so it can load plan-specific dates
-      }
-
-      // Load existing scholarships for this cohort
-      const { data: schData } = await supabase
-        .from('cohort_scholarships')
-        .select('*')
-        .eq('cohort_id', cohortId)
-        .order('start_percentage', { ascending: true });
-      const list = (schData || []) as Scholarship[];
-      setScholarships(list);
-      setOriginalScholarshipIds(list.map(s => s.id));
-    } catch (error) {
-      console.error('Error loading existing data:', error);
-    }
-  };
 
   const handleSave = useCallback(async () => {
     setIsLoading(true);

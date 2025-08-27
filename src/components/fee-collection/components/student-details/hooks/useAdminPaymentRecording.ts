@@ -404,6 +404,7 @@ export const useAdminPaymentRecording = ({
     student.student_id,
     student.student?.cohort_id,
     student.payment_plan,
+    student.scholarship_id,
     feeStructure,
   ]);
 

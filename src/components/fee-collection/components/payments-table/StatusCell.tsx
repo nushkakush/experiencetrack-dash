@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { PaymentStatusBadge } from '../../PaymentStatusBadge';
@@ -10,7 +10,16 @@ import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
 
 interface StatusCellProps {
   student: StudentPaymentSummary;
-  feeStructure?: any;
+  feeStructure?: {
+    total_program_fee: number;
+    admission_fee: number;
+    number_of_semesters: number;
+    instalments_per_semester: number;
+    one_shot_discount_percentage: number;
+    one_shot_dates?: unknown;
+    sem_wise_dates?: unknown;
+    instalment_wise_dates?: unknown;
+  };
 }
 
 export const StatusCell: React.FC<StatusCellProps> = ({
@@ -32,7 +41,7 @@ export const StatusCell: React.FC<StatusCellProps> = ({
   });
 
   // Calculate expected amount based on payment plan and fee structure
-  const calculateExpectedAmount = async (): Promise<number> => {
+  const calculateExpectedAmount = useCallback(async (): Promise<number> => {
     try {
       console.log('🔍 [StatusCell] Calculating expected amount with data:', {
         studentId: student.student_id,
@@ -151,7 +160,7 @@ export const StatusCell: React.FC<StatusCellProps> = ({
         // For installment-wise payments, try to estimate the expected amount
         // Look for the largest single payment as it's likely closer to the full installment
         const paymentAmounts = student.payments
-          .map(p => (p as any).amount)
+          .map(p => (p as { amount?: number }).amount)
           .filter(amount => amount && Number.isFinite(amount))
           .sort((a, b) => b - a); // Sort descending
 
@@ -173,24 +182,29 @@ export const StatusCell: React.FC<StatusCellProps> = ({
       console.error('Error calculating expected amount:', error);
       return 0;
     }
-  };
+  }, [student, feeStructure]);
 
   // Fetch partial payment information when component mounts
   useEffect(() => {
     const fetchPartialPaymentInfo = async () => {
-      if (!student.student_id || !(student as any).student_payment_id) return;
+      if (
+        !student.student_id ||
+        !(student as { student_payment_id?: string }).student_payment_id
+      )
+        return;
 
       try {
         console.log(
           '🔍 [StatusCell] Fetching partial payment info for student:',
           {
             studentId: student.student_id,
-            studentPaymentId: (student as any).student_payment_id,
+            studentPaymentId: (student as { student_payment_id?: string })
+              .student_payment_id,
           }
         );
 
         const result = await paymentTransactionService.getByPaymentId(
-          (student as any).student_payment_id
+          (student as { student_payment_id?: string }).student_payment_id
         );
 
         if (result.success && result.data) {
@@ -278,7 +292,12 @@ export const StatusCell: React.FC<StatusCellProps> = ({
     };
 
     fetchPartialPaymentInfo();
-  }, [student.student_id, (student as any).student_payment_id, feeStructure]);
+  }, [
+    student.student_id,
+    (student as { student_payment_id?: string }).student_payment_id,
+    feeStructure,
+    calculateExpectedAmount,
+  ]);
 
   const getPaymentTypeLabel = (paymentType: string, paymentPlan: string) => {
     // For one-shot payments
@@ -306,11 +325,12 @@ export const StatusCell: React.FC<StatusCellProps> = ({
     console.log('🔍 [StatusCell] getOverallStatus called with student data:', {
       studentId: student.student_id,
       paymentPlan: student.payment_plan,
-      aggregateStatus: (student as any).aggregate_status,
+      aggregateStatus: (student as { aggregate_status?: string })
+        .aggregate_status,
       paymentsCount: student.payments?.length || 0,
       payments: student.payments?.map(p => ({
         status: p.status,
-        amount: (p as any).amount,
+        amount: (p as { amount?: number }).amount,
       })),
     });
 
@@ -325,12 +345,14 @@ export const StatusCell: React.FC<StatusCellProps> = ({
     // FIXED: Payment engine now correctly calculates status
     // No override logic needed - payment engine handles partial payment logic correctly
     console.log('🔍 [StatusCell] Using payment engine status (fixed):', {
-      aggregateStatus: (student as any).aggregate_status,
+      aggregateStatus: (student as { aggregate_status?: string })
+        .aggregate_status,
     });
 
     // Use the aggregate status from payment engine if available
-    if ((student as any).aggregate_status) {
-      const aggregateStatus = (student as any).aggregate_status as string;
+    if ((student as { aggregate_status?: string }).aggregate_status) {
+      const aggregateStatus = (student as { aggregate_status?: string })
+        .aggregate_status as string;
       console.log(
         '🔍 [StatusCell] Using aggregate status from payment engine:',
         aggregateStatus

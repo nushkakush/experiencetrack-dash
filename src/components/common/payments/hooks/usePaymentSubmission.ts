@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CohortStudent } from '@/types/cohort';
-import { PaymentBreakdown, Installment, Semester } from '@/types/payments/PaymentCalculationTypes';
+import {
+  PaymentBreakdown,
+  Installment,
+  Semester,
+} from '@/types/payments/PaymentCalculationTypes';
 import { validatePaymentForm } from '@/components/fee-collection/utils/PaymentValidation';
 import { PaymentSubmissionData } from '@/types/payments/PaymentMethods';
 import { paymentTransactionService } from '@/services/paymentTransaction.service';
@@ -8,7 +12,7 @@ import { paymentTransactionService } from '@/services/paymentTransaction.service
 interface PaymentData {
   paymentMode: string;
   amount: number;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   files: Record<string, File>;
 }
 
@@ -25,14 +29,18 @@ export const usePaymentSubmission = ({
   selectedPaymentPlan,
   paymentBreakdown,
   selectedInstallment,
-  onPaymentSubmission
+  onPaymentSubmission,
 }: UsePaymentSubmissionProps) => {
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>('');
   const [amountToPay, setAmountToPay] = useState<number>(0);
-  const [paymentDetails, setPaymentDetails] = useState<Record<string, any>>({});
+  const [paymentDetails, setPaymentDetails] = useState<Record<string, unknown>>(
+    {}
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
-  const [existingTransactions, setExistingTransactions] = useState<any[]>([]);
+  const [existingTransactions, setExistingTransactions] = useState<unknown[]>(
+    []
+  );
   const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   // Fetch existing transactions for this student to calculate pending amount
@@ -41,10 +49,12 @@ export const usePaymentSubmission = ({
 
     try {
       setLoadingTransactions(true);
-      const studentPaymentId = (studentData as any).student_payment_id;
+      const studentPaymentId = (studentData as { student_payment_id?: string })
+        .student_payment_id;
       if (!studentPaymentId) return;
 
-      const result = await paymentTransactionService.getByPaymentId(studentPaymentId);
+      const result =
+        await paymentTransactionService.getByPaymentId(studentPaymentId);
       if (result.success && result.data) {
         setExistingTransactions(result.data);
       }
@@ -53,7 +63,7 @@ export const usePaymentSubmission = ({
     } finally {
       setLoadingTransactions(false);
     }
-  }, [studentData?.id]);
+  }, [studentData]);
 
   // Fetch existing transactions when component mounts
   useEffect(() => {
@@ -61,43 +71,64 @@ export const usePaymentSubmission = ({
   }, [fetchExistingTransactions]);
 
   // Calculate the maximum amount that can be paid for the selected installment
-  const getMaxAmount = () => {
+  const getMaxAmount = useCallback(() => {
     let originalAmount = 0;
 
     if (selectedInstallment) {
       // Round to 2 decimal places to avoid floating point precision issues
-      originalAmount = Math.round(selectedInstallment.amountPayable * 100) / 100;
+      originalAmount =
+        Math.round(selectedInstallment.amountPayable * 100) / 100;
     } else if (paymentBreakdown) {
       if (selectedPaymentPlan === 'one_shot') {
-        originalAmount = Math.round((paymentBreakdown.overallSummary?.totalAmountPayable || 0) * 100) / 100;
+        originalAmount =
+          Math.round(
+            (paymentBreakdown.overallSummary?.totalAmountPayable || 0) * 100
+          ) / 100;
       } else {
         // For semester/installment plans, find the next due amount
-        const pendingInstallments = paymentBreakdown.semesters?.flatMap((semester: Semester) => 
-          semester.instalments?.filter((inst: Installment) => inst.amountPayable > 0) || []
-        ) || [];
-        
+        const pendingInstallments =
+          paymentBreakdown.semesters?.flatMap(
+            (semester: Semester) =>
+              semester.instalments?.filter(
+                (inst: Installment) => inst.amountPayable > 0
+              ) || []
+          ) || [];
+
         if (pendingInstallments.length > 0) {
-          originalAmount = Math.round(pendingInstallments[0].amountPayable * 100) / 100;
+          originalAmount =
+            Math.round(pendingInstallments[0].amountPayable * 100) / 100;
         }
       }
     }
 
     // Calculate pending amount by subtracting already paid transactions
-    if (originalAmount > 0 && existingTransactions.length > 0 && selectedInstallment) {
+    if (
+      originalAmount > 0 &&
+      existingTransactions.length > 0 &&
+      selectedInstallment
+    ) {
       const installmentKey = `${selectedInstallment.semesterNumber || 1}-${selectedInstallment.installmentNumber || 0}`;
-      
+
       const relevantTransactions = existingTransactions.filter(tx => {
-        const txKey = typeof tx?.installment_id === 'string' ? String(tx.installment_id) : '';
+        const txKey =
+          typeof tx?.installment_id === 'string'
+            ? String(tx.installment_id)
+            : '';
         const matchesKey = txKey === installmentKey;
-        const matchesSemester = Number(tx?.semester_number) === Number(selectedInstallment.semesterNumber);
+        const matchesSemester =
+          Number(tx?.semester_number) ===
+          Number(selectedInstallment.semesterNumber);
         return matchesKey || (!!txKey === false && matchesSemester);
       });
 
-      const approvedTransactions = relevantTransactions.filter(tx => 
-        tx.verification_status === 'approved'
+      const approvedTransactions = relevantTransactions.filter(
+        tx => tx.verification_status === 'approved'
       );
 
-      const totalPaid = approvedTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
+      const totalPaid = approvedTransactions.reduce(
+        (sum, tx) => sum + Number(tx.amount),
+        0
+      );
       const pendingAmount = Math.max(0, originalAmount - totalPaid);
 
       console.log('🔍 [usePaymentSubmission] Calculated pending amount:', {
@@ -112,7 +143,12 @@ export const usePaymentSubmission = ({
     }
 
     return originalAmount;
-  };
+  }, [
+    selectedInstallment,
+    paymentBreakdown,
+    selectedPaymentPlan,
+    existingTransactions,
+  ]);
 
   const maxAmount = getMaxAmount();
 
@@ -122,7 +158,7 @@ export const usePaymentSubmission = ({
     if (newMaxAmount !== maxAmount) {
       setAmountToPay(newMaxAmount);
     }
-  }, [existingTransactions, selectedInstallment]);
+  }, [existingTransactions, selectedInstallment, getMaxAmount, maxAmount]);
 
   // Set initial amount when component mounts or installment changes
   useEffect(() => {
@@ -132,43 +168,46 @@ export const usePaymentSubmission = ({
   const handlePaymentModeChange = (mode: string) => {
     console.log('🔍 [DEBUG] handlePaymentModeChange called with mode:', mode);
     console.log('🔍 [DEBUG] handlePaymentModeChange - mode type:', typeof mode);
-    console.log('🔍 [DEBUG] handlePaymentModeChange - mode length:', mode?.length);
-    
+    console.log(
+      '🔍 [DEBUG] handlePaymentModeChange - mode length:',
+      mode?.length
+    );
+
     setSelectedPaymentMode(mode);
     setPaymentDetails({});
     setUploadedFiles({});
     setErrors(prev => ({
       ...prev,
-      paymentMode: ''
+      paymentMode: '',
     }));
-    
+
     console.log('🔍 [DEBUG] handlePaymentModeChange - state updated');
   };
 
   const handleAmountChange = (amount: number) => {
     setAmountToPay(amount);
-    
+
     // Clear amount error when user changes the amount
     setErrors(prev => ({
       ...prev,
-      amount: ''
+      amount: '',
     }));
   };
 
-  const handlePaymentDetailsChange = (details: Record<string, any>) => {
+  const handlePaymentDetailsChange = (details: Record<string, unknown>) => {
     setPaymentDetails(details);
   };
 
   const handleFileUpload = (fieldName: string, file: File) => {
     setUploadedFiles(prev => ({
       ...prev,
-      [fieldName]: file
+      [fieldName]: file,
     }));
-    
+
     // Clear error for this field
     setErrors(prev => ({
       ...prev,
-      [fieldName]: ''
+      [fieldName]: '',
     }));
   };
 
@@ -187,9 +226,18 @@ export const usePaymentSubmission = ({
     console.log('🔍 [DEBUG] maxAmount:', maxAmount);
     console.log('🔍 [DEBUG] paymentDetails:', paymentDetails);
     console.log('🔍 [DEBUG] uploadedFiles:', uploadedFiles);
-    console.log('🔍 [DEBUG] selectedPaymentMode type:', typeof selectedPaymentMode);
-    console.log('🔍 [DEBUG] selectedPaymentMode length:', selectedPaymentMode?.length);
-    console.log('🔍 [DEBUG] selectedPaymentMode truthy check:', !!selectedPaymentMode);
+    console.log(
+      '🔍 [DEBUG] selectedPaymentMode type:',
+      typeof selectedPaymentMode
+    );
+    console.log(
+      '🔍 [DEBUG] selectedPaymentMode length:',
+      selectedPaymentMode?.length
+    );
+    console.log(
+      '🔍 [DEBUG] selectedPaymentMode truthy check:',
+      !!selectedPaymentMode
+    );
 
     const validation = validatePaymentForm(
       selectedPaymentMode,
@@ -216,10 +264,12 @@ export const usePaymentSubmission = ({
       paymentId: `student-payment-${Date.now()}`,
       amount: amountToPay,
       paymentMethod: selectedPaymentMode,
-      referenceNumber: paymentDetails.transactionId || paymentDetails.chequeNumber,
+      referenceNumber:
+        paymentDetails.transactionId || paymentDetails.chequeNumber,
       notes: paymentDetails.notes,
       receiptFile: uploadedFiles.cashAcknowledgment, // Fixed: was cashReceipt, should be cashAcknowledgment
-      proofOfPaymentFile: uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
+      proofOfPaymentFile:
+        uploadedFiles.bankTransferScreenshot || uploadedFiles.chequeImage,
       transactionScreenshotFile: uploadedFiles.scanToPayScreenshot,
       bankName: paymentDetails.bankName,
       bankBranch: paymentDetails.bankBranch,
@@ -228,16 +278,24 @@ export const usePaymentSubmission = ({
       cohortId: studentData.cohort_id,
       // Add installment identification
       installmentId: selectedInstallment?.id,
-      semesterNumber: selectedInstallment?.semesterNumber
+      semesterNumber: selectedInstallment?.semesterNumber,
     };
 
-    console.log('🔍 [DEBUG] usePaymentSubmission - FULL paymentData:', paymentData);
-    console.log('🔍 [DEBUG] usePaymentSubmission - selectedInstallment:', selectedInstallment);
+    console.log(
+      '🔍 [DEBUG] usePaymentSubmission - FULL paymentData:',
+      paymentData
+    );
+    console.log(
+      '🔍 [DEBUG] usePaymentSubmission - selectedInstallment:',
+      selectedInstallment
+    );
     console.log('🔍 [DEBUG] usePaymentSubmission - installment breakdown:', {
       installmentId: selectedInstallment?.id,
       semesterNumber: selectedInstallment?.semesterNumber,
       hasSelectedInstallment: !!selectedInstallment,
-      selectedInstallmentKeys: selectedInstallment ? Object.keys(selectedInstallment) : []
+      selectedInstallmentKeys: selectedInstallment
+        ? Object.keys(selectedInstallment)
+        : [],
     });
     console.log('🔍 [DEBUG] Calling onPaymentSubmission');
 
@@ -256,6 +314,6 @@ export const usePaymentSubmission = ({
     handlePaymentDetailsChange,
     handleFileUpload,
     handleRemoveFile,
-    handleSubmit
+    handleSubmit,
   };
 };

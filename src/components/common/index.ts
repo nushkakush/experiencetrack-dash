@@ -30,7 +30,8 @@ export { DashboardAccessControl } from './DashboardAccessControl';
 export { FeaturePermissionDebug } from './FeaturePermissionDebug';
 
 // SEO components
-export { SEO, PageSEO } from './SEO';
+export { SEO } from './SEO';
+export { PageSEO } from './seo-config';
 
 // Bulk upload components
 export * from './bulk-upload';

@@ -7,6 +7,8 @@ import ProgramManagerDashboard from './dashboards/ProgramManagerDashboard';
 import FeeCollectorDashboard from './dashboards/FeeCollectorDashboard';
 import PartnershipsHeadDashboard from './dashboards/PartnershipsHeadDashboard';
 import PlacementCoordinatorDashboard from './dashboards/PlacementCoordinatorDashboard';
+import EquipmentManagerDashboard from './dashboards/EquipmentManagerDashboard';
+import { EquipmentAccessControl } from '@/components/equipment';
 
 const DashboardRouter = () => {
   const { user, profile, loading, profileLoading } = useAuth();
@@ -60,6 +62,12 @@ const DashboardRouter = () => {
       return <PartnershipsHeadDashboard />;
     case 'placement_coordinator':
       return <PlacementCoordinatorDashboard />;
+    case 'equipment_manager':
+      return (
+        <EquipmentAccessControl requiredPermission='equipment.manage'>
+          <EquipmentManagerDashboard />
+        </EquipmentAccessControl>
+      );
     default:
       return (
         <div className='min-h-screen flex items-center justify-center bg-background'>

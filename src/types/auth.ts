@@ -1,10 +1,11 @@
-export type UserRole = 
+export type UserRole =
   | 'student'
-  | 'super_admin' 
+  | 'super_admin'
   | 'program_manager'
   | 'fee_collector'
   | 'partnerships_head'
-  | 'placement_coordinator';
+  | 'placement_coordinator'
+  | 'equipment_manager';
 
 export interface UserProfile {
   id: string;
