@@ -123,6 +123,21 @@ export const usePaymentDetails = () => {
           studentId: String(studentData.id),
           cohortId: String(cohortData.cohort_id || cohortData.id),
           paymentPlan: plan as 'one_shot' | 'sem_wise' | 'instalment_wise',
+          feeStructureData: {
+            total_program_fee: feeStructure.total_program_fee,
+            admission_fee: feeStructure.admission_fee,
+            number_of_semesters: feeStructure.number_of_semesters,
+            instalments_per_semester: feeStructure.instalments_per_semester,
+            one_shot_discount_percentage:
+              feeStructure.one_shot_discount_percentage,
+            program_fee_includes_gst:
+              (feeStructure as any).program_fee_includes_gst ?? true,
+            equal_scholarship_distribution:
+              (feeStructure as any).equal_scholarship_distribution ?? false,
+            one_shot_dates: feeStructure.one_shot_dates,
+            sem_wise_dates: feeStructure.sem_wise_dates,
+            instalment_wise_dates: feeStructure.instalment_wise_dates,
+          },
         });
         setEngineBreakdown(breakdown || null);
       } catch (error) {

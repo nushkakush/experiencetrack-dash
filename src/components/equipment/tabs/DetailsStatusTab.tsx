@@ -67,7 +67,7 @@ export const DetailsStatusTab: React.FC<DetailsStatusTabProps> = ({
         />
       </div>
 
-      <div className='grid grid-cols-2 gap-4'>
+      <div className='grid grid-cols-1 gap-4'>
         <FormField
           control={control}
           name='condition_status'
@@ -86,30 +86,8 @@ export const DetailsStatusTab: React.FC<DetailsStatusTabProps> = ({
                   <SelectItem value='poor'>Poor</SelectItem>
                   <SelectItem value='damaged'>Damaged</SelectItem>
                   <SelectItem value='under_repair'>Under Repair</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name='availability_status'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Availability Status</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value='available'>Available</SelectItem>
-                  <SelectItem value='maintenance'>Maintenance</SelectItem>
-                  <SelectItem value='retired'>Retired</SelectItem>
                   <SelectItem value='lost'>Lost</SelectItem>
+                  <SelectItem value='decommissioned'>Decommissioned</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

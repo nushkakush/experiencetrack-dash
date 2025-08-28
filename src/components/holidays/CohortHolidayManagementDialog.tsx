@@ -1,4 +1,4 @@
-import { HolidayDialog } from "@/features/holidays";
+import { HolidayDialog } from '@/features/holidays';
 
 interface CohortHolidayManagementDialogProps {
   open: boolean;
@@ -17,10 +17,10 @@ export function CohortHolidayManagementDialog({
     <HolidayDialog
       open={open}
       onOpenChange={onOpenChange}
-      scope="cohort"
+      scope='cohort'
       cohortId={cohortId}
       title={`${cohortName} Holiday Management`}
-      description={`Manage holidays for the ${cohortName} cohort. This includes both global holidays (applying to all cohorts) and cohort-specific holidays.`}
+      description={`Manage cohort-specific holidays for the ${cohortName} cohort. Global holidays are managed separately and apply to all cohorts.`}
     />
   );
 }

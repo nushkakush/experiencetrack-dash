@@ -15,6 +15,7 @@ import {
   AttendanceReasonDialog,
 } from '@/components/attendance';
 import { SessionManagementHeader } from '@/pages/cohort-attendance/components/SessionManagementHeader';
+import { CalendarView } from '@/pages/cohort-attendance/components/CalendarView';
 import {
   useAttendanceData,
   useHolidayDetection,
@@ -28,9 +29,9 @@ const CohortAttendancePage = () => {
   const [selectedSession, setSelectedSession] = useState<number>(1);
   const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
 
-  const [currentView, setCurrentView] = useState<'manage' | 'leaderboard'>(
-    'manage'
-  );
+  const [currentView, setCurrentView] = useState<
+    'manage' | 'calendar' | 'leaderboard'
+  >('manage');
 
   // Custom hooks for data and logic
   const attendanceData = useAttendanceData(cohortId, {
@@ -236,6 +237,16 @@ const CohortAttendancePage = () => {
                   }}
                 />
               </div>
+            ) : currentView === 'calendar' ? (
+              <CalendarView
+                selectedDate={selectedDate}
+                attendanceRecords={attendanceData.attendanceRecords}
+                currentEpic={attendanceData.currentEpic}
+                isHoliday={isHoliday}
+                currentHoliday={currentHoliday}
+                onDateSelect={handleDateChange}
+                onMarkHoliday={() => setHolidaysDialogOpen(true)}
+              />
             ) : (
               <div className='space-y-6'>
                 {/* Leaderboard view content would go here */}

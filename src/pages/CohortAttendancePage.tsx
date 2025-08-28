@@ -20,6 +20,7 @@ import {
   ErrorState,
   SessionManagementHeader,
   ManageView,
+  CalendarView,
   LeaderboardView,
 } from '@/pages/cohort-attendance/components';
 import type { AttendanceStatus } from '@/types/attendance';
@@ -206,6 +207,31 @@ const CohortAttendancePage = () => {
               onMarkAttendance={handleMarkAttendance}
               onResetAttendance={handleResetAttendance}
             />
+          ) : pageState.currentView === 'calendar' ? (
+            (() => {
+              console.log(
+                '📤 CohortAttendancePage: Passing data to CalendarView:',
+                {
+                  selectedDate: pageState.selectedDate,
+                  attendanceRecordsLength:
+                    attendanceData.attendanceRecords.length,
+                  currentEpic: attendanceData.currentEpic,
+                  attendanceRecordsSample:
+                    attendanceData.attendanceRecords.slice(0, 3),
+                }
+              );
+              return (
+                <CalendarView
+                  selectedDate={pageState.selectedDate}
+                  attendanceRecords={attendanceData.attendanceRecords}
+                  currentEpic={attendanceData.currentEpic}
+                  isHoliday={isHoliday}
+                  currentHoliday={currentHoliday}
+                  onDateSelect={pageState.handleDateChange}
+                  onMarkHoliday={() => pageState.setHolidaysDialogOpen(true)}
+                />
+              );
+            })()
           ) : (
             <LeaderboardView
               leaderboardLayout={pageState.leaderboardLayout}

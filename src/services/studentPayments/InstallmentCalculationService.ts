@@ -31,7 +31,13 @@ export class InstallmentCalculationService {
         cohortId,
         paymentPlan,
         scholarshipId,
-        feeStructureData
+        feeStructureData: {
+          ...feeStructureData,
+          program_fee_includes_gst:
+            feeStructureData?.program_fee_includes_gst ?? true,
+          equal_scholarship_distribution:
+            feeStructureData?.equal_scholarship_distribution ?? false,
+        },
       });
 
       const breakdown = response.breakdown;
@@ -50,7 +56,7 @@ export class InstallmentCalculationService {
           const instalments = semester.instalments || [];
           if (Array.isArray(instalments)) {
             totalInstallments += instalments.length;
-            
+
             // Count ₹0 installments (scholarship-covered)
             instalments.forEach((installment: any) => {
               const amountPayable = Number(installment.amountPayable || 0);
@@ -73,9 +79,8 @@ export class InstallmentCalculationService {
         total_installments: totalInstallments,
         completed_installments: completedInstallments,
         scholarship_installments: scholarshipInstallments,
-        paid_installments: paidInstallments
+        paid_installments: paidInstallments,
       };
-
     } catch (error) {
       Logger.getInstance().error(
         `InstallmentCalculationService: Error calculating for student ${studentId}:`,
@@ -94,7 +99,7 @@ export class InstallmentCalculationService {
         total_installments: defaultTotal,
         completed_installments: paidTransactionCount,
         scholarship_installments: 0,
-        paid_installments: paidTransactionCount
+        paid_installments: paidTransactionCount,
       };
     }
   }

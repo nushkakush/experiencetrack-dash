@@ -42,6 +42,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'student.programs',
       'student.attendance_view',
       'student.avatar_upload', // Can view avatars but not upload
+      'student-payment-dashboard', // Enable fee payment dashboard for students
     ],
   },
   {

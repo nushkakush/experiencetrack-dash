@@ -227,14 +227,6 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             </span>
           </div>
           <div className='flex justify-between items-center'>
-            <span className='text-sm text-muted-foreground'>
-              Admission Fee:
-            </span>
-            <span className='font-medium text-foreground'>
-              {formatCurrency(financialData.admissionFee || 0)}
-            </span>
-          </div>
-          <div className='flex justify-between items-center'>
             <span className='text-sm text-muted-foreground'>Paid Amount:</span>
             <span className='font-medium text-green-400'>
               {formatCurrency(financialData.paidAmount)}

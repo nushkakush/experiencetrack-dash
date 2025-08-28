@@ -42,6 +42,8 @@ export const usePaymentSubmission = ({
     []
   );
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [hasUserEnteredCustomAmount, setHasUserEnteredCustomAmount] =
+    useState(false);
 
   // Fetch existing transactions for this student to calculate pending amount
   const fetchExistingTransactions = useCallback(async () => {
@@ -162,8 +164,23 @@ export const usePaymentSubmission = ({
 
   // Set initial amount when component mounts or installment changes
   useEffect(() => {
-    setAmountToPay(maxAmount);
-  }, [maxAmount]);
+    // Only set the amount if user hasn't manually entered a custom amount
+    // and this is the initial load (amountToPay is 0 and we're not in the middle of typing)
+    if (!hasUserEnteredCustomAmount && amountToPay === 0) {
+      setAmountToPay(maxAmount);
+    }
+  }, [maxAmount, hasUserEnteredCustomAmount]); // Removed amountToPay from dependencies to prevent resetting on empty input
+
+  // Reset custom amount flag when installment changes
+  useEffect(() => {
+    if (selectedInstallment) {
+      setHasUserEnteredCustomAmount(false);
+    }
+  }, [
+    selectedInstallment?.id,
+    selectedInstallment?.semesterNumber,
+    selectedInstallment?.installmentNumber,
+  ]);
 
   const handlePaymentModeChange = (mode: string) => {
     console.log('🔍 [DEBUG] handlePaymentModeChange called with mode:', mode);
@@ -186,6 +203,9 @@ export const usePaymentSubmission = ({
 
   const handleAmountChange = (amount: number) => {
     setAmountToPay(amount);
+
+    // Mark that user has entered a custom amount
+    setHasUserEnteredCustomAmount(true);
 
     // Clear amount error when user changes the amount
     setErrors(prev => ({

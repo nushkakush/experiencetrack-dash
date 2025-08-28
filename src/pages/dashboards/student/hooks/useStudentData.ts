@@ -234,9 +234,11 @@ export const useStudentData = (): StudentData => {
       const scholarshipResult = await studentScholarshipsService.getByStudent(
         student.id
       );
-      if (scholarshipResult.success && scholarshipResult.data) {
+      if (scholarshipResult.success) {
+        // Success case - data can be null if no scholarship is assigned (which is normal)
         setStudentScholarship(scholarshipResult.data);
       } else {
+        // Only log error if the request actually failed
         logger.error('Failed to load student scholarship:', {
           error: scholarshipResult.error,
         });

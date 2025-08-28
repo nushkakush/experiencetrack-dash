@@ -9,11 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PaymentSubmissionData } from '@/types/payments';
 import { getPaymentMethodConfig } from '@/types/payments';
 import { toast } from 'sonner';
 import { BankSelect } from './BankSelect';
+import { Building2 } from 'lucide-react';
 
 interface PaymentSubmissionFormProps {
   paymentId: string;
@@ -30,7 +37,7 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
   availableMethods,
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
 }) => {
   const [formData, setFormData] = useState<Partial<PaymentSubmissionData>>({
     paymentId,
@@ -39,7 +46,7 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
     paymentDate: new Date().toISOString().split('T')[0],
     paymentTime: new Date().toTimeString().slice(0, 5), // HH:MM format
     transferDate: new Date().toISOString().split('T')[0],
-    transferTime: new Date().toTimeString().slice(0, 5) // HH:MM format
+    transferTime: new Date().toTimeString().slice(0, 5), // HH:MM format
   });
 
   const [files, setFiles] = useState<{
@@ -48,38 +55,48 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
     transactionScreenshotFile?: File;
   }>({});
 
-  const handleInputChange = (field: keyof PaymentSubmissionData, value: string | number) => {
+  const handleInputChange = (
+    field: keyof PaymentSubmissionData,
+    value: string | number
+  ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (field: keyof typeof files, file: File | undefined) => {
+  const handleFileChange = (
+    field: keyof typeof files,
+    file: File | undefined
+  ) => {
     setFiles(prev => ({ ...prev, [field]: file }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.paymentMethod) {
       toast.error('Please select a payment method');
       return;
     }
 
     const methodConfig = getPaymentMethodConfig(formData.paymentMethod);
-    
+
     if (methodConfig.requiresReference && !formData.referenceNumber) {
       toast.error('Reference number is required for this payment method');
       return;
     }
 
-    if (methodConfig.requiresFile && !files.receiptFile && !files.proofOfPaymentFile) {
+    if (
+      methodConfig.requiresFile &&
+      !files.receiptFile &&
+      !files.proofOfPaymentFile
+    ) {
       toast.error('Proof of payment is required for this payment method');
       return;
     }
 
     try {
       await onSubmit({
-        ...formData as PaymentSubmissionData,
-        ...files
+        ...(formData as PaymentSubmissionData),
+        ...files,
       });
       toast.success('Payment submitted successfully');
     } catch (error) {
@@ -93,23 +110,23 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
         <CardTitle>Submit Payment</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className='space-y-4'>
           {/* Payment Method Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="paymentMethod">Payment Method</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='paymentMethod'>Payment Method</Label>
             <Select
               value={formData.paymentMethod}
-              onValueChange={(value) => handleInputChange('paymentMethod', value)}
+              onValueChange={value => handleInputChange('paymentMethod', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select payment method" />
+                <SelectValue placeholder='Select payment method' />
               </SelectTrigger>
               <SelectContent>
                 {availableMethods.map(method => {
                   const config = getPaymentMethodConfig(method);
                   return (
                     <SelectItem key={method} value={method}>
-                      <span className="flex items-center gap-2">
+                      <span className='flex items-center gap-2'>
                         <span>{config.icon}</span>
                         <span>{config.label}</span>
                       </span>
@@ -121,68 +138,126 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
           </div>
 
           {/* Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='amount'>Amount</Label>
             <Input
-              id="amount"
-              type="number"
+              id='amount'
+              type='number'
               value={formData.amount || ''}
-              onChange={(e) => handleInputChange('amount', parseFloat(e.target.value))}
-              placeholder="Enter amount"
+              onChange={e =>
+                handleInputChange('amount', parseFloat(e.target.value))
+              }
+              placeholder='Enter amount'
               required
             />
           </div>
 
           {/* Reference Number */}
-          {formData.paymentMethod && getPaymentMethodConfig(formData.paymentMethod).requiresReference && (
-            <div className="space-y-2">
-              <Label htmlFor="referenceNumber">Reference Number</Label>
-              <Input
-                id="referenceNumber"
-                value={formData.referenceNumber || ''}
-                onChange={(e) => handleInputChange('referenceNumber', e.target.value)}
-                placeholder="Enter reference number"
-                required
-              />
-            </div>
-          )}
+          {formData.paymentMethod &&
+            getPaymentMethodConfig(formData.paymentMethod)
+              .requiresReference && (
+              <div className='space-y-2'>
+                <Label htmlFor='referenceNumber'>Reference Number</Label>
+                <Input
+                  id='referenceNumber'
+                  value={formData.referenceNumber || ''}
+                  onChange={e =>
+                    handleInputChange('referenceNumber', e.target.value)
+                  }
+                  placeholder='Enter reference number'
+                  required
+                />
+              </div>
+            )}
 
           {/* Bank Details for Bank Transfer */}
           {formData.paymentMethod === 'bank_transfer' && (
             <>
+              {/* Bank Account Details Card */}
+              <Card className='border-border bg-card'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2 text-foreground'>
+                    <Building2 className='h-5 w-5' />
+                    Bank Transfer Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-3'>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div>
+                      <p className='text-sm text-muted-foreground'>
+                        Account Holder
+                      </p>
+                      <p className='font-medium text-foreground'>
+                        DISRUPTIVE EDU PRIVATE LIMITED
+                      </p>
+                    </div>
+                    <div>
+                      <p className='text-sm text-muted-foreground'>
+                        Account Number
+                      </p>
+                      <p className='font-medium text-foreground'>
+                        50200082405270
+                      </p>
+                    </div>
+                    <div>
+                      <p className='text-sm text-muted-foreground'>IFSC Code</p>
+                      <p className='font-medium text-foreground'>HDFC0001079</p>
+                    </div>
+                    <div>
+                      <p className='text-sm text-muted-foreground'>Branch</p>
+                      <p className='font-medium text-foreground'>
+                        SADASHIVANAGAR
+                      </p>
+                    </div>
+                    <div>
+                      <p className='text-sm text-muted-foreground'>
+                        Account Type
+                      </p>
+                      <p className='font-medium text-foreground'>CURRENT</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <BankSelect
                 value={formData.bankName || ''}
-                onValueChange={(value) => handleInputChange('bankName', value)}
-                label="Bank Name"
-                placeholder="Select bank"
+                onValueChange={value => handleInputChange('bankName', value)}
+                label='Bank Name'
+                placeholder='Select bank'
                 required={true}
               />
-              <div className="space-y-2">
-                <Label htmlFor="bankBranch">Bank Branch</Label>
+              <div className='space-y-2'>
+                <Label htmlFor='bankBranch'>Bank Branch</Label>
                 <Input
-                  id="bankBranch"
+                  id='bankBranch'
                   value={formData.bankBranch || ''}
-                  onChange={(e) => handleInputChange('bankBranch', e.target.value)}
-                  placeholder="Enter bank branch"
+                  onChange={e =>
+                    handleInputChange('bankBranch', e.target.value)
+                  }
+                  placeholder='Enter bank branch'
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="transferDate">Transfer Date</Label>
+              <div className='grid grid-cols-2 gap-4'>
+                <div className='space-y-2'>
+                  <Label htmlFor='transferDate'>Transfer Date</Label>
                   <Input
-                    id="transferDate"
-                    type="date"
+                    id='transferDate'
+                    type='date'
                     value={formData.transferDate || ''}
-                    onChange={(e) => handleInputChange('transferDate', e.target.value)}
+                    onChange={e =>
+                      handleInputChange('transferDate', e.target.value)
+                    }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="transferTime">Transfer Time</Label>
+                <div className='space-y-2'>
+                  <Label htmlFor='transferTime'>Transfer Time</Label>
                   <Input
-                    id="transferTime"
-                    type="time"
+                    id='transferTime'
+                    type='time'
                     value={formData.transferTime || ''}
-                    onChange={(e) => handleInputChange('transferTime', e.target.value)}
+                    onChange={e =>
+                      handleInputChange('transferTime', e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -190,57 +265,72 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({
           )}
 
           {/* File Uploads */}
-          {(formData.paymentMethod && getPaymentMethodConfig(formData.paymentMethod).requiresFile) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="receiptFile">Receipt</Label>
-                <Input
-                  id="receiptFile"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => handleFileChange('receiptFile', e.target.files?.[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="proofOfPaymentFile">Proof of Payment</Label>
-                <Input
-                  id="proofOfPaymentFile"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => handleFileChange('proofOfPaymentFile', e.target.files?.[0])}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="transactionScreenshotFile">Transaction Screenshot</Label>
-                <Input
-                  id="transactionScreenshotFile"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange('transactionScreenshotFile', e.target.files?.[0])}
-                />
-              </div>
-            </>
-          )}
+          {formData.paymentMethod &&
+            getPaymentMethodConfig(formData.paymentMethod).requiresFile && (
+              <>
+                <div className='space-y-2'>
+                  <Label htmlFor='receiptFile'>Receipt</Label>
+                  <Input
+                    id='receiptFile'
+                    type='file'
+                    accept='image/*,.pdf'
+                    onChange={e =>
+                      handleFileChange('receiptFile', e.target.files?.[0])
+                    }
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='proofOfPaymentFile'>Proof of Payment</Label>
+                  <Input
+                    id='proofOfPaymentFile'
+                    type='file'
+                    accept='image/*,.pdf'
+                    onChange={e =>
+                      handleFileChange(
+                        'proofOfPaymentFile',
+                        e.target.files?.[0]
+                      )
+                    }
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='transactionScreenshotFile'>
+                    Transaction Screenshot
+                  </Label>
+                  <Input
+                    id='transactionScreenshotFile'
+                    type='file'
+                    accept='image/*'
+                    onChange={e =>
+                      handleFileChange(
+                        'transactionScreenshotFile',
+                        e.target.files?.[0]
+                      )
+                    }
+                  />
+                </div>
+              </>
+            )}
 
           {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='notes'>Notes (Optional)</Label>
             <Textarea
-              id="notes"
+              id='notes'
               value={formData.notes || ''}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Add any additional notes"
+              onChange={e => handleInputChange('notes', e.target.value)}
+              placeholder='Add any additional notes'
               rows={3}
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-4">
-            <Button type="submit" disabled={isLoading}>
+          <div className='flex gap-2 pt-4'>
+            <Button type='submit' disabled={isLoading}>
               {isLoading ? 'Submitting...' : 'Submit Payment'}
             </Button>
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button type='button' variant='outline' onClick={onCancel}>
                 Cancel
               </Button>
             )}

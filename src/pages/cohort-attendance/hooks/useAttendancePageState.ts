@@ -6,16 +6,24 @@ interface UseAttendancePageStateProps {
   onAttendanceMarked: () => Promise<void>;
 }
 
-export const useAttendancePageState = ({ onAttendanceMarked }: UseAttendancePageStateProps) => {
+export const useAttendancePageState = ({
+  onAttendanceMarked,
+}: UseAttendancePageStateProps) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState<number>(1);
   const [holidaysDialogOpen, setHolidaysDialogOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'manage' | 'leaderboard'>('manage');
-  const [leaderboardLayout, setLeaderboardLayout] = useState<'table' | 'grid'>('grid');
+  const [currentView, setCurrentView] = useState<
+    'manage' | 'calendar' | 'leaderboard'
+  >('manage');
+  const [leaderboardLayout, setLeaderboardLayout] = useState<'table' | 'grid'>(
+    'grid'
+  );
 
   const handleDateChange = (date: Date) => {
     if (!isAfter(date, new Date())) {
       setSelectedDate(date);
+      // Switch to manage view when a date is selected from calendar
+      setCurrentView('manage');
     }
   };
 
@@ -23,7 +31,10 @@ export const useAttendancePageState = ({ onAttendanceMarked }: UseAttendancePage
     setSelectedSession(session);
   };
 
-  const handleMarkAttendance = (studentId: string, status: AttendanceStatus) => {
+  const handleMarkAttendance = (
+    studentId: string,
+    status: AttendanceStatus
+  ) => {
     // This will be handled by the parent component
     return { studentId, status };
   };
@@ -57,6 +68,6 @@ export const useAttendancePageState = ({ onAttendanceMarked }: UseAttendancePage
     handleSessionChange,
     handleMarkAttendance,
     handlePreviousDay,
-    handleNextDay
+    handleNextDay,
   };
 };

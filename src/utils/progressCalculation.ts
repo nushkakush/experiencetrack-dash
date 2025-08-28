@@ -125,10 +125,21 @@ export class ProgressCalculator {
         },
       });
 
-      const totalAmount = feeReview?.overallSummary?.totalAmountPayable || 0;
+      const programFeeAmount =
+        feeReview?.overallSummary?.totalAmountPayable || 0;
       const admissionFee =
         feeReview?.admissionFee?.totalPayable ||
         feeStructureToUse.admission_fee;
+
+      // For financial summary, total amount should include admission fee
+      const totalAmount = programFeeAmount + admissionFee;
+
+      console.log('🔍 [ProgressCalculator] Total amount calculation:', {
+        programFeeAmount,
+        admissionFee,
+        totalAmount,
+        student_id: student.student_id,
+      });
 
       // Get verified payments
       let verifiedPayments = 0;

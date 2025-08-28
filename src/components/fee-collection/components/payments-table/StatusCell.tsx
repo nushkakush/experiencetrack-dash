@@ -78,6 +78,10 @@ export const StatusCell: React.FC<StatusCellProps> = ({
               instalments_per_semester: feeStructure.instalments_per_semester,
               one_shot_discount_percentage:
                 feeStructure.one_shot_discount_percentage,
+              program_fee_includes_gst:
+                feeStructure.program_fee_includes_gst ?? true,
+              equal_scholarship_distribution:
+                feeStructure.equal_scholarship_distribution ?? false,
               one_shot_dates: feeStructure.one_shot_dates,
               sem_wise_dates: feeStructure.sem_wise_dates,
               instalment_wise_dates: feeStructure.instalment_wise_dates,

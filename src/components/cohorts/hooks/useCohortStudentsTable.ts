@@ -95,12 +95,33 @@ export const useCohortStudentsTable = ({
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
       // Search filter
-      const searchLower = searchQuery.toLowerCase();
+      const searchLower = searchQuery.toLowerCase().trim();
+
+      // Create full name for searching (first + last name with space)
+      const fullName = [student.first_name, student.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      // Split search terms to handle multi-word searches
+      const searchTerms = searchLower
+        .split(' ')
+        .filter(term => term.length > 0);
+
       const matchesSearch =
         searchQuery === '' ||
         student.first_name?.toLowerCase().includes(searchLower) ||
         student.last_name?.toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower);
+        fullName.includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
+        // Check if all search terms are found in either first name, last name, or full name
+        (searchTerms.length > 1 &&
+          searchTerms.every(
+            term =>
+              student.first_name?.toLowerCase().includes(term) ||
+              student.last_name?.toLowerCase().includes(term) ||
+              fullName.includes(term)
+          ));
 
       // Status filter
       const matchesStatus =

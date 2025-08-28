@@ -403,6 +403,8 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
         invoice,
         hasInvoice,
         verification_status: transaction.verification_status,
+        rejection_reason: transaction.rejection_reason,
+        hasRejectionReason: !!transaction.rejection_reason,
       }
     );
 
@@ -459,6 +461,18 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Rejection Reason - Show for rejected transactions */}
+          {transaction.rejection_reason && (
+            <div className='mt-2 p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs'>
+              <span className='text-red-600 font-medium'>
+                Rejection Reason:
+              </span>
+              <span className='ml-1 text-red-600'>
+                {transaction.rejection_reason}
+              </span>
+            </div>
+          )}
 
           {/* Summary - only show if there's a meaningful difference */}
           {(safeTotalPaid > 0 || safeRemainingAmount > 0) && (

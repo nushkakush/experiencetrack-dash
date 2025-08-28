@@ -634,6 +634,24 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
           const hasRejectedTransactions = transactions.some(
             t => t.verification_status === 'rejected'
           );
+
+          // Debug logging for rejected transactions check
+          console.log('🔍 [InstallmentCard] Rejected transactions check:', {
+            transactionsCount: transactions.length,
+            hasRejectedTransactions,
+            rejectedTransactions: transactions
+              .filter(t => t.verification_status === 'rejected')
+              .map(t => ({
+                id: t.id,
+                amount: t.amount,
+                status: t.verification_status,
+                rejection_reason: t.rejection_reason,
+              })),
+            allTransactionStatuses: transactions.map(t => ({
+              id: t.id,
+              status: t.verification_status,
+            })),
+          });
           const hasTransactionsWithInvoices = transactions.some(
             t => t.lit_invoice_id
           );
@@ -675,6 +693,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                 status: t.verification_status,
                 partial_sequence: t.partial_payment_sequence,
                 lit_invoice_id: t.lit_invoice_id,
+                rejection_reason: t.rejection_reason,
               })),
               // Add more detailed logging for the specific transaction we know has an invoice
               specificTransactionCheck: transactions.find(

@@ -3,6 +3,18 @@ import type { InstallmentView, PaymentPlan } from './types.ts';
 // Constants
 export const GST_RATE = 18;
 
+// Rounding utility function for final payable amounts
+export const roundToRupee = (amount: number): number => {
+  const rupees = Math.floor(amount);
+  const paisa = amount - rupees;
+
+  if (paisa >= 0.5) {
+    return rupees + 1;
+  } else {
+    return rupees;
+  }
+};
+
 // Basic calculation helpers
 export const calculateGST = (baseAmount: number): number => {
   return Math.round(baseAmount * (GST_RATE / 100) * 100) / 100;
@@ -94,15 +106,51 @@ export const distributeScholarshipEqually = (
   return scholarshipDistribution;
 };
 
+export const distributeScholarshipByInstallmentPattern = (
+  installmentPercentages: number[],
+  totalScholarshipAmount: number
+): number[] => {
+  const scholarshipDistribution = new Array(installmentPercentages.length).fill(
+    0
+  );
+
+  if (installmentPercentages.length === 0) return scholarshipDistribution;
+
+  // Distribute scholarship according to the installment pattern percentages
+  for (let i = 0; i < installmentPercentages.length; i++) {
+    scholarshipDistribution[i] =
+      Math.round(
+        totalScholarshipAmount * (installmentPercentages[i] / 100) * 100
+      ) / 100;
+  }
+
+  // Handle rounding differences by adding remainder to last installment
+  const totalDistributed = scholarshipDistribution.reduce(
+    (sum, amount) => sum + amount,
+    0
+  );
+  const remainder = totalScholarshipAmount - totalDistributed;
+  if (remainder !== 0 && installmentPercentages.length > 0) {
+    scholarshipDistribution[installmentPercentages.length - 1] += remainder;
+  }
+
+  return scholarshipDistribution;
+};
+
 export const distributeScholarshipAcrossSemesters = (
   totalProgramFee: number,
   admissionFee: number,
   numberOfSemesters: number,
   scholarshipAmount: number,
-  equalDistribution: boolean
+  equalDistribution: boolean,
+  programFeeIncludesGST: boolean = true
 ): number[] => {
   // Extract base amounts properly
-  const programFeeBase = extractBaseAmountFromTotal(totalProgramFee);
+  // Program fee base depends on whether it includes GST
+  const programFeeBase = programFeeIncludesGST
+    ? extractBaseAmountFromTotal(totalProgramFee)
+    : totalProgramFee;
+  // Admission fee ALWAYS includes GST
   const admissionFeeBase = extractBaseAmountFromTotal(admissionFee);
   const remainingBaseFee = programFeeBase - admissionFeeBase;
   const semesterFee = remainingBaseFee / numberOfSemesters;
@@ -164,6 +212,13 @@ export const calculateOneShotPayment = (
     programFeeBaseAmount = totalProgramFee;
   }
 
+  console.log('🔍 One-Shot Payment GST Debug:', {
+    programFeeIncludesGST,
+    totalProgramFee,
+    admissionFee,
+    programFeeBaseAmount,
+  });
+
   // Calculate base discount on the BASE amount
   const baseDiscount = calculateOneShotDiscount(
     programFeeBaseAmount,
@@ -190,6 +245,13 @@ export const calculateOneShotPayment = (
 
   // Calculate final amount with GST (admission fee is handled separately in overall summary)
   const finalAmount = remainingProgramFee + programFeeGST;
+  const roundedAmountPayable = roundToRupee(Math.max(0, finalAmount));
+
+  console.log(`🔍 [ROUNDING] One-shot payment amount:`, {
+    originalAmount: finalAmount,
+    roundedAmount: roundedAmountPayable,
+    difference: roundedAmountPayable - finalAmount,
+  });
 
   return {
     paymentDate: '', // Will be set from database dates only
@@ -199,7 +261,7 @@ export const calculateOneShotPayment = (
     discountAmount: baseDiscount, // Only base discount (additional discount moved to scholarship)
     baseDiscountAmount: baseDiscount, // Base one-shot discount only
     additionalDiscountAmount: 0, // No longer separate (combined with scholarship)
-    amountPayable: Math.max(0, finalAmount),
+    amountPayable: roundedAmountPayable,
   };
 };
 
@@ -232,9 +294,21 @@ export const calculateSemesterPayment = (
     // totalProgramFee is exclusive of GST, so use as-is and calculate GST
     programFeeBaseAmount = totalProgramFee;
     programFeeGST = 0; // Will be calculated per installment
-    admissionFeeBaseAmount = admissionFee;
-    admissionFeeGST = 0; // Will be calculated per installment
+    // Admission fee ALWAYS includes GST, regardless of program fee setting
+    admissionFeeBaseAmount = extractBaseAmountFromTotal(admissionFee);
+    admissionFeeGST = extractGSTFromTotal(admissionFee);
   }
+
+  console.log('🔍 Semester Payment GST Debug:', {
+    semesterNumber,
+    programFeeIncludesGST,
+    totalProgramFee,
+    admissionFee,
+    programFeeBaseAmount,
+    programFeeGST,
+    admissionFeeBaseAmount,
+    admissionFeeGST,
+  });
 
   // Calculate discount on the BASE amount (not total amount)
   const totalDiscount = oneShotDiscount;
@@ -286,8 +360,12 @@ export const calculateSemesterPayment = (
     `🎯 Final semester scholarship for semester ${semesterNumber}: ${semesterScholarship}`
   );
 
+  // Distribute scholarship: follow installment pattern OR backwards distribution
   const installmentScholarshipDistribution = equalScholarshipDistribution
-    ? distributeScholarshipEqually(installmentAmounts, semesterScholarship)
+    ? distributeScholarshipByInstallmentPattern(
+        installmentPercentages,
+        semesterScholarship
+      )
     : distributeScholarshipBackwards(installmentAmounts, semesterScholarship);
   const semesterDiscount = oneShotDiscount / numberOfSemesters;
   const discountPerInstallment = semesterDiscount / instalmentsPerSemester;
@@ -303,18 +381,35 @@ export const calculateSemesterPayment = (
 
     let installmentGST: number;
     if (programFeeIncludesGST) {
-      // Calculate GST proportionally on the remaining GST (total GST minus admission fee GST)
-      const remainingGST = programFeeGST - admissionFeeGST;
-      const remainingBase = programFeeBaseAmount - admissionFeeBaseAmount;
-      const gstRatio = remainingGST / remainingBase;
-      installmentGST =
-        Math.round(installmentAfterScholarship * gstRatio * 100) / 100;
+      // For inclusive GST, calculate GST on the remaining base amount after scholarship
+      // Since the original amount includes GST, we need to calculate GST on the base portion
+      const baseAmountAfterScholarship = installmentAfterScholarship;
+      installmentGST = calculateGST(baseAmountAfterScholarship);
+
+      console.log('🔍 Installment GST Debug (Inclusive):', {
+        installmentNumber: i + 1,
+        baseAmountAfterScholarship,
+        installmentGST,
+      });
     } else {
       // Calculate GST on the installment amount
       installmentGST = calculateGST(installmentAfterScholarship);
+
+      console.log('🔍 Installment GST Debug (Exclusive):', {
+        installmentNumber: i + 1,
+        installmentAfterScholarship,
+        installmentGST,
+      });
     }
 
     const finalAmount = installmentAfterScholarship + installmentGST;
+
+    const roundedAmountPayable = roundToRupee(Math.max(0, finalAmount));
+    console.log(`🔍 [ROUNDING] Installment ${i + 1} amount:`, {
+      originalAmount: finalAmount,
+      roundedAmount: roundedAmountPayable,
+      difference: roundedAmountPayable - finalAmount,
+    });
 
     installments.push({
       paymentDate: '', // Will be set from database dates only
@@ -324,7 +419,7 @@ export const calculateSemesterPayment = (
       discountAmount: installmentDiscount,
       baseDiscountAmount: installmentDiscount, // Base discount only
       additionalDiscountAmount: 0, // No additional discount on installments
-      amountPayable: Math.max(0, finalAmount),
+      amountPayable: roundedAmountPayable,
       installmentNumber: i + 1,
     });
   }

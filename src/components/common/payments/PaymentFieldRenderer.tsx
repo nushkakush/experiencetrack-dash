@@ -3,9 +3,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileUploadField } from './FileUploadField';
 import { PaymentModeConfig } from '@/features/payments/domain/PaymentModeConfig';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Building2 } from 'lucide-react';
 import { BankSelect } from './BankSelect';
 import {
   PaymentDetails,
@@ -125,6 +126,48 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(
             <config.ui.alert.icon className='h-4 w-4' />
             <AlertDescription>{config.ui.alert.description}</AlertDescription>
           </Alert>
+        )}
+
+        {/* Bank Details for Bank Transfer */}
+        {config.name === 'Bank Transfer' && (
+          <Card className='border-border bg-card'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2 text-foreground'>
+                <Building2 className='h-5 w-5' />
+                Bank Transfer Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div>
+                  <p className='text-sm text-muted-foreground'>
+                    Account Holder
+                  </p>
+                  <p className='font-medium text-foreground'>
+                    DISRUPTIVE EDU PRIVATE LIMITED
+                  </p>
+                </div>
+                <div>
+                  <p className='text-sm text-muted-foreground'>
+                    Account Number
+                  </p>
+                  <p className='font-medium text-foreground'>50200082405270</p>
+                </div>
+                <div>
+                  <p className='text-sm text-muted-foreground'>IFSC Code</p>
+                  <p className='font-medium text-foreground'>HDFC0001079</p>
+                </div>
+                <div>
+                  <p className='text-sm text-muted-foreground'>Branch</p>
+                  <p className='font-medium text-foreground'>SADASHIVANAGAR</p>
+                </div>
+                <div>
+                  <p className='text-sm text-muted-foreground'>Account Type</p>
+                  <p className='font-medium text-foreground'>CURRENT</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Custom Component */}

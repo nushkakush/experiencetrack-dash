@@ -36,6 +36,15 @@ export const STUDENT_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'student',
     requiresAuthentication: true,
   },
+  'student-payment-dashboard': {
+    key: 'student-payment-dashboard',
+    name: 'Student Payment Dashboard',
+    description: 'Enable fee payment dashboard for students',
+    category: 'student',
+    requiresAuthentication: true,
+  },
 } as const;
 
-export const STUDENT_FEATURE_KEYS = Object.keys(STUDENT_FEATURES) as FeatureKey[];
+export const STUDENT_FEATURE_KEYS = Object.keys(
+  STUDENT_FEATURES
+) as FeatureKey[];

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   HolidayNotice,
   SessionTabs,
@@ -53,6 +53,24 @@ export const ManageView: React.FC<ManageViewProps> = ({
   onMarkAttendance,
   onResetAttendance,
 }) => {
+  // Sort students alphabetically by first name, then last name
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => {
+      const aFirstName = (a.first_name || '').toLowerCase();
+      const bFirstName = (b.first_name || '').toLowerCase();
+      const aLastName = (a.last_name || '').toLowerCase();
+      const bLastName = (b.last_name || '').toLowerCase();
+
+      // First compare by first name
+      if (aFirstName !== bFirstName) {
+        return aFirstName.localeCompare(bFirstName);
+      }
+
+      // If first names are the same, compare by last name
+      return aLastName.localeCompare(bLastName);
+    });
+  }, [students]);
+
   if (isHoliday && currentHoliday) {
     return (
       <HolidayNotice
@@ -69,12 +87,12 @@ export const ManageView: React.FC<ManageViewProps> = ({
         sessions={sessions}
         selectedSession={selectedSession}
         onSessionChange={onSessionChange}
-        students={students}
+        students={sortedStudents}
         attendanceRecords={attendanceRecords}
       />
 
       <AttendanceTable
-        students={students}
+        students={sortedStudents}
         attendanceRecords={attendanceRecords}
         isSessionCancelled={isSessionCancelled}
         isFutureDate={isFutureDate}

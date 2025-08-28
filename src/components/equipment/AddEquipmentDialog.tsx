@@ -40,6 +40,7 @@ const equipmentSchema = z.object({
     'poor',
     'damaged',
     'under_repair',
+    'lost',
     'decommissioned',
   ]),
   availability_status: z.enum([
@@ -85,7 +86,7 @@ const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
       purchase_date: '',
       purchase_cost: undefined,
       condition_status: 'good',
-      availability_status: 'available',
+      availability_status: 'available', // Always available for new equipment
       condition_notes: '',
       images: [],
     },
@@ -145,7 +146,9 @@ const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
         purchase_date: equipment.purchase_date || '',
         purchase_cost: equipment.purchase_cost,
         condition_status: equipment.condition_status,
-        availability_status: equipment.availability_status,
+        availability_status: isCloneModeActive
+          ? 'available'
+          : equipment.availability_status, // Always available for clones
         condition_notes: equipment.condition_notes || '',
         images: equipment.images || [],
       });

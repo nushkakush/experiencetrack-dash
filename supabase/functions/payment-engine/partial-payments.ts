@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { roundToRupee } from './calculations.ts';
 
 // Partial payment calculation helpers
 export const calculatePartialPaymentSummary = async (
@@ -42,26 +43,33 @@ export const calculatePartialPaymentSummary = async (
   // Get all transactions for this installment
   const { data: transactions } = await supabase
     .from('payment_transactions')
-    .select('id, amount, verification_status, partial_payment_sequence, created_at, verified_at, notes, rejection_reason')
+    .select(
+      'id, amount, verification_status, partial_payment_sequence, created_at, verified_at, notes, rejection_reason'
+    )
     .eq('payment_id', paymentRecord.id)
     .eq('installment_id', installmentId)
     .order('partial_payment_sequence', { ascending: true });
 
   const partialPayments = transactions || [];
-  
+
   // Calculate totals
   const totalPaid = partialPayments
-    .filter(t => t.verification_status === 'approved' || t.verification_status === 'partially_approved')
+    .filter(
+      t =>
+        t.verification_status === 'approved' ||
+        t.verification_status === 'partially_approved'
+    )
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   // Get original installment amount (this would need to be calculated from fee structure)
   // For now, using a placeholder - in real implementation, this would call the breakdown calculation
   const originalAmount = 10000; // TODO: Calculate from fee structure
-  
-  const pendingAmount = originalAmount - totalPaid;
+
+  const pendingAmount = roundToRupee(originalAmount - totalPaid);
   const currentCount = partialPayments.length;
   const maxPartialPayments = 2; // As per requirements
-  const canMakeAnotherPayment = currentCount < maxPartialPayments && pendingAmount > 0;
+  const canMakeAnotherPayment =
+    currentCount < maxPartialPayments && pendingAmount > 0;
 
   return {
     installmentId,
@@ -95,7 +103,11 @@ export const processAdminPartialApproval = async (
   approvedAmount?: number,
   adminNotes?: string,
   rejectionReason?: string
-): Promise<{ success: boolean; newTransactionId?: string; message?: string }> => {
+): Promise<{
+  success: boolean;
+  newTransactionId?: string;
+  message?: string;
+}> => {
   if (approvalType === 'reject') {
     // Reject the transaction
     const { error } = await supabase
@@ -140,7 +152,7 @@ export const processAdminPartialApproval = async (
     }
 
     const originalAmount = originalTransaction.amount;
-    const remainingAmount = originalAmount - approvedAmount;
+    const remainingAmount = roundToRupee(originalAmount - approvedAmount);
 
     if (approvedAmount <= 0 || approvedAmount >= originalAmount) {
       throw new Error('Invalid approved amount for partial approval');
@@ -171,7 +183,8 @@ export const processAdminPartialApproval = async (
         verification_status: 'pending',
         installment_id: originalTransaction.installment_id,
         semester_number: originalTransaction.semester_number,
-        partial_payment_sequence: (originalTransaction.partial_payment_sequence || 1) + 1,
+        partial_payment_sequence:
+          (originalTransaction.partial_payment_sequence || 1) + 1,
         notes: `Remaining amount from partial approval of transaction ${transactionId}`,
         created_by: originalTransaction.created_by,
         recorded_by_user_id: originalTransaction.recorded_by_user_id,

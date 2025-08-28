@@ -11,6 +11,8 @@ import {
   calculateOneShotPayment,
   calculateSemesterPayment,
   distributeScholarshipAcrossSemesters,
+  calculateGST,
+  roundToRupee,
 } from './calculations.ts';
 import {
   convertPlanSpecificJsonToDateKeys,
@@ -121,22 +123,37 @@ export const generateFeeStructureReview = async (
     }
   }
 
-  // Admission fee block
-  const admissionFeeBase = extractBaseAmountFromTotal(
-    feeStructure.admission_fee
-  );
-  const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
-
   // Extract new toggle values from fee structure
   const programFeeIncludesGST = feeStructure.program_fee_includes_gst;
   const equalScholarshipDistribution =
     feeStructure.equal_scholarship_distribution;
+
+  // Admission fee block - ALWAYS treat admission fee as including GST
+  const admissionFeeBase = extractBaseAmountFromTotal(
+    feeStructure.admission_fee
+  );
+  const admissionFeeGST = extractGSTFromTotal(feeStructure.admission_fee);
 
   console.log('🔍 Scholarship distribution toggle debug:', {
     equalScholarshipDistribution,
     feeStructureEqualScholarshipDistribution:
       feeStructure.equal_scholarship_distribution,
     scholarshipAmount,
+  });
+
+  console.log('🔍 GST Calculation Debug:', {
+    programFeeIncludesGST,
+    totalProgramFee: feeStructure.total_program_fee,
+    admissionFee: feeStructure.admission_fee,
+    extractedProgramFeeBase: extractBaseAmountFromTotal(
+      feeStructure.total_program_fee
+    ),
+    extractedAdmissionFeeBase: extractBaseAmountFromTotal(
+      feeStructure.admission_fee
+    ),
+    admissionFeeBase,
+    admissionFeeGST,
+    note: 'Admission fee ALWAYS treated as including GST',
   });
 
   const semesters: any[] = [];
@@ -152,14 +169,15 @@ export const generateFeeStructureReview = async (
       feeStructure.admission_fee,
       feeStructure.number_of_semesters,
       scholarshipAmount,
-      equalScholarshipDistribution
+      equalScholarshipDistribution,
+      programFeeIncludesGST
     );
 
     console.log('🎓 Scholarship distribution across semesters:', {
       totalScholarship: scholarshipAmount,
       distribution: scholarshipDistribution,
       semesters: feeStructure.number_of_semesters,
-      equalDistribution: equalScholarshipDistribution,
+      followInstallmentPattern: equalScholarshipDistribution, // true = follow installment pattern, false = backwards
     });
 
     for (let sem = 1; sem <= feeStructure.number_of_semesters; sem++) {
@@ -398,10 +416,64 @@ export const generateFeeStructureReview = async (
     (sum, s) => sum + (s.total?.discountAmount || 0),
     0
   );
+  // Calculate total amount payable consistently with GST calculation
+  // For semester/installment plans, admission fee is already subtracted in semester calculations
+  // For one-shot plans, admission fee needs to be subtracted separately
   const totalAmountPayable =
-    totalSemesterAmount +
-    (oneShotPayment?.amountPayable || 0) -
-    feeStructure.admission_fee; // Subtract admission fee from total amount payable
+    paymentPlan === 'one_shot'
+      ? totalSemesterAmount +
+        (oneShotPayment?.amountPayable || 0) -
+        feeStructure.admission_fee
+      : totalSemesterAmount + (oneShotPayment?.amountPayable || 0);
+
+  // Calculate overall GST correctly for the summary display
+  // This should be GST on the total base amount after scholarship deduction
+  let overallGST: number;
+  if (programFeeIncludesGST) {
+    // Extract base amount from total program fee
+    const programFeeBase = extractBaseAmountFromTotal(
+      feeStructure.total_program_fee
+    );
+    // Calculate scholarship on base amount
+    const scholarshipOnBase =
+      totalSemesterScholarship + (oneShotPayment?.scholarshipAmount || 0);
+    // Calculate discount on base amount
+    const discountOnBase =
+      totalSemesterDiscount + (oneShotPayment?.discountAmount || 0);
+    // Calculate amount after scholarship and discount
+    const amountAfterDeductions =
+      programFeeBase - scholarshipOnBase - discountOnBase;
+    // Calculate GST on the remaining amount
+    overallGST = calculateGST(amountAfterDeductions);
+
+    console.log('🔍 Overall GST Calculation (Inclusive):', {
+      programFeeBase,
+      scholarshipOnBase,
+      discountOnBase,
+      amountAfterDeductions,
+      overallGST,
+      expectedGST: amountAfterDeductions * 0.18,
+    });
+  } else {
+    // For exclusive GST, calculate GST on the total amount after scholarship and discount
+    const totalBaseAmount = feeStructure.total_program_fee;
+    const scholarshipOnBase =
+      totalSemesterScholarship + (oneShotPayment?.scholarshipAmount || 0);
+    const discountOnBase =
+      totalSemesterDiscount + (oneShotPayment?.discountAmount || 0);
+    const amountAfterDeductions =
+      totalBaseAmount - scholarshipOnBase - discountOnBase;
+    overallGST = calculateGST(amountAfterDeductions);
+
+    console.log('🔍 Overall GST Calculation (Exclusive):', {
+      totalBaseAmount,
+      scholarshipOnBase,
+      discountOnBase,
+      amountAfterDeductions,
+      overallGST,
+      expectedGST: amountAfterDeductions * 0.18,
+    });
+  }
 
   const breakdown: Breakdown = {
     admissionFee: {
@@ -409,7 +481,7 @@ export const generateFeeStructureReview = async (
       scholarshipAmount: 0,
       discountAmount: 0,
       gstAmount: admissionFeeGST,
-      totalPayable: feeStructure.admission_fee,
+      totalPayable: roundToRupee(feeStructure.admission_fee),
       paymentDate:
         (databaseDates as any)?.__admission_date ||
         (databaseDates as any)?.admission ||
@@ -422,13 +494,12 @@ export const generateFeeStructureReview = async (
         ? extractBaseAmountFromTotal(feeStructure.total_program_fee)
         : feeStructure.total_program_fee,
       admissionFee: feeStructure.admission_fee,
-      totalGST:
-        totalSemesterGST + (oneShotPayment?.gstAmount || 0) + admissionFeeGST, // Include both program fee GST and admission fee GST
+      totalGST: overallGST, // Use the correctly calculated overall GST
       totalDiscount:
         totalSemesterDiscount + (oneShotPayment?.discountAmount || 0),
       totalScholarship:
         totalSemesterScholarship + (oneShotPayment?.scholarshipAmount || 0),
-      totalAmountPayable: Math.max(0, totalAmountPayable),
+      totalAmountPayable: roundToRupee(Math.max(0, totalAmountPayable)),
     },
   };
 
@@ -439,6 +510,22 @@ export const generateFeeStructureReview = async (
       breakdown.semesters?.[0]?.instalments?.[0]?.paymentDate,
     admissionFeeStructure: breakdown.admissionFee,
     totalBreakdown: breakdown,
+  });
+
+  console.log('🔍 FINAL GST Validation:', {
+    programFeeIncludesGST,
+    totalSemesterGST,
+    oneShotPaymentGST: oneShotPayment?.gstAmount || 0,
+    admissionFeeGST,
+    admissionFeeBase,
+    totalAmountPayable,
+    calculatedTotalGST: breakdown.overallSummary.totalGST,
+    oldTotalGST: totalSemesterGST + (oneShotPayment?.gstAmount || 0),
+    overallGST,
+    // Manual GST calculation for verification
+    manualGSTCalculation: programFeeIncludesGST
+      ? extractGSTFromTotal(feeStructure.total_program_fee)
+      : calculateGST(feeStructure.total_program_fee),
   });
 
   return {

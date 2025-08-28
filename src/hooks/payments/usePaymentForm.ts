@@ -52,6 +52,8 @@ export const usePaymentForm = ({
     Record<string, unknown>[]
   >([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [hasUserEnteredCustomAmount, setHasUserEnteredCustomAmount] =
+    useState(false);
 
   // Fetch existing transactions for this student to calculate pending amount
   const fetchExistingTransactions = useCallback(async () => {
@@ -311,9 +313,26 @@ export const usePaymentForm = ({
       maxAmount,
       isNaN: isNaN(maxAmount),
       previousAmountToPay: amountToPay,
+      hasUserEnteredCustomAmount,
     });
-    setAmountToPay(maxAmount);
-  }, [maxAmount, amountToPay]);
+
+    // Only set the amount if user hasn't manually entered a custom amount
+    // and this is the initial load (amountToPay is 0 and we're not in the middle of typing)
+    if (!hasUserEnteredCustomAmount && amountToPay === 0) {
+      setAmountToPay(maxAmount);
+    }
+  }, [maxAmount, hasUserEnteredCustomAmount]); // Removed amountToPay from dependencies to prevent resetting on empty input
+
+  // Reset custom amount flag when installment changes
+  useEffect(() => {
+    if (selectedInstallment) {
+      setHasUserEnteredCustomAmount(false);
+    }
+  }, [
+    selectedInstallment?.id,
+    selectedInstallment?.semesterNumber,
+    selectedInstallment?.installmentNumber,
+  ]);
 
   // Initialize payment details with current date and time when component mounts
   useEffect(() => {
@@ -372,13 +391,22 @@ export const usePaymentForm = ({
       const amount = parseFloat(formattedValue) || 0;
       setAmountToPay(amount);
 
-      const amountError = validateAmount(amount);
+      // Mark that user has entered a custom amount
+      setHasUserEnteredCustomAmount(true);
+
+      // Only show validation error if amount is greater than 0 but exceeds max
+      // Allow empty input (amount = 0) during typing
+      let amountError = '';
+      if (amount > 0 && amount > maxAmount) {
+        amountError = `Amount cannot exceed ${formatCurrency(maxAmount)}`;
+      }
+
       setErrors(prev => ({
         ...prev,
         amount: amountError,
       }));
     },
-    [validateAmount]
+    [maxAmount, formatCurrency]
   );
 
   const handlePaymentModeChange = useCallback((mode: string) => {

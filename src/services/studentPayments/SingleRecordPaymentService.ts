@@ -3,6 +3,7 @@ import { ApiResponse } from '@/types/common';
 import { PaymentPlan } from '@/types/fee';
 import { FeeStructure } from '@/types/payments/FeeStructureTypes';
 import { Logger } from '@/lib/logging/Logger';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
 
 export interface StudentPaymentRecord {
   id: string;
@@ -63,15 +64,38 @@ export class SingleRecordPaymentService {
         studentId,
         cohortId,
         paymentPlan,
-        scholarshipId
+        scholarshipId,
       });
 
-      // Calculate payment schedule
-      const paymentSchedule = this.calculatePaymentSchedule(
+      // Get payment breakdown from payment engine
+      const { breakdown } = await getFullPaymentView({
+        studentId,
+        cohortId,
         paymentPlan,
-        feeStructure,
         scholarshipId,
-        additionalDiscountPercentage
+        additionalDiscountPercentage,
+        feeStructureData: {
+          total_program_fee: feeStructure.total_program_fee,
+          admission_fee: feeStructure.admission_fee,
+          number_of_semesters: feeStructure.number_of_semesters,
+          instalments_per_semester: feeStructure.instalments_per_semester,
+          one_shot_discount_percentage:
+            feeStructure.one_shot_discount_percentage,
+          program_fee_includes_gst:
+            feeStructure.program_fee_includes_gst ?? true,
+          equal_scholarship_distribution:
+            feeStructure.equal_scholarship_distribution ?? false,
+          one_shot_dates: feeStructure.one_shot_dates,
+          sem_wise_dates: feeStructure.sem_wise_dates,
+          instalment_wise_dates: feeStructure.instalment_wise_dates,
+        },
+      });
+
+      // Convert payment engine breakdown to payment schedule format
+      const paymentSchedule = this.convertEngineBreakdownToSchedule(
+        breakdown,
+        paymentPlan,
+        feeStructure
       );
 
       // Calculate total amount payable
@@ -97,7 +121,7 @@ export class SingleRecordPaymentService {
             scholarship_id: scholarshipId,
             payment_status: 'pending',
             next_due_date: paymentSchedule.summary.next_due_date,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', existingRecord.id)
           .select()
@@ -119,7 +143,7 @@ export class SingleRecordPaymentService {
             total_amount_paid: admissionFee, // Include admission fee as already paid
             scholarship_id: scholarshipId,
             payment_status: 'pending',
-            next_due_date: paymentSchedule.summary.next_due_date
+            next_due_date: paymentSchedule.summary.next_due_date,
           })
           .select()
           .single();
@@ -131,14 +155,21 @@ export class SingleRecordPaymentService {
       return {
         success: true,
         data: result as StudentPaymentRecord,
-        error: null
+        error: null,
       };
     } catch (error) {
-      Logger.getInstance().error('Error setting up student payment', { error, studentId, cohortId });
+      Logger.getInstance().error('Error setting up student payment', {
+        error,
+        studentId,
+        cohortId,
+      });
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to setup student payment'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to setup student payment',
       };
     }
   }
@@ -146,7 +177,10 @@ export class SingleRecordPaymentService {
   /**
    * Get student payment record
    */
-  async getStudentPayment(studentId: string, cohortId: string): Promise<ApiResponse<StudentPaymentRecord>> {
+  async getStudentPayment(
+    studentId: string,
+    cohortId: string
+  ): Promise<ApiResponse<StudentPaymentRecord>> {
     try {
       const { data, error } = await supabase
         .from('student_payments')
@@ -160,14 +194,21 @@ export class SingleRecordPaymentService {
       return {
         success: true,
         data: data as StudentPaymentRecord,
-        error: null
+        error: null,
       };
     } catch (error) {
-      Logger.getInstance().error('Error fetching student payment', { error, studentId, cohortId });
+      Logger.getInstance().error('Error fetching student payment', {
+        error,
+        studentId,
+        cohortId,
+      });
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to fetch student payment'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch student payment',
       };
     }
   }
@@ -192,7 +233,8 @@ export class SingleRecordPaymentService {
 
       const record = currentRecord.data;
       const newTotalPaid = record.total_amount_paid + amount;
-      const newPaymentStatus = newTotalPaid >= record.total_amount_payable ? 'paid' : 'pending';
+      const newPaymentStatus =
+        newTotalPaid >= record.total_amount_payable ? 'paid' : 'pending';
 
       // Update payment record
       const { data, error } = await supabase
@@ -201,8 +243,11 @@ export class SingleRecordPaymentService {
           total_amount_paid: newTotalPaid,
           payment_status: newPaymentStatus,
           last_payment_date: new Date().toISOString(),
-          next_due_date: this.calculateNextDueDate(record.payment_schedule, newTotalPaid),
-          updated_at: new Date().toISOString()
+          next_due_date: this.calculateNextDueDate(
+            record.payment_schedule,
+            newTotalPaid
+          ),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', record.id)
         .select()
@@ -211,25 +256,106 @@ export class SingleRecordPaymentService {
       if (error) throw error;
 
       // Create transaction record
-      await this.createTransactionRecord(record.id, amount, paymentMethod, referenceNumber, notes);
+      await this.createTransactionRecord(
+        record.id,
+        amount,
+        paymentMethod,
+        referenceNumber,
+        notes
+      );
 
       return {
         success: true,
         data: data as StudentPaymentRecord,
-        error: null
+        error: null,
       };
     } catch (error) {
-      Logger.getInstance().error('Error recording payment', { error, studentId, cohortId, amount });
+      Logger.getInstance().error('Error recording payment', {
+        error,
+        studentId,
+        cohortId,
+        amount,
+      });
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Failed to record payment'
+        error:
+          error instanceof Error ? error.message : 'Failed to record payment',
       };
     }
   }
 
   /**
-   * Calculate payment schedule based on plan and fee structure
+   * Convert payment engine breakdown to payment schedule format
+   */
+  private convertEngineBreakdownToSchedule(
+    breakdown: any,
+    paymentPlan: PaymentPlan,
+    feeStructure: FeeStructure
+  ): PaymentSchedule {
+    const installments: PaymentInstallment[] = [];
+    let totalAmount = 0;
+
+    if (paymentPlan === 'one_shot') {
+      // Handle one-shot payment
+      const oneShotPayment = breakdown.oneShotPayment;
+      if (oneShotPayment) {
+        totalAmount = oneShotPayment.amountPayable;
+        installments.push({
+          installment_number: 1,
+          due_date:
+            oneShotPayment.paymentDate ||
+            new Date().toISOString().split('T')[0],
+          amount: totalAmount,
+          status: 'pending',
+          amount_paid: 0,
+          amount_pending: totalAmount,
+        });
+      }
+    } else {
+      // Handle semester-wise and installment-wise payments
+      const semesters = breakdown.semesters || [];
+      let installmentNumber = 1;
+
+      for (const semester of semesters) {
+        const semesterInstallments = semester.instalments || [];
+
+        for (const installment of semesterInstallments) {
+          totalAmount += installment.amountPayable;
+          installments.push({
+            installment_number: installmentNumber++,
+            semester_number: semester.semesterNumber,
+            due_date:
+              installment.paymentDate || new Date().toISOString().split('T')[0],
+            amount: installment.amountPayable,
+            status: 'pending',
+            amount_paid: 0,
+            amount_pending: installment.amountPayable,
+          });
+        }
+      }
+    }
+
+    return {
+      plan: paymentPlan,
+      total_amount: totalAmount,
+      admission_fee:
+        breakdown.admissionFee?.totalPayable || feeStructure.admission_fee,
+      program_fee:
+        totalAmount -
+        (breakdown.admissionFee?.totalPayable || feeStructure.admission_fee),
+      installments,
+      summary: {
+        total_installments: installments.length,
+        next_due_date: installments[0]?.due_date,
+        next_due_amount: installments[0]?.amount,
+        completion_percentage: 0,
+      },
+    };
+  }
+
+  /**
+   * Calculate payment schedule based on plan and fee structure (DEPRECATED - use payment engine instead)
    */
   private calculatePaymentSchedule(
     paymentPlan: PaymentPlan,
@@ -239,7 +365,7 @@ export class SingleRecordPaymentService {
   ): PaymentSchedule {
     const totalProgramFee = Number(feeStructure.total_program_fee);
     const admissionFee = Number(feeStructure.admission_fee);
-    
+
     // Calculate scholarship amount
     let scholarshipPercentage = 0;
     if (scholarshipId) {
@@ -264,16 +390,16 @@ export class SingleRecordPaymentService {
         amount: totalAmount,
         status: 'pending',
         amount_paid: 0,
-        amount_pending: totalAmount
+        amount_pending: totalAmount,
       });
     } else if (paymentPlan === 'sem_wise') {
       // Semester-wise payments
       const semesterAmount = finalProgramFee / feeStructure.number_of_semesters;
-      
+
       for (let i = 0; i < feeStructure.number_of_semesters; i++) {
         const dueDate = new Date(startDate);
-        dueDate.setMonth(startDate.getMonth() + (i * 6)); // 6 months per semester
-        
+        dueDate.setMonth(startDate.getMonth() + i * 6); // 6 months per semester
+
         installments.push({
           installment_number: i + 1,
           semester_number: i + 1,
@@ -281,25 +407,27 @@ export class SingleRecordPaymentService {
           amount: semesterAmount,
           status: 'pending',
           amount_paid: 0,
-          amount_pending: semesterAmount
+          amount_pending: semesterAmount,
         });
       }
     } else if (paymentPlan === 'instalment_wise') {
       // Installment-wise payments
-      const totalInstallments = feeStructure.number_of_semesters * feeStructure.instalments_per_semester;
+      const totalInstallments =
+        feeStructure.number_of_semesters *
+        feeStructure.instalments_per_semester;
       const installmentAmount = finalProgramFee / totalInstallments;
-      
+
       for (let i = 0; i < totalInstallments; i++) {
         const dueDate = new Date(startDate);
         dueDate.setMonth(startDate.getMonth() + i); // Monthly installments
-        
+
         installments.push({
           installment_number: i + 1,
           due_date: dueDate.toISOString().split('T')[0],
           amount: installmentAmount,
           status: 'pending',
           amount_paid: 0,
-          amount_pending: installmentAmount
+          amount_pending: installmentAmount,
         });
       }
     }
@@ -314,8 +442,8 @@ export class SingleRecordPaymentService {
         total_installments: installments.length,
         next_due_date: installments[0]?.due_date,
         next_due_amount: installments[0]?.amount,
-        completion_percentage: 0
-      }
+        completion_percentage: 0,
+      },
     };
   }
 
@@ -327,16 +455,19 @@ export class SingleRecordPaymentService {
   /**
    * Calculate next due date based on payment schedule and current amount paid
    */
-  private calculateNextDueDate(schedule: PaymentSchedule, amountPaid: number): string | undefined {
+  private calculateNextDueDate(
+    schedule: PaymentSchedule,
+    amountPaid: number
+  ): string | undefined {
     let cumulativeAmount = 0;
-    
+
     for (const installment of schedule.installments) {
       cumulativeAmount += installment.amount;
       if (cumulativeAmount > amountPaid) {
         return installment.due_date;
       }
     }
-    
+
     return undefined; // All payments are complete
   }
 
@@ -351,19 +482,21 @@ export class SingleRecordPaymentService {
     notes?: string
   ): Promise<void> {
     try {
-      await supabase
-        .from('payment_transactions')
-        .insert({
-          payment_id: paymentId,
-          transaction_type: 'payment',
-          amount,
-          payment_method: paymentMethod,
-          reference_number: referenceNumber,
-          status: 'success',
-          notes
-        });
+      await supabase.from('payment_transactions').insert({
+        payment_id: paymentId,
+        transaction_type: 'payment',
+        amount,
+        payment_method: paymentMethod,
+        reference_number: referenceNumber,
+        status: 'success',
+        notes,
+      });
     } catch (error) {
-      Logger.getInstance().error('Error creating transaction record', { error, paymentId, amount });
+      Logger.getInstance().error('Error creating transaction record', {
+        error,
+        paymentId,
+        amount,
+      });
     }
   }
 }

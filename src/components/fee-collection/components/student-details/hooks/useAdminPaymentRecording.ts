@@ -251,7 +251,8 @@ export const useAdminPaymentRecording = ({
           scholarshipId = scholarshipResult.data.scholarship_id;
           additionalDiscountPercentage =
             scholarshipResult.data.additional_discount_percentage || 0;
-        } else if (student.scholarship_id) {
+        } else if (scholarshipResult.success && student.scholarship_id) {
+          // No scholarship found, but fallback to student scholarship ID if available
           scholarshipId = student.scholarship_id;
         }
       } catch (error) {

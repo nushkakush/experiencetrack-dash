@@ -6,6 +6,7 @@ import type {
   DueItem,
   SemesterView,
 } from './types.ts';
+import { roundToRupee } from './calculations.ts';
 
 // Status derivation helpers
 export const normalizeDateOnly = (isoDate: string): number => {
@@ -309,7 +310,9 @@ export const enrichWithStatuses = (
 
       inst.status = status;
       inst.amountPaid = alloc?.approvedAmount || 0; // Use approvedAmount, not allocated
-      inst.amountPending = Math.max(0, total - (alloc?.approvedAmount || 0)); // Use approvedAmount for pending calculation
+      inst.amountPending = roundToRupee(
+        Math.max(0, total - (alloc?.approvedAmount || 0))
+      ); // Use approvedAmount for pending calculation
       totalPayableSchedule += total;
       dueItems.push({
         dueDate: inst.paymentDate,

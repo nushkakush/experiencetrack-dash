@@ -40,6 +40,7 @@ interface PaymentPlanSelectionProps {
   studentPayments?: StudentPaymentRow[];
   scholarships?: CohortScholarshipRow[];
   studentScholarship?: StudentScholarshipWithDetails;
+  paymentBreakdown?: any; // Payment engine breakdown for accurate scholarship calculations
 }
 
 const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
@@ -51,6 +52,7 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
   studentPayments,
   scholarships,
   studentScholarship,
+  paymentBreakdown,
 }) => {
   const [selectedPlan, setSelectedPlan] = React.useState<PaymentPlan | null>(
     null
@@ -98,52 +100,94 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
 
   // Calculate scholarship savings
   const scholarshipSavings = React.useMemo(() => {
+    console.log(
+      '🔍 [PaymentPlanSelection] Scholarship calculation triggered:',
+      {
+        hasStudentScholarshipData: !!studentScholarshipData,
+        hasFeeStructure: !!feeStructure,
+        hasPaymentBreakdown: !!paymentBreakdown,
+        paymentBreakdownKeys: paymentBreakdown
+          ? Object.keys(paymentBreakdown)
+          : [],
+        overallSummary: paymentBreakdown?.overallSummary,
+      }
+    );
+
     if (!studentScholarshipData || !feeStructure) {
+      console.log(
+        '❌ [PaymentPlanSelection] Missing required data for scholarship calculation'
+      );
       return null;
     }
 
-    const totalProgramFee = Number(feeStructure.total_program_fee);
+    if (!paymentBreakdown?.overallSummary) {
+      console.log(
+        '❌ [PaymentPlanSelection] No payment engine breakdown available'
+      );
+      return null;
+    }
 
-    // Get base scholarship percentage from the scholarship data
-    const baseScholarshipPercentage =
-      studentScholarshipData.amount_percentage || 0;
-
-    // Get additional discount percentage from student scholarship assignment
-    const additionalDiscountPercentage =
-      studentScholarship?.additional_discount_percentage || 0;
-
-    // Calculate total discount percentage
-    const totalDiscountPercentage =
-      baseScholarshipPercentage + additionalDiscountPercentage;
-
-    // Calculate total scholarship amount
-    const totalScholarshipAmount =
-      (totalProgramFee * totalDiscountPercentage) / 100;
-    const originalAmount = totalProgramFee;
-    const finalAmount = originalAmount - totalScholarshipAmount;
-
-    console.log('💰 Scholarship Calculation:', {
-      totalProgramFee,
-      baseScholarshipPercentage,
-      additionalDiscountPercentage,
-      totalDiscountPercentage,
-      totalScholarshipAmount,
-      finalAmount,
+    // Log fee structure details
+    console.log('🔍 [PaymentPlanSelection] Fee Structure Details:', {
+      total_program_fee: feeStructure.total_program_fee,
+      program_fee_includes_gst: (feeStructure as any).program_fee_includes_gst,
+      equal_scholarship_distribution: (feeStructure as any)
+        .equal_scholarship_distribution,
+      feeStructureKeys: Object.keys(feeStructure),
     });
 
-    return {
+    // Log scholarship data
+    console.log('🔍 [PaymentPlanSelection] Scholarship Data:', {
+      studentScholarshipData,
+      studentScholarship,
+      basePercentage: studentScholarshipData.amount_percentage,
+      additionalPercentage: studentScholarship?.additional_discount_percentage,
+    });
+
+    // Use payment engine breakdown for accurate calculations
+    const overallSummary = paymentBreakdown.overallSummary;
+    const totalScholarshipAmount = overallSummary.totalScholarship || 0;
+    const originalAmount =
+      overallSummary.totalProgramFee || Number(feeStructure.total_program_fee);
+    const finalAmount = overallSummary.totalAmountPayable || originalAmount;
+
+    console.log(
+      '💰 [PaymentPlanSelection] Scholarship Calculation (Payment Engine):',
+      {
+        totalProgramFee: originalAmount,
+        totalScholarshipAmount,
+        finalAmount,
+        overallSummary,
+        calculationMethod: 'PAYMENT_ENGINE',
+      }
+    );
+
+    const result = {
       originalAmount,
-      baseScholarshipAmount:
-        (totalProgramFee * baseScholarshipPercentage) / 100,
-      additionalDiscountAmount:
-        (totalProgramFee * additionalDiscountPercentage) / 100,
+      baseScholarshipAmount: totalScholarshipAmount, // Payment engine handles the breakdown
+      additionalDiscountAmount: 0, // Already included in totalScholarshipAmount
       totalScholarshipAmount,
       finalAmount,
-      basePercentage: baseScholarshipPercentage,
-      additionalPercentage: additionalDiscountPercentage,
-      totalPercentage: totalDiscountPercentage,
+      basePercentage: studentScholarshipData.amount_percentage || 0,
+      additionalPercentage:
+        studentScholarship?.additional_discount_percentage || 0,
+      totalPercentage:
+        totalScholarshipAmount > 0
+          ? Math.round((totalScholarshipAmount / originalAmount) * 100)
+          : 0,
     };
-  }, [studentScholarshipData, studentScholarship, feeStructure]);
+
+    console.log(
+      '✅ [PaymentPlanSelection] Final Result (Payment Engine):',
+      result
+    );
+    return result;
+  }, [
+    studentScholarshipData,
+    studentScholarship,
+    feeStructure,
+    paymentBreakdown,
+  ]);
 
   const handlePlanSelection = (plan: PaymentPlan) => {
     setSelectedPlan(plan);
@@ -283,7 +327,6 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
               <p className='text-xl font-bold text-blue-700 dark:text-blue-300'>
                 ₹{scholarshipSavings.finalAmount.toLocaleString('en-IN')}
               </p>
-              <p className='text-xs text-muted-foreground'>+GST</p>
             </div>
           </div>
 

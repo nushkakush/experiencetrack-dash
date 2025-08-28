@@ -94,13 +94,21 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
           }
         );
 
-        if (!feeStructure || !hasSelectedPlan) {
+        if (!feeStructure) {
           console.log(
-            '🔄 [FeePaymentSection] Skipping payment breakdown - missing data'
+            '🔄 [FeePaymentSection] Skipping payment breakdown - missing fee structure'
           );
           setPaymentBreakdown(undefined);
           return;
         }
+
+        // If no plan is selected, use a default plan to get scholarship calculations
+        const planToUse = hasSelectedPlan ? selectedPaymentPlan : 'sem_wise';
+        console.log('🔄 [FeePaymentSection] Using plan for calculation:', {
+          hasSelectedPlan,
+          selectedPaymentPlan,
+          planToUse,
+        });
 
         let scholarshipId = undefined as string | undefined;
         if (studentScholarship && studentScholarship.scholarship) {
@@ -117,9 +125,9 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
               return p as EnginePaymentPlan;
             return undefined;
           };
-          const enginePlan = toEnginePlan(selectedPaymentPlan as PaymentPlan);
+          const enginePlan = toEnginePlan(planToUse as PaymentPlan);
           if (!enginePlan) throw new Error('Invalid payment plan');
-          const { breakdown } = await getFullPaymentView({
+          const paymentEngineParams = {
             studentId: studentData?.id,
             cohortId: String(cohortData?.id),
             paymentPlan: enginePlan,
@@ -144,6 +152,22 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
               instalment_wise_dates: (feeStructure as any)
                 .instalment_wise_dates,
             },
+          };
+
+          console.log(
+            '🚀 [FeePaymentSection] Calling payment engine with params:',
+            paymentEngineParams
+          );
+
+          const { breakdown } = await getFullPaymentView(paymentEngineParams);
+
+          console.log('✅ [FeePaymentSection] Payment engine response:', {
+            hasBreakdown: !!breakdown,
+            breakdownKeys: breakdown ? Object.keys(breakdown) : [],
+            overallSummary: breakdown?.overallSummary,
+            totalScholarship: breakdown?.overallSummary?.totalScholarship,
+            totalProgramFee: breakdown?.overallSummary?.totalProgramFee,
+            totalAmountPayable: breakdown?.overallSummary?.totalAmountPayable,
           });
           console.log(
             '🔄 [FeePaymentSection] Payment breakdown calculated successfully:',
@@ -391,6 +415,21 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
             <p className='text-muted-foreground mb-4'>
               Choose your payment plan to get started with fee payments
             </p>
+            {(() => {
+              console.log(
+                '🔍 [FeePaymentSection] Passing paymentBreakdown to PaymentPlanSelection:',
+                {
+                  hasPaymentBreakdown: !!paymentBreakdown,
+                  paymentBreakdownKeys: paymentBreakdown
+                    ? Object.keys(paymentBreakdown)
+                    : [],
+                  overallSummary: paymentBreakdown?.overallSummary,
+                  totalScholarship:
+                    paymentBreakdown?.overallSummary?.totalScholarship,
+                }
+              );
+              return null;
+            })()}
             <PaymentPlanSelection
               onPlanSelected={handlePlanSelection}
               isSubmitting={isUpdatingPlan}
@@ -400,6 +439,7 @@ export const FeePaymentSection = React.memo<FeePaymentSectionProps>(
               studentPayments={studentPayments}
               scholarships={scholarships}
               studentScholarship={studentScholarship}
+              paymentBreakdown={paymentBreakdown}
             />
           </div>
         </div>

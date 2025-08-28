@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings,
   Upload,
+  Calendar as CalendarIcon2,
 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -20,7 +21,7 @@ import BulkAttendanceUploadDialog from '@/components/common/bulk-upload/BulkAtte
 import { BulkAttendanceConfig } from '@/components/common/bulk-upload/types/attendance';
 
 interface SessionManagementHeaderProps {
-  currentView: 'manage' | 'leaderboard';
+  currentView: 'manage' | 'calendar' | 'leaderboard';
   selectedDate: Date;
   isSessionCancelled: boolean;
   isFutureDate: boolean;
@@ -34,7 +35,7 @@ interface SessionManagementHeaderProps {
   onNextDay: () => void;
   onCancelSession: () => void;
   onReactivateSession: () => void;
-  onViewChange: (view: 'manage' | 'leaderboard') => void;
+  onViewChange: (view: 'manage' | 'calendar' | 'leaderboard') => void;
   onAttendanceImported?: () => void;
 }
 
@@ -64,13 +65,17 @@ export const SessionManagementHeader: React.FC<
         <h2 className='text-2xl font-semibold'>
           {currentView === 'manage'
             ? 'Session Management'
-            : 'Attendance Leaderboard'}
+            : currentView === 'calendar'
+              ? 'Attendance Calendar'
+              : 'Attendance Leaderboard'}
         </h2>
         <p className='text-muted-foreground'>
           {currentEpicName} -{' '}
           {currentView === 'manage'
             ? format(selectedDate, 'MMM d, yyyy')
-            : 'Epic Performance'}
+            : currentView === 'calendar'
+              ? 'Monthly Overview'
+              : 'Epic Performance'}
         </p>
       </div>
       <div className='flex items-center gap-4'>
@@ -141,6 +146,15 @@ export const SessionManagementHeader: React.FC<
           >
             <Settings className='h-4 w-4' />
             Manage
+          </Button>
+          <Button
+            variant={currentView === 'calendar' ? 'default' : 'ghost'}
+            size='sm'
+            onClick={() => onViewChange('calendar')}
+            className='flex items-center gap-2'
+          >
+            <CalendarIcon2 className='h-4 w-4' />
+            Calendar
           </Button>
           <Button
             variant={currentView === 'leaderboard' ? 'default' : 'ghost'}

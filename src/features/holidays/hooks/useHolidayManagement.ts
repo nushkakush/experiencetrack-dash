@@ -23,7 +23,10 @@ export interface HolidayManagementActions {
   publishHolidays: () => Promise<void>;
   publishExistingDraft: (id: string) => Promise<void>;
   deletePublishedHoliday: (id: string) => Promise<void>;
-  editPublishedHoliday: (id: string, updates: Partial<Holiday>) => Promise<void>;
+  editPublishedHoliday: (
+    id: string,
+    updates: Partial<Holiday>
+  ) => Promise<void>;
   loadHolidays: () => Promise<void>;
   clearDrafts: () => void;
 }
@@ -43,9 +46,12 @@ export const useHolidayManagement = (
     editing: false,
   });
 
-  const updateState = useCallback((updates: Partial<HolidayManagementState>) => {
-    setState(prev => ({ ...prev, ...updates }));
-  }, []);
+  const updateState = useCallback(
+    (updates: Partial<HolidayManagementState>) => {
+      setState(prev => ({ ...prev, ...updates }));
+    },
+    []
+  );
 
   const loadHolidays = useCallback(async () => {
     updateState({ loading: true });
@@ -54,29 +60,24 @@ export const useHolidayManagement = (
         // Load global holidays only
         const [draftHolidays, publishedHolidays] = await Promise.all([
           HolidaysService.getGlobalHolidays('draft'),
-          HolidaysService.getGlobalHolidays('published')
+          HolidaysService.getGlobalHolidays('published'),
         ]);
-        
-        updateState({ 
+
+        updateState({
           existingDraftHolidays: draftHolidays,
-          publishedHolidays: publishedHolidays 
+          publishedHolidays: publishedHolidays,
         });
       } else {
-        // Load both global and cohort-specific holidays for cohort scope
-        const [globalDraftHolidays, globalPublishedHolidays, cohortDraftHolidays, cohortPublishedHolidays] = await Promise.all([
-          HolidaysService.getGlobalHolidays('draft'),
-          HolidaysService.getGlobalHolidays('published'),
-          HolidaysService.getCohortHolidays(cohortId!, 'draft'),
-          HolidaysService.getCohortHolidays(cohortId!, 'published')
-        ]);
-        
-        // Combine global and cohort holidays
-        const allDraftHolidays = [...globalDraftHolidays, ...cohortDraftHolidays];
-        const allPublishedHolidays = [...globalPublishedHolidays, ...cohortPublishedHolidays];
-        
-        updateState({ 
-          existingDraftHolidays: allDraftHolidays,
-          publishedHolidays: allPublishedHolidays 
+        // Load only cohort-specific holidays for cohort scope
+        const [cohortDraftHolidays, cohortPublishedHolidays] =
+          await Promise.all([
+            HolidaysService.getCohortHolidays(cohortId!, 'draft'),
+            HolidaysService.getCohortHolidays(cohortId!, 'published'),
+          ]);
+
+        updateState({
+          existingDraftHolidays: cohortDraftHolidays,
+          publishedHolidays: cohortPublishedHolidays,
         });
       }
     } catch (error) {
@@ -94,14 +95,17 @@ export const useHolidayManagement = (
     }));
   }, []);
 
-  const updateHoliday = useCallback((id: string, updates: Partial<SelectedHoliday>) => {
-    setState(prev => ({
-      ...prev,
-      draftHolidays: prev.draftHolidays.map(h => 
-        h.id === id ? { ...h, ...updates } : h
-      ),
-    }));
-  }, []);
+  const updateHoliday = useCallback(
+    (id: string, updates: Partial<SelectedHoliday>) => {
+      setState(prev => ({
+        ...prev,
+        draftHolidays: prev.draftHolidays.map(h =>
+          h.id === id ? { ...h, ...updates } : h
+        ),
+      }));
+    },
+    []
+  );
 
   const removeHoliday = useCallback((id: string) => {
     setState(prev => ({
@@ -125,8 +129,10 @@ export const useHolidayManagement = (
           await HolidaysService.createCohortHoliday(cohortId!, holiday);
         }
       }
-      
-      toast.success(`${state.draftHolidays.length} holiday(s) saved successfully`);
+
+      toast.success(
+        `${state.draftHolidays.length} holiday(s) saved successfully`
+      );
       setState(prev => ({ ...prev, draftHolidays: [] }));
       await loadHolidays();
     } catch (error) {
@@ -138,8 +144,11 @@ export const useHolidayManagement = (
   }, [state.draftHolidays, scope, cohortId, loadHolidays, updateState]);
 
   const publishHolidays = useCallback(async () => {
-    const allDraftHolidays = [...state.existingDraftHolidays, ...state.draftHolidays];
-    
+    const allDraftHolidays = [
+      ...state.existingDraftHolidays,
+      ...state.draftHolidays,
+    ];
+
     if (allDraftHolidays.length === 0) {
       toast.error('No holidays to publish');
       return;
@@ -149,19 +158,30 @@ export const useHolidayManagement = (
     try {
       // Publish existing draft holidays
       for (const holiday of state.existingDraftHolidays) {
-        await HolidaysService.updateHoliday({ id: holiday.id, status: 'published' });
+        await HolidaysService.updateHoliday({
+          id: holiday.id,
+          status: 'published',
+        });
       }
-      
+
       // Publish new draft holidays
       for (const holiday of state.draftHolidays) {
         if (scope === 'global') {
-          await HolidaysService.createGlobalHoliday({ ...holiday, isPublished: true });
+          await HolidaysService.createGlobalHoliday({
+            ...holiday,
+            isPublished: true,
+          });
         } else {
-          await HolidaysService.createCohortHoliday(cohortId!, { ...holiday, isPublished: true });
+          await HolidaysService.createCohortHoliday(cohortId!, {
+            ...holiday,
+            isPublished: true,
+          });
         }
       }
-      
-      toast.success(`${allDraftHolidays.length} holiday(s) published successfully`);
+
+      toast.success(
+        `${allDraftHolidays.length} holiday(s) published successfully`
+      );
       setState(prev => ({ ...prev, draftHolidays: [] }));
       await loadHolidays();
     } catch (error) {
@@ -170,50 +190,67 @@ export const useHolidayManagement = (
     } finally {
       updateState({ publishing: false });
     }
-  }, [state.existingDraftHolidays, state.draftHolidays, scope, cohortId, loadHolidays, updateState]);
+  }, [
+    state.existingDraftHolidays,
+    state.draftHolidays,
+    scope,
+    cohortId,
+    loadHolidays,
+    updateState,
+  ]);
 
-  const publishExistingDraft = useCallback(async (id: string) => {
-    updateState({ publishing: true });
-    try {
-      await HolidaysService.updateHoliday({ id, status: 'published' });
-      toast.success('Holiday published successfully');
-      await loadHolidays();
-    } catch (error) {
-      console.error('Error publishing holiday:', error);
-      toast.error('Failed to publish holiday');
-    } finally {
-      updateState({ publishing: false });
-    }
-  }, [loadHolidays, updateState]);
+  const publishExistingDraft = useCallback(
+    async (id: string) => {
+      updateState({ publishing: true });
+      try {
+        await HolidaysService.updateHoliday({ id, status: 'published' });
+        toast.success('Holiday published successfully');
+        await loadHolidays();
+      } catch (error) {
+        console.error('Error publishing holiday:', error);
+        toast.error('Failed to publish holiday');
+      } finally {
+        updateState({ publishing: false });
+      }
+    },
+    [loadHolidays, updateState]
+  );
 
-  const deletePublishedHoliday = useCallback(async (id: string) => {
-    updateState({ loading: true });
-    try {
-      await HolidaysService.deleteHoliday(id);
-      toast.success('Holiday deleted successfully');
-      await loadHolidays();
-    } catch (error) {
-      console.error('Error deleting holiday:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to delete holiday: ${errorMessage}`);
-    } finally {
-      updateState({ loading: false });
-    }
-  }, [loadHolidays, updateState]);
+  const deletePublishedHoliday = useCallback(
+    async (id: string) => {
+      updateState({ loading: true });
+      try {
+        await HolidaysService.deleteHoliday(id);
+        toast.success('Holiday deleted successfully');
+        await loadHolidays();
+      } catch (error) {
+        console.error('Error deleting holiday:', error);
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error(`Failed to delete holiday: ${errorMessage}`);
+      } finally {
+        updateState({ loading: false });
+      }
+    },
+    [loadHolidays, updateState]
+  );
 
-  const editPublishedHoliday = useCallback(async (id: string, updates: Partial<Holiday>) => {
-    updateState({ editing: true });
-    try {
-      await HolidaysService.updateHoliday({ id, ...updates });
-      toast.success('Holiday updated successfully');
-      await loadHolidays();
-    } catch (error) {
-      console.error('Error updating holiday:', error);
-      toast.error('Failed to update holiday');
-    } finally {
-      updateState({ editing: false });
-    }
-  }, [loadHolidays, updateState]);
+  const editPublishedHoliday = useCallback(
+    async (id: string, updates: Partial<Holiday>) => {
+      updateState({ editing: true });
+      try {
+        await HolidaysService.updateHoliday({ id, ...updates });
+        toast.success('Holiday updated successfully');
+        await loadHolidays();
+      } catch (error) {
+        console.error('Error updating holiday:', error);
+        toast.error('Failed to update holiday');
+      } finally {
+        updateState({ editing: false });
+      }
+    },
+    [loadHolidays, updateState]
+  );
 
   const clearDrafts = useCallback(() => {
     setState(prev => ({ ...prev, draftHolidays: [], selectedDates: [] }));
