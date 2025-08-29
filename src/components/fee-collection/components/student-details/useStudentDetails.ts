@@ -9,9 +9,6 @@ interface UseStudentDetailsProps {
 
 export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [communications, setCommunications] = useState<CommunicationHistory[]>(
-    []
-  );
   const [loading, setLoading] = useState(false);
 
   const loadStudentData = useCallback(async () => {
@@ -28,14 +25,6 @@ export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
         }
       }
       setTransactions(allTransactions);
-
-      // Load communication history
-      const commResult = await studentPaymentsService.getCommunicationHistory(
-        student.student_id
-      );
-      if (commResult.success && commResult.data) {
-        setCommunications(commResult.data);
-      }
     } catch (error) {
       console.error('Error loading student data:', error);
       toast.error('Failed to load student details');
@@ -52,7 +41,6 @@ export const useStudentDetails = ({ student }: UseStudentDetailsProps) => {
 
   return {
     transactions,
-    communications,
     loading,
   };
 };

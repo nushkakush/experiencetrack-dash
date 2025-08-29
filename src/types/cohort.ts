@@ -72,6 +72,22 @@ export interface CohortStudent {
   dropped_out_reason?: string | null;
   dropped_out_at?: string | null;
   dropped_out_by?: string | null;
+  communication_preferences?: {
+    automated_communications: {
+      email: {
+        enabled: boolean;
+        last_updated: string | null;
+      };
+      whatsapp: {
+        enabled: boolean;
+        last_updated: string | null;
+      };
+    };
+    manual_communications: {
+      email: boolean;
+      whatsapp: boolean;
+    };
+  } | null;
   created_at: string;
   updated_at: string;
 }

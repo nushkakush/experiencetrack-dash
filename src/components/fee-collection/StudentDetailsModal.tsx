@@ -13,7 +13,7 @@ import {
   StudentInfo,
   FinancialSummary,
   PaymentSchedule,
-  CommunicationHistory,
+  EmailHistory,
   CallHistory,
   useStudentDetails,
 } from './components/student-details';
@@ -40,7 +40,7 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
   onOpenChange,
   feeStructure,
 }) => {
-  const { communications, loading } = useStudentDetails({ student });
+  const { loading } = useStudentDetails({ student });
 
   if (!student || !student.student) {
     return (
@@ -107,7 +107,14 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
             </TabsContent>
 
             <TabsContent value='communication' className='mt-4'>
-              <CommunicationHistory communications={communications} />
+              <EmailHistory
+                studentId={student.student_id}
+                studentEmail={student.student?.email || ''}
+                onEmailSent={() => {
+                  // This will be called when an email is sent from the PaymentSchedule
+                  // The EmailHistory component will refresh automatically
+                }}
+              />
             </TabsContent>
 
             <TabsContent value='calls' className='mt-4'>

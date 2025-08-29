@@ -215,7 +215,7 @@ serve(async req => {
           <div style="white-space: pre-wrap;">${requestData.content.replace(/\n/g, '<br>')}</div>
           <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
           <p style="color: #999; font-size: 12px;">
-            Sent from LIT OS
+            Sent from LIT School
           </p>
         </div>
       `;

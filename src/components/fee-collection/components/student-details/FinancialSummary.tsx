@@ -9,6 +9,7 @@ import {
   ProgressCalculator,
   ProgressCalculationResult,
 } from '@/utils/progressCalculation';
+import { CommunicationPreferences } from './CommunicationPreferences';
 
 interface FinancialSummaryProps {
   student: StudentPaymentSummary;
@@ -276,6 +277,11 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
         </div>
       </div>
       <Separator className='bg-border' />
+
+      {/* Communication Preferences */}
+      <div className='mt-4'>
+        <CommunicationPreferences studentId={student.student_id} />
+      </div>
     </>
   );
 };

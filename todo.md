@@ -3,11 +3,13 @@ TODO
 1. have a waiver option
 2. Bulk upload for fees needs to be figured out.
 3. Download fee structure PDF
+4. Authenticate admissions at lit.school.in with SendGrid and set that up for all admissions related emails.
+5. Late Fee needed
 
-4. Fee collector should be able to log updates from Collection calls.
-5. Leave application process
-6. Diya Gandhi streak issue - cm5
-7. Leaderboard should give the same rank if they have the same points
+6. Fee collector should be able to log updates from Collection calls.
+7. Leave application process
+8. Diya Gandhi streak issue - cm5
+9. Leaderboard should give the same rank if they have the same points
 
 EQUIPMENT BUGS
 
@@ -28,5 +30,5 @@ TECHY
 - [ ] Mobile Responsive
 - [ ] Testing Architecture Improvement
 - [ ] Manage one student being invited and registered to more than one cohort's flow.
-- [ ] Combine call and communication history section
 - lot of popup have 2 x buttons
+-

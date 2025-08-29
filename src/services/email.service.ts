@@ -42,13 +42,26 @@ class EmailService {
    */
   async sendEmail(request: EmailRequest): Promise<ApiResponse<EmailResponse>> {
     try {
+      // Get current session token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        return {
+          data: null,
+          error: 'User not authenticated. Please log in and try again.',
+          success: false,
+        };
+      }
+
       const response = await fetch(
         `${this.supabaseUrl}/functions/v1/send-email`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
+            Authorization: `Bearer ${session.access_token}`,
             Origin: window.location.origin,
             Referer: window.location.href,
           },

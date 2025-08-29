@@ -70,7 +70,10 @@ Please ensure timely payment to avoid any late fees or complications with your p
 If you have any questions or need assistance, please don't hesitate to contact us.
 
 Best regards,
-LIT OS Team`);
+Admissions Team
+LIT School`);
+      // Set the template to payment_reminder so it shows as selected
+      setTemplate('payment_reminder');
     }
   }, [context]);
 
@@ -126,10 +129,6 @@ LIT OS Team`);
       if (result.success) {
         toast.success('Email sent successfully!');
         onOpenChange(false);
-        // Reset form
-        setSubject('');
-        setContent('');
-        setTemplate('');
       } else {
         toast.error(result.error || 'Failed to send email');
       }
@@ -161,7 +160,8 @@ Please ensure timely payment to avoid any late fees or complications with your p
 If you have any questions or need assistance, please don't hesitate to contact us.
 
 Best regards,
-LIT OS Team`);
+Admissions Team
+LIT School`);
         }
         break;
       case 'general_reminder':
@@ -175,7 +175,8 @@ Please review the details and take the necessary action as soon as possible.
 If you have any questions or need clarification, please don't hesitate to contact me.
 
 Best regards,
-LIT OS Team`);
+Admissions Team
+LIT School`);
         break;
       case 'custom':
         setSubject('');
@@ -184,8 +185,20 @@ LIT OS Team`);
     }
   };
 
+  // Reset form when dialog closes
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      // Reset form when closing
+      setSubject('');
+      setContent('');
+      setTemplate('');
+      setShowPreview(false);
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Send Email</DialogTitle>
