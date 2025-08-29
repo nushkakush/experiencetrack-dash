@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, Download, FileText, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  Upload,
+  Download,
+  FileText,
+  Trash2,
+  Phone,
+  MoreHorizontal,
+  Mail,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CallManagementDialog } from './CallManagementDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PartialPaymentToggle } from '@/components/common/payments/PartialPaymentToggle';
 import { PartialPaymentHistory } from '@/components/common/payments/PartialPaymentHistory';
 import {
@@ -33,7 +51,10 @@ interface PaymentScheduleItemProps {
   recordingPayment: string | null;
   canRecordPayment: (status: string, verificationStatus?: string) => boolean;
   onRecordPayment: (item: any) => void;
+  onRecordCall: (item: any) => void;
+  onSendMail?: (item: any) => void;
   getRelevantTransactions: (item: any) => any[];
+  callCount?: number;
 }
 
 export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
@@ -42,10 +63,14 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
   recordingPayment,
   canRecordPayment,
   onRecordPayment,
+  onRecordCall,
+  onSendMail,
   getRelevantTransactions,
+  callCount = 0,
 }) => {
   const { profile } = useAuth();
   const [showInvoiceUpload, setShowInvoiceUpload] = useState(false);
+  const [showCallDialog, setShowCallDialog] = useState(false);
 
   // Get the first approved transaction for this payment item
   const transactions = getRelevantTransactions(item);
@@ -101,18 +126,56 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
         <span className='font-medium text-sm text-foreground'>{item.type}</span>
         <div className='flex items-center gap-2'>
           {getStatusBadge(item.status)}
-          {canRecordPayment(item.status) && (
-            <Button
-              size='sm'
-              variant='outline'
-              onClick={() => onRecordPayment(item)}
-              disabled={recordingPayment === item.id}
-              className='h-6 px-2 text-xs'
-            >
-              <Plus className='h-3 w-3 mr-1' />
-              {recordingPayment === item.id ? 'Recording...' : 'Record Payment'}
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size='sm'
+                variant='outline'
+                className='h-6 px-2 text-xs relative'
+              >
+                <MoreHorizontal className='h-3 w-3' />
+                {callCount > 0 && (
+                  <div className='absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center font-medium'>
+                    {callCount}
+                  </div>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end' className='w-48'>
+              {canRecordPayment(item.status) && (
+                <DropdownMenuItem
+                  onClick={() => onRecordPayment(item)}
+                  disabled={recordingPayment === item.id}
+                  className='flex items-center gap-2'
+                >
+                  <Plus className='h-3 w-3' />
+                  {recordingPayment === item.id
+                    ? 'Recording...'
+                    : 'Record Payment'}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={() => setShowCallDialog(true)}
+                className='flex items-center gap-2'
+              >
+                <Phone className='h-3 w-3' />
+                Record Call
+                {callCount > 0 && (
+                  <Badge variant='secondary' className='ml-auto text-xs'>
+                    {callCount}
+                  </Badge>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onSendMail?.(item)}
+                className='flex items-center gap-2'
+              >
+                <Mail className='h-3 w-3' />
+                Send Mail
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -335,6 +398,20 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           onInvoiceUploaded={refreshInvoice}
         />
       )}
+
+      {/* Call Management Dialog */}
+      <CallManagementDialog
+        open={showCallDialog}
+        onOpenChange={setShowCallDialog}
+        studentId={student.student_id}
+        semesterNumber={item.semesterNumber || 1}
+        installmentNumber={item.installmentNumber || 0}
+        paymentItemType={item.type}
+        onCallRecorded={() => {
+          // Refresh call counts in parent component
+          onRecordCall?.(item);
+        }}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ TODO
 1. have a waiver option
 2. Bulk upload for fees needs to be figured out.
 3. Download fee structure PDF
+
 4. Fee collector should be able to log updates from Collection calls.
 5. Leave application process
 6. Diya Gandhi streak issue - cm5
@@ -26,5 +27,6 @@ TECHY
 
 - [ ] Mobile Responsive
 - [ ] Testing Architecture Improvement
-
-4. Manage one student being invited and registered to more than one cohort's flow.
+- [ ] Manage one student being invited and registered to more than one cohort's flow.
+- [ ] Combine call and communication history section
+- lot of popup have 2 x buttons

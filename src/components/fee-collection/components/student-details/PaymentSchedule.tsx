@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { StudentPaymentSummary } from '@/types/fee';
 import { AdminPaymentRecordingDialog } from './AdminPaymentRecordingDialog';
+import { EmailComposerDialog } from '@/components/common/EmailComposerDialog';
 import { usePaymentSchedule } from './hooks/usePaymentSchedule';
+import { useCallCounts } from './hooks/useCallCounts';
 import {
   PaymentScheduleItem,
   PaymentScheduleEmptyState,
@@ -48,6 +50,24 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
     feeStructure,
   });
 
+  // Call counts hook
+  const { getCallCount, refreshCallCounts } = useCallCounts(student.student_id);
+
+  // Email composer state
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [selectedPaymentItemForEmail, setSelectedPaymentItemForEmail] =
+    useState<any>(null);
+
+  const handleCallRecorded = () => {
+    // Refresh call counts when a call is recorded
+    refreshCallCounts();
+  };
+
+  const handleSendMail = (item: any) => {
+    setSelectedPaymentItemForEmail(item);
+    setShowEmailDialog(true);
+  };
+
   if (loading) {
     return <PaymentScheduleLoadingState />;
   }
@@ -70,7 +90,13 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
                 recordingPayment={recordingPayment}
                 canRecordPayment={canRecordPayment}
                 onRecordPayment={handleRecordPayment}
+                onRecordCall={handleCallRecorded}
+                onSendMail={handleSendMail}
                 getRelevantTransactions={getRelevantTransactions}
+                callCount={getCallCount(
+                  item.semesterNumber || 1,
+                  item.installmentNumber || 0
+                )}
               />
             ))}
           </div>
@@ -89,6 +115,29 @@ export const PaymentSchedule: React.FC<PaymentScheduleProps> = ({
         onPaymentRecorded={handlePaymentRecorded}
         feeStructure={feeStructure}
       />
+
+      {/* Email Composer Dialog */}
+      {selectedPaymentItemForEmail && (
+        <EmailComposerDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          recipient={{
+            email: student.student?.email || '',
+            name: `${student.student?.first_name || ''} ${student.student?.last_name || ''}`.trim(),
+          }}
+          context={{
+            type: 'payment_reminder',
+            paymentData: {
+              amount: selectedPaymentItemForEmail.amount,
+              dueDate: selectedPaymentItemForEmail.dueDate,
+              installmentNumber:
+                selectedPaymentItemForEmail.installmentNumber || 1,
+              studentName:
+                `${student.student?.first_name || ''} ${student.student?.last_name || ''}`.trim(),
+            },
+          }}
+        />
+      )}
     </>
   );
 };

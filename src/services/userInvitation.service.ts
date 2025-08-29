@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { UserRole } from '@/types/auth';
+import { emailService } from '@/services/email.service';
 
 export interface UserInvitation {
   id: string;
@@ -64,51 +65,22 @@ class UserInvitationService {
     role: UserRole
   ): Promise<ApiResponse<{ invitationUrl: string; emailSent: boolean }>> {
     try {
-      const supabaseUrl = 'https://ghmpaghyasyllfvamfna.supabase.co';
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/send-invitation-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
-            Origin: window.location.origin,
-            Referer: window.location.href,
-          },
-          body: JSON.stringify({
-            studentId: invitationId, // Map invitationId to studentId for compatibility
-            email,
-            firstName,
-            lastName,
-            cohortName: `LIT OS ${role.replace('_', ' ')} Team`, // Create cohort name from role
-            invitationType: 'user', // Explicitly mark as user invitation
-          }),
-        }
+      // Use the new unified email service
+      const result = await emailService.sendInvitationEmail(
+        invitationId,
+        email,
+        firstName,
+        lastName,
+        `LIT OS ${role.replace('_', ' ')} Team`,
+        'user'
       );
-
-      const result = await response.json();
 
       if (result.success) {
         // Mark the invitation as sent in the database
         await this.markInvitationSent(invitationId);
-
-        return {
-          data: {
-            invitationUrl:
-              result.invitationUrl ||
-              `${window.location.origin}/user-invite/${invitationId}`,
-            emailSent: result.emailSent || false,
-          },
-          error: null,
-          success: true,
-        };
-      } else {
-        return {
-          data: null,
-          error: result.error || 'Failed to send invitation',
-          success: false,
-        };
       }
+
+      return result;
     } catch (error) {
       // Fallback: create invitation URL without sending email
       const baseUrl = window.location.origin;

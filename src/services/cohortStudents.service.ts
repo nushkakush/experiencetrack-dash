@@ -19,7 +19,9 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     });
   }
 
-  async listAllByCohort(cohortId: string): Promise<ApiResponse<CohortStudent[]>> {
+  async listAllByCohort(
+    cohortId: string
+  ): Promise<ApiResponse<CohortStudent[]>> {
     return this['executeQuery'](async () => {
       return await supabase
         .from('cohort_students')
@@ -236,38 +238,15 @@ class CohortStudentsService extends BaseService<CohortStudent> {
     lastName: string,
     cohortName: string
   ): Promise<ApiResponse<{ invitationUrl: string; emailSent: boolean }>> {
-    try {
-      const supabaseUrl = 'https://ghmpaghyasyllfvamfna.supabase.co';
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/send-invitation-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXBhZ2h5YXN5bGxmdmFtZm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTI0NDgsImV4cCI6MjA3MDIyODQ0OH0.qhWHU-KkdpvfOTG-ROxf1BMTUlah2xDYJean69hhyH4`,
-            Origin: window.location.origin,
-            Referer: window.location.href,
-          },
-          body: JSON.stringify({
-            studentId,
-            email,
-            firstName,
-            lastName,
-            cohortName,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        return { data: result, error: null, success: true };
-      } else {
-        return { data: null, error: result.error, success: false };
-      }
-    } catch (error) {
-      return { data: null, error: error.message, success: false };
-    }
+    // Use the new unified email service
+    const { emailService } = await import('@/services/email.service');
+    return emailService.sendInvitationEmail(
+      studentId,
+      email,
+      firstName,
+      lastName,
+      cohortName
+    );
   }
 
   async markAsDroppedOut(
@@ -307,15 +286,21 @@ class CohortStudentsService extends BaseService<CohortStudent> {
 
         if (paymentsError) {
           console.error('Error fetching student payments:', paymentsError);
-          throw new Error(`Failed to fetch payment records: ${paymentsError.message}`);
+          throw new Error(
+            `Failed to fetch payment records: ${paymentsError.message}`
+          );
         }
 
         if (!payments || payments.length === 0) {
           // For record keeping purposes, allow refunds even without payment records
           // Create a minimal payment record for the refund transaction
-          console.log('No payment records found, creating minimal record for refund');
-          
-          const { data: { user } } = await supabase.auth.getUser();
+          console.log(
+            'No payment records found, creating minimal record for refund'
+          );
+
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) {
             throw new Error('User not authenticated');
           }
@@ -328,8 +313,13 @@ class CohortStudentsService extends BaseService<CohortStudent> {
             .single();
 
           if (studentError) {
-            console.error('Error fetching student for minimal payment:', studentError);
-            throw new Error(`Failed to get student cohort_id: ${studentError.message}`);
+            console.error(
+              'Error fetching student for minimal payment:',
+              studentError
+            );
+            throw new Error(
+              `Failed to get student cohort_id: ${studentError.message}`
+            );
           }
 
           const { data: newPayment, error: createPaymentError } = await supabase
@@ -337,18 +327,20 @@ class CohortStudentsService extends BaseService<CohortStudent> {
             .insert({
               student_id: studentId,
               cohort_id: student.cohort_id, // Get cohort_id from student record
-              payment_plan: 'not_selected'
+              payment_plan: 'not_selected',
             })
             .select()
             .single();
 
           if (createPaymentError) {
             console.error('Error creating payment record:', createPaymentError);
-            throw new Error(`Failed to create payment record: ${createPaymentError.message}`);
+            throw new Error(
+              `Failed to create payment record: ${createPaymentError.message}`
+            );
           }
 
           console.log('Created minimal payment record:', newPayment);
-          
+
           // Create refund transaction using the new payment record
           const refundData = {
             payment_id: newPayment.id,
@@ -370,14 +362,19 @@ class CohortStudentsService extends BaseService<CohortStudent> {
 
           if (refundError) {
             console.error('Error creating refund transaction:', refundError);
-            throw new Error(`Failed to create refund transaction: ${refundError.message}`);
+            throw new Error(
+              `Failed to create refund transaction: ${refundError.message}`
+            );
           }
 
-          console.log('Refund transaction created successfully:', refundTransaction);
+          console.log(
+            'Refund transaction created successfully:',
+            refundTransaction
+          );
 
-          return { 
-            data: { success: true, message: 'Refund recorded successfully' }, 
-            error: null 
+          return {
+            data: { success: true, message: 'Refund recorded successfully' },
+            error: null,
           };
         }
 
@@ -394,29 +391,50 @@ class CohortStudentsService extends BaseService<CohortStudent> {
           .eq('status', 'success');
 
         if (transactionsError) {
-          console.error('Error fetching payment transactions:', transactionsError);
-          throw new Error(`Failed to fetch payment transactions: ${transactionsError.message}`);
+          console.error(
+            'Error fetching payment transactions:',
+            transactionsError
+          );
+          throw new Error(
+            `Failed to fetch payment transactions: ${transactionsError.message}`
+          );
         }
 
         console.log('Found payment transactions:', transactions);
 
         // Calculate total amount paid
-        const totalPaid = transactions?.reduce((sum, transaction) => sum + (parseFloat(transaction.amount.toString()) || 0), 0) || 0;
-        console.log('Total amount paid:', totalPaid, 'Requested refund:', amount);
+        const totalPaid =
+          transactions?.reduce(
+            (sum, transaction) =>
+              sum + (parseFloat(transaction.amount.toString()) || 0),
+            0
+          ) || 0;
+        console.log(
+          'Total amount paid:',
+          totalPaid,
+          'Requested refund:',
+          amount
+        );
 
         // For record keeping purposes, allow refunds even when there are no previous payments
         // Only validate if there are actual payment transactions
         if (transactions && transactions.length > 0 && amount > totalPaid) {
-          throw new Error(`Refund amount (₹${amount}) cannot exceed total amount paid (₹${totalPaid})`);
+          throw new Error(
+            `Refund amount (₹${amount}) cannot exceed total amount paid (₹${totalPaid})`
+          );
         }
 
         // If no payment transactions exist, log a warning but proceed
         if (!transactions || transactions.length === 0) {
-          console.warn('No payment transactions found. Proceeding with refund for record keeping purposes.');
+          console.warn(
+            'No payment transactions found. Proceeding with refund for record keeping purposes.'
+          );
         }
 
         // Get current user for created_by field
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           throw new Error('User not authenticated');
         }
@@ -442,14 +460,19 @@ class CohortStudentsService extends BaseService<CohortStudent> {
 
         if (refundError) {
           console.error('Error creating refund transaction:', refundError);
-          throw new Error(`Failed to create refund transaction: ${refundError.message}`);
+          throw new Error(
+            `Failed to create refund transaction: ${refundError.message}`
+          );
         }
 
-        console.log('Refund transaction created successfully:', refundTransaction);
+        console.log(
+          'Refund transaction created successfully:',
+          refundTransaction
+        );
 
-        return { 
-          data: { success: true, message: 'Refund recorded successfully' }, 
-          error: null 
+        return {
+          data: { success: true, message: 'Refund recorded successfully' },
+          error: null,
         };
       } catch (error) {
         console.error('Error in issueRefund:', error);

@@ -14,6 +14,7 @@ import {
   FinancialSummary,
   PaymentSchedule,
   CommunicationHistory,
+  CallHistory,
   useStudentDetails,
 } from './components/student-details';
 
@@ -86,14 +87,15 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
           {/* Student Info */}
           <StudentInfo student={student} />
 
-          {/* Tabs for Financial Summary, Payment Schedule, and Communication History */}
+          {/* Tabs for Financial Summary, Payment Schedule, Communication History, and Call History */}
           <Tabs defaultValue='financial' className='w-full'>
-            <TabsList className='grid w-full grid-cols-3'>
+            <TabsList className='grid w-full grid-cols-4'>
               <TabsTrigger value='financial'>Financial Summary</TabsTrigger>
               <TabsTrigger value='schedule'>Payment Schedule</TabsTrigger>
               <TabsTrigger value='communication'>
                 Communication History
               </TabsTrigger>
+              <TabsTrigger value='calls'>Call History</TabsTrigger>
             </TabsList>
 
             <TabsContent value='financial' className='mt-4'>
@@ -106,6 +108,15 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
 
             <TabsContent value='communication' className='mt-4'>
               <CommunicationHistory communications={communications} />
+            </TabsContent>
+
+            <TabsContent value='calls' className='mt-4'>
+              <CallHistory
+                studentId={student.student_id}
+                semesterNumber={1}
+                installmentNumber={0}
+                paymentItemType='All Payments'
+              />
             </TabsContent>
           </Tabs>
         </div>

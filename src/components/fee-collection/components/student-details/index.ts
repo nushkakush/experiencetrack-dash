@@ -4,5 +4,7 @@ export { QuickActions } from './QuickActions';
 export { PaymentItem } from './PaymentItem';
 export { PaymentSchedule } from './PaymentSchedule';
 export { CommunicationHistory } from './CommunicationHistory';
+export { CallHistory } from './CallHistory';
+export { CallManagementDialog } from './CallManagementDialog';
 export { useStudentDetails } from './useStudentDetails';
 export * from './utils';
