@@ -5,11 +5,10 @@ TODO
 3. Download fee structure PDF
 4. Authenticate admissions at lit.school.in with SendGrid and set that up for all admissions related emails.
 5. Late Fee needed
-
-6. Fee collector should be able to log updates from Collection calls.
+6. All reminder Emails need to be designed and vetted once
 7. Leave application process
 8. Diya Gandhi streak issue - cm5
-9. Leaderboard should give the same rank if they have the same points
+9. ✅ Leaderboard should give the same rank if they have the same points
 
 EQUIPMENT BUGS
 
@@ -22,7 +21,6 @@ EQUIPMENT BUGS
 EPICS
 
 - [ ] Fee Payment Reports and Visibility
-- [ ] Sending Mails
 - [ ] Sending Whatsapp
 
 TECHY
