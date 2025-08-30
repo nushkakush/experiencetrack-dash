@@ -39,21 +39,28 @@ export const SimplePartialApprovalDialog: React.FC<
   onReject,
   loading = false,
 }) => {
-  const [approvedAmount, setApprovedAmount] = useState(submittedAmount);
+  const [approvedAmount, setApprovedAmount] = useState(
+    Math.min(submittedAmount, expectedAmount)
+  );
   const [error, setError] = useState('');
 
+  const validateAmount = (amount: number): string => {
+    if (amount <= 0) {
+      return 'Approved amount must be greater than 0';
+    }
+    if (amount > submittedAmount) {
+      return 'Approved amount cannot exceed submitted amount';
+    }
+    if (amount === submittedAmount) {
+      return 'Use full approval for the complete amount';
+    }
+    return '';
+  };
+
   const handleApprove = () => {
-    // Validate the amount
-    if (approvedAmount <= 0) {
-      setError('Approved amount must be greater than 0');
-      return;
-    }
-    if (approvedAmount > submittedAmount) {
-      setError('Approved amount cannot exceed submitted amount');
-      return;
-    }
-    if (approvedAmount === submittedAmount) {
-      setError('Use full approval for the complete amount');
+    const validationError = validateAmount(approvedAmount);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -64,7 +71,10 @@ export const SimplePartialApprovalDialog: React.FC<
   const handleAmountChange = (value: string) => {
     const numValue = parseFloat(value) || 0;
     setApprovedAmount(numValue);
-    setError(''); // Clear error when user types
+
+    // Real-time validation
+    const validationError = validateAmount(numValue);
+    setError(validationError);
   };
 
   const remainingAmount = submittedAmount - approvedAmount;
@@ -100,16 +110,20 @@ export const SimplePartialApprovalDialog: React.FC<
             <Label htmlFor='approvedAmount' className='text-sm font-medium'>
               Enter the actual amount received:
             </Label>
+            <div className='text-xs text-muted-foreground mb-1'>
+              Must be less than the submitted amount (
+              {formatCurrency(submittedAmount)})
+            </div>
             <Input
               id='approvedAmount'
               type='number'
-              min='0'
+              min='0.01'
               max={submittedAmount}
               step='0.01'
-              value={approvedAmount}
+              value={approvedAmount || ''}
               onChange={e => handleAmountChange(e.target.value)}
               placeholder='Enter amount'
-              className='text-lg font-medium'
+              className={`text-lg font-medium ${error ? 'border-red-500 focus:border-red-500' : ''}`}
             />
             {error && <div className='text-sm text-red-600'>{error}</div>}
           </div>

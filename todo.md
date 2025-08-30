@@ -1,12 +1,10 @@
 BEFORE PROGRAM APP
 
-1. Student Leave application process
-2. Set up al the email triggers
-3. absent type needs to be mentioned on the attendance dashboard
-4. Bulk upload for fees needs to be figured out.
-5. Authenticate admissions at lit.school.in with SendGrid and set that up for all admissions related emails.
-6. Slack Integration
-7. Razorpay E Nach for Instalment wise
+2. Bulk upload for fees needs to be figured out.
+3. Authenticate admissions at lit.school.in with SendGrid and set that up for all admissions related emails.
+4. Slack Integration
+5. Razorpay E Nach for Instalment wise
+6. Razorpay set up
 
 AFTER PROGRAM APP
 Fee Payment Reports and Visibility
@@ -29,6 +27,7 @@ TECHNICAL/BORING
 
 - Testing Architecture Improvement
 - Lot of popup have 2 x buttons
+- Modularise large file and enterprise level refactor
 
 DEPENDENCY
 

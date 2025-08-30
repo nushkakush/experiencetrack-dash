@@ -31,12 +31,14 @@ export const PaymentForm = React.memo<PaymentFormProps>(
       hasStudentData: !!studentData,
       studentDataId: studentData?.id,
       hasSelectedInstallment: !!selectedInstallment,
-      selectedInstallmentDetails: selectedInstallment ? {
-        id: selectedInstallment.id,
-        semesterNumber: selectedInstallment.semesterNumber,
-        installmentNumber: selectedInstallment.installmentNumber,
-        amount: selectedInstallment.amount,
-      } : null,
+      selectedInstallmentDetails: selectedInstallment
+        ? {
+            id: selectedInstallment.id,
+            semesterNumber: selectedInstallment.semesterNumber,
+            installmentNumber: selectedInstallment.installmentNumber,
+            amount: selectedInstallment.amount,
+          }
+        : null,
       selectedPaymentPlan,
       isAdminMode,
     });
@@ -63,7 +65,9 @@ export const PaymentForm = React.memo<PaymentFormProps>(
     });
 
     const paymentModeConfig = getPaymentModeConfig();
-    const isSubmitting = submittingPayments.has('student-payment');
+    const isSubmitting = Array.from(submittingPayments).some(id =>
+      id.startsWith('student-payment')
+    );
 
     // Get title for the form
     const getFormTitle = () => {
@@ -160,17 +164,22 @@ export const PaymentForm = React.memo<PaymentFormProps>(
 
         {/* Amount Section */}
         <div className='space-y-4'>
-          {console.log('🔍 [PaymentForm] About to render PaymentAmountInput with:', {
-            amountToPay,
-            maxAmount,
-            studentId: studentData?.id,
-            selectedInstallment: selectedInstallment ? {
-              id: selectedInstallment.id,
-              semesterNumber: selectedInstallment.semesterNumber,
-              installmentNumber: selectedInstallment.installmentNumber,
-              amount: selectedInstallment.amount,
-            } : null,
-          })}
+          {console.log(
+            '🔍 [PaymentForm] About to render PaymentAmountInput with:',
+            {
+              amountToPay,
+              maxAmount,
+              studentId: studentData?.id,
+              selectedInstallment: selectedInstallment
+                ? {
+                    id: selectedInstallment.id,
+                    semesterNumber: selectedInstallment.semesterNumber,
+                    installmentNumber: selectedInstallment.installmentNumber,
+                    amount: selectedInstallment.amount,
+                  }
+                : null,
+            }
+          )}
           <PaymentAmountInput
             amount={amountToPay}
             maxAmount={maxAmount}

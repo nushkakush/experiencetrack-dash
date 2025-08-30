@@ -123,6 +123,21 @@ export const generateFeeStructureReview = async (
     }
   }
 
+  // Add additional discount to scholarship amount if provided
+  if (additionalDiscountPercentage > 0) {
+    const programFeeBaseAmount = feeStructure.program_fee_includes_gst
+      ? extractBaseAmountFromTotal(feeStructure.total_program_fee as number)
+      : (feeStructure.total_program_fee as number);
+    const additionalDiscountAmount =
+      Math.round(
+        programFeeBaseAmount * (additionalDiscountPercentage / 100) * 100
+      ) / 100;
+    scholarshipAmount += additionalDiscountAmount;
+    console.log(
+      `Added additional discount: ${additionalDiscountPercentage}% = ₹${additionalDiscountAmount}, Total scholarship: ₹${scholarshipAmount}`
+    );
+  }
+
   // Extract new toggle values from fee structure
   const programFeeIncludesGST = feeStructure.program_fee_includes_gst;
   const equalScholarshipDistribution =
@@ -191,7 +206,8 @@ export const generateFeeStructureReview = async (
         0,
         scholarshipDistribution,
         programFeeIncludesGST,
-        equalScholarshipDistribution
+        equalScholarshipDistribution,
+        additionalDiscountPercentage
       );
       const semesterTotal = {
         scholarshipAmount: semesterInstallments.reduce(

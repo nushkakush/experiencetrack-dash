@@ -7,7 +7,15 @@ export interface EmailRequest {
     | 'user_invitation'
     | 'custom'
     | 'payment_reminder'
-    | 'notification';
+    | 'notification'
+    | 'payment_submitted'
+    | 'payment_approved'
+    | 'payment_partially_approved'
+    | 'payment_rejected'
+    | 'partial_payment_submitted'
+    | 'all_payments_completed'
+    | 'receipt_generated'
+    | 'payment_submission_failed';
   template?: string;
   subject?: string;
   content?: string;

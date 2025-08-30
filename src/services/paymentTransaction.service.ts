@@ -3,6 +3,7 @@ import { BaseService } from './base.service';
 import { ApiResponse } from '@/types/common';
 import { PaymentSubmissionData } from '@/types/payments';
 import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
+import { UnifiedPaymentCommunicationService } from './unifiedPaymentCommunication.service';
 
 export interface IndianBank {
   id: string;
@@ -153,9 +154,9 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       const transactionRecord = {
         payment_id: paymentData.paymentId,
         transaction_type: 'payment',
-        amount: paymentData.amountPaid,
+        amount: paymentData.amount,
         payment_method: paymentData.paymentMethod,
-        reference_number: paymentData.paymentReferenceNumber,
+        reference_number: paymentData.referenceNumber,
         status: 'pending',
         notes: paymentData.notes,
         created_by: userId,
@@ -187,7 +188,7 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       // Update the student_payments table with the new payment amount
       await this.updateStudentPaymentAmount(
         paymentData.paymentId,
-        paymentData.amountPaid
+        paymentData.amount
       );
 
       return { data, error: null };
@@ -304,7 +305,14 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
           *,
           student_payments!inner (
             id,
-            student_id
+            student_id,
+            cohort_students (
+              id,
+              first_name,
+              last_name,
+              email,
+              phone
+            )
           )
         `
         )
@@ -350,6 +358,100 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
 
       if (error) throw error;
 
+      // 🚀 TRIGGER 2 & 3: Payment Approval/Rejection Notifications
+      if (transaction.student_payments?.cohort_students) {
+        const student = transaction.student_payments.cohort_students;
+        try {
+          if (status === 'approved') {
+            await UnifiedPaymentCommunicationService.sendPaymentApprovedNotification(
+              {
+                studentId: student.id,
+                studentName: `${student.first_name} ${student.last_name}`,
+                studentEmail: student.email,
+                studentPhone: student.phone,
+                amount: transaction.amount,
+                installmentDescription: 'Payment', // Could be enhanced to get actual installment details
+                paymentMethod: transaction.payment_method,
+                referenceNumber: transaction.reference_number || '',
+                submissionDate: transaction.created_at || '',
+                approvalDate: new Date().toISOString(),
+                receiptNumber: `RCP-${transaction.id.slice(-8).toUpperCase()}`,
+              }
+            );
+
+            // 🚀 TRIGGER 6: All Payments Completed Notification (for direct full payments)
+            try {
+              // Check if this payment completes the installment
+              const { data: studentPayment } = await supabase
+                .from('student_payments')
+                .select('total_amount_payable, total_amount_paid')
+                .eq('id', transaction.student_payments.id)
+                .single();
+
+              if (studentPayment) {
+                const totalPaidAfterThisPayment =
+                  (studentPayment.total_amount_paid || 0) + transaction.amount;
+                const isInstallmentComplete =
+                  totalPaidAfterThisPayment >=
+                  studentPayment.total_amount_payable;
+
+                if (isInstallmentComplete) {
+                  await UnifiedPaymentCommunicationService.sendAllPaymentsCompletedNotification(
+                    {
+                      studentId: student.id,
+                      studentName: `${student.first_name} ${student.last_name}`,
+                      studentEmail: student.email,
+                      studentPhone: student.phone,
+                      amount: transaction.amount,
+                      totalAmount: studentPayment.total_amount_payable,
+                      firstPaymentAmount:
+                        studentPayment.total_amount_payable -
+                        transaction.amount,
+                      firstApprovalDate: new Date().toISOString(),
+                      secondPaymentAmount: transaction.amount,
+                      secondApprovalDate: new Date().toISOString(),
+                      installmentDescription: 'Payment',
+                      paymentMethod: transaction.payment_method,
+                      referenceNumber: transaction.reference_number || '',
+                      submissionDate: transaction.created_at || '',
+                    }
+                  );
+                }
+              }
+            } catch (completionError) {
+              // Log error but don't fail the approval
+              console.error(
+                'Failed to send all payments completed notification:',
+                completionError
+              );
+            }
+          } else if (status === 'rejected') {
+            await UnifiedPaymentCommunicationService.sendPaymentRejectedNotification(
+              {
+                studentId: student.id,
+                studentName: `${student.first_name} ${student.last_name}`,
+                studentEmail: student.email,
+                studentPhone: student.phone,
+                amount: transaction.amount,
+                installmentDescription: 'Payment',
+                paymentMethod: transaction.payment_method,
+                referenceNumber: transaction.reference_number || '',
+                submissionDate: transaction.created_at || '',
+                rejectionDate: new Date().toISOString(),
+                rejectionReason:
+                  rejectionReason || 'Payment verification failed',
+              }
+            );
+          }
+        } catch (communicationError) {
+          // Log error but don't fail the verification
+          console.error(
+            'Failed to send payment verification notification:',
+            communicationError
+          );
+        }
+      }
+
       // Note: Since we simplified the student_payments table and removed payment_status,
       // the payment status is now calculated dynamically in the frontend based on
       // the verification_status of payment_transactions. The verification process
@@ -379,16 +481,75 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       // First, get the current transaction to understand its state
       const { data: currentTransaction, error: fetchError } = await supabase
         .from('payment_transactions')
-        .select('*')
+        .select(
+          `
+          *,
+          student_payments!inner (
+            id,
+            student_id,
+            cohort_students (
+              id,
+              first_name,
+              last_name,
+              email,
+              phone
+            )
+          )
+        `
+        )
         .eq('id', transactionId)
         .single();
 
-      if (fetchError) {
-        throw new Error(`Failed to fetch transaction: ${fetchError.message}`);
+      if (fetchError) throw fetchError;
+      if (!currentTransaction) throw new Error('Transaction not found');
+
+      // Backend validation for partial approval
+      if (approvalType === 'partial' && approvedAmount !== undefined) {
+        if (approvedAmount <= 0) {
+          throw new Error('Approved amount must be greater than 0');
+        }
+        if (approvedAmount > currentTransaction.amount) {
+          throw new Error('Approved amount cannot exceed submitted amount');
+        }
+        if (approvedAmount === currentTransaction.amount) {
+          throw new Error('Use full approval for the complete amount');
+        }
       }
 
-      if (!currentTransaction) {
-        throw new Error('Transaction not found');
+      // 🚀 TRIGGER 5: Payment Partially Approved Notification
+      if (
+        approvalType === 'partial' &&
+        currentTransaction.student_payments?.cohort_students
+      ) {
+        const student = currentTransaction.student_payments.cohort_students;
+        const remainingAmount =
+          currentTransaction.amount - (approvedAmount || 0);
+
+        try {
+          await UnifiedPaymentCommunicationService.sendPaymentPartiallyApprovedNotification(
+            {
+              studentId: student.id,
+              studentName: `${student.first_name} ${student.last_name}`,
+              studentEmail: student.email,
+              studentPhone: student.phone,
+              amount: currentTransaction.amount,
+              submittedAmount: currentTransaction.amount,
+              approvedAmount: approvedAmount || 0,
+              remainingAmount: remainingAmount,
+              installmentDescription: 'Payment',
+              paymentMethod: currentTransaction.payment_method,
+              referenceNumber: currentTransaction.reference_number || '',
+              submissionDate: currentTransaction.created_at || '',
+              approvalDate: new Date().toISOString(),
+            }
+          );
+        } catch (communicationError) {
+          // Log error but don't fail the partial approval
+          console.error(
+            'Failed to send partial approval notification:',
+            communicationError
+          );
+        }
       }
 
       // Prepare update data
@@ -435,6 +596,48 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
 
       if (updateError) {
         throw new Error(`Failed to update transaction: ${updateError.message}`);
+      }
+
+      // 🚀 TRIGGER 6: All Payments Completed Notification
+      // Check if this partial approval completes the installment
+      if (
+        approvalType === 'partial' &&
+        currentTransaction.student_payments?.cohort_students
+      ) {
+        const student = currentTransaction.student_payments.cohort_students;
+
+        // Check if the remaining amount is now 0 (installment fully paid)
+        const remainingAmount =
+          currentTransaction.amount - (approvedAmount || 0);
+        if (remainingAmount <= 0) {
+          try {
+            await UnifiedPaymentCommunicationService.sendAllPaymentsCompletedNotification(
+              {
+                studentId: student.id,
+                studentName: `${student.first_name} ${student.last_name}`,
+                studentEmail: student.email,
+                studentPhone: student.phone,
+                amount: currentTransaction.amount,
+                totalAmount: currentTransaction.amount,
+                firstPaymentAmount:
+                  currentTransaction.amount - (approvedAmount || 0),
+                firstApprovalDate: currentTransaction.verified_at || '',
+                secondPaymentAmount: approvedAmount || 0,
+                secondApprovalDate: new Date().toISOString(),
+                installmentDescription: 'Payment',
+                paymentMethod: currentTransaction.payment_method,
+                referenceNumber: currentTransaction.reference_number || '',
+                submissionDate: currentTransaction.created_at || '',
+              }
+            );
+          } catch (communicationError) {
+            // Log error but don't fail the approval
+            console.error(
+              'Failed to send all payments completed notification:',
+              communicationError
+            );
+          }
+        }
       }
 
       return {

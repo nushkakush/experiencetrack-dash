@@ -95,7 +95,9 @@ export const validateAmount = (amount: number, maxAmount: number): string => {
   if (amount <= 0) {
     return 'Amount must be greater than 0';
   }
-  if (amount > maxAmount) {
+  // Use a small epsilon for floating-point comparison to handle precision issues
+  const epsilon = 0.01;
+  if (amount > maxAmount + epsilon) {
     return `Amount cannot exceed ${formatCurrency(maxAmount)}`;
   }
   return '';

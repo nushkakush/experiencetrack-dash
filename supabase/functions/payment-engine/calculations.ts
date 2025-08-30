@@ -275,7 +275,8 @@ export const calculateSemesterPayment = (
   oneShotDiscount: number,
   scholarshipDistribution?: number[],
   programFeeIncludesGST?: boolean,
-  equalScholarshipDistribution?: boolean
+  equalScholarshipDistribution?: boolean,
+  additionalDiscountPercentage: number = 0
 ): InstallmentView[] => {
   let programFeeBaseAmount: number;
   let programFeeGST: number;

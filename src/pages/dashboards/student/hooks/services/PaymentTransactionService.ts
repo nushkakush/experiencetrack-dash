@@ -1,8 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Logger } from '@/lib/logging/Logger';
-import { PaymentSubmissionData } from '@/types/payments/PaymentMethods';
+import { Logger } from '@/lib/logging/logger';
+import { PaymentSubmissionData } from '@/types/payments';
 import { CohortStudent } from '@/types/cohort';
-import { normalizePaymentTargeting, validatePaymentTargeting } from '../utils/paymentUtils';
+import {
+  normalizePaymentTargeting,
+  validatePaymentTargeting,
+} from '../utils/paymentUtils';
+import { UnifiedPaymentCommunicationService } from '@/services/unifiedPaymentCommunication.service';
 
 interface CreateTransactionResult {
   success: boolean;
@@ -53,11 +57,17 @@ export class PaymentTransactionService {
     studentData?: CohortStudent
   ): Promise<CreateTransactionResult> {
     try {
-      console.log('🔍 [DEBUG] Creating transaction record with FULL payment data:', paymentData);
+      console.log(
+        '🔍 [DEBUG] Creating transaction record with FULL payment data:',
+        paymentData
+      );
 
       // Normalize and validate installment targeting
       const { normalizedInstallmentId, normalizedSemesterNumber } =
-        normalizePaymentTargeting(paymentData.installmentId, paymentData.semesterNumber);
+        normalizePaymentTargeting(
+          paymentData.installmentId,
+          paymentData.semesterNumber
+        );
 
       console.log('🔍 [DEBUG] Normalized targeting:', {
         normalizedInstallmentId,
@@ -72,11 +82,14 @@ export class PaymentTransactionService {
       );
 
       if (!validation.isValid) {
-        Logger.getInstance().error('Missing installment/semester targeting on payment', {
-          paymentData,
-          normalizedInstallmentId,
-          normalizedSemesterNumber,
-        });
+        Logger.getInstance().error(
+          'Missing installment/semester targeting on payment',
+          {
+            paymentData,
+            normalizedInstallmentId,
+            normalizedSemesterNumber,
+          }
+        );
         return { success: false, error: validation.error };
       }
 
@@ -93,7 +106,9 @@ export class PaymentTransactionService {
         status: isAdminRecorded ? 'success' : 'pending', // Admin payments are immediately successful
         notes: paymentData.notes || '',
         created_by: paymentData.studentUserId || studentData?.user_id,
-        verification_status: isAdminRecorded ? 'approved' : 'verification_pending', // Admin payments skip verification
+        verification_status: isAdminRecorded
+          ? 'approved'
+          : 'verification_pending', // Admin payments skip verification
         receipt_url: receiptUrls.receiptUrl,
         proof_of_payment_url: receiptUrls.proofOfPaymentUrl,
         transaction_screenshot_url: receiptUrls.transactionScreenshotUrl,
@@ -125,10 +140,44 @@ export class PaymentTransactionService {
         .single();
 
       if (error) {
-        Logger.getInstance().error('Failed to create payment transaction record', {
-          error,
-          paymentData,
-        });
+        Logger.getInstance().error(
+          'Failed to create payment transaction record',
+          {
+            error,
+            paymentData,
+          }
+        );
+
+        // 🚀 TRIGGER 8: Payment Submission Failed Notification
+        if (studentData) {
+          try {
+            await UnifiedPaymentCommunicationService.sendPaymentSubmissionFailedNotification(
+              {
+                studentId: studentData.id,
+                studentName: `${studentData.first_name} ${studentData.last_name}`,
+                studentEmail: studentData.email,
+                studentPhone: studentData.phone,
+                amount: paymentData.amount,
+                installmentDescription: 'Payment',
+                paymentMethod: paymentData.paymentMethod,
+                referenceNumber: paymentData.referenceNumber || '',
+                submissionDate: new Date().toISOString(),
+                errorMessage: error.message || 'Payment submission failed',
+                attemptDate: new Date().toISOString(),
+              }
+            );
+          } catch (communicationError) {
+            // Log error but don't fail the payment submission
+            Logger.getInstance().error(
+              'Failed to send payment submission failed notification',
+              {
+                error: communicationError,
+                studentId: studentData.id,
+              }
+            );
+          }
+        }
+
         return {
           success: false,
           error: `Failed to create payment transaction record: ${error.message}`,
@@ -142,6 +191,36 @@ export class PaymentTransactionService {
         recordedByUserId,
       });
 
+      // 🚀 TRIGGER 1: Payment Submitted Notification
+      // Only send if this is NOT an admin-recorded payment (student submitted)
+      if (!isAdminRecorded && studentData) {
+        try {
+          await UnifiedPaymentCommunicationService.sendPaymentSubmittedNotification(
+            {
+              studentId: studentData.id,
+              studentName: `${studentData.first_name} ${studentData.last_name}`,
+              studentEmail: studentData.email,
+              studentPhone: studentData.phone,
+              amount: paymentData.amount,
+              installmentDescription: 'Payment', // Could be enhanced to get actual installment details
+              paymentMethod: paymentData.paymentMethod,
+              referenceNumber: paymentData.referenceNumber || '',
+              submissionDate: new Date().toISOString(),
+            }
+          );
+        } catch (communicationError) {
+          // Log error but don't fail the payment submission
+          Logger.getInstance().error(
+            'Failed to send payment submitted notification',
+            {
+              error: communicationError,
+              paymentId: data.id,
+              studentId: studentData.id,
+            }
+          );
+        }
+      }
+
       return {
         success: true,
         paymentId: data.id,
@@ -153,7 +232,10 @@ export class PaymentTransactionService {
       });
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create transaction',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create transaction',
       };
     }
   }

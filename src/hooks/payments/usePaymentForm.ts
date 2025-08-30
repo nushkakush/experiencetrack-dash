@@ -316,12 +316,19 @@ export const usePaymentForm = ({
       hasUserEnteredCustomAmount,
     });
 
-    // Only set the amount if user hasn't manually entered a custom amount
-    // and this is the initial load (amountToPay is 0 and we're not in the middle of typing)
-    if (!hasUserEnteredCustomAmount && amountToPay === 0) {
+    // Set the amount to maxAmount if:
+    // 1. User hasn't manually entered a custom amount, OR
+    // 2. The current amount is not the correct pending amount (for partially paid installments)
+    if (!hasUserEnteredCustomAmount || amountToPay !== maxAmount) {
+      console.log(
+        '🔍 [usePaymentForm] Updating amountToPay from',
+        amountToPay,
+        'to',
+        maxAmount
+      );
       setAmountToPay(maxAmount);
     }
-  }, [maxAmount, hasUserEnteredCustomAmount]); // Removed amountToPay from dependencies to prevent resetting on empty input
+  }, [maxAmount, hasUserEnteredCustomAmount, amountToPay]); // Added amountToPay back to dependencies
 
   // Reset custom amount flag when installment changes
   useEffect(() => {
@@ -368,7 +375,9 @@ export const usePaymentForm = ({
       if (amount <= 0) {
         return 'Amount must be greater than 0';
       }
-      if (amount > maxAmount) {
+      // Use a small epsilon for floating-point comparison to handle precision issues
+      const epsilon = 0.01;
+      if (amount > maxAmount + epsilon) {
         return `Amount cannot exceed ${formatCurrency(maxAmount)}`;
       }
       return '';
@@ -397,8 +406,12 @@ export const usePaymentForm = ({
       // Only show validation error if amount is greater than 0 but exceeds max
       // Allow empty input (amount = 0) during typing
       let amountError = '';
-      if (amount > 0 && amount > maxAmount) {
-        amountError = `Amount cannot exceed ${formatCurrency(maxAmount)}`;
+      if (amount > 0) {
+        // Use a small epsilon for floating-point comparison to handle precision issues
+        const epsilon = 0.01;
+        if (amount > maxAmount + epsilon) {
+          amountError = `Amount cannot exceed ${formatCurrency(maxAmount)}`;
+        }
       }
 
       setErrors(prev => ({
@@ -460,17 +473,28 @@ export const usePaymentForm = ({
   );
 
   const validateForm = useCallback(() => {
+    console.log('🔍 [usePaymentForm] validateForm called with:', {
+      amountToPay,
+      selectedPaymentMode,
+      paymentDetails,
+      uploadedFiles,
+    });
+
     const newErrors: Record<string, string> = {};
 
     // Validate amount
     const amountError = validateAmount(amountToPay);
     if (amountError) {
       newErrors.amount = amountError;
+      console.log('❌ [usePaymentForm] Amount validation failed:', amountError);
     }
 
     // Validate payment mode
     if (!selectedPaymentMode) {
       newErrors.paymentMode = 'Please select a payment mode';
+      console.log(
+        '❌ [usePaymentForm] Payment mode validation failed: No payment mode selected'
+      );
     }
 
     // Validate payment mode specific fields
@@ -487,9 +511,19 @@ export const usePaymentForm = ({
     // Validate file uploads (skip for admin mode with razorpay)
     if (!(isAdminMode && selectedPaymentMode === 'razorpay')) {
       const requiredFiles = getRequiredFilesForMode(selectedPaymentMode);
+      console.log(
+        '🔍 [usePaymentForm] Required files for mode:',
+        selectedPaymentMode,
+        requiredFiles
+      );
       for (const fileField of requiredFiles) {
         if (!uploadedFiles[fileField]) {
           newErrors[fileField] = 'Please upload the required file';
+          console.log(
+            '❌ [usePaymentForm] File validation failed:',
+            fileField,
+            'is missing'
+          );
         }
       }
     }
@@ -502,7 +536,12 @@ export const usePaymentForm = ({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log('🔍 [usePaymentForm] Validation result:', {
+      isValid,
+      errors: newErrors,
+    });
+    return isValid;
   }, [
     amountToPay,
     selectedPaymentMode,
@@ -513,7 +552,17 @@ export const usePaymentForm = ({
   ]);
 
   const handleSubmit = useCallback(() => {
+    console.log('🔍 [usePaymentForm] handleSubmit called with:', {
+      amountToPay,
+      selectedPaymentMode,
+      selectedInstallment,
+      paymentDetails,
+      uploadedFiles,
+      errors,
+    });
+
     if (!validateForm()) {
+      console.log('❌ [usePaymentForm] Validation failed, errors:', errors);
       return;
     }
 

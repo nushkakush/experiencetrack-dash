@@ -1,6 +1,60 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { roundToRupee } from './calculations.ts';
 
+// Email notification function
+async function sendEmailNotification(emailData: {
+  type: string;
+  recipient: { email: string; name: string };
+  subject: string;
+  content: string;
+  context: any;
+}) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  try {
+    // Log the email to email_logs table
+    const { error: logError } = await supabase.from('email_logs').insert({
+      type: emailData.type,
+      subject: emailData.subject,
+      content: emailData.content,
+      recipient_email: emailData.recipient.email,
+      recipient_name: emailData.recipient.name,
+      context: emailData.context,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+    });
+
+    if (logError) {
+      console.error('Failed to log email:', logError);
+    }
+
+    // Call the send-email edge function
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify(emailData),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Email service responded with status: ${response.status}`
+      );
+    }
+
+    console.log(
+      `Email notification sent successfully for type: ${emailData.type}`
+    );
+  } catch (error) {
+    console.error('Failed to send email notification:', error);
+    throw error;
+  }
+}
+
 // Partial payment calculation helpers
 export const calculatePartialPaymentSummary = async (
   supabase: ReturnType<typeof createClient>,
@@ -109,6 +163,31 @@ export const processAdminPartialApproval = async (
   message?: string;
 }> => {
   if (approvalType === 'reject') {
+    // Get transaction details for communication
+    const { data: transaction, error: fetchError } = await supabase
+      .from('payment_transactions')
+      .select(
+        `
+        *,
+        student_payments!inner (
+          id,
+          student_id,
+          cohort_students (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          )
+        )
+      `
+      )
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!transaction) throw new Error('Transaction not found');
+
     // Reject the transaction
     const { error } = await supabase
       .from('payment_transactions')
@@ -121,10 +200,79 @@ export const processAdminPartialApproval = async (
       .eq('id', transactionId);
 
     if (error) throw error;
+
+    // 🚀 TRIGGER 3: Payment Rejected Notification
+    if (transaction.student_payments?.cohort_students) {
+      const student = transaction.student_payments.cohort_students;
+      try {
+        await sendEmailNotification({
+          type: 'payment_rejected',
+          recipient: {
+            email: student.email,
+            name: `${student.first_name} ${student.last_name}`,
+          },
+          subject: 'Payment Rejected - Action Required',
+          content: `Dear ${student.first_name} ${student.last_name},
+
+Your payment of ₹${transaction.amount} has been rejected.
+
+Rejection Details:
+- Submitted Amount: ₹${transaction.amount}
+- Reference: ${transaction.reference_number || 'N/A'}
+- Rejection Date: ${new Date().toISOString()}
+- Reason: ${rejectionReason || 'Payment verification failed'}
+
+Please review the rejection reason and submit a new payment with the correct details.
+
+If you have any questions, please contact our support team.
+
+Admissions Team,
+LIT School`,
+          context: {
+            amount: transaction.amount,
+            referenceNumber: transaction.reference_number || '',
+            rejectionDate: new Date().toISOString(),
+            rejectionReason: rejectionReason || 'Payment verification failed',
+          },
+        });
+      } catch (communicationError) {
+        console.error(
+          'Failed to send payment rejection notification:',
+          communicationError
+        );
+        // Don't fail the rejection if communication fails
+      }
+    }
+
     return { success: true, message: 'Transaction rejected successfully' };
   }
 
   if (approvalType === 'full') {
+    // Get transaction details for communication
+    const { data: transaction, error: fetchError } = await supabase
+      .from('payment_transactions')
+      .select(
+        `
+        *,
+        student_payments!inner (
+          id,
+          student_id,
+          cohort_students (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          )
+        )
+      `
+      )
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!transaction) throw new Error('Transaction not found');
+
     // Approve the full transaction
     const { error } = await supabase
       .from('payment_transactions')
@@ -136,14 +284,135 @@ export const processAdminPartialApproval = async (
       .eq('id', transactionId);
 
     if (error) throw error;
+
+    // 🚀 TRIGGER 2: Payment Approved Notification
+    if (transaction.student_payments?.cohort_students) {
+      const student = transaction.student_payments.cohort_students;
+      try {
+        // Send payment approved notification
+        await sendEmailNotification({
+          type: 'payment_approved',
+          recipient: {
+            email: student.email,
+            name: `${student.first_name} ${student.last_name}`,
+          },
+          subject: 'Payment Approved - Receipt Generated',
+          content: `Dear ${student.first_name} ${student.last_name},
+
+Great news! Your payment of ₹${transaction.amount} has been approved.
+
+Payment Details:
+- Amount: ₹${transaction.amount}
+- Method: ${transaction.payment_method}
+- Reference: ${transaction.reference_number || 'N/A'}
+- Approval Date: ${new Date().toISOString()}
+- Installment: Payment
+
+Your receipt has been generated and is available in your student portal.
+
+Thank you for your payment!
+
+Admissions Team,
+LIT School`,
+          context: {
+            amount: transaction.amount,
+            paymentMethod: transaction.payment_method,
+            referenceNumber: transaction.reference_number || '',
+            approvalDate: new Date().toISOString(),
+            installmentDescription: 'Payment',
+          },
+        });
+
+        // 🚀 TRIGGER 6: All Payments Completed Notification (for direct full payments)
+        try {
+          // Check if this payment completes the installment
+          const { data: studentPayment } = await supabase
+            .from('student_payments')
+            .select('total_amount_payable, total_amount_paid')
+            .eq('id', transaction.student_payments.id)
+            .single();
+
+          if (studentPayment) {
+            const totalPaidAfterThisPayment =
+              (studentPayment.total_amount_paid || 0) + transaction.amount;
+            const isInstallmentComplete =
+              totalPaidAfterThisPayment >= studentPayment.total_amount_payable;
+
+            if (isInstallmentComplete) {
+              await sendEmailNotification({
+                type: 'all_payments_completed',
+                recipient: {
+                  email: student.email,
+                  name: `${student.first_name} ${student.last_name}`,
+                },
+                subject: 'Installment Completed - All Payments Approved',
+                content: `Dear ${student.first_name} ${student.last_name},
+
+Excellent! Your installment is now complete.
+
+Payment Summary:
+- Total Installment Amount: ₹${studentPayment.total_amount_payable}
+- First Payment: ₹${studentPayment.total_amount_payable - transaction.amount} (approved on ${new Date().toISOString()})
+- Second Payment: ₹${transaction.amount} (approved on ${new Date().toISOString()})
+- Installment: Payment
+
+Your receipt has been generated and is available in your student portal.
+
+Thank you for completing your payment!
+
+Admissions Team,
+LIT School`,
+                context: {
+                  totalAmount: studentPayment.total_amount_payable,
+                  firstPaymentAmount:
+                    studentPayment.total_amount_payable - transaction.amount,
+                  firstApprovalDate: new Date().toISOString(),
+                  secondPaymentAmount: transaction.amount,
+                  secondApprovalDate: new Date().toISOString(),
+                  installmentDescription: 'Payment',
+                },
+              });
+            }
+          }
+        } catch (completionError) {
+          console.error(
+            'Failed to send all payments completed notification:',
+            completionError
+          );
+          // Don't fail the approval if communication fails
+        }
+      } catch (communicationError) {
+        console.error(
+          'Failed to send payment approval notifications:',
+          communicationError
+        );
+        // Don't fail the approval if communication fails
+      }
+    }
+
     return { success: true, message: 'Transaction approved successfully' };
   }
 
   if (approvalType === 'partial' && approvedAmount) {
-    // Get the original transaction
+    // Get the original transaction with student details
     const { data: originalTransaction, error: fetchError } = await supabase
       .from('payment_transactions')
-      .select('*')
+      .select(
+        `
+        *,
+        student_payments!inner (
+          id,
+          student_id,
+          cohort_students (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          )
+        )
+      `
+      )
       .eq('id', transactionId)
       .single();
 
@@ -193,6 +462,53 @@ export const processAdminPartialApproval = async (
       .single();
 
     if (createError) throw createError;
+
+    // 🚀 TRIGGER 5: Payment Partially Approved Notification
+    if (originalTransaction.student_payments?.cohort_students) {
+      const student = originalTransaction.student_payments.cohort_students;
+      try {
+        await sendEmailNotification({
+          type: 'payment_partially_approved',
+          recipient: {
+            email: student.email,
+            name: `${student.first_name} ${student.last_name}`,
+          },
+          subject: 'Payment Partially Approved - Balance Due',
+          content: `Dear ${student.first_name} ${student.last_name},
+
+Your payment has been partially approved.
+
+Payment Details:
+- Submitted Amount: ₹${originalAmount}
+- Approved Amount: ₹${approvedAmount}
+- Remaining Balance: ₹${remainingAmount}
+- Reference: ${originalTransaction.reference_number || 'N/A'}
+- Approval Date: ${new Date().toISOString()}
+
+Please submit the remaining amount of ₹${remainingAmount} to complete your payment.
+
+You can make the remaining payment through your student portal.
+
+Thank you!
+
+Admissions Team,
+LIT School`,
+          context: {
+            submittedAmount: originalAmount,
+            approvedAmount: approvedAmount,
+            remainingAmount: remainingAmount,
+            referenceNumber: originalTransaction.reference_number || '',
+            approvalDate: new Date().toISOString(),
+          },
+        });
+      } catch (communicationError) {
+        console.error(
+          'Failed to send partial approval notification:',
+          communicationError
+        );
+        // Don't fail the partial approval if communication fails
+      }
+    }
 
     return {
       success: true,
