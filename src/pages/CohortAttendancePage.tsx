@@ -163,12 +163,9 @@ const CohortAttendancePage = () => {
 
         {/* Attendance Statistics */}
         <AttendanceStatistics
-          students={attendanceData.students}
-          attendanceRecords={attendanceData.attendanceRecords}
-          epicAttendanceRecords={epicAttendanceData.epicAttendanceRecords}
-          currentEpic={attendanceData.currentEpic}
+          cohortId={cohortId!}
+          epicId={attendanceData.currentEpic?.id || ''}
           selectedDate={pageState.selectedDate}
-          isSessionCancelled={isSessionCancelled}
           mode='epic'
         />
 
@@ -195,6 +192,7 @@ const CohortAttendancePage = () => {
               isHoliday={isHoliday}
               currentHoliday={currentHoliday}
               cohort={attendanceData.cohort}
+              currentEpic={attendanceData.currentEpic}
               selectedDate={pageState.selectedDate}
               sessions={attendanceData.sessions}
               selectedSession={pageState.selectedSession}
@@ -222,9 +220,9 @@ const CohortAttendancePage = () => {
               );
               return (
                 <CalendarView
+                  cohortId={cohortId!}
+                  epicId={attendanceData.currentEpic?.id || ''}
                   selectedDate={pageState.selectedDate}
-                  attendanceRecords={attendanceData.attendanceRecords}
-                  currentEpic={attendanceData.currentEpic}
                   isHoliday={isHoliday}
                   currentHoliday={currentHoliday}
                   onDateSelect={pageState.handleDateChange}
@@ -236,12 +234,9 @@ const CohortAttendancePage = () => {
             <LeaderboardView
               leaderboardLayout={pageState.leaderboardLayout}
               cohortId={cohortId!}
-              epicId={attendanceData.selectedEpic}
+              epicId={attendanceData.currentEpic?.id || ''}
               cohortName={attendanceData.cohort?.name}
               epicName={attendanceData.currentEpic?.name}
-              students={attendanceData.students}
-              epicAttendanceRecords={epicAttendanceData.epicAttendanceRecords}
-              currentEpic={attendanceData.currentEpic}
               onLayoutChange={pageState.setLeaderboardLayout}
             />
           )}

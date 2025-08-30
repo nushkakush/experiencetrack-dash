@@ -22,13 +22,17 @@ import {
   Trophy,
   Users,
   TrendingUp,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { AttendanceLeaderboard } from '@/components/attendance';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HolidayViewDialog } from './HolidayViewDialog';
+import { toast } from 'sonner';
+import { AttendanceCalculationsService } from '@/services/attendanceCalculations.service';
 import type { CohortEpic, AttendanceRecord } from '@/types/attendance';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AttendanceOverviewProps {
   studentData: CohortStudent;
@@ -54,6 +58,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       AttendanceRecord[]
     >([]);
     const [studentStats, setStudentStats] = useState<StudentStats | null>(null);
+    const [leaderboardData, setLeaderboardData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
@@ -61,6 +66,13 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
     // Load epics for the cohort
     const loadEpics = useCallback(async () => {
       try {
+        console.log(
+          '🔄 AttendanceOverview: Loading epics for cohort:',
+          cohortData.id
+        );
+
+        // For now, we'll keep the direct Supabase call for epics since it's not in the edge function yet
+        // This could be moved to the edge function in the future
         const { data: epicsData, error: epicsError } = await supabase
           .from('cohort_epics')
           .select(
@@ -81,167 +93,119 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
           epicsData?.find(epic => epic.is_active) || epicsData?.[0] || null;
         setCurrentEpic(activeEpic);
 
-        // Debug logging
-        console.log('Epic data loaded:', {
-          epicsData: epicsData?.length || 0,
+        console.log('✅ AttendanceOverview: Epics loaded:', {
+          epicsCount: epicsData?.length || 0,
           activeEpic: activeEpic?.id,
           epicName: activeEpic?.epic?.name || activeEpic?.name,
         });
       } catch (err) {
-        console.error('Error loading epics:', err);
+        console.error('❌ AttendanceOverview: Error loading epics:', err);
         setError('Failed to load epics');
       }
     }, [cohortData.id]);
 
-    // Load students for the cohort
-    const loadStudents = useCallback(async () => {
-      try {
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('cohort_students')
-          .select('*')
-          .eq('cohort_id', cohortData.id)
-          .neq('dropped_out_status', 'dropped_out');
-
-        if (studentsError) throw studentsError;
-        setStudents(studentsData || []);
-      } catch (err) {
-        console.error('Error loading students:', err);
-        setError('Failed to load students');
-      }
-    }, [cohortData.id]);
-
-    // Load attendance records for current epic
-    const loadAttendanceRecords = useCallback(async () => {
+    // Load students and attendance data using edge function
+    const loadStudentData = useCallback(async () => {
       if (!currentEpic) return;
 
       try {
-        const { data: recordsData, error: recordsError } = await supabase
-          .from('attendance_records')
-          .select('*')
-          .eq('cohort_id', cohortData.id)
-          .eq('epic_id', currentEpic.id)
-          .order('session_date', { ascending: true });
-
-        if (recordsError) throw recordsError;
-        setAttendanceRecords(recordsData || []);
-
-        // Debug logging
-        console.log('Attendance records loaded:', {
-          cohortId: cohortData.id,
-          epicId: currentEpic.id,
-          recordsCount: recordsData?.length || 0,
-          currentStudentId: studentData?.id,
-        });
-      } catch (err) {
-        console.error('Error loading attendance records:', err);
-        setError('Failed to load attendance records');
-      }
-    }, [currentEpic, cohortData.id]);
-
-    // Calculate student statistics
-    const calculateStudentStats = useCallback((): StudentStats | null => {
-      if (!studentData || !currentEpic || students.length === 0) return null;
-
-      // Get all attendance records for this student in current epic
-      const studentRecords = attendanceRecords.filter(
-        record => record.student_id === studentData.id
-      );
-
-      // Debug logging
-      console.log('Student stats calculation:', {
-        studentData: {
-          id: studentData.id,
-          name: `${studentData.first_name} ${studentData.last_name}`,
-        },
-        currentEpic: {
-          id: currentEpic.id,
-          name: currentEpic.epic?.name || currentEpic.name,
-        },
-        totalAttendanceRecords: attendanceRecords.length,
-        studentRecords: studentRecords.length,
-      });
-
-      // Calculate basic stats - treat exempted absences as present for analytics
-      const totalSessions = studentRecords.length;
-      const presentSessions = studentRecords.filter(
-        record => record.status === 'present'
-      ).length;
-      const lateSessions = studentRecords.filter(
-        record => record.status === 'late'
-      ).length;
-      const exemptedSessions = studentRecords.filter(
-        record =>
-          record.status === 'absent' && record.absence_type === 'exempted'
-      ).length;
-      const regularAbsentSessions = studentRecords.filter(
-        record =>
-          record.status === 'absent' && record.absence_type !== 'exempted'
-      ).length;
-
-      // For analytics: present + late + exempted count as attended
-      const attendedSessions =
-        presentSessions + lateSessions + exemptedSessions;
-      const attendancePercentage =
-        totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
-
-      // Calculate current streak - exempted counts as attended
-      const sortedRecords = studentRecords.sort(
-        (a, b) =>
-          new Date(b.session_date).getTime() -
-          new Date(a.session_date).getTime()
-      );
-
-      let currentStreak = 0;
-      for (const record of sortedRecords) {
-        if (
-          record.status === 'present' ||
-          record.status === 'late' ||
-          (record.status === 'absent' && record.absence_type === 'exempted')
-        ) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-
-      // Calculate rank among all students - exempted counts as attended for all students
-      const allStudentStats = students.map(student => {
-        const studentRecords = attendanceRecords.filter(
-          record => record.student_id === student.id
+        console.log(
+          '🔄 AttendanceOverview: Loading student data for epic:',
+          currentEpic.id
         );
-        const totalSessions = studentRecords.length;
-        const attendedSessions = studentRecords.filter(
-          record =>
-            record.status === 'present' ||
-            record.status === 'late' ||
-            (record.status === 'absent' && record.absence_type === 'exempted')
-        ).length;
-        const attendancePercentage =
-          totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
 
-        return { student, attendancePercentage };
-      });
+        // Get leaderboard data which includes all students and their stats
+        const leaderboardData =
+          await AttendanceCalculationsService.getLeaderboard({
+            cohortId: cohortData.id,
+            epicId: currentEpic.id,
+            limit: 100,
+            offset: 0,
+          });
 
-      // Sort by attendance percentage (descending)
-      allStudentStats.sort(
-        (a, b) => b.attendancePercentage - a.attendancePercentage
-      );
+        console.log(
+          '✅ AttendanceOverview: Leaderboard data received:',
+          leaderboardData
+        );
 
-      // Find rank
-      const rank =
-        allStudentStats.findIndex(stat => stat.student.id === studentData.id) +
-        1;
+        // Store leaderboard data for use in render
+        setLeaderboardData(leaderboardData);
 
-      return {
-        totalSessions,
-        presentSessions,
-        absentSessions: regularAbsentSessions,
-        lateSessions,
-        attendancePercentage,
-        currentStreak,
-        rank,
-      };
-    }, [studentData, currentEpic, students, attendanceRecords]);
+        // Transform leaderboard data to match expected format
+        const transformedStudents = leaderboardData.entries.map(
+          (entry: any) => ({
+            id: entry.student.id,
+            first_name: entry.student.first_name,
+            last_name: entry.student.last_name,
+            email: entry.student.email,
+            phone: entry.student.phone,
+            user_id: entry.student.user_id,
+            invite_status: entry.student.invite_status,
+            invited_at: entry.student.invited_at,
+            accepted_at: entry.student.accepted_at,
+            created_at: entry.student.created_at,
+            updated_at: entry.student.updated_at,
+            invitation_token: entry.student.invitation_token,
+            invitation_expires_at: entry.student.invitation_expires_at,
+            invited_by: entry.student.invited_by,
+            dropped_out_status: entry.student.dropped_out_status,
+            dropped_out_reason: entry.student.dropped_out_reason,
+            dropped_out_at: entry.student.dropped_out_at,
+            dropped_out_by: entry.student.dropped_out_by,
+            communication_preferences: entry.student.communication_preferences,
+            cohort_id: entry.student.cohort_id,
+          })
+        );
+
+        setStudents(transformedStudents);
+
+        // Get individual student stats
+        const studentStatsData =
+          await AttendanceCalculationsService.getStudentStats({
+            cohortId: cohortData.id,
+            epicId: currentEpic.id,
+            studentId: studentData.id,
+          });
+
+        console.log(
+          '✅ AttendanceOverview: Student stats received:',
+          studentStatsData
+        );
+
+        // Transform student stats to match expected format
+        const transformedStats: StudentStats = {
+          totalSessions: studentStatsData.totalSessions,
+          presentSessions: studentStatsData.presentSessions,
+          absentSessions: studentStatsData.absentSessions,
+          lateSessions: studentStatsData.lateSessions,
+          attendancePercentage: studentStatsData.attendancePercentage,
+          currentStreak: studentStatsData.currentStreak,
+          rank: studentStatsData.rank,
+        };
+
+        setStudentStats(transformedStats);
+
+        // Get attendance records for the leaderboard display
+        // For now, we'll use the leaderboard data to reconstruct attendance records
+        // This could be optimized in the future
+        const allRecords: AttendanceRecord[] = [];
+        leaderboardData.entries.forEach((entry: any) => {
+          if (entry.student.attendance_records) {
+            allRecords.push(...entry.student.attendance_records);
+          }
+        });
+        setAttendanceRecords(allRecords);
+      } catch (err) {
+        console.error(
+          '❌ AttendanceOverview: Error loading student data:',
+          err
+        );
+        setError(
+          err instanceof Error ? err.message : 'Failed to load student data'
+        );
+        toast.error('Failed to load attendance data');
+      }
+    }, [currentEpic, cohortData.id, studentData.id]);
 
     // Load initial data
     useEffect(() => {
@@ -257,7 +221,6 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
         try {
           await loadEpics();
-          await loadStudents();
         } catch (err) {
           console.error('Error loading data:', err);
           setError('Failed to load attendance data');
@@ -267,20 +230,14 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
       };
 
       loadData();
-    }, [cohortData?.id, loadEpics, loadStudents]);
+    }, [cohortData?.id, loadEpics]);
 
-    // Load attendance records when epic changes
+    // Load student data when epic changes
     useEffect(() => {
       if (currentEpic) {
-        loadAttendanceRecords();
+        loadStudentData();
       }
-    }, [currentEpic, cohortData.id, loadAttendanceRecords]);
-
-    // Calculate student stats when data changes
-    useEffect(() => {
-      const stats = calculateStudentStats();
-      setStudentStats(stats);
-    }, [calculateStudentStats]);
+    }, [currentEpic, loadStudentData]);
 
     // Handle epic change
     const handleEpicChange = (epicId: string) => {
@@ -326,6 +283,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
             <Card>
               <CardContent className='pt-6'>
                 <div className='text-center'>
+                  <AlertTriangle className='h-8 w-8 text-destructive mx-auto mb-4' />
                   <p className='text-red-600'>Error: {error}</p>
                   <p className='text-sm text-muted-foreground mt-2'>
                     Debug info: studentData={!!studentData}, cohortData=
@@ -352,60 +310,6 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
           <p className='text-muted-foreground mb-4'>
             Your attendance record and leaderboard position
           </p>
-
-          {/* Epic Selector and View Holidays Button - Hidden for students */}
-          {/* <div className='mb-6'>
-            {epics.length > 0 ? (
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-4'>
-                  <label className='text-sm font-medium'>Currently Active</label>
-                  <Select
-                    value={currentEpic?.id || ''}
-                    onValueChange={handleEpicChange}
-                  >
-                    <SelectTrigger className='w-64'>
-                      <SelectValue placeholder='Select an epic to view' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {epics.map(epic => (
-                        <SelectItem key={epic.id} value={epic.id}>
-                          {epic.epic?.name || epic.name}{' '}
-                          {epic.is_active && '(Currently Active)'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setHolidayDialogOpen(true)}
-                  className='flex items-center gap-2'
-                >
-                  <Calendar className='h-4 w-4' />
-                  View Holidays
-                </Button>
-              </div>
-            ) : (
-              <div className='flex items-center justify-between'>
-                <div className='text-sm text-muted-foreground'>
-                  No epics found for this cohort. Please contact your
-                  administrator.
-                </div>
-
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setHolidayDialogOpen(true)}
-                  className='flex items-center gap-2'
-                >
-                  <Calendar className='h-4 w-4' />
-                  View Holidays
-                </Button>
-              </div>
-            )}
-          </div> */}
 
           {/* Student Statistics Cards */}
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6'>
@@ -510,6 +414,16 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                     layout='grid'
                     hideFields={['email', 'late', 'absent']}
                     showExemptedNotice={false}
+                    studentStats={
+                      leaderboardData?.entries?.map((entry: any) => ({
+                        student: students.find(s => s.id === entry.student.id)!,
+                        attendancePercentage: entry.attendancePercentage,
+                        currentStreak: entry.currentStreak,
+                        totalSessions: entry.totalSessions,
+                        presentSessions: entry.presentSessions,
+                        rank: entry.rank,
+                      })) || []
+                    }
                   />
                 </CardContent>
               </Card>

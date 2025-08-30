@@ -17,6 +17,7 @@ interface ManageViewProps {
   isHoliday: boolean;
   currentHoliday: CohortEpic | null;
   cohort: Cohort;
+  currentEpic: CohortEpic | null;
   selectedDate: Date;
   sessions: {
     sessionNumber: number;
@@ -41,6 +42,7 @@ export const ManageView: React.FC<ManageViewProps> = ({
   isHoliday,
   currentHoliday,
   cohort,
+  currentEpic,
   selectedDate,
   sessions,
   selectedSession,
@@ -87,8 +89,9 @@ export const ManageView: React.FC<ManageViewProps> = ({
         sessions={sessions}
         selectedSession={selectedSession}
         onSessionChange={onSessionChange}
-        students={sortedStudents}
-        attendanceRecords={attendanceRecords}
+        cohortId={cohort.id}
+        epicId={currentEpic?.id || ''}
+        sessionDate={selectedDate.toISOString().split('T')[0]}
       />
 
       <AttendanceTable

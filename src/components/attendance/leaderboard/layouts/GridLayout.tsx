@@ -16,9 +16,21 @@ import {
   Calendar,
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { StatisticsCalculator } from '../utils/statisticsCalculator';
-import type { StudentStats } from '../utils/statisticsCalculator';
 import type { AttendanceRecord } from '@/types/attendance';
+
+interface StudentStats {
+  student: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  attendancePercentage: number;
+  currentStreak: number;
+  totalSessions: number;
+  presentSessions: number;
+  rank: number;
+}
 
 interface GridLayoutProps {
   studentStats: StudentStats[];
@@ -130,10 +142,6 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
           {topThree.map((stat, index) => {
             const isExempted = hasExemptedAbsences(stat.student.id);
             const exemptedCount = getExemptedCount(stat.student.id);
-            const breakdown = StatisticsCalculator.getSessionBreakdown(
-              stat.student.id,
-              attendanceRecords
-            );
 
             return (
               <Card
@@ -221,10 +229,6 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
           {rest.map(stat => {
             const isExempted = hasExemptedAbsences(stat.student.id);
             const exemptedCount = getExemptedCount(stat.student.id);
-            const breakdown = StatisticsCalculator.getSessionBreakdown(
-              stat.student.id,
-              attendanceRecords
-            );
 
             return (
               <Card

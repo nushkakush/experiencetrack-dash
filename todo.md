@@ -7,8 +7,7 @@ TODO
 5. Late Fee needed
 6. All reminder Emails need to be designed and vetted once
 7. Leave application process
-8. Diya Gandhi streak issue - cm5
-9. ✅ Leaderboard should give the same rank if they have the same points
+8. ✅ Leaderboard should give the same rank if they have the same points
 
 EQUIPMENT BUGS
 
@@ -29,4 +28,4 @@ TECHY
 - [ ] Testing Architecture Improvement
 - [ ] Manage one student being invited and registered to more than one cohort's flow.
 - lot of popup have 2 x buttons
--
+- [ ] Add Shimmer effects across the application

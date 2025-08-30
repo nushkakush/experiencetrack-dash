@@ -1,26 +1,32 @@
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SessionStatistics } from './SessionStatistics';
-import type { SessionInfo, CohortStudent, AttendanceRecord } from '@/types/attendance';
+import type {
+  SessionInfo,
+  CohortStudent,
+  AttendanceRecord,
+} from '@/types/attendance';
 
 interface SessionTabsProps {
   sessions: SessionInfo[];
   selectedSession: number;
   onSessionChange: (session: number) => void;
-  students: CohortStudent[];
-  attendanceRecords: AttendanceRecord[];
+  cohortId: string;
+  epicId: string;
+  sessionDate: string;
 }
 
 export const SessionTabs: React.FC<SessionTabsProps> = ({
   sessions,
   selectedSession,
   onSessionChange,
-  students,
-  attendanceRecords,
+  cohortId,
+  epicId,
+  sessionDate,
 }) => {
   if (sessions.length === 0) {
     return (
-      <div className="text-center py-4 text-muted-foreground">
+      <div className='text-center py-4 text-muted-foreground'>
         No sessions available for this date
       </div>
     );
@@ -30,10 +36,11 @@ export const SessionTabs: React.FC<SessionTabsProps> = ({
   if (sessions.length === 1) {
     const session = sessions[0];
     return (
-      <div className="space-y-4">
+      <div className='space-y-4'>
         <SessionStatistics
-          students={students}
-          attendanceRecords={attendanceRecords}
+          cohortId={cohortId}
+          epicId={epicId}
+          sessionDate={sessionDate}
           sessionNumber={session.sessionNumber}
           isSessionCancelled={session.isCancelled}
         />
@@ -43,27 +50,32 @@ export const SessionTabs: React.FC<SessionTabsProps> = ({
 
   // Multiple sessions - show tabs
   return (
-    <Tabs 
-      value={selectedSession.toString()} 
-      onValueChange={(value) => onSessionChange(parseInt(value))}
+    <Tabs
+      value={selectedSession.toString()}
+      onValueChange={value => onSessionChange(parseInt(value))}
     >
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className='grid w-full grid-cols-2'>
         {sessions.map(session => (
-          <TabsTrigger 
-            key={session.sessionNumber} 
+          <TabsTrigger
+            key={session.sessionNumber}
             value={session.sessionNumber.toString()}
           >
-            Session {session.sessionNumber} {session.isCancelled && '(Cancelled)'}
+            Session {session.sessionNumber}{' '}
+            {session.isCancelled && '(Cancelled)'}
           </TabsTrigger>
         ))}
       </TabsList>
-      
+
       {sessions.map(session => (
-        <TabsContent key={session.sessionNumber} value={session.sessionNumber.toString()}>
-          <div className="space-y-4">
+        <TabsContent
+          key={session.sessionNumber}
+          value={session.sessionNumber.toString()}
+        >
+          <div className='space-y-4'>
             <SessionStatistics
-              students={students}
-              attendanceRecords={attendanceRecords}
+              cohortId={cohortId}
+              epicId={epicId}
+              sessionDate={sessionDate}
               sessionNumber={session.sessionNumber}
               isSessionCancelled={session.isCancelled}
             />

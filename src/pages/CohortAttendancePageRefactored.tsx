@@ -197,8 +197,9 @@ const CohortAttendancePage = () => {
                   sessions={attendanceData.sessions}
                   selectedSession={selectedSession}
                   onSessionChange={handleSessionChange}
-                  students={attendanceData.students}
-                  attendanceRecords={attendanceData.attendanceRecords}
+                  cohortId={attendanceData.cohort.id}
+                  epicId={attendanceData.currentEpic?.id || ''}
+                  sessionDate={selectedDate.toISOString().split('T')[0]}
                 />
 
                 <AttendanceTable
@@ -239,9 +240,9 @@ const CohortAttendancePage = () => {
               </div>
             ) : currentView === 'calendar' ? (
               <CalendarView
+                cohortId={cohortId}
+                epicId={attendanceData.currentEpic?.id || ''}
                 selectedDate={selectedDate}
-                attendanceRecords={attendanceData.attendanceRecords}
-                currentEpic={attendanceData.currentEpic}
                 isHoliday={isHoliday}
                 currentHoliday={currentHoliday}
                 onDateSelect={handleDateChange}

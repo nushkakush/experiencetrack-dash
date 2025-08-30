@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   TrendingUp,
@@ -9,6 +9,7 @@ import {
   Info,
   Shield,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -17,117 +18,134 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { StatisticItem, StatisticsGrid } from '@/components/common/statistics';
-import type {
-  CohortStudent,
-  AttendanceRecord,
-  CohortEpic,
-} from '@/types/attendance';
-import {
-  calculateAttendanceBreakdown,
-  calculateAbsenceBreakdown,
-} from '@/utils/attendanceCalculations';
+import { attendanceCalculations } from '@/services/attendanceCalculations.service';
+import { toast } from 'sonner';
 
 interface AttendanceStatisticsProps {
-  students: CohortStudent[];
-  attendanceRecords: AttendanceRecord[]; // Session-specific records for today's stats
-  epicAttendanceRecords?: AttendanceRecord[]; // All epic records for streak calculation
-  currentEpic: CohortEpic | null;
+  cohortId: string;
+  epicId: string;
   selectedDate: Date;
-  isSessionCancelled?: boolean;
-  mode?: 'epic' | 'session'; // Changed from 'day' to 'epic'
+  mode?: 'epic' | 'session';
 }
 
 export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
-  students,
-  attendanceRecords,
-  epicAttendanceRecords,
-  currentEpic,
+  cohortId,
+  epicId,
   selectedDate,
-  isSessionCancelled = false,
-  mode = 'epic', // Default to epic-specific stats
+  mode = 'epic',
 }) => {
-  // Determine which records to use for calculations
-  const recordsToUse =
-    mode === 'epic' ? epicAttendanceRecords || [] : attendanceRecords;
+  const [epicStats, setEpicStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // For epic mode, use all epic records (no date filtering needed)
-  const epicRecords = mode === 'epic' ? recordsToUse : attendanceRecords;
+  useEffect(() => {
+    const fetchEpicStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  // Calculate attendance breakdown using utility function
-  const attendanceBreakdown = calculateAttendanceBreakdown(epicRecords);
-  const absenceBreakdown = calculateAbsenceBreakdown(epicRecords);
+        // Check if we have valid IDs
+        if (!cohortId || !epicId) {
+          console.warn('Missing cohortId or epicId for AttendanceStatistics');
+          return;
+        }
+
+        const stats = await attendanceCalculations.getEpicStats({
+          cohortId,
+          epicId,
+        });
+
+        setEpicStats(stats);
+      } catch (err) {
+        console.error('Failed to fetch epic stats:', err);
+        setError(
+          err instanceof Error ? err.message : 'Failed to fetch epic statistics'
+        );
+        toast.error('Failed to load epic statistics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEpicStats();
+  }, [cohortId, epicId]);
+
+  if (loading) {
+    return (
+      <StatisticsGrid>
+        {/* Epic Attendance Skeleton */}
+        <StatisticItem
+          title='Epic Attendance'
+          value='--'
+          subtitle='overall attendance'
+          icon={<Users className='h-4 w-4' />}
+        />
+
+        {/* Overall Average Skeleton */}
+        <StatisticItem
+          title='Overall Average'
+          value='--'
+          subtitle='Epic attendance rate'
+          icon={<TrendingUp className='h-4 w-4' />}
+        />
+
+        {/* Epic Status Skeleton */}
+        <StatisticItem
+          title='Epic Status'
+          value='--'
+          subtitle='Overall performance'
+          icon={<AlertTriangle className='h-4 w-4' />}
+        />
+
+        {/* Top Streak Skeleton */}
+        <StatisticItem
+          title='Top Streak'
+          value='--'
+          subtitle='consecutive sessions'
+          icon={<Crown className='h-4 w-4' />}
+        />
+
+        {/* Uninformed Absents Skeleton */}
+        <StatisticItem
+          title='Uninformed Absents'
+          value='--'
+          subtitle='For this epic only'
+          icon={<Bell className='h-4 w-4' />}
+        />
+      </StatisticsGrid>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='flex items-center justify-center p-8 text-red-600'>
+        <AlertTriangle className='h-8 w-8 mr-2' />
+        <span>Error loading statistics: {error}</span>
+      </div>
+    );
+  }
+
+  if (!epicStats) {
+    return (
+      <div className='flex items-center justify-center p-8 text-muted-foreground'>
+        <Info className='h-8 w-8 mr-2' />
+        <span>No attendance data available</span>
+      </div>
+    );
+  }
+
+  // Extract data from epicStats
+  const {
+    totalStudents,
+    totalSessions,
+    attendanceBreakdown,
+    absenceBreakdown,
+    topStreakData,
+    epicStatus,
+  } = epicStats;
 
   // Check if there are any exempted absences
   const hasExemptedAbsences = attendanceBreakdown.exempted > 0;
-
-  // Calculate top streak across all students (always use epic records for streaks)
-  const calculateTopStreak = () => {
-    if (students.length === 0) return { value: 0, studentNames: ['-'] };
-
-    let topStreak = 0;
-    let topStreakStudents: string[] = [];
-
-    students.forEach(student => {
-      // Get attendance records for this student (use epic records if available, otherwise fall back to session records)
-      const recordsToUse = epicAttendanceRecords || attendanceRecords;
-      const studentRecords = recordsToUse.filter(
-        record => record.student_id === student.id
-      );
-
-      // Sort by date descending (most recent first)
-      const sortedRecords = studentRecords.sort(
-        (a, b) =>
-          new Date(b.session_date).getTime() -
-          new Date(a.session_date).getTime()
-      );
-
-      // Calculate current streak for this student - exempted counts as attended
-      let currentStreak = 0;
-      for (const record of sortedRecords) {
-        if (
-          record.status === 'present' ||
-          record.status === 'late' ||
-          (record.status === 'absent' && record.absence_type === 'exempted')
-        ) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-
-      // Update top streak if this student has a higher streak
-      if (currentStreak > topStreak) {
-        topStreak = currentStreak;
-        topStreakStudents = [`${student.first_name} ${student.last_name}`];
-      }
-      // If this student has the same streak, add them to the list
-      else if (currentStreak === topStreak && currentStreak > 0) {
-        topStreakStudents.push(`${student.first_name} ${student.last_name}`);
-      }
-    });
-
-    return { value: topStreak, studentNames: topStreakStudents };
-  };
-
-  const topStreakData = calculateTopStreak();
-
-  // Determine attendance status for epic
-  const getEpicStatus = () => {
-    const totalStudents = students.length;
-    if (totalStudents === 0)
-      return { text: 'No Students', variant: 'default' as const };
-    if (attendanceBreakdown.total === 0)
-      return { text: 'No Sessions', variant: 'default' as const };
-    if (attendanceBreakdown.attendancePercentage >= 90)
-      return { text: 'Excellent', variant: 'success' as const };
-    if (attendanceBreakdown.attendancePercentage >= 75)
-      return { text: 'Good', variant: 'info' as const };
-    if (attendanceBreakdown.attendancePercentage >= 60)
-      return { text: 'Fair', variant: 'warning' as const };
-    return { text: 'Needs Attention', variant: 'error' as const };
-  };
-
-  const epicStatus = getEpicStatus();
 
   // Determine subtitle based on mode
   const getAttendanceSubtitle = () => {
@@ -179,14 +197,14 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                   <TooltipContent className='max-w-xs'>
                     <p>
                       {mode === 'epic'
-                        ? `Shows total attended sessions (present + late + exempted) out of all sessions in this epic. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${attendanceBreakdown.total} = ${attendanceBreakdown.attended}/${attendanceBreakdown.total}`
-                        : `Shows attended students (present + late + exempted) out of total students for this session. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${students.length} = ${attendanceBreakdown.attended}/${students.length}`}
+                        ? `Shows total attended sessions (present + late + exempted) out of all sessions in this epic. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${totalSessions} = ${attendanceBreakdown.attended}/${totalSessions}`
+                        : `Shows attended students (present + late + exempted) out of total students for this session. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${totalStudents} = ${attendanceBreakdown.attended}/${totalStudents}`}
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </div>
             }
-            value={`${attendanceBreakdown.attended}/${mode === 'epic' ? attendanceBreakdown.total : students.length}`}
+            value={`${attendanceBreakdown.attended}/${mode === 'epic' ? totalSessions : totalStudents}`}
             subtitle={getAttendanceSubtitle()}
             variant='default'
           />
@@ -203,8 +221,8 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                   <TooltipContent className='max-w-xs'>
                     <p>
                       {mode === 'epic'
-                        ? `Epic attendance rate calculated as: (attended sessions / total sessions) × 100 = (${attendanceBreakdown.attended} / ${attendanceBreakdown.total}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`
-                        : `Session attendance rate calculated as: (attended students / total students) × 100 = (${attendanceBreakdown.attended} / ${students.length}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`}
+                        ? `Epic attendance rate calculated as: (attended sessions / total sessions) × 100 = (${attendanceBreakdown.attended} / ${totalSessions}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`
+                        : `Session attendance rate calculated as: (attended students / total students) × 100 = (${attendanceBreakdown.attended} / ${totalStudents}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`}
                     </p>
                   </TooltipContent>
                 </Tooltip>

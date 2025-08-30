@@ -7,7 +7,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useLeaderboardCalculations } from './leaderboard/hooks/useLeaderboardCalculations';
 import { GridLayout } from './leaderboard/layouts/GridLayout';
 import { TableLayout } from './leaderboard/layouts/TableLayout';
 import type {
@@ -23,6 +22,14 @@ interface AttendanceLeaderboardProps {
   layout?: 'table' | 'grid';
   hideFields?: ('email' | 'late' | 'absent')[];
   showExemptedNotice?: boolean;
+  studentStats?: Array<{
+    student: CohortStudent;
+    attendancePercentage: number;
+    currentStreak: number;
+    totalSessions: number;
+    presentSessions: number;
+    rank: number;
+  }>;
 }
 
 export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
@@ -32,12 +39,8 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
   layout = 'table',
   hideFields = [],
   showExemptedNotice = true,
+  studentStats = [],
 }) => {
-  const { studentStats } = useLeaderboardCalculations(
-    students,
-    attendanceRecords
-  );
-
   // Check if any students have exempted absences
   const hasExemptedAbsences = students.some(student => {
     const studentRecords = attendanceRecords.filter(

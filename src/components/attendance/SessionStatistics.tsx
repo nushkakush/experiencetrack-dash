@@ -1,39 +1,141 @@
-import React from 'react';
-import { Users, TrendingUp, AlertTriangle, Bell, CheckCircle, Info } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  Bell,
+  CheckCircle,
+  Info,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { StatisticItem, StatisticsGrid } from '@/components/common/statistics';
-import type { CohortStudent, AttendanceRecord } from '@/types/attendance';
-import { calculateAttendanceBreakdown, calculateAbsenceBreakdown } from '@/utils/attendanceCalculations';
+import { attendanceCalculations } from '@/services/attendanceCalculations.service';
+import type { SessionStats } from '@/types/attendance';
+import { toast } from 'sonner';
 
 interface SessionStatisticsProps {
-  students: CohortStudent[];
-  attendanceRecords: AttendanceRecord[];
+  cohortId: string;
+  epicId: string;
+  sessionDate: string;
   sessionNumber: number;
   isSessionCancelled?: boolean;
 }
 
 export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
-  students,
-  attendanceRecords,
+  cohortId,
+  epicId,
+  sessionDate,
   sessionNumber,
   isSessionCancelled = false,
 }) => {
-  // Calculate attendance breakdown using utility function
-  const attendanceBreakdown = calculateAttendanceBreakdown(attendanceRecords);
-  const absenceBreakdown = calculateAbsenceBreakdown(attendanceRecords);
-  
-  const totalStudents = students.length;
-  const markedInSession = attendanceBreakdown.total;
-  const sessionAttendancePercentage = totalStudents > 0 ? (attendanceBreakdown.attended / totalStudents) * 100 : 0;
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSessionStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Check if we have valid IDs
+        if (!cohortId || !epicId) {
+          setError('Missing cohort or epic information');
+          return;
+        }
+
+        const stats = await attendanceCalculations.getSessionStats({
+          cohortId,
+          epicId,
+          sessionDate,
+          sessionNumber,
+        });
+
+        setSessionStats(stats);
+      } catch (err) {
+        console.error('Failed to fetch session stats:', err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to fetch session statistics'
+        );
+        toast.error('Failed to load session statistics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessionStats();
+  }, [cohortId, epicId, sessionDate, sessionNumber]);
+
+  if (loading) {
+    return (
+      <StatisticsGrid columns={4}>
+        {/* Session Attendance Skeleton */}
+        <StatisticItem
+          title='Session Attendance'
+          value='--'
+          subtitle='attended this session'
+          icon={<Users className='h-4 w-4' />}
+        />
+
+        {/* Session Status Skeleton */}
+        <StatisticItem
+          title='Session Status'
+          value='--'
+          subtitle='Current session status'
+          icon={<AlertTriangle className='h-4 w-4' />}
+        />
+
+        {/* Uninformed Absents Skeleton */}
+        <StatisticItem
+          title='Uninformed Absents'
+          value='--'
+          subtitle='For this session only'
+          icon={<Bell className='h-4 w-4' />}
+        />
+
+        {/* Exempted Absences Skeleton */}
+        <StatisticItem
+          title='Exempted Absences'
+          value='--'
+          subtitle='Counted as attended'
+          icon={<CheckCircle className='h-4 w-4' />}
+        />
+      </StatisticsGrid>
+    );
+  }
+
+  if (error || !sessionStats) {
+    return (
+      <div className='flex items-center justify-center p-8 text-destructive'>
+        <AlertTriangle className='h-8 w-8 mr-2' />
+        <span>Failed to load session statistics: {error}</span>
+      </div>
+    );
+  }
+
+  const { totalStudents, attendedCount, attendancePercentage, breakdown } =
+    sessionStats;
 
   // Determine session status
   const getSessionStatus = () => {
-    if (isSessionCancelled) return { text: 'Session Cancelled', variant: 'warning' as const };
-    if (totalStudents === 0) return { text: 'No Students', variant: 'default' as const };
-    if (markedInSession === totalStudents) return { text: 'Complete', variant: 'success' as const };
-    if (markedInSession === 0) return { text: 'Not Started', variant: 'default' as const };
-    if (attendanceBreakdown.regularAbsent > totalStudents * 0.5) return { text: 'Needs Attention', variant: 'error' as const };
+    if (isSessionCancelled)
+      return { text: 'Session Cancelled', variant: 'warning' as const };
+    if (totalStudents === 0)
+      return { text: 'No Students', variant: 'default' as const };
+    if (breakdown.total === totalStudents)
+      return { text: 'Complete', variant: 'success' as const };
+    if (breakdown.total === 0)
+      return { text: 'Not Started', variant: 'default' as const };
+    if (breakdown.regularAbsent > totalStudents * 0.5)
+      return { text: 'Needs Attention', variant: 'error' as const };
     return { text: 'In Progress', variant: 'info' as const };
   };
 
@@ -43,49 +145,57 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
     <TooltipProvider>
       <StatisticsGrid columns={4}>
         <StatisticItem
-          icon={<Users className="h-5 w-5" />}
+          icon={<Users className='h-5 w-5' />}
           title={
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               Session {sessionNumber} Attendance
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  <Info className='h-4 w-4 text-muted-foreground cursor-help' />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className='max-w-xs'>
                   <p>
-                    Shows attended students (present + late + exempted) out of total students for this session.
-                    <br /><br />
-                    Calculated as: ({attendanceBreakdown.attended}) / {totalStudents} = {attendanceBreakdown.attended}/{totalStudents}
-                    <br /><br />
-                    Attendance rate: {sessionAttendancePercentage.toFixed(1)}%
+                    Shows attended students (present + late + exempted) out of
+                    total students for this session.
+                    <br />
+                    <br />
+                    Calculated as: ({attendedCount}) / {totalStudents} ={' '}
+                    {attendedCount}/{totalStudents}
+                    <br />
+                    <br />
+                    Attendance rate: {attendancePercentage.toFixed(1)}%
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={`${attendanceBreakdown.attended}/${totalStudents}`}
-          subtitle={`${sessionAttendancePercentage.toFixed(1)}% attended this session`}
-          variant="default"
+          value={`${attendedCount}/${totalStudents}`}
+          subtitle={`${attendancePercentage.toFixed(1)}% attended this session`}
+          variant='default'
         />
 
         <StatisticItem
-          icon={<AlertTriangle className="h-5 w-5" />}
+          icon={<AlertTriangle className='h-5 w-5' />}
           title={
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               Session Status
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  <Info className='h-4 w-4 text-muted-foreground cursor-help' />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className='max-w-xs'>
                   <p>
                     Current status of this session:
-                    <br />• Complete: All students marked ({markedInSession}/{totalStudents})
-                    <br />• In Progress: Some students marked ({markedInSession}/{totalStudents})
+                    <br />• Complete: All students marked ({breakdown.total}/
+                    {totalStudents})
+                    <br />• In Progress: Some students marked ({breakdown.total}
+                    /{totalStudents})
                     <br />• Not Started: No students marked (0/{totalStudents})
-                    <br />• Needs Attention: More than 50% absent ({attendanceBreakdown.regularAbsent}/{totalStudents})
+                    <br />• Needs Attention: More than 50% absent (
+                    {breakdown.regularAbsent}/{totalStudents})
                     <br />• Session Cancelled: Session has been cancelled
-                    <br /><br />
+                    <br />
+                    <br />
                     Current: {sessionStatus.text}
                   </p>
                 </TooltipContent>
@@ -93,56 +203,70 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
             </div>
           }
           value={sessionStatus.text}
-          subtitle="Current session status"
-          variant="default"
+          subtitle='Current session status'
+          variant='default'
         />
 
         <StatisticItem
-          icon={<AlertTriangle className="h-5 w-5" />}
+          icon={<AlertTriangle className='h-5 w-5' />}
           title={
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               Uninformed Absents
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  <Info className='h-4 w-4 text-muted-foreground cursor-help' />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className='max-w-xs'>
                   <p>
-                    Number of absences in this session where no reason was provided or the absence type is "uninformed".
-                    <br /><br />
-                    Current count: {absenceBreakdown.uninformed} out of {attendanceBreakdown.regularAbsent} total absences
+                    Number of absences in this session where no reason was
+                    provided or the absence type is "uninformed".
+                    <br />
+                    <br />
+                    Current count: {breakdown.regularAbsent} out of{' '}
+                    {breakdown.regularAbsent} total absences
+                    <br />
+                    <br />
+                    Note: Detailed breakdown of informed vs uninformed absences
+                    will be available in future updates.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={absenceBreakdown.uninformed}
-          subtitle="For this session only"
-          variant="default"
+          value={breakdown.regularAbsent}
+          subtitle='For this session only'
+          variant='default'
         />
 
         <StatisticItem
-          icon={<Bell className="h-5 w-5" />}
+          icon={<Bell className='h-5 w-5' />}
           title={
-            <div className="flex items-center gap-2">
-              Informed Absents
+            <div className='flex items-center gap-2'>
+              Exempted Absences
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  <Info className='h-4 w-4 text-muted-foreground cursor-help' />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+                <TooltipContent className='max-w-xs'>
                   <p>
-                    Number of absences in this session where a reason was provided (absence type is "informed").
-                    <br /><br />
-                    Current count: {absenceBreakdown.informed} out of {attendanceBreakdown.regularAbsent} total absences
+                    Number of absences in this session that are marked as
+                    "exempted" (counted as attended for attendance percentage).
+                    <br />
+                    <br />
+                    Current count: {breakdown.exempted} out of {breakdown.total}{' '}
+                    total records
+                    <br />
+                    <br />
+                    Exempted absences are counted as attended for attendance
+                    calculations.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={absenceBreakdown.informed}
-          subtitle="For this session only"
-          variant="default"
+          value={breakdown.exempted}
+          subtitle='Counted as attended'
+          variant='default'
         />
       </StatisticsGrid>
     </TooltipProvider>

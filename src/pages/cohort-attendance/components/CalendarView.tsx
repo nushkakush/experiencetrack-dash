@@ -12,7 +12,9 @@ import {
   Clock,
   Users,
   Star,
+  AlertTriangle,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   format,
   startOfMonth,
@@ -24,17 +26,17 @@ import {
   subMonths,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { attendanceCalculations } from '@/services/attendanceCalculations.service';
 import { HolidaysService } from '@/services/holidays.service';
-import type { AttendanceRecord, CohortEpic } from '@/types/attendance';
+import { toast } from 'sonner';
 import type { Holiday } from '@/types/holiday';
 
 interface CalendarViewProps {
+  cohortId: string;
+  epicId: string;
   selectedDate: Date;
-  attendanceRecords: AttendanceRecord[];
-  currentEpic: CohortEpic | null;
   isHoliday: boolean;
-  currentHoliday: CohortEpic | null;
+  currentHoliday: any | null;
   onDateSelect: (date: Date) => void;
   onMarkHoliday: () => void;
 }
@@ -45,6 +47,7 @@ interface SessionData {
   presentCount: number;
   absentCount: number;
   lateCount: number;
+  exemptedCount: number;
   attendancePercentage: number;
 }
 
@@ -60,97 +63,81 @@ interface DayHoliday {
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
+  cohortId,
+  epicId,
   selectedDate,
-  attendanceRecords = [],
-  currentEpic,
   isHoliday,
   currentHoliday,
   onDateSelect,
   onMarkHoliday,
 }) => {
   console.log('🎯 CalendarView: Component rendered with props:', {
+    cohortId,
+    epicId,
     selectedDate,
-    attendanceRecordsLength: attendanceRecords.length,
-    currentEpic,
     isHoliday,
     currentHoliday,
   });
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [monthlyAttendanceData, setMonthlyAttendanceData] = useState<
-    AttendanceRecord[]
-  >([]);
+  const [calendarData, setCalendarData] = useState<any>(null);
   const [monthlyHolidays, setMonthlyHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(false);
   const [holidaysLoading, setHolidaysLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Fetch attendance data for the entire month
+  // Fetch calendar data for the current month
   useEffect(() => {
-    const fetchMonthlyAttendance = async () => {
-      console.log('🔄 CalendarView: Starting monthly attendance fetch');
-      console.log('📊 CalendarView: currentEpic:', currentEpic);
+    const fetchCalendarData = async () => {
+      console.log('🔄 CalendarView: Starting calendar data fetch');
+      console.log('📊 CalendarView: cohortId:', cohortId);
+      console.log('📊 CalendarView: epicId:', epicId);
       console.log('📅 CalendarView: currentMonth:', currentMonth);
 
-      if (!currentEpic?.cohort_id || !currentEpic?.id) {
-        console.log('❌ CalendarView: Missing cohort_id or epic_id');
-        console.log('❌ CalendarView: cohort_id:', currentEpic?.cohort_id);
-        console.log('❌ CalendarView: epic_id:', currentEpic?.id);
+      if (!cohortId || !epicId) {
+        console.log('❌ CalendarView: Missing cohortId or epicId');
         return;
       }
 
       setLoading(true);
+      setError(null);
+
       try {
-        const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-        const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+        const month = format(currentMonth, 'yyyy-MM');
 
-        console.log('🔍 CalendarView: Fetching data for date range:', {
-          startDate,
-          endDate,
-        });
-        console.log('🔍 CalendarView: cohort_id:', currentEpic.cohort_id);
         console.log(
-          '🔍 CalendarView: epic_id (cohort_epics.id):',
-          currentEpic.id
+          '🔍 CalendarView: Fetching calendar data for month:',
+          month
         );
 
-        const { data, error } = await supabase
-          .from('attendance_records')
-          .select('*')
-          .eq('cohort_id', currentEpic.cohort_id)
-          .eq('epic_id', currentEpic.id) // Use currentEpic.id instead of currentEpic.epic_id
-          .gte('session_date', startDate)
-          .lte('session_date', endDate);
+        const data = await attendanceCalculations.getCalendarData({
+          cohortId,
+          epicId,
+          month,
+        });
 
-        console.log('📊 CalendarView: Supabase response:', { data, error });
-
-        if (error) {
-          console.error(
-            '❌ CalendarView: Error fetching monthly attendance:',
-            error
-          );
-          return;
-        }
-
-        console.log('✅ CalendarView: Setting monthly attendance data:', data);
-        setMonthlyAttendanceData(data || []);
-      } catch (error) {
-        console.error(
-          '❌ CalendarView: Exception fetching monthly attendance:',
-          error
+        console.log('✅ CalendarView: Calendar data received:', data);
+        setCalendarData(data);
+      } catch (err) {
+        console.error('❌ CalendarView: Error fetching calendar data:', err);
+        setError(
+          err instanceof Error ? err.message : 'Failed to fetch calendar data'
         );
+        toast.error('Failed to load calendar data');
       } finally {
         setLoading(false);
-        console.log('🏁 CalendarView: Fetch completed');
+        console.log('🏁 CalendarView: Calendar data fetch completed');
       }
     };
 
-    fetchMonthlyAttendance();
-  }, [currentMonth, currentEpic?.cohort_id, currentEpic?.id]);
+    fetchCalendarData();
+  }, [currentMonth, cohortId, epicId]);
 
   // Fetch holidays for the current month
   useEffect(() => {
     const fetchMonthlyHolidays = async () => {
-      if (!currentEpic?.cohort_id) return;
+      if (!cohortId) return;
 
       setHolidaysLoading(true);
       try {
@@ -169,7 +156,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           HolidaysService.getHolidays({
             holidayType: 'cohort_specific',
             status: 'published',
-            cohortId: currentEpic.cohort_id,
+            cohortId: cohortId,
             year,
           }),
         ]);
@@ -193,7 +180,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     };
 
     fetchMonthlyHolidays();
-  }, [currentMonth, currentEpic?.cohort_id]);
+  }, [currentMonth, cohortId]);
 
   // Create a map of holidays by date
   const holidaysMap = useMemo(() => {
@@ -210,80 +197,51 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return map;
   }, [monthlyHolidays]);
 
-  // Create a map of attendance data by date and session number
+  // Create a map of attendance data by date and session number from edge function data
   const attendanceDataMap = useMemo(() => {
-    console.log('🗺️ CalendarView: Creating attendance data map');
     console.log(
-      '📊 CalendarView: monthlyAttendanceData length:',
-      monthlyAttendanceData.length
+      '🗺️ CalendarView: Creating attendance data map from edge function data'
     );
-    console.log(
-      '📊 CalendarView: monthlyAttendanceData sample:',
-      monthlyAttendanceData.slice(0, 3)
-    );
+
+    if (!calendarData || !calendarData.days) {
+      console.log('❌ CalendarView: No calendar data available');
+      return new Map<string, DayData>();
+    }
 
     const map = new Map<string, DayData>();
 
-    // Use monthly attendance data instead of the passed attendanceRecords
-    monthlyAttendanceData.forEach((record, index) => {
-      console.log(`📝 CalendarView: Processing record ${index}:`, record);
+    calendarData.days.forEach((day: any) => {
+      const dateStr = day.date;
+      console.log(`📅 CalendarView: Processing day ${dateStr}:`, day);
 
-      if (record.session_date) {
-        const dateStr = record.session_date.split('T')[0]; // Get just the date part
-        const sessionNumber = record.session_number || 1;
-        console.log(
-          `📅 CalendarView: Date string: ${dateStr}, Session: ${sessionNumber}`
-        );
+      if (!map.has(dateStr)) {
+        map.set(dateStr, {
+          sessions: new Map(),
+          totalSessions: 0,
+          overallAttendance: 0,
+        });
+      }
 
-        if (!map.has(dateStr)) {
-          map.set(dateStr, {
-            sessions: new Map(),
-            totalSessions: 0,
-            overallAttendance: 0,
-          });
-        }
+      const dayData = map.get(dateStr)!;
 
-        const dayData = map.get(dateStr)!;
+      // Process sessions for this day
+      if (day.sessions && Array.isArray(day.sessions)) {
+        day.sessions.forEach((session: any) => {
+          const sessionNumber = session.sessionNumber || 1;
 
-        if (!dayData.sessions.has(sessionNumber)) {
           dayData.sessions.set(sessionNumber, {
             sessionNumber,
-            totalStudents: 0,
-            presentCount: 0,
-            absentCount: 0,
-            lateCount: 0,
-            attendancePercentage: 0,
+            totalStudents: session.totalStudents || 0,
+            presentCount: session.presentCount || 0,
+            absentCount: session.absentCount || 0,
+            lateCount: session.lateCount || 0,
+            exemptedCount: session.exemptedCount || 0,
+            attendancePercentage: session.attendancePercentage || 0,
           });
-        }
-
-        const sessionData = dayData.sessions.get(sessionNumber)!;
-        sessionData.totalStudents++;
-
-        if (record.status === 'present') sessionData.presentCount++;
-        else if (record.status === 'absent') sessionData.absentCount++;
-        else if (record.status === 'late') sessionData.lateCount++;
-
-        sessionData.attendancePercentage =
-          sessionData.totalStudents > 0
-            ? Math.round(
-                (sessionData.presentCount / sessionData.totalStudents) * 100
-              )
-            : 0;
-
-        console.log(
-          `📊 CalendarView: Updated session data for ${dateStr} Session ${sessionNumber}:`,
-          sessionData
-        );
-      } else {
-        console.log(
-          `⚠️ CalendarView: Record ${index} has no session_date:`,
-          record
-        );
+        });
       }
-    });
 
-    // Calculate overall statistics for each day
-    map.forEach((dayData, dateStr) => {
+      // Calculate overall statistics for this day
       const sessions = Array.from(dayData.sessions.values());
       dayData.totalSessions = sessions.length;
 
@@ -298,12 +256,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       }
     });
 
-    console.log(
-      '🗺️ CalendarView: Final attendance data map:',
-      Array.from(map.entries())
-    );
+    console.log('🗺️ CalendarView: Attendance data map created:', map);
     return map;
-  }, [monthlyAttendanceData]);
+  }, [calendarData]);
 
   // Generate calendar days for current month
   const calendarDays = useMemo(() => {
@@ -324,19 +279,38 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // Calculate monthly statistics
   const monthlyStats = useMemo(() => {
-    const dates = Array.from(attendanceDataMap.keys());
-    const daysWithAttendance = dates.length;
-    const totalSessions = Array.from(attendanceDataMap.values()).reduce(
-      (sum, data) => sum + data.totalSessions,
+    if (!calendarData || !calendarData.days) {
+      return {
+        daysWithAttendance: 0,
+        totalSessions: 0,
+        averageAttendance: 0,
+      };
+    }
+
+    const daysWithAttendance = calendarData.days.filter(
+      (day: any) => day.sessions && day.sessions.length > 0
+    ).length;
+
+    const totalSessions = calendarData.days.reduce(
+      (total: number, day: any) =>
+        total + (day.sessions ? day.sessions.length : 0),
       0
     );
-    const totalAttendance = Array.from(attendanceDataMap.values()).reduce(
-      (sum, data) => sum + data.overallAttendance,
-      0
+
+    const allSessionPercentages = calendarData.days.flatMap((day: any) =>
+      day.sessions
+        ? day.sessions.map((session: any) => session.attendancePercentage || 0)
+        : []
     );
+
     const averageAttendance =
-      daysWithAttendance > 0
-        ? Math.round(totalAttendance / daysWithAttendance)
+      allSessionPercentages.length > 0
+        ? Math.round(
+            allSessionPercentages.reduce(
+              (sum: number, pct: number) => sum + pct,
+              0
+            ) / allSessionPercentages.length
+          )
         : 0;
 
     return {
@@ -344,7 +318,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       totalSessions,
       averageAttendance,
     };
-  }, [attendanceDataMap]);
+  }, [calendarData]);
 
   const getAttendanceColor = (percentage: number) => {
     if (percentage >= 90) return 'text-green-600';
@@ -388,58 +362,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     onDateSelect(date);
   };
 
-  // Show loading state
   if (loading) {
     return (
       <div className='space-y-6'>
+        {/* Calendar Header Skeleton */}
         <div className='flex items-center justify-between'>
-          <div>{/* Removed redundant subtitle */}</div>
-
+          <div></div>
           <div className='flex items-center gap-4'>
-            {/* Monthly Statistics */}
+            {/* Monthly Statistics Skeleton */}
             <div className='flex items-center gap-6 p-4 bg-muted/50 rounded-lg'>
               <div className='text-center'>
-                <div className='text-2xl font-bold text-blue-600'>
-                  {monthlyStats.daysWithAttendance}
-                </div>
-                <div className='text-sm text-muted-foreground'>
-                  Days with Sessions
-                </div>
+                <Skeleton className='h-8 w-16 mb-2' />
+                <Skeleton className='h-4 w-20' />
               </div>
               <div className='text-center'>
-                <div className='text-2xl font-bold text-purple-600'>
-                  {monthlyStats.totalSessions}
-                </div>
-                <div className='text-sm text-muted-foreground'>
-                  Total Sessions
-                </div>
+                <Skeleton className='h-8 w-16 mb-2' />
+                <Skeleton className='h-4 w-20' />
               </div>
               <div className='text-center'>
-                <div className='text-2xl font-bold text-green-600'>
-                  {monthlyStats.averageAttendance}%
-                </div>
-                <div className='text-sm text-muted-foreground'>
-                  Average Attendance
-                </div>
+                <Skeleton className='h-8 w-16 mb-2' />
+                <Skeleton className='h-4 w-20' />
               </div>
             </div>
-
-            {/* Navigation */}
+            {/* Navigation Skeleton */}
             <div className='flex items-center gap-2'>
-              <Button variant='outline' size='sm' onClick={handlePreviousMonth}>
-                <ChevronLeft className='h-4 w-4' />
-              </Button>
-              <span className='text-lg font-semibold min-w-[120px] text-center'>
-                {format(currentMonth, 'MMMM yyyy')}
-              </span>
-              <Button variant='outline' size='sm' onClick={handleNextMonth}>
-                <ChevronRight className='h-4 w-4' />
-              </Button>
+              <Skeleton className='h-9 w-9' />
+              <Skeleton className='h-6 w-32' />
+              <Skeleton className='h-9 w-9' />
             </div>
           </div>
         </div>
 
+        {/* Calendar Grid Skeleton */}
         <div className='bg-white dark:bg-gray-900 rounded-lg border shadow-sm'>
+          {/* Week day headers */}
           <div className='grid grid-cols-7 border-b'>
             {weekDays.map(day => (
               <div
@@ -450,19 +406,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Calendar Grid Skeleton */}
           <div className='grid grid-cols-7'>
-            {Array.from({ length: 42 }, (_, i) => (
+            {Array.from({ length: 42 }, (_, index) => (
               <div
-                key={i}
-                className='min-h-[120px] p-3 border-r border-b animate-pulse'
+                key={`skeleton-${index}`}
+                className='min-h-[120px] border-r border-b bg-muted/20 p-2'
               >
-                <div className='h-4 bg-muted rounded mb-2'></div>
-                <div className='h-3 bg-muted rounded mb-1'></div>
-                <div className='h-3 bg-muted rounded'></div>
+                <Skeleton className='h-4 w-8 mb-2' />
+                <div className='space-y-1'>
+                  <Skeleton className='h-3 w-full' />
+                  <Skeleton className='h-3 w-3/4' />
+                  <Skeleton className='h-3 w-1/2' />
+                </div>
               </div>
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='flex items-center justify-center p-8 text-red-600'>
+        <AlertTriangle className='h-8 w-8 mr-2' />
+        <span>Error loading calendar: {error}</span>
       </div>
     );
   }
@@ -636,7 +606,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           <div className='flex items-center gap-1 text-muted-foreground'>
                             <Users className='h-2.5 w-2.5' />
                             <span>
-                              {session.presentCount}/{session.totalStudents}
+                              {session.presentCount +
+                                session.lateCount +
+                                session.exemptedCount}
+                              /{session.totalStudents}
                             </span>
                           </div>
                         </div>
