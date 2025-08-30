@@ -18,6 +18,8 @@ import {
   StudentFilters,
   StudentTableRow,
   EmailConfirmationDialog,
+  BulkActions,
+  BulkSelectionCheckbox,
 } from './components';
 
 interface CohortStudentsTableProps {
@@ -62,9 +64,11 @@ export default function CohortStudentsTable({
     scholarshipAssignments,
     scholarshipDetails,
     loadingScholarships,
+    updatingScholarshipId,
     paymentPlanAssignments,
     paymentPlanDetails,
     loadingPaymentPlans,
+    updatingPaymentPlanId,
     customFeeStructures,
     isFeeSetupComplete,
     loadingFeeSetup,
@@ -72,6 +76,14 @@ export default function CohortStudentsTable({
     setDroppedOutDialogOpen,
     selectedStudentForDropout,
     setSelectedStudentForDropout,
+
+    // Bulk selection state
+    selectedStudentIds,
+    selectedStudents,
+    filteredSelectedStudents,
+    isAllSelected,
+    isIndeterminate,
+    isBulkProcessing,
 
     // Computed values
     filteredStudents,
@@ -92,12 +104,20 @@ export default function CohortStudentsTable({
     handleMarkAsDroppedOut,
     handleDroppedOutSuccess,
     handleReverted,
+    refreshData,
+
+    // Bulk selection actions
+    handleSelectAll,
+    handleSelectStudent,
+    handleClearSelection,
+    handleBulkAssignScholarship,
+    handleBulkAssignPaymentPlan,
+    handleBulkDeleteStudents,
   } = useCohortStudentsTable({
     students,
     scholarships,
     onStudentDeleted,
     onStudentUpdated,
-    onScholarshipAssigned,
     cohortName,
   });
 
@@ -199,6 +219,16 @@ export default function CohortStudentsTable({
         onClearFilters={clearFilters}
       />
 
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedStudents={filteredSelectedStudents}
+        scholarships={scholarships}
+        onAssignScholarship={handleBulkAssignScholarship}
+        onAssignPaymentPlan={handleBulkAssignPaymentPlan}
+        onDeleteStudents={handleBulkDeleteStudents}
+        disabled={isBulkProcessing}
+      />
+
       {/* Results Summary */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
@@ -211,6 +241,12 @@ export default function CohortStudentsTable({
               <span>Refreshing...</span>
             </div>
           )}
+          {(loadingScholarships || loadingPaymentPlans) && (
+            <div className='flex items-center gap-1 text-xs text-amber-600'>
+              <div className='h-3 w-3 animate-spin rounded-full border-2 border-amber-600 border-t-transparent'></div>
+              <span>Loading fee details...</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -219,11 +255,41 @@ export default function CohortStudentsTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className='w-12'>
+                <BulkSelectionCheckbox
+                  checked={isAllSelected}
+                  onCheckedChange={handleSelectAll}
+                  indeterminate={isIndeterminate}
+                  disabled={isBulkProcessing}
+                  showSelectAll={true}
+                  onClearSelection={handleClearSelection}
+                  selectedCount={filteredSelectedStudents.length}
+                  totalCount={filteredStudents.length}
+                />
+              </TableHead>
               <TableHead>Student</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Phone</TableHead>
-              {canAssignScholarships && <TableHead>Scholarship</TableHead>}
-              {canAssignScholarships && <TableHead>Payment Plan</TableHead>}
+              {canAssignScholarships && (
+                <TableHead>
+                  <div className='flex items-center gap-2'>
+                    Scholarship
+                    {loadingScholarships && (
+                      <div className='h-3 w-3 animate-spin rounded-full border-2 border-amber-600 border-t-transparent'></div>
+                    )}
+                  </div>
+                </TableHead>
+              )}
+              {canAssignScholarships && (
+                <TableHead>
+                  <div className='flex items-center gap-2'>
+                    Payment Plan
+                    {loadingPaymentPlans && (
+                      <div className='h-3 w-3 animate-spin rounded-full border-2 border-amber-600 border-t-transparent'></div>
+                    )}
+                  </div>
+                </TableHead>
+              )}
               {canManageStudents && <TableHead>Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -236,9 +302,11 @@ export default function CohortStudentsTable({
                 scholarshipAssignments={scholarshipAssignments}
                 scholarshipDetails={scholarshipDetails}
                 loadingScholarships={loadingScholarships}
+                updatingScholarshipId={updatingScholarshipId}
                 paymentPlanAssignments={paymentPlanAssignments}
                 paymentPlanDetails={paymentPlanDetails}
                 loadingPaymentPlans={loadingPaymentPlans}
+                updatingPaymentPlanId={updatingPaymentPlanId}
                 customFeeStructures={customFeeStructures}
                 isFeeSetupComplete={isFeeSetupComplete}
                 deletingStudentId={deletingStudentId}
@@ -254,6 +322,12 @@ export default function CohortStudentsTable({
                 onMarkAsDroppedOut={handleMarkAsDroppedOut}
                 onDeleteStudent={handleDeleteStudent}
                 shouldShowEmailOption={shouldShowEmailOption}
+                // Bulk selection props
+                isSelected={selectedStudentIds.has(student.id)}
+                onSelectChange={checked =>
+                  handleSelectStudent(student.id, checked)
+                }
+                isBulkProcessing={isBulkProcessing}
               />
             ))}
           </TableBody>

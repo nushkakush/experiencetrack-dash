@@ -1,7 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
@@ -18,7 +17,6 @@ import {
   ErrorState,
   CohortHeader,
   PaymentsTab,
-  CommunicationTab,
 } from './fee-payment-dashboard/components';
 
 type FeePaymentDashboardProps = Record<string, never>;
@@ -41,10 +39,8 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     settingsModalOpen,
     settingsMode,
     selectedRows,
-    activeTab,
     setSettingsModalOpen,
     setSettingsMode,
-    setActiveTab,
     handleSettingsComplete,
     handleBackClick,
     handleStudentSelect,
@@ -60,17 +56,13 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
   } = usePendingVerifications(cohortId);
 
   const handleVerificationClick = () => {
-    // Switch to payments tab and trigger a refetch
-    setActiveTab('payments');
+    // Trigger a refetch
     refetchPendingCount();
   };
 
   const handleVerificationUpdate = async () => {
     // Refresh both pending count and main dashboard data
-    await Promise.all([
-      refetchPendingCount(),
-      loadData()
-    ]);
+    await Promise.all([refetchPendingCount(), loadData()]);
   };
 
   const handlePendingCountUpdate = async () => {
@@ -112,32 +104,21 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
           }}
         />
 
-        {/* Navigation Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className='grid w-full grid-cols-2'>
-            <TabsTrigger value='payments'>Payments</TabsTrigger>
-            <TabsTrigger value='communication'>Communication</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value='payments' className='mt-6'>
-            <PaymentsTab
-              students={students}
-              selectedRows={selectedRows}
-              feeStructure={feeStructure}
-              onStudentSelect={handleStudentSelect}
-              onCloseStudentDetails={handleCloseStudentDetails}
-              onRowSelection={handleRowSelection}
-              onSelectAll={isSelected => handleSelectAll(isSelected, students)}
-              onExportSelected={students => handleExportSelected(students)}
-              onVerificationUpdate={handleVerificationUpdate}
-              onPendingCountUpdate={handlePendingCountUpdate}
-            />
-          </TabsContent>
-
-          <TabsContent value='communication' className='mt-6'>
-            <CommunicationTab students={students} />
-          </TabsContent>
-        </Tabs>
+        {/* Payments Interface */}
+        <div className='mt-6'>
+          <PaymentsTab
+            students={students}
+            selectedRows={selectedRows}
+            feeStructure={feeStructure}
+            onStudentSelect={handleStudentSelect}
+            onCloseStudentDetails={handleCloseStudentDetails}
+            onRowSelection={handleRowSelection}
+            onSelectAll={isSelected => handleSelectAll(isSelected, students)}
+            onExportSelected={students => handleExportSelected(students)}
+            onVerificationUpdate={handleVerificationUpdate}
+            onPendingCountUpdate={handlePendingCountUpdate}
+          />
+        </div>
 
         {/* Settings Modal */}
         {cohortData && (

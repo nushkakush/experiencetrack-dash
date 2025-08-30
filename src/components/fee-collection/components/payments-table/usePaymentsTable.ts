@@ -12,7 +12,7 @@ export const usePaymentsTable = ({ students }: UsePaymentsTableProps) => {
   const [scholarshipFilter, setScholarshipFilter] = useState<string>('all');
 
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    const filtered = students.filter(student => {
       // Create full name for searching (first + last name with space)
       const fullName = [student.student?.first_name, student.student?.last_name]
         .filter(Boolean)
@@ -76,6 +76,22 @@ export const usePaymentsTable = ({ students }: UsePaymentsTableProps) => {
       return (
         matchesSearch && matchesStatus && matchesPlan && matchesScholarship
       );
+    });
+
+    // Sort filtered students alphabetically by first name, then last name
+    return filtered.sort((a, b) => {
+      const aFirstName = (a.student?.first_name || '').toLowerCase();
+      const bFirstName = (b.student?.first_name || '').toLowerCase();
+      const aLastName = (a.student?.last_name || '').toLowerCase();
+      const bLastName = (b.student?.last_name || '').toLowerCase();
+
+      // First compare by first name
+      if (aFirstName !== bFirstName) {
+        return aFirstName.localeCompare(bFirstName);
+      }
+
+      // If first names are the same, compare by last name
+      return aLastName.localeCompare(bLastName);
     });
   }, [students, searchTerm, statusFilter, planFilter, scholarshipFilter]);
 

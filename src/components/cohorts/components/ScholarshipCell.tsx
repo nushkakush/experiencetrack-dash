@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Award, CheckCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CohortStudent } from '@/types/cohort';
 import { Scholarship, StudentScholarshipWithDetails } from '@/types/fee';
 import StudentScholarshipDialog from '../StudentScholarshipDialog';
@@ -28,7 +29,12 @@ export const ScholarshipCell: React.FC<ScholarshipCellProps> = ({
     <div className='space-y-3'>
       {/* Scholarship Section */}
       <div className='flex items-center justify-between'>
-        {hasScholarship ? (
+        {loading ? (
+          <div className='min-w-0 flex-1'>
+            <Skeleton className='h-4 w-24 mb-1' />
+            <Skeleton className='h-3 w-16' />
+          </div>
+        ) : hasScholarship ? (
           <div className='min-w-0'>
             <div className='text-sm font-medium text-green-700 dark:text-green-300'>
               {scholarshipDetails?.scholarship?.name || 'Scholarship'}
@@ -64,7 +70,7 @@ export const ScholarshipCell: React.FC<ScholarshipCellProps> = ({
                   ? 'Edit scholarship'
                   : 'Assign scholarship'
             }
-            disabled={loading || !isFeeSetupComplete}
+            disabled={!isFeeSetupComplete}
           >
             {hasScholarship ? (
               <CheckCircle className='h-4 w-4' />

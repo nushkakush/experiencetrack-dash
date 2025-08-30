@@ -4,6 +4,14 @@ BEFORE PROGRAM APP
 2. Slack Integration
 3. Razorpay E Nach for Instalment wise
 4. Razorpay set up
+5. Handle saving of admission fee date as well
+6. Need to change all lit school IDs to personal IDs on the dashboard.
+7. Did Kuldeep Rajput drop out from CM1?
+8. Meeth Jain, calc for cp1 seems to be wrong on sheet.
+9. Saheel, Jeenal, Dikshy CM4 status
+10. Status of Mokshal Gandhi (cm5)
+11. Saheel Lokhande and Dikshy shah calc for cm4 seems to be wrong on sheet.
+12. Teertha calcualtion for CM5 seems to be wrong
 
 AFTER PROGRAM APP
 

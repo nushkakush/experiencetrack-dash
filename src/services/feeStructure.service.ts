@@ -10,21 +10,61 @@ export class FeeStructureService {
   static async upsertFeeStructure(
     feeStructure: FeeStructureInsert
   ): Promise<FeeStructure | null> {
-    const { data, error } = await supabase
-      .from('fee_structures')
-      .upsert(feeStructure, {
-        onConflict: 'cohort_id,structure_type',
-        ignoreDuplicates: false,
-      })
-      .select()
-      .single();
+    // For cohort structures, we need to handle the case where only one should exist per cohort
+    if (feeStructure.structure_type === 'cohort') {
+      // First, try to find existing cohort structure
+      const { data: existing } = await supabase
+        .from('fee_structures')
+        .select('id')
+        .eq('cohort_id', feeStructure.cohort_id)
+        .eq('structure_type', 'cohort')
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error upserting fee structure:', error);
-      return null;
+      if (existing) {
+        // Update existing cohort structure
+        const { data, error } = await supabase
+          .from('fee_structures')
+          .update(feeStructure)
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating fee structure:', error);
+          return null;
+        }
+        return data;
+      } else {
+        // Create new cohort structure
+        const { data, error } = await supabase
+          .from('fee_structures')
+          .insert(feeStructure)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating fee structure:', error);
+          return null;
+        }
+        return data;
+      }
+    } else {
+      // For custom structures, use ID for conflict resolution
+      const { data, error } = await supabase
+        .from('fee_structures')
+        .upsert(feeStructure, {
+          onConflict: 'id',
+          ignoreDuplicates: false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error upserting fee structure:', error);
+        return null;
+      }
+      return data;
     }
-
-    return data;
   }
 
   static async createCustomPlanFromCohort(
@@ -68,7 +108,7 @@ export class FeeStructureService {
     const { data, error } = await supabase
       .from('fee_structures')
       .upsert(customPlan, {
-        onConflict: 'cohort_id,student_id,structure_type',
+        onConflict: 'id',
         ignoreDuplicates: false,
       })
       .select()
@@ -139,7 +179,8 @@ export class FeeStructureService {
     const baseRow = existingCustom || cohortStructure;
 
     const payload: FeeStructureInsert = {
-      // When upserting, let PostgREST identify row by conflict target
+      // Include the existing ID if we found a custom plan
+      ...(existingCustom && { id: existingCustom.id }),
       cohort_id: cohortId,
       student_id: studentId,
       structure_type: 'custom',
@@ -169,7 +210,7 @@ export class FeeStructureService {
     const { data, error } = await supabase
       .from('fee_structures')
       .upsert(payload, {
-        onConflict: 'cohort_id,student_id,structure_type',
+        onConflict: 'id',
         ignoreDuplicates: false,
       })
       .select()

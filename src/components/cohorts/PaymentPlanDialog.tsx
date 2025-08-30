@@ -31,7 +31,10 @@ import { FeeStructureService } from '@/services/feeStructure.service';
 
 interface PaymentPlanDialogProps {
   student: CohortStudent;
-  onPaymentPlanUpdated: () => void;
+  onPaymentPlanUpdated: (
+    studentId: string,
+    paymentPlanData?: StudentPaymentPlan
+  ) => void;
   children: React.ReactNode;
 }
 
@@ -97,6 +100,13 @@ export default function PaymentPlanDialog({
       });
 
       const result = await studentPaymentPlanService.getByStudent(student.id);
+      console.log('🔧 PaymentPlanDialog: getByStudent result', {
+        success: result.success,
+        hasData: !!result.data,
+        data: result.data,
+        studentId: student.id,
+      });
+
       logger.info('Current payment plan result', {
         success: result.success,
         hasData: !!result.data,
@@ -124,22 +134,84 @@ export default function PaymentPlanDialog({
               ? {
                   id: customStructure.id,
                   structure_type: customStructure.structure_type,
-                  student_id: customStructure.student_id,
+                  hasOneShotDates:
+                    !!customStructure.one_shot_dates &&
+                    Object.keys(customStructure.one_shot_dates).length > 0,
+                  hasSemWiseDates:
+                    !!customStructure.sem_wise_dates &&
+                    Object.keys(customStructure.sem_wise_dates).length > 0,
+                  hasInstalmentWiseDates:
+                    !!customStructure.instalment_wise_dates &&
+                    Object.keys(customStructure.instalment_wise_dates).length >
+                      0,
                 }
               : null,
             hasCustom,
           });
+
+          if (hasCustom && customStructure) {
+            // Determine the actual plan type from the custom structure
+            let actualPlanType:
+              | 'one_shot'
+              | 'sem_wise'
+              | 'instalment_wise'
+              | null = null;
+
+            if (
+              customStructure.instalment_wise_dates &&
+              Object.keys(customStructure.instalment_wise_dates).length > 0
+            ) {
+              actualPlanType = 'instalment_wise';
+            } else if (
+              customStructure.sem_wise_dates &&
+              Object.keys(customStructure.sem_wise_dates).length > 0
+            ) {
+              actualPlanType = 'sem_wise';
+            } else if (
+              customStructure.one_shot_dates &&
+              Object.keys(customStructure.one_shot_dates).length > 0
+            ) {
+              actualPlanType = 'one_shot';
+            }
+
+            console.log(
+              '🔧 PaymentPlanDialog: Determined actual plan type from custom structure',
+              {
+                actualPlanType,
+                instalmentWiseDates: customStructure.instalment_wise_dates,
+                semWiseDates: customStructure.sem_wise_dates,
+                oneShotDates: customStructure.one_shot_dates,
+              }
+            );
+
+            // Set the selectedPaymentPlan to the actual plan type
+            if (actualPlanType) {
+              console.log(
+                '🔧 PaymentPlanDialog: Setting selectedPaymentPlan to actual plan type',
+                {
+                  actualPlanType,
+                  previousSelectedPaymentPlan: selectedPaymentPlan,
+                }
+              );
+              setSelectedPaymentPlan(actualPlanType);
+            }
+          }
+
           setHasCustomPlan(hasCustom);
         } catch (error) {
-          logger.error(
-            'Error checking custom fee structure',
-            { studentId: student.id },
-            error as Error
-          );
+          console.error('Error checking custom fee structure:', error);
           setHasCustomPlan(false);
         }
         // Only set form values if we're editing
         if (isEditing) {
+          console.log(
+            '🔧 PaymentPlanDialog: Setting selectedPaymentPlan for editing mode',
+            {
+              paymentPlan: result.data.payment_plan,
+              isEditing,
+              studentId: student.id,
+            }
+          );
           setSelectedPaymentPlan(result.data.payment_plan);
         }
       } else {
@@ -243,11 +315,13 @@ export default function PaymentPlanDialog({
         // Refresh the current payment plan data before closing
         await loadCurrentPaymentPlan();
 
+        // Call the callback with the updated payment plan data
+        onPaymentPlanUpdated(student.id, currentPaymentPlan);
+
         // Small delay to show the updated data before closing
         setTimeout(() => {
           setOpen(false);
           setIsEditing(false);
-          onPaymentPlanUpdated();
         }, 500);
       } else {
         logger.error('Admin: Failed to set payment plan', {
@@ -400,7 +474,7 @@ export default function PaymentPlanDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className='sm:max-w-[500px]'>
+      <DialogContent className='sm:max-w-[600px]'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             {currentPaymentPlan && !isEditing ? (
@@ -428,7 +502,9 @@ export default function PaymentPlanDialog({
               {/* Payment Plan Status */}
               <div className='p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800'>
                 <div className='flex items-center gap-3'>
-                  <CheckCircle className='h-5 w-5 text-green-600' />
+                  <CheckCircle
+                    className={`h-5 w-5 ${hasCustomPlan ? 'text-orange-500' : 'text-green-600'}`}
+                  />
                   <div>
                     <p className='font-medium text-green-900 dark:text-green-100'>
                       {hasCustomPlan
@@ -492,8 +568,10 @@ export default function PaymentPlanDialog({
 
               {/* Payment Plan Selection */}
               <div className='space-y-3'>
-                <p className='text-sm font-medium'>Choose payment structure:</p>
-                <div className='grid gap-2'>
+                <p className='text-base font-medium'>
+                  Choose payment structure:
+                </p>
+                <div className='grid grid-cols-1 gap-3'>
                   {PAYMENT_PLAN_OPTIONS.map(option => {
                     const IconComponent = option.icon;
                     const isSelected = selectedPaymentPlan === option.value;
@@ -503,15 +581,15 @@ export default function PaymentPlanDialog({
                         key={option.value}
                         variant={isSelected ? 'default' : 'outline'}
                         onClick={() => setSelectedPaymentPlan(option.value)}
-                        className='justify-start h-auto p-3'
+                        className='h-16 flex items-center justify-start gap-4 p-4'
                       >
-                        <div className='flex items-center gap-3'>
-                          <IconComponent className='h-4 w-4' />
-                          <div className='text-left'>
-                            <div className='font-medium'>{option.label}</div>
-                            <div className='text-sm opacity-70'>
-                              {option.description}
-                            </div>
+                        <IconComponent className='h-6 w-6' />
+                        <div className='text-left'>
+                          <div className='font-medium text-base'>
+                            {option.label}
+                          </div>
+                          <div className='text-sm opacity-70'>
+                            {option.description}
                           </div>
                         </div>
                       </Button>
@@ -562,6 +640,13 @@ export default function PaymentPlanDialog({
                     toast.error('Select a payment plan first');
                     return;
                   }
+                  console.log('🔧 PaymentPlanDialog: Opening customize modal', {
+                    selectedPaymentPlan,
+                    hasCustomPlan,
+                    studentId: student.id,
+                    cohortId: student.cohort_id,
+                    currentPaymentPlan: currentPaymentPlan?.payment_plan,
+                  });
                   setCustomizeOpen(true);
                 }}
                 disabled={loading || !selectedPaymentPlan}

@@ -15,7 +15,8 @@ class CohortStudentsService extends BaseService<CohortStudent> {
         .select('*')
         .eq('cohort_id', cohortId)
         .neq('dropped_out_status', 'dropped_out')
-        .order('created_at', { ascending: false });
+        .order('first_name', { ascending: true })
+        .order('last_name', { ascending: true });
     });
   }
 
@@ -27,7 +28,8 @@ class CohortStudentsService extends BaseService<CohortStudent> {
         .from('cohort_students')
         .select('*')
         .eq('cohort_id', cohortId)
-        .order('created_at', { ascending: false });
+        .order('first_name', { ascending: true })
+        .order('last_name', { ascending: true });
     });
   }
 

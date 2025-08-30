@@ -26,7 +26,10 @@ import { useAuth } from '@/hooks/useAuth';
 interface StudentScholarshipDialogProps {
   student: CohortStudent;
   scholarships: Scholarship[];
-  onScholarshipAssigned: () => void;
+  onScholarshipAssigned: (
+    studentId: string,
+    scholarshipData?: StudentScholarshipWithDetails
+  ) => void;
   children: React.ReactNode;
 }
 
@@ -159,11 +162,11 @@ export default function StudentScholarshipDialog({
             : 'remove',
         });
 
-        // Immediately call the callback to update parent state
-        onScholarshipAssigned();
-
         // Refresh the current assignment data before closing
         await loadCurrentAssignment();
+
+        // Call the callback with the updated scholarship data
+        onScholarshipAssigned(student.id, currentAssignment);
 
         // Small delay to show the updated data before closing
         setTimeout(() => {
@@ -225,8 +228,8 @@ export default function StudentScholarshipDialog({
             cohortId: student.cohort_id,
           }
         );
-        // Immediately call the callback to update parent state
-        onScholarshipAssigned();
+        // Call the callback to indicate scholarship was removed
+        onScholarshipAssigned(student.id, undefined);
 
         setOpen(false);
         setIsEditing(false);
@@ -253,7 +256,7 @@ export default function StudentScholarshipDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className='sm:max-w-[500px]'>
+      <DialogContent className='sm:max-w-[600px]'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             {currentAssignment && !isEditing ? (
@@ -358,17 +361,23 @@ export default function StudentScholarshipDialog({
               )}
 
               {/* Scholarship Selection */}
-              <div className='space-y-2'>
-                <Label>Select Scholarship</Label>
-                <div className='grid gap-2'>
+              <div className='space-y-3'>
+                <Label className='text-base font-medium'>
+                  Select Scholarship
+                </Label>
+                <div className='grid grid-cols-2 gap-3'>
                   <Button
                     variant={
                       selectedScholarshipId === '' ? 'default' : 'outline'
                     }
                     onClick={() => setSelectedScholarshipId('')}
-                    className='justify-start'
+                    className='h-20 flex flex-col items-center justify-center gap-2 p-3'
                   >
-                    No Scholarship
+                    <Award className='h-5 w-5' />
+                    <div className='text-center'>
+                      <div className='font-medium text-sm'>No Scholarship</div>
+                      <div className='text-xs opacity-70'>0% discount</div>
+                    </div>
                   </Button>
                   {scholarships.map(scholarship => (
                     <Button
@@ -379,14 +388,16 @@ export default function StudentScholarshipDialog({
                           : 'outline'
                       }
                       onClick={() => setSelectedScholarshipId(scholarship.id)}
-                      className='justify-start'
+                      className='h-20 flex flex-col items-center justify-center gap-2 p-3'
                     >
-                      <div className='flex items-center gap-2'>
-                        <Award className='h-4 w-4' />
-                        <span>{scholarship.name}</span>
-                        <Badge variant='secondary'>
-                          {scholarship.amount_percentage}%
-                        </Badge>
+                      <Award className='h-5 w-5' />
+                      <div className='text-center'>
+                        <div className='font-medium text-sm'>
+                          {scholarship.name}
+                        </div>
+                        <div className='text-xs opacity-70'>
+                          {scholarship.amount_percentage}% discount
+                        </div>
                       </div>
                     </Button>
                   ))}

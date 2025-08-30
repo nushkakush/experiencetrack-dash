@@ -85,14 +85,14 @@ export const CommunicationPreferences: React.FC<
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <Mail className='h-4 w-4 text-muted-foreground' />
-            <Label className='text-sm'>Email Reminders</Label>
+            <Label className='text-sm'>Email Notifications</Label>
           </div>
           <Switch disabled />
         </div>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <MessageCircle className='h-4 w-4 text-muted-foreground' />
-            <Label className='text-sm'>WhatsApp Reminders</Label>
+            <Label className='text-sm'>WhatsApp Notifications</Label>
           </div>
           <Switch disabled />
         </div>
@@ -110,12 +110,9 @@ export const CommunicationPreferences: React.FC<
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
           <Mail className='h-4 w-4 text-muted-foreground' />
-          <Label htmlFor='email-automated' className='text-sm'>
-            Email Reminders
-          </Label>
+          <Label className='text-sm'>Email Notifications</Label>
         </div>
         <Switch
-          id='email-automated'
           checked={preferences.automated_communications.email.enabled}
           onCheckedChange={enabled => handleToggle('email', enabled)}
           disabled={updating === 'automated_email'}
@@ -126,12 +123,9 @@ export const CommunicationPreferences: React.FC<
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
           <MessageCircle className='h-4 w-4 text-muted-foreground' />
-          <Label htmlFor='whatsapp-automated' className='text-sm'>
-            WhatsApp Reminders
-          </Label>
+          <Label className='text-sm'>WhatsApp Notifications</Label>
         </div>
         <Switch
-          id='whatsapp-automated'
           checked={preferences.automated_communications.whatsapp.enabled}
           onCheckedChange={enabled => handleToggle('whatsapp', enabled)}
           disabled={updating === 'automated_whatsapp'}

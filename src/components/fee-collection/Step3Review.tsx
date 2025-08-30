@@ -34,7 +34,17 @@ interface Step3ReviewProps {
   initialScholarshipId?: string;
 }
 
-const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isReadOnly = false, onDatesChange, onPaymentPlanChange, selectedPaymentPlan: propSelectedPaymentPlan, restrictToPlan, hideScholarshipControls = false, initialScholarshipId }: Step3ReviewProps) {
+const Step3Review = memo(function Step3Review({
+  feeStructure,
+  scholarships,
+  isReadOnly = false,
+  onDatesChange,
+  onPaymentPlanChange,
+  selectedPaymentPlan: propSelectedPaymentPlan,
+  restrictToPlan,
+  hideScholarshipControls = false,
+  initialScholarshipId,
+}: Step3ReviewProps) {
   const {
     selectedPaymentPlan: internalSelectedPaymentPlan,
     selectedScholarshipId,
@@ -44,18 +54,27 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
     loading,
     handlePaymentDateChange,
     handleScholarshipSelect,
-    handlePaymentPlanChange: internalHandlePaymentPlanChange
-  } = useFeeReview({ feeStructure, scholarships, selectedPaymentPlan: propSelectedPaymentPlan, initialScholarshipId });
+    handlePaymentPlanChange: internalHandlePaymentPlanChange,
+  } = useFeeReview({
+    feeStructure,
+    scholarships,
+    selectedPaymentPlan: propSelectedPaymentPlan,
+    initialScholarshipId,
+  });
 
   // Use prop value if provided, otherwise fall back to internal state
-  const selectedPaymentPlan = restrictToPlan || propSelectedPaymentPlan || internalSelectedPaymentPlan;
+  const selectedPaymentPlan =
+    restrictToPlan || propSelectedPaymentPlan || internalSelectedPaymentPlan;
 
   // Create a wrapper that calls both internal and external handlers
-  const handlePaymentPlanChange = React.useCallback((plan: PaymentPlan) => {
-    if (restrictToPlan) return; // locked mode; ignore tab changes
-    internalHandlePaymentPlanChange(plan);
-    onPaymentPlanChange?.(plan);
-  }, [internalHandlePaymentPlanChange, onPaymentPlanChange, restrictToPlan]);
+  const handlePaymentPlanChange = React.useCallback(
+    (plan: PaymentPlan) => {
+      if (restrictToPlan) return; // locked mode; ignore tab changes
+      internalHandlePaymentPlanChange(plan);
+      onPaymentPlanChange?.(plan);
+    },
+    [internalHandlePaymentPlanChange, onPaymentPlanChange, restrictToPlan]
+  );
 
   // Use ref to track previous dates and only call onDatesChange when dates actually change
   const prevDatesRef = React.useRef<{
@@ -72,21 +91,24 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
     console.log('🔄 Step3Review: Date sync effect triggered', {
       memoizedDatesByPlan,
       prevDatesRef: prevDatesRef.current,
-      hasOnDatesChange: !!onDatesChange
+      hasOnDatesChange: !!onDatesChange,
     });
-    
+
     // Only call onDatesChange if the dates have actually changed
     const allDatesString = JSON.stringify(memoizedDatesByPlan);
     const prevDatesString = JSON.stringify(prevDatesRef.current);
-    
+
     console.log('📊 Date comparison:', {
       allDatesString,
       prevDatesString,
-      datesChanged: allDatesString !== prevDatesString
+      datesChanged: allDatesString !== prevDatesString,
     });
-    
+
     if (allDatesString !== prevDatesString && onDatesChange) {
-      console.log('✅ Calling onDatesChange with updated dates:', memoizedDatesByPlan);
+      console.log(
+        '✅ Calling onDatesChange with updated dates:',
+        memoizedDatesByPlan
+      );
       prevDatesRef.current = { ...memoizedDatesByPlan };
       onDatesChange(memoizedDatesByPlan); // Pass all plans' dates instead of just current
     }
@@ -99,7 +121,7 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
       admissionFee: feeReview.admissionFee,
       editablePaymentDates,
       onPaymentDateChange: handlePaymentDateChange,
-      isReadOnly
+      isReadOnly,
     };
   }, [feeReview, editablePaymentDates, handlePaymentDateChange, isReadOnly]);
 
@@ -110,23 +132,88 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
       feeStructure,
       selectedPaymentPlan,
       scholarships,
-      selectedScholarshipId
+      selectedScholarshipId,
     };
-  }, [feeReview, feeStructure, selectedPaymentPlan, scholarships, selectedScholarshipId]);
+  }, [
+    feeReview,
+    feeStructure,
+    selectedPaymentPlan,
+    scholarships,
+    selectedScholarshipId,
+  ]);
 
   // Only show loading for initial load, not for cached transitions
   if ((loading && !feeReview) || (!feeReview && !loading)) {
     return (
-      <div className="space-y-6">
-        <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-        <div className="h-8 w-full bg-muted rounded animate-pulse" />
-        <div className="h-8 w-full bg-muted rounded animate-pulse" />
+      <div className='space-y-6'>
+        <div className='h-6 w-48 bg-muted rounded animate-pulse' />
+        <div className='h-8 w-full bg-muted rounded animate-pulse' />
+        <div className='h-8 w-full bg-muted rounded animate-pulse' />
       </div>
     );
   }
 
+  // Render content based on the selected/restricted payment plan
+  const renderPaymentPlanContent = () => {
+    if (!admissionFeeProps || !overallSummaryProps) return null;
+
+    console.log('🔧 Step3Review: Rendering payment plan content', {
+      selectedPaymentPlan,
+      restrictToPlan,
+    });
+
+    switch (selectedPaymentPlan) {
+      case 'one_shot':
+        console.log('🔧 Step3Review: Rendering one_shot content');
+        return (
+          <div className='space-y-6'>
+            <AdmissionFeeSection {...admissionFeeProps} />
+            <OneShotPaymentSection
+              oneShotPayment={feeReview.oneShotPayment}
+              scholarships={scholarships}
+              selectedScholarshipId={selectedScholarshipId}
+              editablePaymentDates={editablePaymentDates}
+              onPaymentDateChange={handlePaymentDateChange}
+              isReadOnly={isReadOnly}
+            />
+            <OverallSummary {...overallSummaryProps} />
+          </div>
+        );
+
+      case 'sem_wise':
+      case 'instalment_wise':
+        console.log('🔧 Step3Review: Rendering semester/installment content', {
+          planType: selectedPaymentPlan,
+          semestersCount: feeReview.semesters.length,
+        });
+        return (
+          <div className='space-y-6'>
+            <AdmissionFeeSection {...admissionFeeProps} />
+            {feeReview.semesters.map(semester => (
+              <SemesterSection
+                key={semester.semesterNumber}
+                semester={semester}
+                scholarships={scholarships}
+                selectedScholarshipId={selectedScholarshipId}
+                editablePaymentDates={editablePaymentDates}
+                onPaymentDateChange={handlePaymentDateChange}
+                isReadOnly={isReadOnly}
+              />
+            ))}
+            <OverallSummary {...overallSummaryProps} />
+          </div>
+        );
+
+      default:
+        console.log('🔧 Step3Review: No matching plan type', {
+          selectedPaymentPlan,
+        });
+        return null;
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* Title and helper removed to avoid duplication with modal header */}
 
       {/* Scholarship Selection */}
@@ -139,62 +226,77 @@ const Step3Review = memo(function Step3Review({ feeStructure, scholarships, isRe
         />
       )}
 
-      {/* Payment Plan Tabs */}
-      <Tabs value={selectedPaymentPlan} onValueChange={(value) => handlePaymentPlanChange(value as PaymentPlan)}>
-        {!restrictToPlan && (
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="one_shot">One Shot Payment</TabsTrigger>
-            <TabsTrigger value="sem_wise">Sem Wise Payment</TabsTrigger>
-            <TabsTrigger value="instalment_wise">Instalment wise Payment</TabsTrigger>
+      {/* Payment Plan Tabs or Restricted Content */}
+      {restrictToPlan ? (
+        // When restricted to a specific plan, show only that plan's content
+        renderPaymentPlanContent()
+      ) : (
+        // When not restricted, show tabs for all plans
+        <Tabs
+          value={selectedPaymentPlan}
+          onValueChange={value => handlePaymentPlanChange(value as PaymentPlan)}
+        >
+          <TabsList className='grid w-full grid-cols-3'>
+            <TabsTrigger value='one_shot'>One Shot Payment</TabsTrigger>
+            <TabsTrigger value='sem_wise'>Sem Wise Payment</TabsTrigger>
+            <TabsTrigger value='instalment_wise'>
+              Instalment wise Payment
+            </TabsTrigger>
           </TabsList>
-        )}
 
-        {/* Content based on payment plan */}
-        <TabsContent value="one_shot" className="space-y-6">
-          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
-          <OneShotPaymentSection
-            oneShotPayment={feeReview.oneShotPayment}
-            scholarships={scholarships}
-            selectedScholarshipId={selectedScholarshipId}
-            editablePaymentDates={editablePaymentDates}
-            onPaymentDateChange={handlePaymentDateChange}
-            isReadOnly={isReadOnly}
-          />
-          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
-        </TabsContent>
-
-        <TabsContent value="sem_wise" className="space-y-6">
-          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
-          {feeReview.semesters.map((semester) => (
-            <SemesterSection
-              key={semester.semesterNumber}
-              semester={semester}
+          {/* Content based on payment plan */}
+          <TabsContent value='one_shot' className='space-y-6'>
+            {admissionFeeProps && (
+              <AdmissionFeeSection {...admissionFeeProps} />
+            )}
+            <OneShotPaymentSection
+              oneShotPayment={feeReview.oneShotPayment}
               scholarships={scholarships}
               selectedScholarshipId={selectedScholarshipId}
               editablePaymentDates={editablePaymentDates}
               onPaymentDateChange={handlePaymentDateChange}
               isReadOnly={isReadOnly}
             />
-          ))}
-          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
-        </TabsContent>
+            {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
+          </TabsContent>
 
-        <TabsContent value="instalment_wise" className="space-y-6">
-          {admissionFeeProps && <AdmissionFeeSection {...admissionFeeProps} />}
-          {feeReview.semesters.map((semester) => (
-            <SemesterSection
-              key={semester.semesterNumber}
-              semester={semester}
-              scholarships={scholarships}
-              selectedScholarshipId={selectedScholarshipId}
-              editablePaymentDates={editablePaymentDates}
-              onPaymentDateChange={handlePaymentDateChange}
-              isReadOnly={isReadOnly}
-            />
-          ))}
-          {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value='sem_wise' className='space-y-6'>
+            {admissionFeeProps && (
+              <AdmissionFeeSection {...admissionFeeProps} />
+            )}
+            {feeReview.semesters.map(semester => (
+              <SemesterSection
+                key={semester.semesterNumber}
+                semester={semester}
+                scholarships={scholarships}
+                selectedScholarshipId={selectedScholarshipId}
+                editablePaymentDates={editablePaymentDates}
+                onPaymentDateChange={handlePaymentDateChange}
+                isReadOnly={isReadOnly}
+              />
+            ))}
+            {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
+          </TabsContent>
+
+          <TabsContent value='instalment_wise' className='space-y-6'>
+            {admissionFeeProps && (
+              <AdmissionFeeSection {...admissionFeeProps} />
+            )}
+            {feeReview.semesters.map(semester => (
+              <SemesterSection
+                key={semester.semesterNumber}
+                semester={semester}
+                scholarships={scholarships}
+                selectedScholarshipId={selectedScholarshipId}
+                editablePaymentDates={editablePaymentDates}
+                onPaymentDateChange={handlePaymentDateChange}
+                isReadOnly={isReadOnly}
+              />
+            ))}
+            {overallSummaryProps && <OverallSummary {...overallSummaryProps} />}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 });

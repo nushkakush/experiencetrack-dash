@@ -59,10 +59,8 @@ export default function CohortDetailsPage() {
     updateStudent(studentId, updates);
   };
 
-  const handleScholarshipAssigned = () => {
-    // Refresh the main data to ensure scholarship information is updated
-    loadData();
-  };
+  // Note: Scholarship and payment plan updates are now handled locally in the table component
+  // No need to refresh the entire page for these updates
 
   const bulkUploadConfig: BulkUploadConfig<NewStudentInput> = {
     requiredHeaders: ['first_name', 'last_name', 'email'],
@@ -131,7 +129,6 @@ Jane,Smith,jane.smith@example.com,+1234567891,NO`,
           scholarships={scholarships}
           onStudentDeleted={loadData}
           onStudentUpdated={handleStudentUpdated}
-          onScholarshipAssigned={handleScholarshipAssigned}
           loading={loading}
           isRefreshing={isRefreshing}
           cohortName={cohort?.name}

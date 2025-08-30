@@ -35,6 +35,20 @@ export const useFeeReview = ({
   const cachedReviewsRef = useRef<Record<string, any>>({});
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Update selectedPaymentPlan when prop changes (important for editing custom plans)
+  React.useEffect(() => {
+    if (
+      propSelectedPaymentPlan &&
+      propSelectedPaymentPlan !== selectedPaymentPlan
+    ) {
+      console.log('🔄 useFeeReview: Updating selectedPaymentPlan from prop', {
+        from: selectedPaymentPlan,
+        to: propSelectedPaymentPlan,
+      });
+      setSelectedPaymentPlan(propSelectedPaymentPlan);
+    }
+  }, [propSelectedPaymentPlan, selectedPaymentPlan]);
+
   // Load existing dates from database when fee structure is loaded
   React.useEffect(() => {
     if (!feeStructure) return;
@@ -523,16 +537,6 @@ export const useFeeReview = ({
       preloadPlans();
     }
   }, [isPreloaded, feeStructure, getCacheKey, datesByPlan]);
-
-  // Sync external prop with internal state
-  React.useEffect(() => {
-    if (
-      propSelectedPaymentPlan &&
-      propSelectedPaymentPlan !== selectedPaymentPlan
-    ) {
-      setSelectedPaymentPlan(propSelectedPaymentPlan);
-    }
-  }, [propSelectedPaymentPlan, selectedPaymentPlan]);
 
   // Sync external initial scholarship selection only once when the component mounts
   React.useEffect(() => {

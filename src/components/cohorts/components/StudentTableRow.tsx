@@ -9,6 +9,7 @@ import { StudentPaymentPlan } from '@/services/studentPaymentPlan.service';
 import { ScholarshipCell } from './ScholarshipCell';
 import { PaymentPlanCell } from './PaymentPlanCell';
 import { StudentActions } from './StudentActions';
+import { BulkSelectionCheckbox } from './index';
 
 interface StudentTableRowProps {
   student: CohortStudent;
@@ -16,9 +17,11 @@ interface StudentTableRowProps {
   scholarshipAssignments: Record<string, boolean>;
   scholarshipDetails: Record<string, StudentScholarshipWithDetails>;
   loadingScholarships: boolean;
+  updatingScholarshipId: string | null;
   paymentPlanAssignments: Record<string, boolean>;
   paymentPlanDetails: Record<string, StudentPaymentPlan>;
   loadingPaymentPlans: boolean;
+  updatingPaymentPlanId: string | null;
   customFeeStructures: Record<string, boolean>;
   isFeeSetupComplete: boolean;
   deletingStudentId: string | null;
@@ -26,7 +29,10 @@ interface StudentTableRowProps {
   canManageStudents: boolean;
   canEditStudents: boolean;
   canAssignScholarships: boolean;
-  onStudentUpdated?: (studentId: string, updates: Partial<CohortStudent>) => void;
+  onStudentUpdated?: (
+    studentId: string,
+    updates: Partial<CohortStudent>
+  ) => void;
   onStudentDeleted: () => void;
   onScholarshipAssigned: (studentId: string) => void;
   onPaymentPlanUpdated: (studentId: string) => void;
@@ -34,6 +40,10 @@ interface StudentTableRowProps {
   onMarkAsDroppedOut: (student: CohortStudent) => void;
   onDeleteStudent: (studentId: string) => void;
   shouldShowEmailOption: (student: CohortStudent) => boolean;
+  // Bulk selection props
+  isSelected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
+  isBulkProcessing?: boolean;
 }
 
 export const StudentTableRow: React.FC<StudentTableRowProps> = ({
@@ -42,9 +52,11 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
   scholarshipAssignments,
   scholarshipDetails,
   loadingScholarships,
+  updatingScholarshipId,
   paymentPlanAssignments,
   paymentPlanDetails,
   loadingPaymentPlans,
+  updatingPaymentPlanId,
   customFeeStructures,
   isFeeSetupComplete,
   deletingStudentId,
@@ -60,16 +72,32 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
   onMarkAsDroppedOut,
   onDeleteStudent,
   shouldShowEmailOption,
+  // Bulk selection props
+  isSelected = false,
+  onSelectChange,
+  isBulkProcessing = false,
 }) => {
   return (
     <TableRow key={student.id}>
+      {/* Bulk Selection Checkbox */}
+      <TableCell className='w-12'>
+        <BulkSelectionCheckbox
+          checked={isSelected}
+          onCheckedChange={onSelectChange || (() => {})}
+          disabled={isBulkProcessing}
+        />
+      </TableCell>
+
       {/* Student Info */}
       <TableCell>
         <div className='flex items-center gap-3'>
           <UserAvatar
             avatarUrl={null}
-            name={`${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email}
-            size="md"
+            name={
+              `${student.first_name || ''} ${student.last_name || ''}`.trim() ||
+              student.email
+            }
+            size='md'
             userId={student.user_id}
           />
           <div className='min-w-0 flex-1'>
@@ -100,7 +128,7 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
             {student.invite_status}
           </Badge>
           {student.dropped_out_status === 'dropped_out' && (
-            <Badge variant="destructive" className="text-xs">
+            <Badge variant='destructive' className='text-xs'>
               Dropped Out
             </Badge>
           )}
@@ -108,7 +136,7 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
       </TableCell>
 
       {/* Phone */}
-      <TableCell className="text-sm text-muted-foreground">
+      <TableCell className='text-sm text-muted-foreground'>
         {student.phone || '—'}
       </TableCell>
 
@@ -120,7 +148,9 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
             scholarships={scholarships}
             hasScholarship={scholarshipAssignments[student.id]}
             scholarshipDetails={scholarshipDetails[student.id]}
-            loading={loadingScholarships}
+            loading={
+              loadingScholarships || updatingScholarshipId === student.id
+            }
             isFeeSetupComplete={isFeeSetupComplete}
             onScholarshipAssigned={onScholarshipAssigned}
           />
@@ -132,10 +162,15 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({
         <TableCell>
           <PaymentPlanCell
             student={student}
-            hasPaymentPlan={paymentPlanAssignments[student.id] && paymentPlanDetails[student.id]?.payment_plan}
+            hasPaymentPlan={
+              paymentPlanAssignments[student.id] &&
+              paymentPlanDetails[student.id]?.payment_plan
+            }
             paymentPlanDetails={paymentPlanDetails[student.id]}
             customFeeStructure={customFeeStructures[student.id]}
-            loading={loadingPaymentPlans}
+            loading={
+              loadingPaymentPlans || updatingPaymentPlanId === student.id
+            }
             isFeeSetupComplete={isFeeSetupComplete}
             onPaymentPlanUpdated={onPaymentPlanUpdated}
           />

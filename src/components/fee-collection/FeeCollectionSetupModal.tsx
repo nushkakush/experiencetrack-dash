@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,14 @@ export const FeeCollectionSetupModal: React.FC<
   restrictPaymentPlanToSelected = false,
   hideScholarshipControls = false,
 }) => {
+  console.log('🔧 FeeCollectionSetupModal: Modal opened with props', {
+    initialSelectedPlan,
+    variant,
+    studentId,
+    restrictPaymentPlanToSelected,
+    mode,
+  });
+
   const { hasPermission } = useFeaturePermissions();
 
   // Check if user can edit fee structure (only super admins)
@@ -86,6 +94,37 @@ export const FeeCollectionSetupModal: React.FC<
   const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<
     'one_shot' | 'sem_wise' | 'instalment_wise'
   >(initialSelectedPlan || 'one_shot');
+
+  // Log the initialization of selectedPaymentPlan
+  console.log('🔧 FeeCollectionSetupModal: Initializing selectedPaymentPlan', {
+    initialSelectedPlan,
+    selectedPaymentPlan,
+    variant,
+    studentId,
+    restrictPaymentPlanToSelected,
+  });
+
+  // Update selectedPaymentPlan when initialSelectedPlan changes
+  useEffect(() => {
+    if (initialSelectedPlan && initialSelectedPlan !== selectedPaymentPlan) {
+      console.log(
+        '🔧 FeeCollectionSetupModal: Updating selectedPaymentPlan from prop change',
+        {
+          initialSelectedPlan,
+          currentSelectedPaymentPlan: selectedPaymentPlan,
+        }
+      );
+      setSelectedPaymentPlan(initialSelectedPlan);
+    }
+  }, [initialSelectedPlan, selectedPaymentPlan]);
+
+  // Log when initialSelectedPlan changes
+  useEffect(() => {
+    console.log('🔧 FeeCollectionSetupModal: initialSelectedPlan changed', {
+      initialSelectedPlan,
+      currentSelectedPaymentPlan: selectedPaymentPlan,
+    });
+  }, [initialSelectedPlan, selectedPaymentPlan]);
 
   // Memoize the fee structure object to prevent unnecessary re-renders
   // Use existing fee structure if available (includes saved custom dates), otherwise create new one
@@ -261,6 +300,14 @@ export const FeeCollectionSetupModal: React.FC<
           />
         );
       case 3:
+        console.log('🔧 FeeCollectionSetupModal: Rendering Step3Review', {
+          selectedPaymentPlan,
+          restrictToPlan: restrictPaymentPlanToSelected
+            ? selectedPaymentPlan
+            : undefined,
+          variant,
+          studentId,
+        });
         return (
           <Step3Review
             feeStructure={memoizedFeeStructure}

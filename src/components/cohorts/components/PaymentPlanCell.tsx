@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { CreditCard, CheckCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CohortStudent } from '@/types/cohort';
 import { StudentPaymentPlan } from '@/services/studentPaymentPlan.service';
 import PaymentPlanDialog from '../PaymentPlanDialog';
@@ -26,14 +27,19 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({
 }) => {
   const getPaymentPlanDisplayName = () => {
     if (!hasPaymentPlan || !paymentPlanDetails?.payment_plan) return '';
-    
+
     const plan = paymentPlanDetails.payment_plan;
-    const planName = 
-      plan === 'one_shot' ? 'One Shot Payment' :
-      plan === 'sem_wise' ? 'Semester Wise' :
-      plan === 'instalment_wise' ? 'Instalment Wise' :
-      plan === 'not_selected' ? 'Not Selected' : '';
-    
+    const planName =
+      plan === 'one_shot'
+        ? 'One Shot Payment'
+        : plan === 'sem_wise'
+          ? 'Semester Wise'
+          : plan === 'instalment_wise'
+            ? 'Instalment Wise'
+            : plan === 'not_selected'
+              ? 'Not Selected'
+              : '';
+
     return customFeeStructure ? `Custom ${planName}` : planName;
   };
 
@@ -41,7 +47,12 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({
     <div className='space-y-3'>
       {/* Payment Plan Section */}
       <div className='flex items-center justify-between'>
-        {hasPaymentPlan ? (
+        {loading ? (
+          <div className='min-w-0 flex-1'>
+            <Skeleton className='h-4 w-28 mb-1' />
+            <Skeleton className='h-3 w-20' />
+          </div>
+        ) : hasPaymentPlan ? (
           <div className='min-w-0'>
             <div className='text-sm font-medium text-blue-700 dark:text-blue-300'>
               {getPaymentPlanDisplayName()}
@@ -71,10 +82,12 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({
                   ? 'Edit payment plan'
                   : 'Select payment plan'
             }
-            disabled={loading || !isFeeSetupComplete}
+            disabled={!isFeeSetupComplete}
           >
             {hasPaymentPlan ? (
-              <CheckCircle className='h-4 w-4' />
+              <CheckCircle
+                className={`h-4 w-4 ${customFeeStructure ? 'text-orange-500' : 'text-green-600'}`}
+              />
             ) : (
               <CreditCard className='h-4 w-4' />
             )}

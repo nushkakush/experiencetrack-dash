@@ -10,7 +10,6 @@ export const useDashboardState = () => {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsMode, setSettingsMode] = useState<'view' | 'edit'>('view');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('payments');
 
   const handleSettingsComplete = (loadData: () => void) => {
     loadData(); // Refresh data after settings are updated
@@ -39,7 +38,10 @@ export const useDashboardState = () => {
     setSelectedRows(newSelectedRows);
   };
 
-  const handleSelectAll = (isSelected: boolean, students: StudentPaymentSummary[]) => {
+  const handleSelectAll = (
+    isSelected: boolean,
+    students: StudentPaymentSummary[]
+  ) => {
     if (isSelected) {
       const allStudentIds = students.map(student => student.student_id);
       setSelectedRows(new Set(allStudentIds));
@@ -67,16 +69,14 @@ export const useDashboardState = () => {
     settingsModalOpen,
     settingsMode,
     selectedRows,
-    activeTab,
     setSettingsModalOpen,
     setSettingsMode,
-    setActiveTab,
     handleSettingsComplete,
     handleBackClick,
     handleStudentSelect,
     handleCloseStudentDetails,
     handleRowSelection,
     handleSelectAll,
-    handleExportSelected
+    handleExportSelected,
   };
 };
