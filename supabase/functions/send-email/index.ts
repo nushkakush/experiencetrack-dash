@@ -61,6 +61,42 @@ serve(async req => {
     let email: string;
     let recipientName: string;
 
+    // Helper function to determine if email is payment-related
+    const isPaymentEmail = (emailType: string, context?: any): boolean => {
+      const paymentTypes = [
+        'payment_submitted',
+        'payment_approved',
+        'payment_rejected',
+        'payment_partially_approved',
+        'partial_payment_submitted',
+        'all_payments_completed',
+        'payment_submission_failed',
+        'payment_reminder',
+        'automated_payment_reminder',
+      ];
+
+      // Check if it's a custom email with payment context
+      if (emailType === 'custom' && context?.paymentData) {
+        return true;
+      }
+
+      return paymentTypes.includes(emailType);
+    };
+
+    // Helper function to get email sender configuration
+    const getEmailSender = (emailType: string, context?: any) => {
+      if (isPaymentEmail(emailType, context)) {
+        return {
+          email: Deno.env.get('PAYMENT_FROM_EMAIL') || 'payments@litschool.in',
+          name: 'LIT School Payments',
+        };
+      }
+      return {
+        email: Deno.env.get('FROM_EMAIL') || 'noreply@litschool.in',
+        name: 'LIT OS',
+      };
+    };
+
     // Handle different email types
     if (
       requestData.type === 'invitation' ||
@@ -86,32 +122,35 @@ serve(async req => {
       let invitationExpiresAt: string;
 
       // Determine invitation type and fetch appropriate data
-      if (invitationType === 'user' || cohortName?.includes('Team')) {
+      if (invitationType === 'user') {
         // User invitation - fetch from user_invitations table
-        const { data: userInvitation, error: userInvitationError } =
-          await supabase
-            .from('user_invitations')
-            .select('invitation_token, invitation_expires_at')
-            .eq('id', studentId)
-            .single();
+        const { data: invitation, error: invitationError } = await supabase
+          .from('user_invitations')
+          .select('invitation_expires_at')
+          .eq('id', studentId)
+          .single();
 
-        if (userInvitationError || !userInvitation) {
-          throw new Error('User invitation not found');
+        if (invitationError || !invitation) {
+          throw new Error('Invitation not found');
         }
 
-        invitationToken = userInvitation.invitation_token;
-        invitationExpiresAt = userInvitation.invitation_expires_at;
+        invitationExpiresAt = invitation.invitation_expires_at;
 
-        // Generate user invitation URL - dynamically detect domain from request
-        const origin =
+        // Check if invitation has expired
+        if (new Date(invitationExpiresAt) < new Date()) {
+          throw new Error('Invitation has expired');
+        }
+
+        // Generate user invitation URL
+        const baseUrl =
           req.headers.get('origin') ||
           req.headers.get('referer')?.replace(/\/.*$/, '') ||
           Deno.env.get('FRONTEND_URL') ||
           'http://localhost:3000';
-        const baseUrl = origin.startsWith('http')
-          ? origin
-          : `https://${origin}`;
-        invitationUrl = `${baseUrl}/user-invite/${invitationToken}`;
+        const origin = baseUrl.startsWith('http')
+          ? baseUrl
+          : `https://${baseUrl}`;
+        invitationUrl = `${origin}/user-invite/${studentId}`;
 
         // User invitation email content
         const roleDisplayName =
@@ -125,21 +164,10 @@ serve(async req => {
             <h2 style="color: #333;">Welcome to LIT OS!</h2>
             <p>Hello ${firstName} ${lastName},</p>
             <p>You have been invited to join LIT OS as a <strong>${roleDisplayName}</strong>.</p>
-            <p>Click the button below to set up your account:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${invitationUrl}"
-                 style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="color: #666; font-size: 14px;">
-              This invitation link will expire in 7 days. If you have any questions, please contact your administrator.
-            </p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 12px;">
-              If you're having trouble with the button above, copy and paste this link into your browser:<br>
-              <a href="${invitationUrl}">${invitationUrl}</a>
-            </p>
+            <p>Click this link to set up your account:</p>
+            <p><a href="${invitationUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Set Up Account</a></p>
+            <p>This invitation link will expire in 7 days. If you have any questions, please contact your administrator.</p>
+            <p>Best regards,<br>LIT OS Team</p>
           </div>
         `;
       } else {
@@ -177,21 +205,10 @@ serve(async req => {
             <h2 style="color: #333;">Welcome to LIT OS!</h2>
             <p>Hello ${firstName} ${lastName},</p>
             <p>You have been invited to join the <strong>${cohortName}</strong> cohort on LIT OS.</p>
-            <p>Click the button below to set up your account and join the cohort:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${invitationUrl}" 
-                 style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                Accept Invitation
-              </a>
-            </div>
-            <p style="color: #666; font-size: 14px;">
-              This invitation link will expire in 7 days. If you have any questions, please contact your program coordinator.
-            </p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 12px;">
-              If you're having trouble with the button above, copy and paste this link into your browser:<br>
-              <a href="${invitationUrl}">${invitationUrl}</a>
-            </p>
+            <p>Click this link to set up your account and join the cohort:</p>
+            <p><a href="${invitationUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Join Cohort</a></p>
+            <p>This invitation link will expire in 7 days. If you have any questions, please contact your program coordinator.</p>
+            <p>Best regards,<br>LIT OS Team</p>
           </div>
         `;
       }
@@ -231,7 +248,7 @@ serve(async req => {
 
     // SendGrid configuration
     const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY');
-    const fromEmail = Deno.env.get('FROM_EMAIL') || 'noreply@litos.com';
+    const emailSender = getEmailSender(requestData.type, requestData.context);
 
     if (!sendgridApiKey) {
       // If SendGrid is not configured, just return the invitation URL for invitations
@@ -258,7 +275,12 @@ serve(async req => {
     }
 
     // Debug logging
-    console.log('Email variables:', { email, recipientName, emailSubject });
+    console.log('Email variables:', {
+      email,
+      recipientName,
+      emailSubject,
+      sender: emailSender,
+    });
 
     // Prepare email content
     const emailData = {
@@ -268,7 +290,7 @@ serve(async req => {
           subject: emailSubject,
         },
       ],
-      from: { email: fromEmail, name: 'LIT OS' },
+      from: { email: emailSender.email, name: emailSender.name },
       content: [
         {
           type: 'text/plain',

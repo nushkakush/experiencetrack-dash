@@ -80,7 +80,7 @@ Our team will review your payment within 24-48 hours. You'll receive a confirmat
 
 Thank you for your payment!
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           amount: context.amount,
@@ -126,27 +126,26 @@ LIT School`,
         subject: 'Payment Approved - Receipt Generated',
         content: `Dear ${context.studentName},
 
-Great news! Your payment of ₹${context.amount} has been approved.
+Your payment of ₹${context.amount} for ${context.installmentDescription} has been approved successfully.
 
 Payment Details:
 - Amount: ₹${context.amount}
 - Method: ${context.paymentMethod}
 - Reference: ${context.referenceNumber}
 - Approval Date: ${context.approvalDate}
-- Installment: ${context.installmentDescription}
 
 Your receipt has been generated and is available in your student portal.
 
 Thank you for your payment!
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           amount: context.amount,
+          installmentDescription: context.installmentDescription,
           paymentMethod: context.paymentMethod,
           referenceNumber: context.referenceNumber,
           approvalDate: context.approvalDate,
-          installmentDescription: context.installmentDescription,
         },
       });
 
@@ -185,29 +184,22 @@ LIT School`,
         subject: 'Payment Partially Approved - Balance Due',
         content: `Dear ${context.studentName},
 
-Your payment has been partially approved.
+Your payment of ₹${context.amount} for ${context.installmentDescription} has been partially approved.
 
-Payment Details:
-- Submitted Amount: ₹${context.submittedAmount}
+Payment Summary:
+- Submitted Amount: ₹${context.amount}
 - Approved Amount: ₹${context.approvedAmount}
 - Remaining Balance: ₹${context.remainingAmount}
-- Reference: ${context.referenceNumber}
-- Approval Date: ${context.approvalDate}
 
-Please submit the remaining amount of ₹${context.remainingAmount} to complete your payment.
+Please submit the remaining balance of ₹${context.remainingAmount} to complete your installment payment.
 
-You can make the remaining payment through your student portal.
-
-Thank you!
-
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
-          submittedAmount: context.submittedAmount,
+          amount: context.amount,
+          installmentDescription: context.installmentDescription,
           approvedAmount: context.approvedAmount,
           remainingAmount: context.remainingAmount,
-          referenceNumber: context.referenceNumber,
-          approvalDate: context.approvalDate,
         },
       });
 
@@ -246,22 +238,24 @@ LIT School`,
         subject: 'Payment Rejected - Action Required',
         content: `Dear ${context.studentName},
 
-Your payment of ₹${context.amount} has been rejected.
+Your payment of ₹${context.amount} for ${context.installmentDescription} has been rejected.
 
-Rejection Details:
-- Submitted Amount: ₹${context.amount}
+Payment Details:
+- Amount: ₹${context.amount}
+- Method: ${context.paymentMethod}
 - Reference: ${context.referenceNumber}
 - Rejection Date: ${context.rejectionDate}
-- Reason: ${context.rejectionReason}
 
-Please review the rejection reason and submit a new payment with the correct details.
+Reason for Rejection: ${context.rejectionReason}
 
-If you have any questions, please contact our support team.
+Please review the rejection reason and submit a new payment or contact our support team for assistance.
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           amount: context.amount,
+          installmentDescription: context.installmentDescription,
+          paymentMethod: context.paymentMethod,
           referenceNumber: context.referenceNumber,
           rejectionDate: context.rejectionDate,
           rejectionReason: context.rejectionReason,
@@ -316,7 +310,7 @@ This payment will complete your installment. You'll receive confirmation once ve
 
 Thank you!
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           amount: context.amount,
@@ -362,27 +356,22 @@ LIT School`,
         subject: 'Installment Completed - All Payments Approved',
         content: `Dear ${context.studentName},
 
-Excellent! Your installment is now complete.
+Congratulations! Your ${context.installmentDescription} has been completed successfully.
 
 Payment Summary:
-- Total Installment Amount: ₹${context.totalAmount}
-- First Payment: ₹${context.firstPaymentAmount} (approved on ${context.firstApprovalDate})
-- Second Payment: ₹${context.secondPaymentAmount} (approved on ${context.secondApprovalDate})
-- Installment: ${context.installmentDescription}
+- Total Amount: ₹${context.amount}
+- Payment Method: ${context.paymentMethod}
+- Completion Date: ${context.approvalDate}
 
-Your receipt has been generated and is available in your student portal.
+All payments for this installment have been verified and approved. You can view your receipt in your student portal.
 
-Thank you for completing your payment!
-
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
-          totalAmount: context.totalAmount,
-          firstPaymentAmount: context.firstPaymentAmount,
-          firstApprovalDate: context.firstApprovalDate,
-          secondPaymentAmount: context.secondPaymentAmount,
-          secondApprovalDate: context.secondApprovalDate,
+          amount: context.amount,
           installmentDescription: context.installmentDescription,
+          paymentMethod: context.paymentMethod,
+          approvalDate: context.approvalDate,
         },
       });
 
@@ -434,7 +423,7 @@ You can download your receipt from your student portal.
 
 Thank you for your payment!
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           receiptNumber: context.receiptNumber,
@@ -480,21 +469,20 @@ LIT School`,
         subject: 'Payment Submission Failed - Action Required',
         content: `Dear ${context.studentName},
 
-Your payment submission was unsuccessful.
+Your payment submission for ${context.installmentDescription} has failed.
 
 Error Details:
-- Attempted Amount: ₹${context.amount}
-- Method: ${context.paymentMethod}
 - Error: ${context.errorMessage}
+- Attempted Amount: ₹${context.amount}
 - Date: ${context.attemptDate}
 
-Please try submitting your payment again. If the issue persists, please contact our support team.
+Please try submitting your payment again. If the issue persists, please contact our support team for assistance.
 
-Admissions Team,
+Payments Team,
 LIT School`,
         context: {
           amount: context.amount,
-          paymentMethod: context.paymentMethod,
+          installmentDescription: context.installmentDescription,
           errorMessage: context.errorMessage,
           attemptDate: context.attemptDate,
         },

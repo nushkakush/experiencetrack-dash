@@ -1,18 +1,17 @@
 BEFORE PROGRAM APP
 
-2. Bulk upload for fees needs to be figured out.
-3. Authenticate admissions at lit.school.in with SendGrid and set that up for all admissions related emails.
-4. Slack Integration
-5. Razorpay E Nach for Instalment wise
-6. Razorpay set up
+1. Bulk upload for fees needs to be figured out.
+2. Slack Integration
+3. Razorpay E Nach for Instalment wise
+4. Razorpay set up
 
 AFTER PROGRAM APP
-Fee Payment Reports and Visibility
 
-1. have a waiver option
-2. Download fee structure PDF
-3. Late Fee needed
-4. deleting equipment is still throwing bugs
+1. Fee Payment Reports and Visibility
+2. have a waiver option
+3. Download fee structure PDF
+4. Late Fee needed
+5. deleting equipment is still throwing bugs
 
 BACKLOG
 

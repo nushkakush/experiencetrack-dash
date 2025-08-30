@@ -226,7 +226,7 @@ Please review the rejection reason and submit a new payment with the correct det
 
 If you have any questions, please contact our support team.
 
-Admissions Team,
+Payments Team,
 LIT School`,
           context: {
             amount: transaction.amount,
@@ -312,7 +312,7 @@ Your receipt has been generated and is available in your student portal.
 
 Thank you for your payment!
 
-Admissions Team,
+Payments Team,
 LIT School`,
           context: {
             amount: transaction.amount,
@@ -360,7 +360,7 @@ Your receipt has been generated and is available in your student portal.
 
 Thank you for completing your payment!
 
-Admissions Team,
+Payments Team,
 LIT School`,
                 context: {
                   totalAmount: studentPayment.total_amount_payable,
@@ -491,7 +491,7 @@ You can make the remaining payment through your student portal.
 
 Thank you!
 
-Admissions Team,
+Payments Team,
 LIT School`,
           context: {
             submittedAmount: originalAmount,

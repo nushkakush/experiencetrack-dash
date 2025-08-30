@@ -23,7 +23,7 @@ export function getEmailContent(data: PaymentReminderData): string {
         <p>Hello ${data.student_name},</p>
         <p>This is a friendly reminder that your <strong>${ordinalInstallment} installment</strong> payment is due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
         <p>Please ensure timely payment to avoid any late fees.</p>
-        <p>Best regards,<br>Admissions team,<br>LIT School</p>
+        <p>Best regards,<br>Payments Team,<br>LIT School</p>
       </div>
     `,
     '2_days_before': `
@@ -32,7 +32,7 @@ export function getEmailContent(data: PaymentReminderData): string {
         <p>Hello ${data.student_name},</p>
         <p><strong>URGENT:</strong> Your <strong>${ordinalInstallment} installment</strong> payment is due in 2 days on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
         <p>Please complete your payment immediately to avoid late fees.</p>
-        <p>Best regards,<br>Admissions team,<br>LIT School</p>
+        <p>Best regards,<br>Payments Team,<br>LIT School</p>
       </div>
     `,
     on_due_date: `
@@ -41,7 +41,7 @@ export function getEmailContent(data: PaymentReminderData): string {
         <p>Hello ${data.student_name},</p>
         <p>Today, <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>, is the due date for your <strong>${ordinalInstallment} installment</strong> payment.</p>
         <p>Please complete your payment today to maintain your program status.</p>
-        <p>Best regards,<br>Admissions team,<br>LIT School</p>
+        <p>Best regards,<br>Payments Team,<br>LIT School</p>
       </div>
     `,
     overdue_reminder: `
@@ -50,7 +50,7 @@ export function getEmailContent(data: PaymentReminderData): string {
         <p>Hello ${data.student_name},</p>
         <p>Your <strong>${ordinalInstallment} installment</strong> payment was due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong> and is currently <strong>${data.days_overdue} days overdue</strong>.</p>
         <p>This payment is essential for the continuation of your program. Please complete your payment immediately to avoid program suspension.</p>
-        <p>Best regards,<br>Admissions team,<br>LIT School</p>
+        <p>Best regards,<br>Payments Team,<br>LIT School</p>
       </div>
     `,
   };

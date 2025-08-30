@@ -242,7 +242,7 @@ Please ensure timely payment to avoid any late fees or complications with your p
 If you have any questions or need assistance, please don't hesitate to contact us.
 
 Best regards,
-Admissions team,
+Payments Team,
 LIT School`;
 
     const content = customMessage || defaultContent;
