@@ -88,12 +88,6 @@ export const queryClient = new QueryClient({
       // Throw on error for mutations
       throwOnError: false,
 
-      // Optimistic updates for mutations
-      onMutate: undefined,
-      onSuccess: undefined,
-      onError: undefined,
-      onSettled: undefined,
-
       // Mutation logging
       onMutate: (variables, mutation) => {
         if (mutation?.options?.mutationKey) {

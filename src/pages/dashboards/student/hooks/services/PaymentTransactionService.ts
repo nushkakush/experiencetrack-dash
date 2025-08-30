@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Logger } from '@/lib/logging/logger';
+import { Logger } from '@/lib/logging/Logger';
 import { PaymentSubmissionData } from '@/types/payments';
 import { CohortStudent } from '@/types/cohort';
 import {
