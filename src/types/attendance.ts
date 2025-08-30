@@ -250,3 +250,45 @@ export interface CohortEpic {
   created_at: string;
   updated_at: string;
 }
+
+export interface LeaveApplication {
+  id: string;
+  student_id: string;
+  cohort_id: string;
+  epic_id?: string;
+  session_date: string;
+  end_date?: string;
+  is_date_range: boolean;
+  session_number: number;
+  reason: string;
+  leave_status: 'pending' | 'approved' | 'rejected';
+  leave_applied_at: string;
+  leave_approved_by?: string;
+  leave_approved_at?: string;
+  leave_rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateLeaveApplicationRequest {
+  student_id: string;
+  cohort_id: string;
+  epic_id?: string;
+  session_date: string;
+  end_date?: string;
+  is_date_range: boolean;
+  session_number?: number;
+  reason: string;
+}
+
+export interface UpdateLeaveApplicationRequest {
+  leave_status: 'approved' | 'rejected';
+  leave_rejection_reason?: string;
+}
+
+export interface LeaveApplicationStats {
+  total_applications: number;
+  pending_applications: number;
+  approved_applications: number;
+  rejected_applications: number;
+}

@@ -18,7 +18,10 @@ import type {
 } from '../types.ts';
 
 export class AttendanceCalculator {
-  constructor(private supabase: any) {}
+  constructor(
+    private supabase: any,
+    private userToken?: string | null
+  ) {}
 
   // Core calculation method - single source of truth
   private calculateAttendanceBreakdown(records: AttendanceRecord[]) {
@@ -202,6 +205,13 @@ export class AttendanceCalculator {
       epicStatus: {
         text: epicStatus.text,
         variant: epicStatus.variant,
+      },
+      studentsWithPerfectAttendance,
+      studentsWithPoorAttendance,
+      sessionsCancelled: 0, // TODO: Implement sessions cancelled logic
+      dateRange: {
+        from: dateFrom || new Date().toISOString().split('T')[0],
+        to: dateTo || new Date().toISOString().split('T')[0],
       },
     };
   }

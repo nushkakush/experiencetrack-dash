@@ -159,6 +159,12 @@ const CohortAttendancePage = () => {
             await attendanceData.refetchSessions();
             await epicAttendanceData.refetchEpicAttendance();
           }}
+          onAttendanceDataChanged={async () => {
+            // Refresh attendance data when leave applications are approved/rejected
+            await attendanceData.refetchAttendance();
+            await attendanceData.refetchSessions();
+            await epicAttendanceData.refetchEpicAttendance();
+          }}
         />
 
         {/* Attendance Statistics */}

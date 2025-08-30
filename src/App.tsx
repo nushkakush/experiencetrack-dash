@@ -36,7 +36,7 @@ import {
   AttendanceManagementProtectedRoute,
 } from './components/common';
 import NotFound from './pages/NotFound';
-import { LogoThemeTest } from '@/test/components/LogoThemeTest';
+
 import { APP_CONFIG } from '@/config/constants';
 import './App.css';
 
@@ -307,6 +307,7 @@ const App = () => {
                           </ProtectedRoute>
                         }
                       />
+
                       <Route path='/profile' element={<ProfilePage />} />
                       <Route
                         path='/invitation/:token'
@@ -332,10 +333,7 @@ const App = () => {
                         path='/public/equipment/issue'
                         element={<PublicEquipmentIssuePage />}
                       />
-                      <Route
-                        path='/test/logo-theme'
-                        element={<LogoThemeTest />}
-                      />
+
                       <Route path='*' element={<NotFound />} />
                     </Routes>
                   </BrowserRouter>

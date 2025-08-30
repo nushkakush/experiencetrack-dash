@@ -95,6 +95,21 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
     );
   };
 
+  const hasInformedStatus = (studentId: string) => {
+    const attendance = getAttendanceStatus(studentId);
+    return (
+      attendance?.absence_type === 'informed' ||
+      (attendance?.status === 'late' && attendance?.absence_type === 'informed')
+    );
+  };
+
+  const getInformedTooltipContent = (studentId: string) => {
+    const attendance = getAttendanceStatus(studentId);
+    if (!attendance || attendance.absence_type !== 'informed') return '';
+
+    return attendance.reason || 'No reason provided';
+  };
+
   const getExemptedTooltipContent = (studentId: string) => {
     const attendance = getAttendanceStatus(studentId);
     if (!attendance || attendance.absence_type !== 'exempted') return '';
@@ -183,58 +198,78 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                   {student.phone || 'N/A'}
                 </TableCell>
                 <TableCell>
-                  <div className='flex gap-1 justify-center'>
-                    <Button
-                      size='sm'
-                      variant={getButtonVariant(student.id, 'present')}
-                      className={getButtonClassName(student.id, 'present')}
-                      onClick={() => onMarkAttendance(student.id, 'present')}
-                      disabled={
-                        isSessionCancelled || isFutureDate || processing
-                      }
-                    >
-                      Present
-                    </Button>
-                    <Button
-                      size='sm'
-                      variant={getButtonVariant(student.id, 'absent')}
-                      className={getButtonClassName(student.id, 'absent')}
-                      onClick={() => onMarkAttendance(student.id, 'absent')}
-                      disabled={
-                        isSessionCancelled || isFutureDate || processing
-                      }
-                    >
-                      {isExempted ? 'Exempted' : 'Absent'}
-                    </Button>
-                    <Button
-                      size='sm'
-                      variant={getButtonVariant(student.id, 'late')}
-                      className={getButtonClassName(student.id, 'late')}
-                      onClick={() => onMarkAttendance(student.id, 'late')}
-                      disabled={
-                        isSessionCancelled || isFutureDate || processing
-                      }
-                    >
-                      Late
-                    </Button>
-                    {attendanceStatus && onResetAttendance && (
+                  <div className='flex gap-1 justify-center items-center'>
+                    <div className='flex gap-1'>
                       <Button
                         size='sm'
-                        variant='outline'
-                        onClick={() => handleResetAttendance(student.id)}
+                        variant={getButtonVariant(student.id, 'present')}
+                        className={getButtonClassName(student.id, 'present')}
+                        onClick={() => onMarkAttendance(student.id, 'present')}
                         disabled={
-                          isSessionCancelled ||
-                          isFutureDate ||
-                          processing ||
-                          resettingStudent === student.id
+                          isSessionCancelled || isFutureDate || processing
                         }
-                        className='text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300'
-                        title='Reset attendance'
                       >
-                        <RotateCcw
-                          className={`h-3 w-3 ${resettingStudent === student.id ? 'animate-spin' : ''}`}
-                        />
+                        Present
                       </Button>
+                      <Button
+                        size='sm'
+                        variant={getButtonVariant(student.id, 'absent')}
+                        className={getButtonClassName(student.id, 'absent')}
+                        onClick={() => onMarkAttendance(student.id, 'absent')}
+                        disabled={
+                          isSessionCancelled || isFutureDate || processing
+                        }
+                      >
+                        {isExempted ? 'Exempted' : 'Absent'}
+                      </Button>
+                      <Button
+                        size='sm'
+                        variant={getButtonVariant(student.id, 'late')}
+                        className={getButtonClassName(student.id, 'late')}
+                        onClick={() => onMarkAttendance(student.id, 'late')}
+                        disabled={
+                          isSessionCancelled || isFutureDate || processing
+                        }
+                      >
+                        Late
+                      </Button>
+                      {attendanceStatus && onResetAttendance && (
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          onClick={() => handleResetAttendance(student.id)}
+                          disabled={
+                            isSessionCancelled ||
+                            isFutureDate ||
+                            processing ||
+                            resettingStudent === student.id
+                          }
+                          className='text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300'
+                          title='Reset attendance'
+                        >
+                          <RotateCcw
+                            className={`h-3 w-3 ${resettingStudent === student.id ? 'animate-spin' : ''}`}
+                          />
+                        </Button>
+                      )}
+                    </div>
+                    {hasInformedStatus(student.id) && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant='outline'
+                              className='bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 ml-2'
+                            >
+                              <Info className='h-3 w-3 mr-1' />
+                              Informed
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side='top'>
+                            {getInformedTooltipContent(student.id)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 </TableCell>

@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Calendar,
   CheckCircle,
@@ -24,6 +32,8 @@ import {
   TrendingUp,
   Loader2,
   AlertTriangle,
+  Plus,
+  FileText,
 } from 'lucide-react';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { AttendanceLeaderboard } from '@/components/attendance';
@@ -33,6 +43,11 @@ import { toast } from 'sonner';
 import { AttendanceCalculationsService } from '@/services/attendanceCalculations.service';
 import type { CohortEpic, AttendanceRecord } from '@/types/attendance';
 import { supabase } from '@/integrations/supabase/client';
+import { LeaveApplicationForm } from '@/components/attendance/LeaveApplicationForm';
+import { LeaveApplicationHistory } from '@/components/attendance/LeaveApplicationHistory';
+import { useLeaveApplications } from '@/hooks/useLeaveApplications';
+import { CreateLeaveApplicationRequest } from '@/types/attendance';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AttendanceOverviewProps {
   studentData: CohortStudent;
@@ -51,6 +66,7 @@ interface StudentStats {
 
 export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
   ({ studentData, cohortData }) => {
+    const { profile } = useAuth();
     const [epics, setEpics] = useState<CohortEpic[]>([]);
     const [currentEpic, setCurrentEpic] = useState<CohortEpic | null>(null);
     const [students, setStudents] = useState<CohortStudent[]>([]);
@@ -62,6 +78,31 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
+    const [showLeaveForm, setShowLeaveForm] = useState(false);
+
+    // Leave applications hook - use studentData.id (cohort_students.id)
+    const {
+      leaveApplications,
+      loading: leaveLoading,
+      createLeaveApplication,
+      deleteLeaveApplication,
+      refresh: refreshLeaveApplications,
+    } = useLeaveApplications(studentData.id, cohortData.id);
+
+    // Handle leave application submission
+    const handleSubmitLeaveApplication = async (
+      data: CreateLeaveApplicationRequest
+    ) => {
+      await createLeaveApplication(data);
+      setShowLeaveForm(false);
+      refreshLeaveApplications();
+    };
+
+    // Handle leave application deletion
+    const handleDeleteLeaveApplication = async (id: string) => {
+      await deleteLeaveApplication(id);
+      refreshLeaveApplications();
+    };
 
     // Load epics for the cohort
     const loadEpics = useCallback(async () => {
@@ -305,191 +346,249 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
 
     return (
       <div className='space-y-6'>
-        <div>
-          <h1 className='text-2xl font-bold mb-2'>Attendance Overview</h1>
-          <p className='text-muted-foreground mb-4'>
-            Your attendance record and leaderboard position
-          </p>
-
-          {/* Student Statistics Cards */}
-          <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6'>
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  Total Sessions
-                </CardTitle>
-                <Calendar className='h-4 w-4 text-muted-foreground' />
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold'>
-                  {studentStats?.totalSessions || 0}
-                </div>
-                <p className='text-xs text-muted-foreground'>
-                  in{' '}
-                  {currentEpic?.epic?.name ||
-                    currentEpic?.name ||
-                    'current epic'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>Present</CardTitle>
-                <CheckCircle className='h-4 w-4 text-green-600' />
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold text-green-600'>
-                  {studentStats?.presentSessions || 0}
-                </div>
-                <p className='text-xs text-muted-foreground'>
-                  {(studentStats?.attendancePercentage || 0).toFixed(1)}%
-                  attendance rate
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>Absent</CardTitle>
-                <XCircle className='h-4 w-4 text-red-600' />
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold text-red-600'>
-                  {studentStats?.absentSessions || 0}
-                </div>
-                <p className='text-xs text-muted-foreground'>
-                  {(studentStats?.totalSessions || 0) > 0
-                    ? (
-                        ((studentStats?.absentSessions || 0) /
-                          (studentStats?.totalSessions || 1)) *
-                        100
-                      ).toFixed(1)
-                    : 0}
-                  % absence rate
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  Current Streak
-                </CardTitle>
-                <Clock className='h-4 w-4 text-muted-foreground' />
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold'>
-                  {studentStats?.currentStreak || 0}
-                </div>
-                <p className='text-xs text-muted-foreground'>
-                  consecutive sessions
-                </p>
-              </CardContent>
-            </Card>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold mb-2'>Attendance Overview</h1>
+            <p className='text-muted-foreground mb-4'>
+              Your attendance record and leaderboard position
+            </p>
           </div>
+          <Button
+            onClick={() => setShowLeaveForm(true)}
+            className='flex-shrink-0'
+          >
+            <Plus className='mr-2 h-4 w-4' />
+            Apply for Leave
+          </Button>
+        </div>
 
-          {/* Full Leaderboard */}
-          {currentEpic &&
-            students.length > 0 &&
-            attendanceRecords.length > 0 && (
+        <Tabs defaultValue='attendance' className='space-y-4'>
+          <TabsList>
+            <TabsTrigger value='attendance' className='flex items-center gap-2'>
+              <Calendar className='h-4 w-4' />
+              Attendance
+            </TabsTrigger>
+            <TabsTrigger
+              value='leave-applications'
+              className='flex items-center gap-2'
+            >
+              <FileText className='h-4 w-4' />
+              Leave Applications
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='attendance' className='space-y-6'>
+            {/* Student Statistics Cards */}
+            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6'>
               <Card>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2'>
-                    <TrendingUp className='h-5 w-5' />
-                    Class Leaderboard
+                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                  <CardTitle className='text-sm font-medium'>
+                    Total Sessions
                   </CardTitle>
-                  <CardDescription>
-                    Class performance rankings for{' '}
-                    <span className='font-medium'>
-                      {currentEpic.epic?.name || currentEpic.name}
-                    </span>
-                  </CardDescription>
+                  <Calendar className='h-4 w-4 text-muted-foreground' />
                 </CardHeader>
                 <CardContent>
-                  <AttendanceLeaderboard
-                    students={students}
-                    attendanceRecords={attendanceRecords}
-                    currentEpic={currentEpic}
-                    layout='grid'
-                    hideFields={['email', 'late', 'absent']}
-                    showExemptedNotice={false}
-                    studentStats={
-                      leaderboardData?.entries?.map((entry: any) => ({
-                        student: students.find(s => s.id === entry.student.id)!,
-                        attendancePercentage: entry.attendancePercentage,
-                        currentStreak: entry.currentStreak,
-                        totalSessions: entry.totalSessions,
-                        presentSessions: entry.presentSessions,
-                        rank: entry.rank,
-                      })) || []
-                    }
-                  />
+                  <div className='text-2xl font-bold'>
+                    {studentStats?.totalSessions || 0}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    in{' '}
+                    {currentEpic?.epic?.name ||
+                      currentEpic?.name ||
+                      'current epic'}
+                  </p>
                 </CardContent>
               </Card>
-            )}
 
-          {/* No Data Fallback */}
-          {!loading && !error && (!currentEpic || students.length === 0) && (
-            <Card>
-              <CardContent className='pt-6'>
-                <div className='text-center'>
-                  <Trophy className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
-                  <h3 className='text-lg font-medium mb-2'>
-                    No Attendance Data Available
-                  </h3>
-                  <p className='text-muted-foreground mb-4'>
-                    {!currentEpic
-                      ? 'No epics found for this cohort.'
-                      : 'No students or attendance records found.'}
+              <Card>
+                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                  <CardTitle className='text-sm font-medium'>Present</CardTitle>
+                  <CheckCircle className='h-4 w-4 text-green-600' />
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold text-green-600'>
+                    {studentStats?.presentSessions || 0}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    {(studentStats?.attendancePercentage || 0).toFixed(1)}%
+                    attendance rate
                   </p>
-                  <p className='text-sm text-muted-foreground'>
-                    Debug: epics={epics.length}, students={students.length},
-                    currentEpic={!!currentEpic}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
 
-          {/* No Sessions Attended Message */}
-          {!loading &&
-            !error &&
-            currentEpic &&
-            students.length > 0 &&
-            attendanceRecords.length === 0 && (
+              <Card>
+                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                  <CardTitle className='text-sm font-medium'>Absent</CardTitle>
+                  <XCircle className='h-4 w-4 text-red-600' />
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold text-red-600'>
+                    {studentStats?.absentSessions || 0}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    {(studentStats?.totalSessions || 0) > 0
+                      ? (
+                          ((studentStats?.absentSessions || 0) /
+                            (studentStats?.totalSessions || 1)) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    % absence rate
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                  <CardTitle className='text-sm font-medium'>
+                    Current Streak
+                  </CardTitle>
+                  <Clock className='h-4 w-4 text-muted-foreground' />
+                </CardHeader>
+                <CardContent>
+                  <div className='text-2xl font-bold'>
+                    {studentStats?.currentStreak || 0}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    consecutive sessions
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Full Leaderboard */}
+            {currentEpic &&
+              students.length > 0 &&
+              attendanceRecords.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <TrendingUp className='h-5 w-5' />
+                      Class Leaderboard
+                    </CardTitle>
+                    <CardDescription>
+                      Class performance rankings for{' '}
+                      <span className='font-medium'>
+                        {currentEpic.epic?.name || currentEpic.name}
+                      </span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AttendanceLeaderboard
+                      students={students}
+                      attendanceRecords={attendanceRecords}
+                      currentEpic={currentEpic}
+                      layout='grid'
+                      hideFields={['email', 'late', 'absent']}
+                      showExemptedNotice={false}
+                      studentStats={
+                        leaderboardData?.entries?.map((entry: any) => ({
+                          student: students.find(
+                            s => s.id === entry.student.id
+                          )!,
+                          attendancePercentage: entry.attendancePercentage,
+                          currentStreak: entry.currentStreak,
+                          totalSessions: entry.totalSessions,
+                          presentSessions: entry.presentSessions,
+                          rank: entry.rank,
+                        })) || []
+                      }
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+            {/* No Data Fallback */}
+            {!loading && !error && (!currentEpic || students.length === 0) && (
               <Card>
                 <CardContent className='pt-6'>
                   <div className='text-center'>
-                    <Calendar className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+                    <Trophy className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
                     <h3 className='text-lg font-medium mb-2'>
-                      No Sessions Attended Yet
+                      No Attendance Data Available
                     </h3>
                     <p className='text-muted-foreground mb-4'>
-                      You have not attended any sessions in{' '}
-                      <strong>
-                        {currentEpic.epic?.name || currentEpic.name}
-                      </strong>{' '}
-                      yet.
+                      {!currentEpic
+                        ? 'No epics found for this cohort.'
+                        : 'No students or attendance records found.'}
                     </p>
                     <p className='text-sm text-muted-foreground'>
-                      Your attendance statistics will appear here once you start
-                      attending sessions.
+                      Debug: epics={epics.length}, students={students.length},
+                      currentEpic={!!currentEpic}
                     </p>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-          {/* Holiday View Dialog */}
-          {cohortData && (
-            <HolidayViewDialog
-              open={holidayDialogOpen}
-              onOpenChange={setHolidayDialogOpen}
-              cohortId={cohortData.id}
+            {/* No Sessions Attended Message */}
+            {!loading &&
+              !error &&
+              currentEpic &&
+              students.length > 0 &&
+              attendanceRecords.length === 0 && (
+                <Card>
+                  <CardContent className='pt-6'>
+                    <div className='text-center'>
+                      <Calendar className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+                      <h3 className='text-lg font-medium mb-2'>
+                        No Sessions Attended Yet
+                      </h3>
+                      <p className='text-muted-foreground mb-4'>
+                        You have not attended any sessions in{' '}
+                        <strong>
+                          {currentEpic.epic?.name || currentEpic.name}
+                        </strong>{' '}
+                        yet.
+                      </p>
+                      <p className='text-sm text-muted-foreground'>
+                        Your attendance statistics will appear here once you
+                        start attending sessions.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+            {/* Holiday View Dialog */}
+            {cohortData && (
+              <HolidayViewDialog
+                open={holidayDialogOpen}
+                onOpenChange={setHolidayDialogOpen}
+                cohortId={cohortData.id}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value='leave-applications' className='space-y-6'>
+            {/* Leave Application History */}
+            <LeaveApplicationHistory
+              applications={leaveApplications}
+              onDelete={handleDeleteLeaveApplication}
+              loading={leaveLoading}
             />
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Leave Application Modal */}
+        <Dialog open={showLeaveForm} onOpenChange={setShowLeaveForm}>
+          <DialogContent className='max-w-md'>
+            <DialogHeader>
+              <DialogTitle>Apply for Leave</DialogTitle>
+              <DialogDescription>
+                Fill out the form below to submit your leave application
+              </DialogDescription>
+            </DialogHeader>
+            <LeaveApplicationForm
+              studentId={studentData.id}
+              cohortId={cohortData.id}
+              epicId={currentEpic?.epic_id}
+              onSubmit={handleSubmitLeaveApplication}
+              onCancel={() => setShowLeaveForm(false)}
+              loading={leaveLoading}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

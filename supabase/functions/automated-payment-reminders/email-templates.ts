@@ -1,4 +1,5 @@
 import { PaymentReminderData } from './types.ts';
+import { numberToOrdinalWord } from './utils.ts';
 
 export function getEmailSubject(reminderType: string): string {
   const subjects = {
@@ -11,41 +12,45 @@ export function getEmailSubject(reminderType: string): string {
 }
 
 export function getEmailContent(data: PaymentReminderData): string {
+  // Convert installment number to ordinal word
+  const installmentNumber = parseInt(data.installment_number);
+  const ordinalInstallment = numberToOrdinalWord(installmentNumber);
+
   const templates = {
     '7_days_before': `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2563eb;">Payment Reminder</h2>
         <p>Hello ${data.student_name},</p>
-        <p>This is a friendly reminder that your <strong>${data.installment_number}</strong> installment payment is due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
+        <p>This is a friendly reminder that your <strong>${ordinalInstallment} installment</strong> payment is due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
         <p>Please ensure timely payment to avoid any late fees.</p>
-        <p>Best regards,<br>LIT OS Team</p>
+        <p>Best regards,<br>Admissions team,<br>LIT School</p>
       </div>
     `,
     '2_days_before': `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Urgent: Payment Due in 2 Days</h2>
         <p>Hello ${data.student_name},</p>
-        <p><strong>URGENT:</strong> Your <strong>${data.installment_number}</strong> installment payment is due in 2 days on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
+        <p><strong>URGENT:</strong> Your <strong>${ordinalInstallment} installment</strong> payment is due in 2 days on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>.</p>
         <p>Please complete your payment immediately to avoid late fees.</p>
-        <p>Best regards,<br>LIT OS Team</p>
+        <p>Best regards,<br>Admissions team,<br>LIT School</p>
       </div>
     `,
     on_due_date: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Today is Your Payment Due Date</h2>
         <p>Hello ${data.student_name},</p>
-        <p>Today, <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>, is the due date for your <strong>${data.installment_number}</strong> installment payment.</p>
+        <p>Today, <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong>, is the due date for your <strong>${ordinalInstallment} installment</strong> payment.</p>
         <p>Please complete your payment today to maintain your program status.</p>
-        <p>Best regards,<br>LIT OS Team</p>
+        <p>Best regards,<br>Admissions team,<br>LIT School</p>
       </div>
     `,
     overdue_reminder: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Overdue Payment Notice</h2>
         <p>Hello ${data.student_name},</p>
-        <p>Your <strong>${data.installment_number}</strong> installment payment was due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong> and is currently <strong>${data.days_overdue} days overdue</strong>.</p>
+        <p>Your <strong>${ordinalInstallment} installment</strong> payment was due on <strong>${new Date(data.due_date).toLocaleDateString('en-IN')}</strong> and is currently <strong>${data.days_overdue} days overdue</strong>.</p>
         <p>This payment is essential for the continuation of your program. Please complete your payment immediately to avoid program suspension.</p>
-        <p>Best regards,<br>LIT OS Team</p>
+        <p>Best regards,<br>Admissions team,<br>LIT School</p>
       </div>
     `,
   };

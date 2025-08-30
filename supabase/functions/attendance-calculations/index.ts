@@ -32,13 +32,20 @@ serve(async req => {
       throw new Error('Parameters are required');
     }
 
-    // Create Supabase client
+    // Create Supabase client with service role key for database access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Initialize calculator
-    const calculator = new AttendanceCalculator(supabase);
+    // Extract user's JWT token for user context (if provided)
+    const authHeader = req.headers.get('authorization');
+    let userToken = null;
+    if (authHeader) {
+      userToken = authHeader.replace('Bearer ', '');
+    }
+
+    // Initialize calculator with user context
+    const calculator = new AttendanceCalculator(supabase, userToken);
 
     // Route to appropriate calculation method
     let result;

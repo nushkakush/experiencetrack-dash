@@ -145,6 +145,11 @@ const CohortAttendancePage = () => {
             attendanceData.refetchAttendance();
             attendanceData.refetchSessions();
           }}
+          onAttendanceDataChanged={() => {
+            // Refresh attendance data when leave applications are approved/rejected
+            attendanceData.refetchAttendance();
+            attendanceData.refetchSessions();
+          }}
         />
 
         {/* Session Management Header */}

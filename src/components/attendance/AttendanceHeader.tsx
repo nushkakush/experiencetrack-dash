@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,8 +6,12 @@ import {
   Crown,
   CheckCircle,
   Upload,
+  FileText,
+  Clock,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -15,12 +19,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CohortFeatureGate } from '@/components/common';
 import { AttendanceService } from '@/services/attendance.service';
 import { toast } from 'sonner';
 import type { Cohort, CohortEpic } from '@/types/attendance';
 import BulkAttendanceUploadDialog from '@/components/common/bulk-upload/BulkAttendanceUploadDialog';
 import { BulkAttendanceConfig } from '@/components/common/bulk-upload/types/attendance';
+import { LeaveApprovalQueue } from './LeaveApprovalQueue';
+import { LeaveApplicationHistory } from './LeaveApplicationHistory';
+import { LeaveApprovalQueueSkeleton } from './LeaveApprovalQueueSkeleton';
+import { LeaveApplicationHistorySkeleton } from './LeaveApplicationHistorySkeleton';
+import { useLeaveApplications } from '@/hooks/useLeaveApplications';
+import { UpdateLeaveApplicationRequest } from '@/types/attendance';
 
 interface AttendanceHeaderProps {
   cohort: Cohort | null;
@@ -30,6 +48,7 @@ interface AttendanceHeaderProps {
   onMarkHolidays: () => void;
   onEpicActiveChanged?: () => void; // Callback to refresh data when active epic changes
   onAttendanceImported?: () => void; // Callback when bulk attendance is imported
+  onAttendanceDataChanged?: () => void; // Callback to refresh attendance data when leave applications are approved/rejected
 }
 
 export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
@@ -40,9 +59,100 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
   onMarkHolidays,
   onEpicActiveChanged,
   onAttendanceImported,
+  onAttendanceDataChanged,
 }) => {
   const navigate = useNavigate();
   const [settingActiveEpic, setSettingActiveEpic] = useState(false);
+  const [leaveManagementOpen, setLeaveManagementOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('pending');
+  const [modalLoading, setModalLoading] = useState(false);
+  const [hasLeaveActions, setHasLeaveActions] = useState(false);
+
+  // Leave applications hook - using cohort ID for program manager view
+  const {
+    leaveApplications,
+    pendingApplications,
+    loading: leaveLoading,
+    updateLeaveApplication,
+    refresh: refreshLeaveApplications,
+    fetchPendingLeaveApplications,
+    fetchAllLeaveApplications,
+  } = useLeaveApplications('', cohort?.id || '');
+
+  // Reload data when modal opens
+  useEffect(() => {
+    if (leaveManagementOpen) {
+      setModalLoading(true);
+      setHasLeaveActions(false); // Reset the flag when modal opens
+      refreshLeaveApplications()
+        .then(() => {
+          setModalLoading(false);
+        })
+        .catch(() => {
+          setModalLoading(false);
+        });
+    }
+  }, [leaveManagementOpen, refreshLeaveApplications]);
+
+  // Reload data when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setModalLoading(true);
+
+    if (value === 'pending') {
+      fetchPendingLeaveApplications()
+        .then(() => {
+          setModalLoading(false);
+        })
+        .catch(() => {
+          setModalLoading(false);
+        });
+    } else if (value === 'all') {
+      fetchAllLeaveApplications()
+        .then(() => {
+          setModalLoading(false);
+        })
+        .catch(() => {
+          setModalLoading(false);
+        });
+    }
+  };
+
+  // Handle leave application approval
+  const handleApproveLeave = async (
+    id: string,
+    data: UpdateLeaveApplicationRequest
+  ) => {
+    try {
+      await updateLeaveApplication(id, data);
+      toast.success('Leave application approved successfully');
+      refreshLeaveApplications();
+      // Refresh attendance data to show the updated "informed absent" status
+      onAttendanceDataChanged?.();
+      setHasLeaveActions(true);
+    } catch (error) {
+      console.error('Error approving leave application:', error);
+      toast.error('Failed to approve leave application');
+    }
+  };
+
+  // Handle leave application rejection
+  const handleRejectLeave = async (
+    id: string,
+    data: UpdateLeaveApplicationRequest
+  ) => {
+    try {
+      await updateLeaveApplication(id, data);
+      toast.success('Leave application rejected successfully');
+      refreshLeaveApplications();
+      // Refresh attendance data to reflect any changes
+      onAttendanceDataChanged?.();
+      setHasLeaveActions(true);
+    } catch (error) {
+      console.error('Error rejecting leave application:', error);
+      toast.error('Failed to reject leave application');
+    }
+  };
 
   const handleSetActiveEpic = async (epicId: string) => {
     if (!cohort) return;
@@ -84,6 +194,17 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
           >
             <CalendarIcon className='h-4 w-4' />
             Mark Holidays
+          </Button>
+
+          <Button
+            variant='outline'
+            onClick={() => setLeaveManagementOpen(true)}
+            className='flex items-center gap-2'
+            disabled={modalLoading}
+          >
+            <FileText className='h-4 w-4' />
+            Leave Management
+            {modalLoading && <Loader2 className='h-4 w-4 animate-spin' />}
           </Button>
 
           {/* Epic-level Bulk Attendance Import - Hidden for now */}
@@ -155,6 +276,88 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Leave Management Modal */}
+      <Dialog
+        open={leaveManagementOpen}
+        onOpenChange={open => {
+          setLeaveManagementOpen(open);
+          // Refresh attendance data when modal is closed if there were any leave actions
+          if (!open && hasLeaveActions) {
+            onAttendanceDataChanged?.();
+            setHasLeaveActions(false); // Reset the flag
+          }
+        }}
+      >
+        <DialogContent className='max-w-4xl max-h-[80vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle>Leave Management</DialogTitle>
+            <DialogDescription>
+              Review and manage student leave applications for this cohort
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className='space-y-4'
+          >
+            <TabsList className='grid w-full grid-cols-2'>
+              <TabsTrigger
+                value='pending'
+                className='flex items-center gap-2'
+                disabled={modalLoading}
+              >
+                <Clock className='h-4 w-4' />
+                Pending Review
+                {pendingApplications && pendingApplications.length > 0 && (
+                  <Badge variant='secondary' className='ml-1'>
+                    {pendingApplications.length}
+                  </Badge>
+                )}
+                {modalLoading && activeTab === 'pending' && (
+                  <Loader2 className='h-4 w-4 animate-spin' />
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value='all'
+                className='flex items-center gap-2'
+                disabled={modalLoading}
+              >
+                <FileText className='h-4 w-4' />
+                All Applications
+                {modalLoading && activeTab === 'all' && (
+                  <Loader2 className='h-4 w-4 animate-spin' />
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value='pending' className='space-y-4'>
+              {modalLoading ? (
+                <LeaveApprovalQueueSkeleton />
+              ) : (
+                <LeaveApprovalQueue
+                  applications={pendingApplications || []}
+                  onApprove={handleApproveLeave}
+                  onReject={handleRejectLeave}
+                  loading={leaveLoading}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value='all' className='space-y-4'>
+              {modalLoading ? (
+                <LeaveApplicationHistorySkeleton />
+              ) : (
+                <LeaveApplicationHistory
+                  applications={leaveApplications || []}
+                  loading={leaveLoading}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

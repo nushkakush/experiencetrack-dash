@@ -58,19 +58,23 @@ export const EmailComposerDialog: React.FC<EmailComposerDialogProps> = ({
   React.useEffect(() => {
     if (context?.type === 'payment_reminder' && context.paymentData) {
       const { paymentData } = context;
-      setSubject(
-        `Payment Reminder - ${paymentData.installmentNumber} Installment`
+
+      // Convert installment number to ordinal word
+      const ordinalInstallment = numberToOrdinalWord(
+        paymentData.installmentNumber
       );
+
+      setSubject(`Payment Reminder - ${ordinalInstallment} Installment`);
       setContent(`Dear ${paymentData.studentName},
 
-This is a friendly reminder that your ${paymentData.installmentNumber} installment payment of ${paymentData.amount} is due on ${paymentData.dueDate}.
+This is a friendly reminder that your ${ordinalInstallment} installment payment of ${paymentData.amount} is due on ${paymentData.dueDate}.
 
 Please ensure timely payment to avoid any late fees or complications with your program.
 
 If you have any questions or need assistance, please don't hesitate to contact us.
 
 Best regards,
-Admissions Team
+Admissions team,
 LIT School`);
       // Set the template to payment_reminder so it shows as selected
       setTemplate('payment_reminder');
@@ -148,19 +152,23 @@ LIT School`);
       case 'payment_reminder':
         if (context?.paymentData) {
           const { paymentData } = context;
-          setSubject(
-            `Payment Reminder - ${paymentData.installmentNumber} Installment`
+
+          // Convert installment number to ordinal word
+          const ordinalInstallment = numberToOrdinalWord(
+            paymentData.installmentNumber
           );
+
+          setSubject(`Payment Reminder - ${ordinalInstallment} Installment`);
           setContent(`Dear ${paymentData.studentName},
 
-This is a friendly reminder that your ${paymentData.installmentNumber} installment payment of ${paymentData.amount} is due on ${paymentData.dueDate}.
+This is a friendly reminder that your ${ordinalInstallment} installment payment of ${paymentData.amount} is due on ${paymentData.dueDate}.
 
 Please ensure timely payment to avoid any late fees or complications with your program.
 
 If you have any questions or need assistance, please don't hesitate to contact us.
 
 Best regards,
-Admissions Team
+Admissions team,
 LIT School`);
         }
         break;
@@ -175,7 +183,7 @@ Please review the details and take the necessary action as soon as possible.
 If you have any questions or need clarification, please don't hesitate to contact me.
 
 Best regards,
-Admissions Team
+Admissions team,
 LIT School`);
         break;
       case 'custom':
@@ -339,3 +347,65 @@ LIT School`);
     </Dialog>
   );
 };
+
+/**
+ * Convert a number to its ordinal word representation
+ */
+function numberToOrdinalWord(num: number): string {
+  const ordinals = [
+    'first',
+    'second',
+    'third',
+    'fourth',
+    'fifth',
+    'sixth',
+    'seventh',
+    'eighth',
+    'ninth',
+    'tenth',
+    'eleventh',
+    'twelfth',
+    'thirteenth',
+    'fourteenth',
+    'fifteenth',
+    'sixteenth',
+    'seventeenth',
+    'eighteenth',
+    'nineteenth',
+    'twentieth',
+    'twenty-first',
+    'twenty-second',
+    'twenty-third',
+    'twenty-fourth',
+    'twenty-fifth',
+    'twenty-sixth',
+    'twenty-seventh',
+    'twenty-eighth',
+    'twenty-ninth',
+    'thirtieth',
+    'thirty-first',
+    'thirty-second',
+    'thirty-third',
+    'thirty-fourth',
+    'thirty-fifth',
+    'thirty-sixth',
+    'thirty-seventh',
+    'thirty-eighth',
+    'thirty-ninth',
+    'fortieth',
+  ];
+
+  if (num >= 1 && num <= ordinals.length) {
+    return ordinals[num - 1];
+  }
+
+  // Fallback for numbers beyond our list
+  const j = num % 10;
+  const k = num % 100;
+  let suffix = 'th';
+  if (j === 1 && k !== 11) suffix = 'st';
+  else if (j === 2 && k !== 12) suffix = 'nd';
+  else if (j === 3 && k !== 13) suffix = 'rd';
+
+  return `${num}${suffix}`;
+}
