@@ -153,6 +153,23 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
     ],
   },
   {
+    role: 'mentor_manager',
+    features: [
+      // Cohort Management (view only)
+      'cohorts.view',
+
+      // Student Features (for viewing)
+      'student.progress',
+      'student.assignments',
+      'student.programs',
+      'student.avatar_upload', // Can view avatars but not upload
+
+      // System (limited)
+      'system.analytics',
+      'system.reports',
+    ],
+  },
+  {
     role: 'super_admin',
     features: Object.keys(FEATURE_METADATA) as FeatureKey[], // All features
   },

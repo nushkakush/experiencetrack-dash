@@ -12,7 +12,8 @@ export type ProfileTable = {
       | 'fee_collector'
       | 'partnerships_head'
       | 'placement_coordinator'
-      | 'equipment_manager';
+      | 'equipment_manager'
+      | 'mentor_manager';
     updated_at: string;
     user_id: string;
   };
@@ -29,7 +30,8 @@ export type ProfileTable = {
       | 'fee_collector'
       | 'partnerships_head'
       | 'placement_coordinator'
-      | 'equipment_manager';
+      | 'equipment_manager'
+      | 'mentor_manager';
     updated_at?: string;
     user_id: string;
   };
@@ -46,7 +48,8 @@ export type ProfileTable = {
       | 'fee_collector'
       | 'partnerships_head'
       | 'placement_coordinator'
-      | 'equipment_manager';
+      | 'equipment_manager'
+      | 'mentor_manager';
     updated_at?: string;
     user_id?: string;
   };

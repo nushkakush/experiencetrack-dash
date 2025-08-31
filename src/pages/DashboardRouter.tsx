@@ -8,6 +8,7 @@ import FeeCollectorDashboard from './dashboards/FeeCollectorDashboard';
 import PartnershipsHeadDashboard from './dashboards/PartnershipsHeadDashboard';
 import PlacementCoordinatorDashboard from './dashboards/PlacementCoordinatorDashboard';
 import EquipmentManagerDashboard from './dashboards/EquipmentManagerDashboard';
+import MentorManagerDashboard from './dashboards/MentorManagerDashboard';
 import { EquipmentAccessControl } from '@/components/equipment';
 
 const DashboardRouter = () => {
@@ -68,6 +69,8 @@ const DashboardRouter = () => {
           <EquipmentManagerDashboard />
         </EquipmentAccessControl>
       );
+    case 'mentor_manager':
+      return <MentorManagerDashboard />;
     default:
       return (
         <div className='min-h-screen flex items-center justify-center bg-background'>

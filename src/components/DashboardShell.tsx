@@ -34,6 +34,7 @@ import {
   Menu,
   Package,
   Clock,
+  MessageSquare,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -91,11 +92,6 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: UsersRound,
       },
-      {
-        title: 'User Management',
-        onClick: () => navigate('/user-management'),
-        icon: Users,
-      },
       // Equipment management items for super_admin
       ...(equipmentPermissions?.canAccessInventory
         ? [
@@ -115,6 +111,11 @@ const getNavigationItems = (
             },
           ]
         : []),
+      {
+        title: 'User Management',
+        onClick: () => navigate('/user-management'),
+        icon: Users,
+      },
     ],
     program_manager: [
       {
@@ -157,6 +158,28 @@ const getNavigationItems = (
         title: 'Borrowing History',
         onClick: () => navigate('/borrowing-history'),
         icon: Clock,
+      },
+    ],
+    mentor_manager: [
+      {
+        title: 'Mentor Management',
+        onClick: () => navigate('/mentor-management'),
+        icon: Users,
+      },
+      {
+        title: 'Mentorship Programs',
+        onClick: () => navigate('/mentorship-programs'),
+        icon: BookOpen,
+      },
+      {
+        title: 'Communication',
+        onClick: () => navigate('/mentor-communication'),
+        icon: MessageSquare,
+      },
+      {
+        title: 'Analytics',
+        onClick: () => navigate('/mentor-analytics'),
+        icon: TrendingUp,
       },
     ],
   };

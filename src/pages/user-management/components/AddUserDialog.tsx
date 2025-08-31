@@ -59,6 +59,11 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
       description: 'Manage equipment inventory and student borrowing',
     },
     {
+      value: 'mentor_manager',
+      label: 'Mentor Manager',
+      description: 'Manage mentors and mentorship programs',
+    },
+    {
       value: 'super_admin',
       label: 'Super Admin',
       description: 'Full system access and user management',

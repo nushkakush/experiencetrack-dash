@@ -78,7 +78,8 @@ export type Enums = {
     | 'fee_collector'
     | 'partnerships_head'
     | 'placement_coordinator'
-    | 'equipment_manager';
+    | 'equipment_manager'
+    | 'mentor_manager';
 };
 
 export type CompositeTypes = {
@@ -217,6 +218,7 @@ export const Constants = {
         'partnerships_head',
         'placement_coordinator',
         'equipment_manager',
+        'mentor_manager',
       ],
     },
   },
