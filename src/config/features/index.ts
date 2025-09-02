@@ -17,6 +17,7 @@ import { PLACEMENT_FEATURES } from './placements';
 import { HOLIDAY_FEATURES } from './holidays';
 import { STUDENT_FEATURES } from './student';
 import { EQUIPMENT_FEATURES } from './equipment';
+import { PROGRAM_FEATURES } from './programs';
 
 // Combine all features into a single metadata object
 export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
@@ -30,6 +31,7 @@ export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
   ...HOLIDAY_FEATURES,
   ...STUDENT_FEATURES,
   ...EQUIPMENT_FEATURES,
+  ...PROGRAM_FEATURES,
 };
 
 // Role-based permissions configuration
@@ -59,6 +61,9 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
       'attendance.export',
       'attendance.leaderboard',
       'attendance.statistics',
+
+      // Program Management (full access)
+      'programs.manage',
 
       // Holidays
       'holidays.view',
@@ -236,6 +241,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     description: 'Manage equipment inventory and borrowing',
     category: 'equipment',
     features: Object.keys(EQUIPMENT_FEATURES) as FeatureKey[],
+  },
+  {
+    name: 'Program Management',
+    description: 'Manage day-to-day program activities and skill development',
+    category: 'programs',
+    features: Object.keys(PROGRAM_FEATURES) as FeatureKey[],
   },
 ];
 

@@ -1,21 +1,24 @@
 DATA UPLOAD ISSUES
 
-6. Need to change all lit school IDs to personal IDs on the dashboard.
-7. Did Kuldeep Rajput drop out from CM1?
-8. Meeth Jain, calc for cp1 seems to be wrong on sheet.
-9. Saheel, Jeenal, Dikshy CM4 status
-10. Status of Mokshal Gandhi (cm5)
-11. Saheel Lokhande and Dikshy shah calc for cm4 seems to be wrong on sheet.
-12. Teertha calcualtion for CM5 seems to be wrong
+1. Need to change all lit school IDs to personal IDs on the dashboard.
+2. Did Kuldeep Rajput drop out from CP1? simran will get back
+3. un documented - dropout fees + refund
+4. Status of Mokshal Gandhi (cm5) (dropped) - reason?
+5. in informed/emepted, puttin in the reason is important.
+6. There were no uninformed absences
+   some people were uninformed LATE so its showing in the absences box
 
-AFTER CURRICULUM/PROGRAM APP
+7. after updating scholorship/payment plan the cell doesnt update until i hard refresh
+8. after dropdout status, in fee collector dashboard how should it work?
+9. how is refund stored, used of dropped out students?
+   AFTER CURRICULUM/PROGRAM APP
 
-1. Fee Payment Reports and Visibility
-2. have a waiver option
-3. Download fee structure PDF
-4. Late Fee needed
-5. deleting equipment is still throwing bugs
-6. Slack Integration
+10. Fee Payment Reports and Visibility
+11. have a waiver option
+12. Download fee structure PDF
+13. Late Fee needed
+14. deleting equipment is still throwing bugs
+15. Slack Integration
 
 BACKLOG
 

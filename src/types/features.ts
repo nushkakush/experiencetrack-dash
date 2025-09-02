@@ -94,7 +94,11 @@ export type FeatureKey =
   | 'student.attendance_view'
   | 'student.avatar_upload'
   | 'students.view'
-  | 'students.manage';
+  | 'students.manage'
+  | 'student-payment-dashboard'
+
+  // Program management features
+  | 'programs.manage';
 
 // Feature metadata for better organization and documentation
 export interface FeatureMetadata {
@@ -111,7 +115,8 @@ export interface FeatureMetadata {
     | 'placements'
     | 'holidays'
     | 'equipment'
-    | 'student';
+    | 'student'
+    | 'programs';
   requiresAuthentication: boolean;
   deprecated?: boolean;
   experimental?: boolean;

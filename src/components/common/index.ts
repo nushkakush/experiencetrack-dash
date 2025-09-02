@@ -11,6 +11,7 @@ export {
   CohortFeatureGate,
   AttendanceFeatureGate,
   FeeFeatureGate,
+  ProgramFeatureGate,
   UserFeatureGate,
   SystemFeatureGate,
   PartnershipFeatureGate,

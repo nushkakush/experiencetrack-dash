@@ -14,17 +14,17 @@ interface FeatureGateProps {
 
 /**
  * FeatureGate component for conditionally rendering content based on feature permissions
- * 
+ *
  * @example
  * // Single feature check
  * <FeatureGate feature="cohorts.create">
  *   <Button>Create Cohort</Button>
  * </FeatureGate>
- * 
+ *
  * @example
  * // Multiple features with fallback
- * <FeatureGate 
- *   features={['cohorts.edit', 'cohorts.delete']} 
+ * <FeatureGate
+ *   features={['cohorts.edit', 'cohorts.delete']}
  *   requireAll={false}
  *   fallback={<p>No editing permissions</p>}
  * >
@@ -40,30 +40,34 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   showDeprecatedWarning = false,
   showExperimentalWarning = false,
 }) => {
-  const { 
-    hasPermission, 
-    hasAnyPermission, 
+  const {
+    hasPermission,
+    hasAnyPermission,
     hasAllPermissions,
     isFeatureDeprecated,
     isFeatureExperimental,
-    getFeatureMetadata
+    getFeatureMetadata,
   } = useFeaturePermissions();
 
   // Determine which features to check
   const featuresToCheck = features || [feature];
-  
+
   // Check permissions based on requireAll flag
-  const hasAccess = requireAll 
+  const hasAccess = requireAll
     ? hasAllPermissions(featuresToCheck)
     : hasAnyPermission(featuresToCheck);
 
   // Check for deprecated/experimental features
-  const deprecatedFeatures = featuresToCheck.filter(f => isFeatureDeprecated(f));
-  const experimentalFeatures = featuresToCheck.filter(f => isFeatureExperimental(f));
+  const deprecatedFeatures = featuresToCheck.filter(f =>
+    isFeatureDeprecated(f)
+  );
+  const experimentalFeatures = featuresToCheck.filter(f =>
+    isFeatureExperimental(f)
+  );
 
   // Show warnings if enabled
   const showWarnings = showDeprecatedWarning || showExperimentalWarning;
-  
+
   if (!hasAccess) {
     return <>{fallback}</>;
   }
@@ -73,23 +77,25 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
       {showWarnings && (
         <>
           {showDeprecatedWarning && deprecatedFeatures.length > 0 && (
-            <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-sm text-yellow-800">
-                ⚠️ This feature uses deprecated functionality: {deprecatedFeatures.join(', ')}
+            <div className='mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md'>
+              <p className='text-sm text-yellow-800'>
+                ⚠️ This feature uses deprecated functionality:{' '}
+                {deprecatedFeatures.join(', ')}
               </p>
             </div>
           )}
-          
+
           {showExperimentalWarning && experimentalFeatures.length > 0 && (
-            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800">
-                🔬 This feature is experimental: {experimentalFeatures.join(', ')}
+            <div className='mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md'>
+              <p className='text-sm text-blue-800'>
+                🔬 This feature is experimental:{' '}
+                {experimentalFeatures.join(', ')}
               </p>
             </div>
           )}
         </>
       )}
-      
+
       {children}
     </>
   );
@@ -97,7 +103,14 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
 
 // Specialized FeatureGate components for common use cases
 export const CohortFeatureGate: React.FC<{
-  action: 'view' | 'create' | 'edit' | 'delete' | 'manage_students' | 'bulk_upload' | 'set_active_epic';
+  action:
+    | 'view'
+    | 'create'
+    | 'edit'
+    | 'delete'
+    | 'manage_students'
+    | 'bulk_upload'
+    | 'set_active_epic';
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }> = ({ action, children, fallback }) => (
@@ -107,7 +120,14 @@ export const CohortFeatureGate: React.FC<{
 );
 
 export const AttendanceFeatureGate: React.FC<{
-  action: 'view' | 'mark' | 'edit' | 'delete' | 'export' | 'leaderboard' | 'statistics';
+  action:
+    | 'view'
+    | 'mark'
+    | 'edit'
+    | 'delete'
+    | 'export'
+    | 'leaderboard'
+    | 'statistics';
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }> = ({ action, children, fallback }) => (
@@ -117,11 +137,29 @@ export const AttendanceFeatureGate: React.FC<{
 );
 
 export const FeeFeatureGate: React.FC<{
-  action: 'view' | 'collect' | 'waive' | 'refund' | 'reports' | 'setup_structure' | 'manage_scholarships';
+  action:
+    | 'view'
+    | 'collect'
+    | 'waive'
+    | 'refund'
+    | 'reports'
+    | 'setup_structure'
+    | 'manage_scholarships'
+    | 'bulk_management';
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }> = ({ action, children, fallback }) => (
   <FeatureGate feature={`fees.${action}`} fallback={fallback}>
+    {children}
+  </FeatureGate>
+);
+
+export const ProgramFeatureGate: React.FC<{
+  action: 'manage';
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}> = ({ action, children, fallback }) => (
+  <FeatureGate feature={`programs.${action}`} fallback={fallback}>
     {children}
   </FeatureGate>
 );

@@ -25,6 +25,7 @@ interface UseFeaturePermissionsReturn {
   canManagePartnerships: boolean;
   canManagePlacements: boolean;
   canManageHolidays: boolean;
+  canManagePrograms: boolean;
 
   // Feature-specific helpers
   canViewCohorts: boolean;
@@ -200,6 +201,8 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
     'holidays.global_manage',
   ]);
 
+  const canManagePrograms = hasPermission('programs.manage');
+
   // Feature-specific permission helpers
   const canViewCohorts = hasPermission('cohorts.view');
   const canCreateCohorts = hasPermission('cohorts.create');
@@ -310,6 +313,7 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
     canManagePartnerships,
     canManagePlacements,
     canManageHolidays,
+    canManagePrograms,
 
     // Feature-specific helpers
     canViewCohorts,

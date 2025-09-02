@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import DashboardShell from '@/components/DashboardShell';
-import { Users, BookOpen, MessageSquare, TrendingUp } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 const MentorManagerDashboard = () => {
   const { profile } = useAuth();
@@ -33,67 +33,6 @@ const MentorManagerDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className='text-sm text-muted-foreground'>Coming soon</p>
-            </CardContent>
-          </Card>
-
-          <Card className='cursor-pointer hover:shadow-md transition-shadow'>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <BookOpen className='h-5 w-5' />
-                Mentorship Programs
-              </CardTitle>
-              <CardDescription>
-                View and manage mentorship programs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>Coming soon</p>
-            </CardContent>
-          </Card>
-
-          <Card className='cursor-pointer hover:shadow-md transition-shadow'>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <MessageSquare className='h-5 w-5' />
-                Communication
-              </CardTitle>
-              <CardDescription>
-                Manage mentor-student communications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>Coming soon</p>
-            </CardContent>
-          </Card>
-
-          <Card className='cursor-pointer hover:shadow-md transition-shadow'>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <TrendingUp className='h-5 w-5' />
-                Analytics
-              </CardTitle>
-              <CardDescription>
-                View mentorship analytics and reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>Coming soon</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className='mt-8'>
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Latest mentorship activities and updates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>
-                No recent activity to display.
-              </p>
             </CardContent>
           </Card>
         </div>

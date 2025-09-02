@@ -166,21 +166,6 @@ const getNavigationItems = (
         onClick: () => navigate('/mentor-management'),
         icon: Users,
       },
-      {
-        title: 'Mentorship Programs',
-        onClick: () => navigate('/mentorship-programs'),
-        icon: BookOpen,
-      },
-      {
-        title: 'Communication',
-        onClick: () => navigate('/mentor-communication'),
-        icon: MessageSquare,
-      },
-      {
-        title: 'Analytics',
-        onClick: () => navigate('/mentor-analytics'),
-        icon: TrendingUp,
-      },
     ],
   };
 

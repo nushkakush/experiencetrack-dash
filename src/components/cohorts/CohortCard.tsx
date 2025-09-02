@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
+  BookOpen,
 } from 'lucide-react';
 import { CohortWithCounts } from '@/types/cohort';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,7 @@ export default function CohortCard({
     canDeleteCohorts,
     canAccessFeeCollection,
     canAccessAttendance,
+    canManagePrograms,
   } = useFeaturePermissions();
 
   const handleAttendanceClick = (e: React.MouseEvent) => {
@@ -69,6 +71,11 @@ export default function CohortCard({
     if (onFeeCollectionClick) {
       onFeeCollectionClick();
     }
+  };
+
+  const handleProgramClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/cohorts/${cohort.id}/program`);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -150,16 +157,20 @@ export default function CohortCard({
           </div>
           <div className='flex items-center gap-2'>
             <Users className='h-4 w-4' />
-            <span>{cohort.students_count}/{cohort.max_students} students</span>
+            <span>
+              {cohort.students_count}/{cohort.max_students} students
+            </span>
           </div>
         </div>
         <div className='space-y-2'>
           <div className='flex items-center justify-between text-xs text-muted-foreground'>
             <span>Capacity</span>
-            <span>{Math.round((cohort.students_count / cohort.max_students) * 100)}%</span>
+            <span>
+              {Math.round((cohort.students_count / cohort.max_students) * 100)}%
+            </span>
           </div>
-          <Progress 
-            value={(cohort.students_count / cohort.max_students) * 100} 
+          <Progress
+            value={(cohort.students_count / cohort.max_students) * 100}
             className='h-2'
           />
         </div>
@@ -174,6 +185,19 @@ export default function CohortCard({
             >
               <Clock className='h-4 w-4' />
               Attendance
+            </Button>
+          )}
+
+          {/* Program button - only for super_admin and program_manager */}
+          {canManagePrograms && (
+            <Button
+              onClick={handleProgramClick}
+              variant='outline'
+              size='sm'
+              className='flex items-center gap-2'
+            >
+              <BookOpen className='h-4 w-4' />
+              Program
             </Button>
           )}
 

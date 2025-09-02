@@ -16,6 +16,7 @@ import DashboardRouter from './pages/DashboardRouter';
 import CohortsPage from './pages/CohortsPage';
 import CohortDetailsPage from './pages/CohortDetailsPage';
 import CohortAttendancePage from './pages/CohortAttendancePage';
+import CohortProgramPage from './pages/CohortProgramPage';
 import CohortAttendanceDashboard from './pages/dashboards/CohortAttendanceDashboard';
 import FeePaymentDashboard from './pages/FeePaymentDashboard';
 import UserManagementPage from './pages/user-management/UserManagementPage';
@@ -34,6 +35,7 @@ import {
   CohortManagementProtectedRoute,
   FeeManagementProtectedRoute,
   AttendanceManagementProtectedRoute,
+  ProgramFeatureGate,
 } from './components/common';
 import NotFound from './pages/NotFound';
 
@@ -239,6 +241,18 @@ const App = () => {
                           <ProtectedRoute>
                             <DashboardAccessControl>
                               <CohortAttendancePage />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/cohorts/:cohortId/program'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <ProgramFeatureGate action='manage'>
+                                <CohortProgramPage />
+                              </ProgramFeatureGate>
                             </DashboardAccessControl>
                           </ProtectedRoute>
                         }
