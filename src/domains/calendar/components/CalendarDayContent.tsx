@@ -245,7 +245,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
     return { available };
   };
 
-  const handleDropOnSlot = (slot: number, e: React.DragEvent) => {
+  const handleDropOnSlot = async (slot: number, e: React.DragEvent) => {
     console.log(
       '🎯 handleDropOnSlot called for slot:',
       slot,
