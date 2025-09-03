@@ -18,6 +18,9 @@ import { HOLIDAY_FEATURES } from './holidays';
 import { STUDENT_FEATURES } from './student';
 import { EQUIPMENT_FEATURES } from './equipment';
 import { PROGRAM_FEATURES } from './programs';
+import { EPIC_FEATURES } from './epics';
+import { EPIC_LEARNING_PATHS_FEATURES } from './epicLearningPaths';
+import { EXPERIENCE_FEATURES } from './experiences';
 
 // Combine all features into a single metadata object
 export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
@@ -32,6 +35,9 @@ export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
   ...STUDENT_FEATURES,
   ...EQUIPMENT_FEATURES,
   ...PROGRAM_FEATURES,
+  ...EPIC_FEATURES,
+  ...EPIC_LEARNING_PATHS_FEATURES,
+  ...EXPERIENCE_FEATURES,
 };
 
 // Role-based permissions configuration
@@ -175,6 +181,35 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
     ],
   },
   {
+    role: 'experience_designer',
+    features: [
+      // Epic Management (full access)
+      'epics.view',
+      'epics.create',
+      'epics.edit',
+      'epics.delete',
+      'epics.manage',
+
+      // Epic Learning Paths Management (full access)
+      'epic-learning-paths.view',
+      'epic-learning-paths.create',
+      'epic-learning-paths.edit',
+      'epic-learning-paths.delete',
+      'epic-learning-paths.manage',
+
+      // Experience Management (full access)
+      'experiences.view',
+      'experiences.create',
+      'experiences.edit',
+      'experiences.delete',
+      'experiences.manage',
+
+      // Basic system access
+      'system.analytics',
+      'system.reports',
+    ],
+  },
+  {
     role: 'super_admin',
     features: Object.keys(FEATURE_METADATA) as FeatureKey[], // All features
   },
@@ -248,6 +283,24 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     category: 'programs',
     features: Object.keys(PROGRAM_FEATURES) as FeatureKey[],
   },
+  {
+    name: 'Epic Management',
+    description: 'Manage learning epics and educational content',
+    category: 'epics',
+    features: Object.keys(EPIC_FEATURES) as FeatureKey[],
+  },
+  {
+    name: 'Epic Learning Paths',
+    description: 'Create and manage structured learning paths with multiple epics',
+    category: 'epic-learning-paths',
+    features: Object.keys(EPIC_LEARNING_PATHS_FEATURES) as FeatureKey[],
+  },
+  {
+    name: 'Experience Management',
+    description: 'Design and manage comprehensive learning experiences with assessment',
+    category: 'experiences',
+    features: Object.keys(EXPERIENCE_FEATURES) as FeatureKey[],
+  },
 ];
 
 // Export individual domain features for specific use cases
@@ -262,4 +315,7 @@ export {
   HOLIDAY_FEATURES,
   STUDENT_FEATURES,
   EQUIPMENT_FEATURES,
+  EPIC_FEATURES,
+  EPIC_LEARNING_PATHS_FEATURES,
+  EXPERIENCE_FEATURES,
 };

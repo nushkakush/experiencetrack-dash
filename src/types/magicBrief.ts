@@ -1,0 +1,67 @@
+// Magic Brief core types
+export interface MagicBrief {
+  id: string;
+  title: string;
+  brand_name: string;
+  challenge_statement: string;
+  connected_learning_outcomes: string[];
+  skill_focus: string;
+  challenge_order: number;
+  prerequisite_skills: string;
+  skill_compounding: string;
+  epic_id: string;
+  created_by?: string;
+  created_at: string;
+  expanded?: boolean;
+  expanded_experience_id?: string;
+}
+
+// Request types for API calls
+export interface MagicBriefGenerationRequest {
+  epic_id: string;
+  epic_name: string;
+  epic_description?: string;
+  epic_outcomes: string[];
+  brand_names?: string[]; // Optional comma-separated brands
+  challenge_count?: number; // Number of challenges to generate (default: 5)
+}
+
+export interface MagicBriefExpansionRequest {
+  brief_id: string;
+  brief_title: string;
+  brand_name: string;
+  challenge_statement: string;
+  epic_id: string;
+  epic_name: string;
+  epic_description?: string;
+  epic_outcomes: string[];
+}
+
+// Response types from OpenAI
+export interface GeneratedMagicBrief {
+  title: string;
+  brand_name: string;
+  challenge_statement: string;
+  connected_learning_outcomes: string[];
+  skill_focus: string;
+  challenge_order: number;
+  prerequisite_skills: string;
+  skill_compounding: string;
+}
+
+// Epic context for magic brief generation
+export interface EpicContext {
+  id: string;
+  name: string;
+  description?: string;
+  outcomes: string[];
+}
+
+// UI State types
+export interface MagicBriefState {
+  isGenerating: boolean;
+  isExpanding: boolean;
+  error: string | null;
+  generatedBriefs: GeneratedMagicBrief[];
+  savedBriefs: MagicBrief[];
+}

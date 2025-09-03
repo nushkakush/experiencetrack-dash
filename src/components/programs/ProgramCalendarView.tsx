@@ -28,6 +28,7 @@ export interface ProgramCalendarViewProps {
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
   plannedSessions: Session[];
   loadingSessions: boolean;
+  programCode?: string;
 }
 
 export const ProgramCalendarView: React.FC<

@@ -3,12 +3,14 @@ import { CalendarDayContent } from './CalendarDayContent';
 import { cn } from '../../../lib/utils';
 import type { CalendarDay } from '../types';
 import type { Session } from '../../sessions/types';
+import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
 
 export interface ProgramCalendarGridProps {
   days: (CalendarDay | null)[];
   weekDayLabels: string[];
   sessionsPerDay: number;
   plannedSessions: Session[];
+  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
   loadingSessions: boolean;
   selectedDate: Date | null;
   viewMode: 'month' | 'week';
@@ -31,6 +33,7 @@ export interface ProgramCalendarGridProps {
     updates: { title: string }
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
+  onSessionClick?: (session: Session) => void;
   cohortId?: string;
   epicId?: string;
 }
@@ -40,6 +43,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
   weekDayLabels,
   sessionsPerDay,
   plannedSessions,
+  sessionMentorAssignments = {},
   loadingSessions,
   selectedDate,
   viewMode,
@@ -50,6 +54,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
   onDeleteSession,
   onUpdateSession,
   onEditChallenge,
+  onSessionClick,
   cohortId,
   epicId,
 }) => {
@@ -102,6 +107,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
                 day={day}
                 sessionsPerDay={sessionsPerDay}
                 plannedSessions={plannedSessions}
+                sessionMentorAssignments={sessionMentorAssignments}
                 loadingSessions={loadingSessions}
                 onDateSelect={onDateSelect}
                 onPlanSession={onPlanSession}
@@ -110,6 +116,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
                 onDeleteSession={onDeleteSession}
                 onUpdateSession={onUpdateSession}
                 onEditChallenge={onEditChallenge}
+                onSessionClick={onSessionClick}
                 cohortId={cohortId}
                 epicId={epicId}
               />

@@ -6,7 +6,8 @@ export type UserRole =
   | 'partnerships_head'
   | 'placement_coordinator'
   | 'equipment_manager'
-  | 'mentor_manager';
+  | 'mentor_manager'
+  | 'experience_designer';
 
 export interface UserProfile {
   id: string;

@@ -13,7 +13,8 @@ export type ProfileTable = {
       | 'partnerships_head'
       | 'placement_coordinator'
       | 'equipment_manager'
-      | 'mentor_manager';
+      | 'mentor_manager'
+      | 'experience_designer';
     updated_at: string;
     user_id: string;
   };
@@ -31,7 +32,8 @@ export type ProfileTable = {
       | 'partnerships_head'
       | 'placement_coordinator'
       | 'equipment_manager'
-      | 'mentor_manager';
+      | 'mentor_manager'
+      | 'experience_designer';
     updated_at?: string;
     user_id: string;
   };
@@ -49,7 +51,8 @@ export type ProfileTable = {
       | 'partnerships_head'
       | 'placement_coordinator'
       | 'equipment_manager'
-      | 'mentor_manager';
+      | 'mentor_manager'
+      | 'experience_designer';
     updated_at?: string;
     user_id?: string;
   };

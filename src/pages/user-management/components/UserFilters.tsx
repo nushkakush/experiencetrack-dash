@@ -81,6 +81,9 @@ export const UserFilters: React.FC = () => {
           <SelectItem value='placement_coordinator'>
             Placement Coordinator
           </SelectItem>
+          <SelectItem value='equipment_manager'>Equipment Manager</SelectItem>
+          <SelectItem value='mentor_manager'>Mentor Manager</SelectItem>
+          <SelectItem value='experience_designer'>Experience Designer</SelectItem>
         </SelectContent>
       </Select>
 

@@ -10,6 +10,7 @@ import {
 } from '../../../services/cblBoundaryService';
 import type { Session } from '../../sessions/types';
 import type { CalendarDay } from '../types';
+import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
 import { cn } from '../../../lib/utils';
 import { Sparkles } from 'lucide-react';
 
@@ -17,6 +18,7 @@ interface CalendarDayContentProps {
   day: CalendarDay;
   sessionsPerDay: number;
   plannedSessions: Session[];
+  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
   loadingSessions: boolean;
   onDateSelect: (date: Date) => void;
   onPlanSession: (date: Date, sessionNumber: number) => void;
@@ -37,6 +39,7 @@ interface CalendarDayContentProps {
     updates: { title: string }
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
+  onSessionClick?: (session: Session) => void;
   className?: string;
   cohortId?: string;
   epicId?: string;
@@ -46,6 +49,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   day,
   sessionsPerDay,
   plannedSessions,
+  sessionMentorAssignments = {},
   loadingSessions,
   onDateSelect,
   onPlanSession,
@@ -54,6 +58,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   onDeleteSession,
   onUpdateSession,
   onEditChallenge,
+  onSessionClick,
   className,
   cohortId,
   epicId,
@@ -578,6 +583,8 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
                           challengeTitle={
                             sessionForSlot.challenge_title || undefined
                           }
+                          mentorAssignments={sessionMentorAssignments[sessionForSlot.id] || []}
+                          onClick={() => onSessionClick?.(sessionForSlot)}
                           onDragStart={(e, session) => {
                             console.log(
                               '🚀 SessionCard onDragStart:',

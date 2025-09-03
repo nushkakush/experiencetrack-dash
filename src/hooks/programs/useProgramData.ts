@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { supabase, connectionManager } from '@/integrations/supabase/client';
 import { AttendanceService } from '@/services/attendance.service';
+import { EpicMasterService } from '@/services/epicMaster.service';
+import { SessionMentorService } from '@/services/sessionMentor.service';
 import { toast } from 'sonner';
 import type { CohortStudent, CohortEpic, Cohort } from '@/types/attendance';
+import type { EpicMasterAssignmentWithMentors } from '@/types/epicMasterAssignment';
+import type { SessionMentorAssignmentWithMentor } from '@/types/sessionMentorAssignment';
 import { Logger } from '@/lib/logging/Logger';
 
 interface ProgramData {
   cohort: Cohort | null;
   students: CohortStudent[];
   epics: CohortEpic[];
+  epicMasterAssignment: EpicMasterAssignmentWithMentors | null;
+  sessionMentorAssignments: Record<string, SessionMentorAssignmentWithMentor[]>;
   loading: boolean;
   error: string | null;
 }
@@ -18,11 +24,39 @@ export const useProgramData = (cohortId: string | undefined) => {
     cohort: null,
     students: [],
     epics: [],
+    epicMasterAssignment: null,
+    sessionMentorAssignments: {},
     loading: true,
     error: null,
   });
 
   const [selectedEpic, setSelectedEpic] = useState<string>('');
+
+  // Load epic master assignment for selected epic
+  const loadEpicMasterAssignment = async (epicId: string) => {
+    if (!epicId) {
+      setData(prev => ({ ...prev, epicMasterAssignment: null }));
+      return;
+    }
+
+    try {
+      const result = await EpicMasterService.getEpicMasterAssignment(epicId);
+      if (result.success) {
+        setData(prev => ({ ...prev, epicMasterAssignment: result.data }));
+      } else {
+        console.error('Failed to load epic master assignment:', result.error);
+        setData(prev => ({ ...prev, epicMasterAssignment: null }));
+      }
+    } catch (error) {
+      console.error('Error loading epic master assignment:', error);
+      setData(prev => ({ ...prev, epicMasterAssignment: null }));
+    }
+  };
+
+  // Load epic master assignment when selected epic changes
+  useEffect(() => {
+    loadEpicMasterAssignment(selectedEpic);
+  }, [selectedEpic]);
 
   // Load initial data (cohort, students, epics)
   useEffect(() => {
@@ -162,10 +196,42 @@ export const useProgramData = (cohortId: string | undefined) => {
     }
   };
 
+  const refetchEpicMasterAssignment = async () => {
+    await loadEpicMasterAssignment(selectedEpic);
+  };
+
+  // Load session mentor assignments for sessions
+  const loadSessionMentorAssignments = async (sessionIds: string[]) => {
+    if (sessionIds.length === 0) {
+      setData(prev => ({ ...prev, sessionMentorAssignments: {} }));
+      return;
+    }
+
+    try {
+      const result = await SessionMentorService.getBatchSessionMentorAssignments(sessionIds);
+      if (result.success) {
+        setData(prev => ({ ...prev, sessionMentorAssignments: result.data }));
+      } else {
+        console.error('Failed to load session mentor assignments:', result.error);
+        setData(prev => ({ ...prev, sessionMentorAssignments: {} }));
+      }
+    } catch (error) {
+      console.error('Error loading session mentor assignments:', error);
+      setData(prev => ({ ...prev, sessionMentorAssignments: {} }));
+    }
+  };
+
+  const refetchSessionMentorAssignments = async (sessionIds: string[]) => {
+    await loadSessionMentorAssignments(sessionIds);
+  };
+
   return {
     ...data,
     selectedEpic,
     setSelectedEpic,
     refetchEpics,
+    refetchEpicMasterAssignment,
+    loadSessionMentorAssignments,
+    refetchSessionMentorAssignments,
   };
 };

@@ -29,6 +29,7 @@ export interface PlannedSession {
   cbl_challenge_id?: string | null;
   original_cbl?: boolean;
   challenge_title?: string | null;
+  mentor_assignments?: any[]; // Will be populated by SessionMentorService
 }
 
 export interface CreatePlannedSessionData {

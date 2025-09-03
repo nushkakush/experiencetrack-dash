@@ -13,6 +13,7 @@ import {
 import type { Session } from '@/domains/sessions/types';
 import type { CalendarDay } from '@/domains/calendar/types';
 import type { UserProfile } from '@/types/auth';
+import type { SessionMentorAssignmentWithMentor } from '@/types/sessionMentorAssignment';
 
 interface WeeklyCalendarDownloadProps {
   currentWeek: Date;
@@ -22,6 +23,7 @@ interface WeeklyCalendarDownloadProps {
   cohortName?: string;
   programCode?: string;
   mentors?: UserProfile[];
+  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
 }
 
 interface WeeklyEvent {
@@ -44,6 +46,7 @@ export const WeeklyCalendarDownload: React.FC<WeeklyCalendarDownloadProps> = ({
   cohortName,
   programCode = 'CP02',
   mentors = [],
+  sessionMentorAssignments = {},
 }) => {
   console.log('🚀 WeeklyCalendarDownload component rendered with:', {
     sessionsCount: sessions.length,
@@ -72,6 +75,61 @@ export const WeeklyCalendarDownload: React.FC<WeeklyCalendarDownloadProps> = ({
       console.log('Canvas ref set:', node);
     }
   }, []);
+
+  // Extract unique mentors for the current week from session assignments
+  const getWeeklyMentors = React.useMemo(() => {
+    const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
+    const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
+
+    // Filter sessions for the current week
+    const weekSessions = sessions.filter(session => {
+      const sessionDate = new Date(session.session_date);
+      return sessionDate >= weekStart && sessionDate <= weekEnd;
+    });
+
+    // Collect unique mentors from session assignments
+    const mentorMap = new Map();
+    
+    weekSessions.forEach(session => {
+      const assignments = sessionMentorAssignments[session.id] || [];
+      assignments.forEach(assignment => {
+        if (assignment.mentor && assignment.mentor.id) {
+          const mentor = assignment.mentor;
+          if (!mentorMap.has(mentor.id)) {
+            mentorMap.set(mentor.id, {
+              id: mentor.id,
+              user_id: mentor.id, // Use mentor.id as user_id for compatibility
+              first_name: mentor.first_name,
+              last_name: mentor.last_name,
+              email: mentor.email,
+              avatar_url: mentor.avatar_url,
+              role: 'mentor_manager' as const, // Convert to UserProfile format
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      });
+    });
+
+    // If no mentors from assignments, fallback to provided mentors
+    if (mentorMap.size === 0 && mentors.length > 0) {
+      mentors.forEach(mentor => {
+        mentorMap.set(mentor.id, mentor);
+      });
+    }
+
+    const uniqueMentors = Array.from(mentorMap.values()).slice(0, 4); // Limit to 4 mentors max
+    
+    console.log('🧑‍🏫 Weekly mentors extracted:', {
+      weekSessions: weekSessions.length,
+      totalAssignments: Object.keys(sessionMentorAssignments).length,
+      uniqueMentorsCount: uniqueMentors.length,
+      mentors: uniqueMentors.map(m => ({ id: m.id, name: `${m.first_name} ${m.last_name}` }))
+    });
+    
+    return uniqueMentors;
+  }, [sessions, sessionMentorAssignments, currentWeek, mentors]);
 
   // Helper functions
   const formatSessionTime = (
@@ -586,54 +644,147 @@ export const WeeklyCalendarDownload: React.FC<WeeklyCalendarDownloadProps> = ({
       yOffset += dayHeight + 15; // Reduced padding between days to fit more content
     });
 
-    // Mentors section - HIDDEN as requested
-    // const mentorsY = height - 200;
-    //
-    // // Only render mentors section if we have mentors
-    // if (mentors && mentors.length > 0) {
-    //   ctx.fillStyle = '#ffffff';
-    //   ctx.font = 'bold 16px Arial, sans-serif';
-    //   ctx.textAlign = 'left';
-    //   ctx.fillText('THIS WEEK\'S', width - 190, mentorsY);
-    //
-    //   ctx.fillStyle = '#45b7d1';
-    //   ctx.font = 'bold 16px Arial, sans-serif';
-    //   ctx.fillText('MENTOR\'S', width - 190, mentorsY + 20);
-    //
-    //   // Mentor avatars and names - compact layout
-    //   const mentorSpacing = 55;
-    //   const startX = width - 190;
-    //   const maxMentors = Math.min(3, mentors.length); // Limit to 3 mentors max
-    //
-    //   for (let i = 0; i < maxMentors; i++) {
-    //     const mentor = mentors[i];
-    //     const x = startX + (i * mentorSpacing);
-    //
-    //     // Mentor avatar (circle)
-    //     ctx.beginPath();
-    //     ctx.arc(x, mentorsY + 55, 18, 0, 2 * Math.PI);
-    //     ctx.fillStyle = '#333333';
-    //     ctx.fill();
-    //     ctx.strokeStyle = '#45b7d1';
-    //     ctx.lineWidth = 1.5;
-    //     ctx.stroke();
-    //
-    //     // Mentor name - single line with proper spacing
-    //     ctx.fillStyle = '#ffffff';
-    //     ctx.font = '9px Arial, sans-serif';
-    //     ctx.textAlign = 'center';
-    //     const firstName = mentor.first_name || '';
-    //     const lastName = mentor.last_name || '';
-    //
-    //     // Display first name on first line, last name on second line
-    //     if (firstName) {
-    //       ctx.fillText(firstName, x, mentorsY + 85);
-    //     }
-    //     if (lastName) {
-    //       ctx.fillText(lastName, x, mentorsY + 96);
-    //     }
-    //   }
-    // }
+    // Mentors section - Show in bottom right corner
+    const mentorsY = height - 200;
+    const weeklyMentors = getWeeklyMentors;
+
+    // Only render mentors section if we have mentors
+    if (weeklyMentors && weeklyMentors.length > 0) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('THIS WEEK\'S', width - 250, mentorsY);
+
+      ctx.fillStyle = '#45b7d1';
+      ctx.font = 'bold 16px Arial, sans-serif';
+      ctx.fillText('MENTOR\'S', width - 250, mentorsY + 20);
+
+      // Mentor avatars and names - improved layout
+      const mentorSpacing = 65;
+      const startX = width - 250;
+      const maxMentors = Math.min(4, weeklyMentors.length); // Limit to 4 mentors max
+      const avatarRadius = 25; // Increased avatar size
+      const avatarY = mentorsY + 60;
+
+      // Process mentors sequentially to handle async avatar loading
+      const drawMentor = async (mentor: any, x: number) => {
+        const drawFallbackAvatar = () => {
+          // Mentor avatar (circle with initials or solid color)
+          ctx.beginPath();
+          ctx.arc(x, avatarY, avatarRadius, 0, 2 * Math.PI);
+          
+          // Use a gradient or solid color based on mentor name
+          const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
+          const colorIndex = (mentor.first_name?.charCodeAt(0) || 0) % colors.length;
+          ctx.fillStyle = colors[colorIndex];
+          ctx.fill();
+          
+          // Add border
+          ctx.strokeStyle = '#45b7d1';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          
+          // Add initials if no avatar
+          const firstInitial = (mentor.first_name?.[0] || '').toUpperCase();
+          const lastInitial = (mentor.last_name?.[0] || '').toUpperCase();
+          const initials = firstInitial + lastInitial;
+          
+          if (initials) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(initials, x, avatarY);
+          }
+        };
+
+        // Try to load and draw mentor avatar image if available
+        if (mentor.avatar_url) {
+          try {
+            const avatarImg = new Image();
+            avatarImg.crossOrigin = 'anonymous';
+            
+            await new Promise<void>((resolve) => {
+              const timeout = setTimeout(() => {
+                drawFallbackAvatar();
+                resolve();
+              }, 1500); // Shorter timeout to prevent delays
+
+              avatarImg.onload = () => {
+                clearTimeout(timeout);
+                try {
+                  // Create circular clipping path for avatar
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.arc(x, avatarY, avatarRadius, 0, 2 * Math.PI);
+                  ctx.closePath();
+                  ctx.clip();
+                  
+                  // Draw the avatar image
+                  ctx.drawImage(
+                    avatarImg, 
+                    x - avatarRadius, 
+                    avatarY - avatarRadius, 
+                    avatarRadius * 2, 
+                    avatarRadius * 2
+                  );
+                  
+                  ctx.restore();
+                  
+                  // Add border around avatar
+                  ctx.beginPath();
+                  ctx.arc(x, avatarY, avatarRadius, 0, 2 * Math.PI);
+                  ctx.strokeStyle = '#45b7d1';
+                  ctx.lineWidth = 3;
+                  ctx.stroke();
+                } catch (drawError) {
+                  console.warn('Error drawing avatar:', drawError);
+                  drawFallbackAvatar();
+                }
+                resolve();
+              };
+              
+              avatarImg.onerror = () => {
+                clearTimeout(timeout);
+                drawFallbackAvatar();
+                resolve();
+              };
+              
+              avatarImg.src = mentor.avatar_url;
+            });
+          } catch (error) {
+            console.warn('Failed to load avatar for mentor:', mentor.first_name, error);
+            drawFallbackAvatar();
+          }
+        } else {
+          drawFallbackAvatar();
+        }
+
+        // Mentor name - with increased spacing from avatar
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        
+        const firstName = mentor.first_name || '';
+        const lastName = mentor.last_name || '';
+
+        // Display first name and last name with better spacing
+        if (firstName) {
+          ctx.fillText(firstName.toUpperCase(), x, avatarY + avatarRadius + 18); // Increased spacing
+        }
+        if (lastName) {
+          ctx.fillText(lastName.toUpperCase(), x, avatarY + avatarRadius + 32); // Increased spacing
+        }
+      };
+
+      // Draw all mentors
+      for (let i = 0; i < maxMentors; i++) {
+        const mentor = weeklyMentors[i];
+        const x = startX + (i * mentorSpacing);
+        await drawMentor(mentor, x);
+      }
+    }
 
     console.log('Calendar image generation completed');
   };

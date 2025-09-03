@@ -7,6 +7,8 @@ import {
   ProgramHeader,
   PlanSessionModal,
 } from '@/components/programs';
+import { EpicMasterAssignment } from '@/components/epicMaster';
+import { ManageSessionDialog } from '@/components/sessions';
 import { DeleteSessionDialog } from '@/components/ui/sessions';
 import { EditChallengeNameDialog } from '@/components/ui/EditChallengeNameDialog';
 import { useProgramData } from '@/hooks/programs';
@@ -43,6 +45,8 @@ const CohortProgramPage: React.FC = () => {
     id: string;
     currentTitle: string;
   } | null>(null);
+  const [isManageSessionDialogOpen, setIsManageSessionDialogOpen] = useState(false);
+  const [sessionToManage, setSessionToManage] = useState<PlannedSession | null>(null);
 
   const [plannedSessions, setPlannedSessions] = useState<PlannedSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -53,9 +57,14 @@ const CohortProgramPage: React.FC = () => {
     epics,
     selectedEpic,
     setSelectedEpic,
+    epicMasterAssignment,
+    sessionMentorAssignments,
     loading,
     error,
     refetchEpics,
+    refetchEpicMasterAssignment,
+    loadSessionMentorAssignments,
+    refetchSessionMentorAssignments,
   } = useProgramData(cohortId);
 
   // Fetch planned sessions when epic changes
@@ -82,7 +91,12 @@ const CohortProgramPage: React.FC = () => {
         selectedEpic
       );
       if (result.success) {
-        setPlannedSessions(result.data || []);
+        const sessions = result.data || [];
+        setPlannedSessions(sessions);
+        
+        // Load session mentor assignments for these sessions
+        const sessionIds = sessions.map(s => s.id);
+        await loadSessionMentorAssignments(sessionIds);
       } else {
         console.error('Failed to fetch planned sessions:', result.error);
       }
@@ -145,6 +159,18 @@ const CohortProgramPage: React.FC = () => {
 
   const handleEpicActiveChanged = async () => {
     await refetchEpics();
+  };
+
+  const handleManageSession = (session: PlannedSession) => {
+    setSessionToManage(session);
+    setIsManageSessionDialogOpen(true);
+  };
+
+  const handleSessionUpdate = async () => {
+    // Refresh session mentor assignments and session data
+    const sessionIds = plannedSessions.map(s => s.id);
+    await refetchSessionMentorAssignments(sessionIds);
+    await fetchPlannedSessions();
   };
 
   const handlePlanSession = (date: Date, sessionNumber: number) => {
@@ -543,6 +569,17 @@ const CohortProgramPage: React.FC = () => {
           onEpicActiveChanged={handleEpicActiveChanged}
         />
 
+        {/* Epic Master Assignment */}
+        {selectedEpic && (
+          <EpicMasterAssignment
+            cohortEpicId={selectedEpic}
+            epicName={epics.find(epic => epic.id === selectedEpic)?.epic?.name || epics.find(epic => epic.id === selectedEpic)?.name || 'Unknown Epic'}
+            assignment={epicMasterAssignment}
+            loading={loading}
+            onAssignmentChange={refetchEpicMasterAssignment}
+          />
+        )}
+
         {/* Program Calendar View */}
         {cohortId && selectedEpic && (
           <ProgramCalendarView
@@ -733,8 +770,11 @@ const CohortProgramPage: React.FC = () => {
               setChallengeToEdit({ id: challengeId, currentTitle });
               setIsEditChallengeDialogOpen(true);
             }}
+            onSessionClick={handleManageSession}
             plannedSessions={plannedSessions}
+            sessionMentorAssignments={sessionMentorAssignments}
             loadingSessions={loadingSessions}
+            programCode={cohort.cohort_id}
           />
         )}
 
@@ -760,6 +800,19 @@ const CohortProgramPage: React.FC = () => {
           sessionNumber={sessionToDelete?.sessionNumber || 1}
           onConfirm={handleConfirmDelete}
           isDeleting={isDeletingSession}
+        />
+
+        {/* Manage Session Dialog */}
+        <ManageSessionDialog
+          isOpen={isManageSessionDialogOpen}
+          onClose={() => {
+            setIsManageSessionDialogOpen(false);
+            setSessionToManage(null);
+          }}
+          session={sessionToManage}
+          cohortEpicId={selectedEpic}
+          onSessionUpdate={handleSessionUpdate}
+          onSessionDelete={handleDeleteSession}
         />
 
         {/* Edit Challenge Name Dialog */}

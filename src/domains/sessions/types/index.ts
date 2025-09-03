@@ -46,6 +46,9 @@ export interface SessionTypeConfig {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   description: string;
+  defaultRole: 'mentor' | 'trainer' | 'judge';
+  allowMultipleAssignments: boolean;
+  roleLabel: string;
 }
 
 export interface SessionPlanningData {

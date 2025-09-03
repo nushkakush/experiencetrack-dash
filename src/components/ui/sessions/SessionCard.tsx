@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Badge } from '../badge';
 import { Button } from '../button';
-import { X, Edit2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '../avatar';
+import { X, Edit2, Crown, UserPlus } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { Session } from '../../../domains/sessions/types';
 import { SessionService } from '../../../domains/sessions/services/SessionService';
 import type { PlannedSession } from '../../../services/sessionPlanningService';
+import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
 
 interface SessionCardProps {
   session: Session;
@@ -16,7 +18,7 @@ interface SessionCardProps {
   onDragEnd?: (e: React.DragEvent) => void;
   onDelete?: (session: Session, sessionNumber: number) => void;
   onUpdate?: (sessionId: string, updates: { title: string }) => Promise<void>;
-
+  mentorAssignments?: SessionMentorAssignmentWithMentor[];
   draggable?: boolean;
   challengeTitle?: string;
 }
@@ -30,12 +32,27 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   onDragEnd,
   onDelete,
   onUpdate,
+  mentorAssignments = [],
   draggable = true,
   challengeTitle,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(session.title || 'Untitled');
+
+  // Helper function to get mentor initials
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  // Sort mentors: Epic Master first, then Associate Epic Master, then others
+  const sortedMentorAssignments = [...mentorAssignments].sort((a, b) => {
+    if (a.is_epic_master && !b.is_epic_master) return -1;
+    if (!a.is_epic_master && b.is_epic_master) return 1;
+    if (a.is_associate_epic_master && !b.is_associate_epic_master) return -1;
+    if (!a.is_associate_epic_master && b.is_associate_epic_master) return 1;
+    return 0;
+  });
 
   // Get session config with fallback for unknown types (like old CBL sessions)
   const sessionConfig = SessionService.getSessionTypeConfig(
@@ -250,6 +267,39 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         </Badge>
       </div>
 
+      {/* Mentor Avatars */}
+      {sortedMentorAssignments.length > 0 && (
+        <div className='flex justify-center items-center gap-1 my-2'>
+          {sortedMentorAssignments.slice(0, 3).map((assignment) => (
+            <div key={assignment.id} className='relative'>
+              <Avatar className='h-6 w-6 border border-white/30'>
+                <AvatarImage 
+                  src={assignment.mentor.avatar_url || undefined} 
+                  alt={`${assignment.mentor.first_name} ${assignment.mentor.last_name}`}
+                />
+                <AvatarFallback className='text-xs bg-white/20 text-white border-white/30'>
+                  {getInitials(assignment.mentor.first_name, assignment.mentor.last_name)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Epic Master indicators */}
+              {assignment.is_epic_master && (
+                <Crown className='absolute -top-1 -right-1 h-3 w-3 text-yellow-400 drop-shadow-sm' />
+              )}
+              {assignment.is_associate_epic_master && (
+                <UserPlus className='absolute -top-1 -right-1 h-3 w-3 text-blue-400 drop-shadow-sm' />
+              )}
+            </div>
+          ))}
+          {sortedMentorAssignments.length > 3 && (
+            <div className='h-6 w-6 bg-white/20 border border-white/30 rounded-full flex items-center justify-center'>
+              <span className='text-xs text-white font-medium'>
+                +{sortedMentorAssignments.length - 3}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Session Content */}
       <div className='flex-1 flex flex-col justify-center'>
         {isEditing ? (
@@ -344,6 +394,8 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             {session.challenge_title || challengeTitle || 'CBL Challenge'}
           </div>
         )}
+
+
 
       {/* Drag Indicator */}
       {draggable && (

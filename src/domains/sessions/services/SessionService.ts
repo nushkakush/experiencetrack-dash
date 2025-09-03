@@ -14,6 +14,9 @@ export class SessionService {
         color:
           'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-500/25',
         description: 'Challenge-Based Learning',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       challenge_intro: {
         type: 'challenge_intro',
@@ -22,6 +25,9 @@ export class SessionService {
         color:
           'bg-gradient-to-br from-blue-400 to-blue-500 text-white shadow-blue-400/25',
         description: 'Challenge + Learn',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       learn: {
         type: 'learn',
@@ -30,6 +36,9 @@ export class SessionService {
         color:
           'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/25',
         description: 'Learn Session',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       innovate: {
         type: 'innovate',
@@ -38,6 +47,9 @@ export class SessionService {
         color:
           'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/25',
         description: 'Innovate Session',
+        defaultRole: 'trainer',
+        allowMultipleAssignments: true,
+        roleLabel: 'Trainer',
       },
       transform: {
         type: 'transform',
@@ -46,6 +58,9 @@ export class SessionService {
         color:
           'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/25',
         description: 'Transform Session',
+        defaultRole: 'judge',
+        allowMultipleAssignments: true,
+        roleLabel: 'Judge',
       },
       reflection: {
         type: 'reflection',
@@ -54,6 +69,9 @@ export class SessionService {
         color:
           'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/25',
         description: 'Reflection Session',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       masterclass: {
         type: 'masterclass',
@@ -62,6 +80,9 @@ export class SessionService {
         color:
           'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-500/25',
         description: 'Masterclass',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       workshop: {
         type: 'workshop',
@@ -70,6 +91,9 @@ export class SessionService {
         color:
           'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-500/25',
         description: 'Workshop',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       gap: {
         type: 'gap',
@@ -78,6 +102,9 @@ export class SessionService {
         color:
           'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-orange-500/25',
         description: 'Gap Day',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
       mock_challenge: {
         type: 'mock_challenge',
@@ -86,6 +113,9 @@ export class SessionService {
         color:
           'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-indigo-500/25',
         description: 'Mock Challenge',
+        defaultRole: 'mentor',
+        allowMultipleAssignments: false,
+        roleLabel: 'Mentor',
       },
     };
 

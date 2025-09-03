@@ -64,6 +64,11 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
       description: 'Manage mentors and mentorship programs',
     },
     {
+      value: 'experience_designer',
+      label: 'Experience Designer',
+      description: 'Design and optimize user experiences across the platform',
+    },
+    {
       value: 'super_admin',
       label: 'Super Admin',
       description: 'Full system access and user management',

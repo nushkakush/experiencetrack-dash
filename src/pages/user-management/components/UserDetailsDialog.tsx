@@ -207,6 +207,12 @@ export const UserDetailsDialog: React.FC<UserDetailsDialogProps> = ({
                         <SelectItem value='equipment_manager'>
                           Equipment Manager
                         </SelectItem>
+                        <SelectItem value='mentor_manager'>
+                          Mentor Manager
+                        </SelectItem>
+                        <SelectItem value='experience_designer'>
+                          Experience Designer
+                        </SelectItem>
                         <SelectItem value='super_admin'>Super Admin</SelectItem>
                       </SelectContent>
                     </Select>

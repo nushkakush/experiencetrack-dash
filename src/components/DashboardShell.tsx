@@ -35,6 +35,9 @@ import {
   Package,
   Clock,
   MessageSquare,
+  Palette,
+  Zap,
+  Route,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -75,7 +78,6 @@ const getNavigationItems = (
         onClick: () => navigate('/dashboard'),
         icon: Calendar,
       },
-      // Fee Payment menu - controlled by feature flag
       ...(showStudentPaymentDashboard
         ? [
             {
@@ -92,7 +94,6 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: UsersRound,
       },
-      // Equipment management items for super_admin
       ...(equipmentPermissions?.canAccessInventory
         ? [
             {
@@ -112,6 +113,26 @@ const getNavigationItems = (
           ]
         : []),
       {
+        title: 'Mentor Management',
+        onClick: () => navigate('/mentor-management'),
+        icon: Users,
+      },
+      {
+        title: 'Experience Design',
+        onClick: () => navigate('/experience-design-management'),
+        icon: Palette,
+      },
+      {
+        title: 'Epics',
+        onClick: () => navigate('/epics'),
+        icon: Zap,
+      },
+      {
+        title: 'Epic Learning Paths',
+        onClick: () => navigate('/epic-learning-paths'),
+        icon: Route,
+      },
+      {
         title: 'User Management',
         onClick: () => navigate('/user-management'),
         icon: Users,
@@ -130,11 +151,6 @@ const getNavigationItems = (
         onClick: () => navigate('/cohorts'),
         icon: DollarSign,
       },
-      // Temporarily hidden menu items
-      // { title: 'Payments', url: '#', icon: DollarSign },
-      // { title: 'Outstanding Fees', url: '#', icon: Receipt },
-      // { title: 'Reports', url: '#', icon: FileText },
-      // { title: 'Students', url: '#', icon: Users },
     ],
     partnerships_head: [
       { title: 'Active Partnerships', url: '#', icon: Handshake },
@@ -167,9 +183,25 @@ const getNavigationItems = (
         icon: Users,
       },
     ],
+    experience_designer: [
+      {
+        title: 'Experience Design',
+        onClick: () => navigate('/experience-design-management'),
+        icon: Palette,
+      },
+      {
+        title: 'Epics',
+        onClick: () => navigate('/epics'),
+        icon: Zap,
+      },
+      {
+        title: 'Epic Learning Paths',
+        onClick: () => navigate('/epic-learning-paths'),
+        icon: Route,
+      },
+    ],
   };
 
-  // For students, don't include the base Dashboard item
   if (role === 'student') {
     return roleSpecificItems[role];
   }
@@ -185,7 +217,6 @@ const DashboardShell = ({
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
-  // Check if student payment dashboard feature flag is enabled
   const { isEnabled: showStudentPaymentDashboard } = useFeatureFlag(
     'student-payment-dashboard',
     {
@@ -193,7 +224,6 @@ const DashboardShell = ({
     }
   );
 
-  // Get equipment permissions
   const equipmentPermissions = useEquipmentPermissions();
 
   if (!profile) return null;
@@ -217,7 +247,6 @@ const DashboardShell = ({
 
   return (
     <div className='h-screen w-screen flex bg-background overflow-hidden'>
-      {/* Sidebar */}
       {!hideSidebar && (
         <div
           className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-sidebar border-r border-border flex-shrink-0 flex flex-col h-full transition-all duration-300 overflow-hidden`}
@@ -246,9 +275,7 @@ const DashboardShell = ({
         </div>
       )}
 
-      {/* Main Content */}
       <div className='flex-1 flex flex-col h-full overflow-hidden'>
-        {/* Header */}
         <header className='h-16 border-b border-border bg-background px-6 flex items-center justify-between flex-shrink-0'>
           <div className='flex items-center gap-4'>
             {!hideSidebar && (
@@ -321,7 +348,6 @@ const DashboardShell = ({
           </div>
         </header>
 
-        {/* Main Content Area */}
         <main className='flex-1 p-6 w-full overflow-y-auto'>{children}</main>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ActiveEpicProvider } from '@/contexts/ActiveEpicContext';
 import { ErrorBoundary, DashboardAccessControl } from '@/components/common';
 import Index from './pages/Index';
 import Login from './pages/auth/Login';
@@ -28,6 +29,11 @@ import PublicCombinedLeaderboard from './pages/PublicCombinedLeaderboard';
 import PublicEquipmentIssuePage from './pages/public/PublicEquipmentIssuePage';
 import InvitationPage from './pages/InvitationPage';
 import UserInvitationPage from './pages/UserInvitationPage';
+import MentorManagementPage from './pages/mentor-management/MentorManagementPage';
+import ExperienceDesignerPage from './pages/ExperienceDesignerPage';
+import ExperienceDesignManagementPage from './pages/ExperienceDesignManagementPage';
+import EpicsManagementPage from './pages/EpicsManagementPage';
+import EpicLearningPathsManagementPage from './pages/EpicLearningPathsManagementPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import {
@@ -160,7 +166,8 @@ const App = () => {
         >
           <TooltipProvider>
             <AuthProvider>
-              <FeatureFlagProvider>
+              <ActiveEpicProvider>
+                <FeatureFlagProvider>
                 <Toaster />
                 <Sonner />
                 <HelmetProvider>
@@ -191,6 +198,56 @@ const App = () => {
                           <ProtectedRoute>
                             <DashboardAccessControl>
                               <DashboardRouter />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/mentor-management'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <MentorManagementPage />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/experience-design'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <ExperienceDesignerPage />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/epics'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <EpicsManagementPage />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/epic-learning-paths'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <EpicLearningPathsManagementPage />
+                            </DashboardAccessControl>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path='/experience-design-management'
+                        element={
+                          <ProtectedRoute>
+                            <DashboardAccessControl>
+                              <ExperienceDesignManagementPage />
                             </DashboardAccessControl>
                           </ProtectedRoute>
                         }
@@ -352,7 +409,8 @@ const App = () => {
                     </Routes>
                   </BrowserRouter>
                 </HelmetProvider>
-              </FeatureFlagProvider>
+                </FeatureFlagProvider>
+              </ActiveEpicProvider>
             </AuthProvider>
           </TooltipProvider>
         </ThemeProvider>
