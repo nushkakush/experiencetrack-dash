@@ -41,19 +41,19 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
 
   const { toast } = useToast();
 
-  const handleInputChange = (field: keyof CreateEpicRequest, value: string | string[]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof CreateEpicRequest,
+    value: string | string[]
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (
-    file: File | null,
-    type: 'avatar' | 'banner'
-  ) => {
+  const handleFileChange = (file: File | null, type: 'avatar' | 'banner') => {
     if (type === 'avatar') {
       setAvatarFile(file);
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => setAvatarPreview(e.target?.result as string);
+        reader.onload = e => setAvatarPreview(e.target?.result as string);
         reader.readAsDataURL(file);
       } else {
         setAvatarPreview('');
@@ -62,7 +62,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
       setBannerFile(file);
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => setBannerPreview(e.target?.result as string);
+        reader.onload = e => setBannerPreview(e.target?.result as string);
         reader.readAsDataURL(file);
       } else {
         setBannerPreview('');
@@ -72,7 +72,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toast({
         title: 'Error',
@@ -84,6 +84,19 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
 
     try {
       setLoading(true);
+
+      // Check if name already exists
+      const nameExists = await EpicsService.checkNameExists(
+        formData.name.trim()
+      );
+      if (nameExists) {
+        toast({
+          title: 'Error',
+          description: `An epic with the name "${formData.name}" already exists. Please choose a different name.`,
+          variant: 'destructive',
+        });
+        return;
+      }
 
       let avatarUrl = '';
       let bannerUrl = '';
@@ -115,12 +128,21 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
       setAvatarPreview('');
       setBannerPreview('');
 
+      toast({
+        title: 'Success',
+        description: 'Epic created successfully!',
+        variant: 'default',
+      });
+
       onEpicCreated();
     } catch (error) {
       console.error('Error creating epic:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create epic. Please try again.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create epic. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -161,7 +183,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
               <Input
                 id='name'
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={e => handleInputChange('name', e.target.value)}
                 placeholder='Enter epic name'
                 required
               />
@@ -172,7 +194,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
               <Textarea
                 id='description'
                 value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                onChange={e => handleInputChange('description', e.target.value)}
                 placeholder='Describe the epic...'
                 rows={3}
               />
@@ -180,7 +202,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
 
             <BulletedInput
               value={formData.outcomes}
-              onChange={(value) => handleInputChange('outcomes', value)}
+              onChange={value => handleInputChange('outcomes', value)}
               placeholder='What will learners achieve from this epic?'
               label='Learning Outcomes'
               maxItems={8}
@@ -220,7 +242,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
                       type='file'
                       accept='image/*'
                       className='hidden'
-                      onChange={(e) =>
+                      onChange={e =>
                         handleFileChange(e.target.files?.[0] || null, 'avatar')
                       }
                     />
@@ -260,7 +282,7 @@ export const CreateEpicDialog: React.FC<CreateEpicDialogProps> = ({
                       type='file'
                       accept='image/*'
                       className='hidden'
-                      onChange={(e) =>
+                      onChange={e =>
                         handleFileChange(e.target.files?.[0] || null, 'banner')
                       }
                     />

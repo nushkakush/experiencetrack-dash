@@ -54,6 +54,28 @@ export class EpicsService {
   }
 
   /**
+   * Check if an epic name already exists
+   */
+  static async checkNameExists(
+    name: string,
+    excludeId?: string
+  ): Promise<boolean> {
+    let query = supabase.from('epics').select('id').eq('name', name);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to check name: ${error.message}`);
+    }
+
+    return (data?.length || 0) > 0;
+  }
+
+  /**
    * Create a new epic
    */
   static async createEpic(epic: CreateEpicRequest): Promise<Epic> {
@@ -67,6 +89,12 @@ export class EpicsService {
       .single();
 
     if (error) {
+      // Handle specific constraint violations
+      if (error.code === '23505' && error.constraint === 'epics_name_key') {
+        throw new Error(
+          `An epic with the name "${epic.name}" already exists. Please choose a different name.`
+        );
+      }
       throw new Error(`Failed to create epic: ${error.message}`);
     }
 
@@ -97,10 +125,7 @@ export class EpicsService {
    * Delete an epic
    */
   static async deleteEpic(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('epics')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('epics').delete().eq('id', id);
 
     if (error) {
       throw new Error(`Failed to delete epic: ${error.message}`);
