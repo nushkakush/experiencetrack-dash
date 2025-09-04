@@ -15,7 +15,12 @@ export const EPIC_FEATURES: Record<EpicFeatureKey, FeatureMetadata> = {
     category: 'epics',
     type: 'read',
     dependencies: [],
-    roles: ['experience_designer', 'super_admin'],
+    roles: [
+      'experience_designer',
+      'super_admin',
+      'program_manager',
+      'mentor_manager',
+    ],
   },
   'epics.create': {
     key: 'epics.create',
@@ -24,7 +29,7 @@ export const EPIC_FEATURES: Record<EpicFeatureKey, FeatureMetadata> = {
     category: 'epics',
     type: 'write',
     dependencies: ['epics.view'],
-    roles: ['experience_designer', 'super_admin'],
+    roles: ['experience_designer', 'super_admin', 'program_manager'],
   },
   'epics.edit': {
     key: 'epics.edit',
@@ -33,7 +38,7 @@ export const EPIC_FEATURES: Record<EpicFeatureKey, FeatureMetadata> = {
     category: 'epics',
     type: 'write',
     dependencies: ['epics.view'],
-    roles: ['experience_designer', 'super_admin'],
+    roles: ['experience_designer', 'super_admin', 'program_manager'],
   },
   'epics.delete': {
     key: 'epics.delete',
@@ -42,7 +47,7 @@ export const EPIC_FEATURES: Record<EpicFeatureKey, FeatureMetadata> = {
     category: 'epics',
     type: 'delete',
     dependencies: ['epics.view'],
-    roles: ['experience_designer', 'super_admin'],
+    roles: ['experience_designer', 'super_admin', 'program_manager'],
   },
   'epics.manage': {
     key: 'epics.manage',
@@ -51,6 +56,6 @@ export const EPIC_FEATURES: Record<EpicFeatureKey, FeatureMetadata> = {
     category: 'epics',
     type: 'admin',
     dependencies: ['epics.view', 'epics.create', 'epics.edit', 'epics.delete'],
-    roles: ['experience_designer', 'super_admin'],
+    roles: ['experience_designer', 'super_admin', 'program_manager'],
   },
 };

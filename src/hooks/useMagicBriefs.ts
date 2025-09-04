@@ -4,11 +4,52 @@ import { MagicBriefsService } from '@/services/magicBriefs.service';
 import { MagicBriefGenerator } from '@/services/openai/magicBriefGenerator';
 import { EpicsService } from '@/services/epics.service';
 import { ExperiencesService } from '@/services/experiences.service';
-import type { 
-  MagicBrief, 
-  MagicBriefState, 
-  EpicContext 
+import type {
+  MagicBrief,
+  MagicBriefState,
+  EpicContext,
 } from '@/types/magicBrief';
+import type { Epic } from '@/types/epic';
+
+/**
+ * Validates if an epic is complete enough for magic brief generation
+ * @param epic The epic to validate
+ * @returns Object with validation result and error message
+ */
+const validateEpicForMagicBriefs = (
+  epic: Epic
+): { isValid: boolean; error?: string } => {
+  if (!epic.description || epic.description.trim().length === 0) {
+    return {
+      isValid: false,
+      error:
+        'Epic description is required for magic brief generation. Please add a description to this epic first.',
+    };
+  }
+
+  if (!epic.outcomes || epic.outcomes.length === 0) {
+    return {
+      isValid: false,
+      error:
+        'Epic learning outcomes are required for magic brief generation. Please add learning outcomes to this epic first.',
+    };
+  }
+
+  // Check if outcomes are meaningful (not just empty strings)
+  const meaningfulOutcomes = epic.outcomes.filter(
+    outcome => outcome && outcome.trim().length > 0
+  );
+
+  if (meaningfulOutcomes.length === 0) {
+    return {
+      isValid: false,
+      error:
+        'Epic must have at least one meaningful learning outcome for magic brief generation.',
+    };
+  }
+
+  return { isValid: true };
+};
 
 /**
  * Hook for managing magic brief data and operations
@@ -38,16 +79,16 @@ export const useMagicBriefs = () => {
 
     try {
       const briefs = await MagicBriefsService.getMagicBriefs(activeEpicId);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         savedBriefs: briefs,
-        error: null 
+        error: null,
       }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: error.message,
-        savedBriefs: []
+        savedBriefs: [],
       }));
     }
   };
@@ -58,12 +99,12 @@ export const useMagicBriefs = () => {
       setState(prev => ({
         ...prev,
         savedBriefs: prev.savedBriefs.filter(brief => brief.id !== briefId),
-        error: null
+        error: null,
       }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error.message 
+      setState(prev => ({
+        ...prev,
+        error: error.message,
       }));
       throw error;
     }
@@ -85,17 +126,26 @@ export const useMagicBriefGeneration = () => {
   const { activeEpicId } = useActiveEpic();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generateMagicBriefs = async (brandNames?: string[], challengeCount?: number) => {
+  const generateMagicBriefs = async (
+    brandNames?: string[],
+    challengeCount?: number
+  ) => {
     if (!activeEpicId) {
       throw new Error('No active epic selected');
     }
 
     setIsGenerating(true);
-    
+
     try {
       // Get epic context
       const epic = await EpicsService.getEpic(activeEpicId);
-      
+
+      // Validate epic completeness
+      const validation = validateEpicForMagicBriefs(epic);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       // Generate briefs using AI
       const generatedBriefs = await MagicBriefGenerator.generateMagicBriefs({
         epic_id: activeEpicId,
@@ -121,7 +171,7 @@ export const useMagicBriefGeneration = () => {
       }));
 
       await MagicBriefsService.createMagicBriefs(briefsToSave);
-      
+
       return generatedBriefs;
     } finally {
       setIsGenerating(false);
@@ -143,11 +193,17 @@ export const useMagicBriefExpansion = () => {
 
   const expandMagicBrief = async (brief: MagicBrief) => {
     setIsExpanding(true);
-    
+
     try {
       // Get epic context
       const epic = await EpicsService.getEpic(brief.epic_id);
-      
+
+      // Validate epic completeness
+      const validation = validateEpicForMagicBriefs(epic);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       // Expand brief using AI
       const expandedExperience = await MagicBriefGenerator.expandMagicBrief({
         brief_id: brief.id,
@@ -161,10 +217,14 @@ export const useMagicBriefExpansion = () => {
       });
 
       // Save the experience
-      const savedExperience = await ExperiencesService.upsertExperience(expandedExperience);
+      const savedExperience =
+        await ExperiencesService.upsertExperience(expandedExperience);
 
       // Mark brief as expanded (still track for reference but allow re-expansion)
-      await MagicBriefsService.markBriefAsExpanded(brief.id, savedExperience.id);
+      await MagicBriefsService.markBriefAsExpanded(
+        brief.id,
+        savedExperience.id
+      );
 
       return savedExperience;
     } finally {
@@ -176,4 +236,54 @@ export const useMagicBriefExpansion = () => {
     expandMagicBrief,
     isExpanding,
   };
+};
+
+/**
+ * Hook to check if the current epic is valid for magic brief generation
+ * Provides real-time validation status for UI components
+ */
+export const useEpicValidation = () => {
+  const { activeEpicId } = useActiveEpic();
+  const [validationStatus, setValidationStatus] = useState<{
+    isValid: boolean;
+    error?: string;
+    isLoading: boolean;
+  }>({
+    isValid: false,
+    isLoading: true,
+  });
+
+  useEffect(() => {
+    const checkEpicValidation = async () => {
+      if (!activeEpicId) {
+        setValidationStatus({
+          isValid: false,
+          error: 'No active epic selected',
+          isLoading: false,
+        });
+        return;
+      }
+
+      try {
+        const epic = await EpicsService.getEpic(activeEpicId);
+        const validation = validateEpicForMagicBriefs(epic);
+
+        setValidationStatus({
+          isValid: validation.isValid,
+          error: validation.error,
+          isLoading: false,
+        });
+      } catch (error) {
+        setValidationStatus({
+          isValid: false,
+          error: 'Failed to load epic details',
+          isLoading: false,
+        });
+      }
+    };
+
+    checkEpicValidation();
+  }, [activeEpicId]);
+
+  return validationStatus;
 };

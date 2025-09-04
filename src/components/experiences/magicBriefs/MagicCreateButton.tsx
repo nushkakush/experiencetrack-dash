@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MagicCreateDialog } from './MagicCreateDialog';
+import { useEpicValidation } from '@/hooks/useMagicBriefs';
 
 interface MagicCreateButtonProps {
   onMagicBriefsGenerated: () => void;
@@ -20,29 +21,32 @@ interface MagicCreateButtonProps {
  */
 export const MagicCreateButton: React.FC<MagicCreateButtonProps> = ({
   onMagicBriefsGenerated,
-  disabled = false
+  disabled = false,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { isValid, isLoading } = useEpicValidation();
 
   const handleCBLCreate = () => {
     setDialogOpen(true);
   };
 
+  const isDisabled = disabled || !isValid || isLoading;
+
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button disabled={disabled} className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
+          <Button disabled={isDisabled} className='flex items-center gap-2'>
+            <Sparkles className='h-4 w-4' />
             Magic Create
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className='h-4 w-4' />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleCBLCreate}>
-            <div className="flex flex-col">
-              <span className="font-medium">CBL Experience</span>
-              <span className="text-sm text-muted-foreground">
+        <DropdownMenuContent align='end'>
+          <DropdownMenuItem onClick={handleCBLCreate} disabled={isDisabled}>
+            <div className='flex flex-col'>
+              <span className='font-medium'>CBL Experience</span>
+              <span className='text-sm text-muted-foreground'>
                 Generate brand case study challenges
               </span>
             </div>
