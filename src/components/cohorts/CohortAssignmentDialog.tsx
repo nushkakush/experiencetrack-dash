@@ -126,7 +126,12 @@ export default function CohortAssignmentDialog({
     } else {
       return userState.users.filter(
         user =>
-          (user.role === 'program_manager' || user.role === 'fee_collector') &&
+          (user.role === 'program_manager' ||
+            user.role === 'fee_collector' ||
+            user.role === 'equipment_manager' ||
+            user.role === 'applications_manager' ||
+            user.role === 'application_reviewer' ||
+            user.role === 'litmus_test_reviewer') &&
           (user.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.email?.toLowerCase().includes(searchQuery.toLowerCase()))

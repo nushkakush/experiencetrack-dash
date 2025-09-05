@@ -21,6 +21,7 @@ import { PROGRAM_FEATURES } from './programs';
 import { EPIC_FEATURES } from './epics';
 import { EPIC_LEARNING_PATHS_FEATURES } from './epicLearningPaths';
 import { EXPERIENCE_FEATURES } from './experiences';
+import { APPLICATION_FEATURES } from './applications';
 
 // Combine all features into a single metadata object
 export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
@@ -38,6 +39,7 @@ export const FEATURE_METADATA: Record<FeatureKey, FeatureMetadata> = {
   ...EPIC_FEATURES,
   ...EPIC_LEARNING_PATHS_FEATURES,
   ...EXPERIENCE_FEATURES,
+  ...APPLICATION_FEATURES,
 };
 
 // Role-based permissions configuration
@@ -210,6 +212,47 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
     ],
   },
   {
+    role: 'applications_manager',
+    features: [
+      // Cohort Management (view only)
+      'cohorts.view',
+
+      // Applications Management (no setup permission)
+      'applications.manage',
+      'applications.view',
+      'applications.create',
+      'applications.edit',
+      'applications.delete',
+      'applications.manage_forms',
+      'applications.review_applications',
+    ],
+  },
+  {
+    role: 'application_reviewer',
+    features: [
+      // Cohort Management (view only)
+      'cohorts.view',
+
+      // Applications Review
+      'applications.view',
+      'applications.review',
+      'applications.approve',
+      'applications.reject',
+    ],
+  },
+  {
+    role: 'litmus_test_reviewer',
+    features: [
+      // Cohort Management (view only)
+      'cohorts.view',
+
+      // LITMUS Test Review
+      'litmus_tests.view',
+      'litmus_tests.review',
+      'litmus_tests.manage',
+    ],
+  },
+  {
     role: 'super_admin',
     features: Object.keys(FEATURE_METADATA) as FeatureKey[], // All features
   },
@@ -291,15 +334,23 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     name: 'Epic Learning Paths',
-    description: 'Create and manage structured learning paths with multiple epics',
+    description:
+      'Create and manage structured learning paths with multiple epics',
     category: 'epic-learning-paths',
     features: Object.keys(EPIC_LEARNING_PATHS_FEATURES) as FeatureKey[],
   },
   {
     name: 'Experience Management',
-    description: 'Design and manage comprehensive learning experiences with assessment',
+    description:
+      'Design and manage comprehensive learning experiences with assessment',
     category: 'experiences',
     features: Object.keys(EXPERIENCE_FEATURES) as FeatureKey[],
+  },
+  {
+    name: 'Application Management',
+    description: 'Manage student applications and admissions process',
+    category: 'applications',
+    features: Object.keys(APPLICATION_FEATURES) as FeatureKey[],
   },
 ];
 
@@ -318,4 +369,5 @@ export {
   EPIC_FEATURES,
   EPIC_LEARNING_PATHS_FEATURES,
   EXPERIENCE_FEATURES,
+  APPLICATION_FEATURES,
 };

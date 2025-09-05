@@ -69,6 +69,21 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] =
       description: 'Design and optimize user experiences across the platform',
     },
     {
+      value: 'applications_manager',
+      label: 'Applications Manager',
+      description: 'Manage applications and application processes',
+    },
+    {
+      value: 'application_reviewer',
+      label: 'Application Reviewer',
+      description: 'Review and evaluate submitted applications',
+    },
+    {
+      value: 'litmus_test_reviewer',
+      label: 'LITMUS Test Reviewer',
+      description: 'Review and manage LITMUS test processes',
+    },
+    {
       value: 'super_admin',
       label: 'Super Admin',
       description: 'Full system access and user management',

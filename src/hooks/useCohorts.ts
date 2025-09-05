@@ -30,11 +30,14 @@ export function useCohorts() {
         return [];
       }
 
-      // Program managers, fee collectors, and equipment managers see only assigned cohorts
+      // Program managers, fee collectors, equipment managers, and new roles see only assigned cohorts
       if (
         profile?.role === 'program_manager' ||
         profile?.role === 'fee_collector' ||
-        profile?.role === 'equipment_manager'
+        profile?.role === 'equipment_manager' ||
+        profile?.role === 'applications_manager' ||
+        profile?.role === 'application_reviewer' ||
+        profile?.role === 'litmus_test_reviewer'
       ) {
         if (!profile?.user_id) {
           return [];

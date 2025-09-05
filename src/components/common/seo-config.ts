@@ -19,6 +19,33 @@ export const PageSEO = {
     type: 'website' as const,
   },
 
+  register: {
+    title: 'Join the Education Revolution',
+    description:
+      'Register with LIT OS to begin your experiential learning journey. Choose your cohort, set up your profile, and start your application process.',
+    keywords:
+      'register, signup, LIT OS, student registration, join, education revolution, cohort selection',
+    type: 'website' as const,
+  },
+
+  verifyEmail: {
+    title: 'Verify Your Email',
+    description:
+      'Complete your LIT OS registration by verifying your email address. Secure your account and gain access to your selected cohort.',
+    keywords:
+      'email verification, verify email, LIT OS, account verification, secure registration',
+    type: 'website' as const,
+  },
+
+  applicationComingSoon: {
+    title: 'Application Process Coming Soon',
+    description:
+      'Your LIT OS registration is complete! The application process for your selected cohort will begin soon. Stay tuned for updates.',
+    keywords:
+      'application coming soon, LIT OS, registration complete, cohort application, student onboarding',
+    type: 'website' as const,
+  },
+
   // Dashboard pages
   dashboard: {
     title: 'Dashboard',

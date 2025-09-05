@@ -7,7 +7,10 @@ export type UserRole =
   | 'placement_coordinator'
   | 'equipment_manager'
   | 'mentor_manager'
-  | 'experience_designer';
+  | 'experience_designer'
+  | 'applications_manager'
+  | 'application_reviewer'
+  | 'litmus_test_reviewer';
 
 export interface UserProfile {
   id: string;

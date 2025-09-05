@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordField } from './PasswordField';
+import { Link } from 'react-router-dom';
 
 interface SignInFormProps {
   email: string;
@@ -25,49 +26,61 @@ export const SignInForm: React.FC<SignInFormProps> = ({
   onPasswordChange,
   onTogglePassword,
   onForgotPassword,
-  onSubmit
+  onSubmit,
 }) => {
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-left block">Email</Label>
+    <form onSubmit={onSubmit} className='space-y-4'>
+      <div className='space-y-2'>
+        <Label htmlFor='email' className='text-left block'>
+          Email
+        </Label>
         <Input
-          id="email"
-          type="email"
+          id='email'
+          type='email'
           value={email}
           onChange={onEmailChange}
-          placeholder="Enter your email"
-          autoComplete="email"
+          placeholder='Enter your email'
+          autoComplete='email'
           required
         />
       </div>
-      
+
       <PasswordField
-        id="password"
-        label="Password"
+        id='password'
+        label='Password'
         value={password}
         onChange={onPasswordChange}
-        placeholder="Enter your password"
+        placeholder='Enter your password'
         showPassword={showPassword}
         onTogglePassword={onTogglePassword}
-        autoComplete="current-password"
+        autoComplete='current-password'
         required
       />
-      
-      <div className="flex justify-end">
+
+      <div className='flex justify-end'>
         <Button
-          type="button"
-          variant="link"
-          className="px-0 text-sm"
+          type='button'
+          variant='link'
+          className='px-0 text-sm'
           onClick={onForgotPassword}
         >
           Forgot password?
         </Button>
       </div>
-      
-      <Button type="submit" className="w-full" disabled={loading}>
+
+      <Button type='submit' className='w-full' disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
+
+      <div className='text-center text-sm text-muted-foreground'>
+        Don't have an account?{' '}
+        <Link
+          to='/auth/register'
+          className='text-primary hover:underline font-medium'
+        >
+          Sign up here
+        </Link>
+      </div>
     </form>
   );
 };

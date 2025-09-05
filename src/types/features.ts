@@ -98,7 +98,20 @@ export type FeatureKey =
   | 'student-payment-dashboard'
 
   // Program management features
-  | 'programs.manage';
+  | 'programs.manage'
+
+  // Application features
+  | 'applications.view'
+  | 'applications.create'
+  | 'applications.edit'
+  | 'applications.delete'
+  | 'applications.manage'
+  | 'applications.review'
+  | 'applications.approve'
+  | 'applications.reject'
+  | 'applications.setup_configuration'
+  | 'applications.manage_forms'
+  | 'applications.review_applications';
 
 // Feature metadata for better organization and documentation
 export interface FeatureMetadata {
@@ -116,7 +129,8 @@ export interface FeatureMetadata {
     | 'holidays'
     | 'equipment'
     | 'student'
-    | 'programs';
+    | 'programs'
+    | 'applications';
   requiresAuthentication: boolean;
   deprecated?: boolean;
   experimental?: boolean;

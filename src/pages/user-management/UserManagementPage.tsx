@@ -100,6 +100,10 @@ const UserManagementPage: React.FC = () => {
         'bg-purple-500/10 text-purple-600 dark:text-purple-400',
       placement_coordinator:
         'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+      applications_manager: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+      application_reviewer: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+      litmus_test_reviewer:
+        'bg-violet-500/10 text-violet-600 dark:text-violet-400',
     };
     return colors[role] || 'bg-gray-500/10 text-gray-600 dark:text-gray-400';
   };

@@ -38,6 +38,8 @@ import {
   Palette,
   Zap,
   Route,
+  CheckCircle,
+  TestTube,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -198,6 +200,42 @@ const getNavigationItems = (
         title: 'Epic Learning Paths',
         onClick: () => navigate('/epic-learning-paths'),
         icon: Route,
+      },
+    ],
+    applications_manager: [
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
+      {
+        title: 'Applications Management',
+        onClick: () => navigate('/dashboard'),
+        icon: FileText,
+      },
+    ],
+    application_reviewer: [
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
+      {
+        title: 'Application Review',
+        onClick: () => navigate('/dashboard'),
+        icon: CheckCircle,
+      },
+    ],
+    litmus_test_reviewer: [
+      {
+        title: 'Cohorts',
+        onClick: () => navigate('/cohorts'),
+        icon: UsersRound,
+      },
+      {
+        title: 'LITMUS Test Review',
+        onClick: () => navigate('/dashboard'),
+        icon: TestTube,
       },
     ],
   };

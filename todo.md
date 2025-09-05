@@ -1,10 +1,11 @@
 DATA UPLOAD ISSUES
 
 1. Need to change all lit school IDs to personal IDs on the dashboard.
-2. Handle 
-2. Did Kuldeep Rajput drop out from CP1? simran will get back
+2. Handle
+3. Did Kuldeep Rajput drop out from CP1? simran will get back
 
 COMPLETED
+
 - Experience Designer role setup with bare-shell dashboard and experience page
 - Epic Management system for Experience Designers:
   - Extended epics table with description, outcomes, avatar_url, banner_url fields
@@ -38,6 +39,7 @@ COMPLETED
   - Integrated Epic selector with active epic context for automatic experience-epic linking
   - Added epic_id field to experiences table with proper foreign key relationships
   - Created reusable EpicSelector component and ActiveEpicContext for cross-application epic management
+
 3. un documented - dropout fees + refund
 4. Status of Mokshal Gandhi (cm5) (dropped) - reason?
 5. in informed/emepted, puttin in the reason is important.
@@ -49,12 +51,14 @@ COMPLETED
 9. how is refund stored, used of dropped out students?
    AFTER CURRICULUM/PROGRAM APP
 
-10. Fee Payment Reports and Visibility
-11. have a waiver option
-12. Download fee structure PDF
-13. Late Fee needed
-14. deleting equipment is still throwing bugs
-15. Slack Integration
+10. Lets fix duplicate data in profile and cohort_studenets
+11. Scholorships are getting a duplicate
+12. Fee Payment Reports and Visibility
+13. have a waiver option
+14. Download fee structure PDF
+15. Late Fee needed
+16. deleting equipment is still throwing bugs
+17. Slack Integration
 
 BACKLOG
 

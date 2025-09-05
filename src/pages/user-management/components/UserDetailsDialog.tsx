@@ -90,6 +90,9 @@ export const UserDetailsDialog: React.FC<UserDetailsDialogProps> = ({
       fee_collector: 'bg-yellow-100 text-yellow-800',
       partnerships_head: 'bg-purple-100 text-purple-800',
       placement_coordinator: 'bg-indigo-100 text-indigo-800',
+      applications_manager: 'bg-cyan-100 text-cyan-800',
+      application_reviewer: 'bg-teal-100 text-teal-800',
+      litmus_test_reviewer: 'bg-violet-100 text-violet-800',
     };
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
@@ -212,6 +215,15 @@ export const UserDetailsDialog: React.FC<UserDetailsDialogProps> = ({
                         </SelectItem>
                         <SelectItem value='experience_designer'>
                           Experience Designer
+                        </SelectItem>
+                        <SelectItem value='applications_manager'>
+                          Applications Manager
+                        </SelectItem>
+                        <SelectItem value='application_reviewer'>
+                          Application Reviewer
+                        </SelectItem>
+                        <SelectItem value='litmus_test_reviewer'>
+                          LITMUS Test Reviewer
                         </SelectItem>
                         <SelectItem value='super_admin'>Super Admin</SelectItem>
                       </SelectContent>

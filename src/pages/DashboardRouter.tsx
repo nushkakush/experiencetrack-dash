@@ -10,6 +10,9 @@ import PlacementCoordinatorDashboard from './dashboards/PlacementCoordinatorDash
 import EquipmentManagerDashboard from './dashboards/EquipmentManagerDashboard';
 import MentorManagerDashboard from './dashboards/MentorManagerDashboard';
 import ExperienceDesignerDashboard from './dashboards/ExperienceDesignerDashboard';
+import ApplicationsManagerDashboard from './dashboards/ApplicationsManagerDashboard';
+import ApplicationReviewerDashboard from './dashboards/ApplicationReviewerDashboard';
+import LitmusTestReviewerDashboard from './dashboards/LitmusTestReviewerDashboard';
 import { EquipmentAccessControl } from '@/components/equipment';
 
 const DashboardRouter = () => {
@@ -74,6 +77,12 @@ const DashboardRouter = () => {
       return <MentorManagerDashboard />;
     case 'experience_designer':
       return <ExperienceDesignerDashboard />;
+    case 'applications_manager':
+      return <ApplicationsManagerDashboard />;
+    case 'application_reviewer':
+      return <ApplicationReviewerDashboard />;
+    case 'litmus_test_reviewer':
+      return <LitmusTestReviewerDashboard />;
     default:
       return (
         <div className='min-h-screen flex items-center justify-center bg-background'>

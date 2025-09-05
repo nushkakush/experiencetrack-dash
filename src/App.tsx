@@ -11,7 +11,11 @@ import { ActiveEpicProvider } from '@/contexts/ActiveEpicContext';
 import { ErrorBoundary, DashboardAccessControl } from '@/components/common';
 import Index from './pages/Index';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import VerifyEmail from './pages/auth/VerifyEmail';
+import SelfRegistrationVerification from './pages/auth/SelfRegistrationVerification';
 import ResetPassword from './pages/auth/ResetPassword';
+import ApplicationComingSoon from './pages/auth/ApplicationComingSoon';
 import ProfilePage from './pages/ProfilePage';
 import DashboardRouter from './pages/DashboardRouter';
 import CohortsPage from './pages/CohortsPage';
@@ -19,6 +23,7 @@ import CohortDetailsPage from './pages/CohortDetailsPage';
 import CohortAttendancePage from './pages/CohortAttendancePage';
 import CohortProgramPage from './pages/CohortProgramPage';
 import CohortAttendanceDashboard from './pages/dashboards/CohortAttendanceDashboard';
+import CohortApplicationsDashboard from './pages/dashboards/CohortApplicationsDashboard';
 import FeePaymentDashboard from './pages/FeePaymentDashboard';
 import UserManagementPage from './pages/user-management/UserManagementPage';
 import EquipmentInventoryPage from './pages/EquipmentInventoryPage';
@@ -168,247 +173,271 @@ const App = () => {
             <AuthProvider>
               <ActiveEpicProvider>
                 <FeatureFlagProvider>
-                <Toaster />
-                <Sonner />
-                <HelmetProvider>
-                  <BrowserRouter
-                    future={{
-                      v7_startTransition: true,
-                      v7_relativeSplatPath: true,
-                    }}
-                    basename='/'
-                  >
-                    <Routes>
-                      <Route
-                        path='/'
-                        element={
-                          <ProtectedRoute>
-                            <Navigate to='/dashboard' replace />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route path='/auth' element={<Login />} />
-                      <Route
-                        path='/reset-password'
-                        element={<ResetPassword />}
-                      />
-                      <Route
-                        path='/dashboard'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <DashboardRouter />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/mentor-management'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <MentorManagementPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/experience-design'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <ExperienceDesignerPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/epics'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <EpicsManagementPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/epic-learning-paths'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <EpicLearningPathsManagementPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/experience-design-management'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <ExperienceDesignManagementPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/user-management'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <DashboardRouter />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/dashboard/fee-payment'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <DashboardRouter />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <CohortsPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts/:cohortId'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <CohortDetailsPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts/:cohortId/attendance'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <CohortAttendancePage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts/:cohortId/program'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <ProgramFeatureGate action='manage'>
-                                <CohortProgramPage />
-                              </ProgramFeatureGate>
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts/:cohortId/attendance/dashboard'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <CohortAttendanceDashboard />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/cohorts/:cohortId/fee-payment'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <FeePaymentDashboard />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/fee-payment'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <FeePaymentDashboard />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/user-management'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <UserManagementPage />
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/equipment-inventory'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <EquipmentAccessControl requiredPermission='equipment.inventory'>
-                                <EquipmentInventoryPage />
-                              </EquipmentAccessControl>
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path='/borrowing-history'
-                        element={
-                          <ProtectedRoute>
-                            <DashboardAccessControl>
-                              <EquipmentAccessControl requiredPermission='equipment.borrowing_history'>
-                                <BorrowingHistoryPage />
-                              </EquipmentAccessControl>
-                            </DashboardAccessControl>
-                          </ProtectedRoute>
-                        }
-                      />
+                  <Toaster />
+                  <Sonner />
+                  <HelmetProvider>
+                    <BrowserRouter
+                      future={{
+                        v7_startTransition: true,
+                        v7_relativeSplatPath: true,
+                      }}
+                      basename='/'
+                    >
+                      <Routes>
+                        <Route
+                          path='/'
+                          element={
+                            <ProtectedRoute>
+                              <Navigate to='/dashboard' replace />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route path='/auth' element={<Login />} />
+                        <Route path='/auth/login' element={<Login />} />
+                        <Route path='/auth/register' element={<Register />} />
+                        <Route
+                          path='/auth/verify-email'
+                          element={<VerifyEmail />}
+                        />
+                        <Route
+                          path='/auth/self-registration-verification'
+                          element={<SelfRegistrationVerification />}
+                        />
+                        <Route
+                          path='/auth/application-coming-soon'
+                          element={<ApplicationComingSoon />}
+                        />
+                        <Route
+                          path='/reset-password'
+                          element={<ResetPassword />}
+                        />
+                        <Route
+                          path='/dashboard'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <DashboardRouter />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/mentor-management'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <MentorManagementPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/experience-design'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <ExperienceDesignerPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/epics'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <EpicsManagementPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/epic-learning-paths'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <EpicLearningPathsManagementPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/experience-design-management'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <ExperienceDesignManagementPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/user-management'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <DashboardRouter />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/dashboard/fee-payment'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <DashboardRouter />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <CohortsPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <CohortDetailsPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId/attendance'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <CohortAttendancePage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId/program'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <ProgramFeatureGate action='manage'>
+                                  <CohortProgramPage />
+                                </ProgramFeatureGate>
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId/attendance/dashboard'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <CohortAttendanceDashboard />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId/fee-payment'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <FeePaymentDashboard />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/cohorts/:cohortId/applications'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <CohortApplicationsDashboard />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/fee-payment'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <FeePaymentDashboard />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/user-management'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <UserManagementPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/equipment-inventory'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <EquipmentAccessControl requiredPermission='equipment.inventory'>
+                                  <EquipmentInventoryPage />
+                                </EquipmentAccessControl>
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/borrowing-history'
+                          element={
+                            <ProtectedRoute>
+                              <DashboardAccessControl>
+                                <EquipmentAccessControl requiredPermission='equipment.borrowing_history'>
+                                  <BorrowingHistoryPage />
+                                </EquipmentAccessControl>
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
 
-                      <Route path='/profile' element={<ProfilePage />} />
-                      <Route
-                        path='/invitation/:token'
-                        element={<InvitationPage />}
-                      />
-                      <Route
-                        path='/invite/:token'
-                        element={<InvitationPage />}
-                      />
-                      <Route
-                        path='/user-invite/:token'
-                        element={<UserInvitationPage />}
-                      />
-                      <Route
-                        path='/public/leaderboard/:cohortId/:epicId'
-                        element={<PublicLeaderboard />}
-                      />
-                      <Route
-                        path='/public/leaderboards/:cohortIds'
-                        element={<PublicCombinedLeaderboard />}
-                      />
-                      <Route
-                        path='/public/equipment/issue'
-                        element={<PublicEquipmentIssuePage />}
-                      />
+                        <Route path='/profile' element={<ProfilePage />} />
+                        <Route
+                          path='/invitation/:token'
+                          element={<InvitationPage />}
+                        />
+                        <Route
+                          path='/invite/:token'
+                          element={<InvitationPage />}
+                        />
+                        <Route
+                          path='/user-invite/:token'
+                          element={<UserInvitationPage />}
+                        />
+                        <Route
+                          path='/public/leaderboard/:cohortId/:epicId'
+                          element={<PublicLeaderboard />}
+                        />
+                        <Route
+                          path='/public/leaderboards/:cohortIds'
+                          element={<PublicCombinedLeaderboard />}
+                        />
+                        <Route
+                          path='/public/equipment/issue'
+                          element={<PublicEquipmentIssuePage />}
+                        />
 
-                      <Route path='*' element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </HelmetProvider>
+                        <Route path='*' element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </HelmetProvider>
                 </FeatureFlagProvider>
               </ActiveEpicProvider>
             </AuthProvider>

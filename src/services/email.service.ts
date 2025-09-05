@@ -134,6 +134,51 @@ class EmailService {
   }
 
   /**
+   * Send verification email for self-registration
+   */
+  async sendVerificationEmail(
+    email: string,
+    firstName: string,
+    lastName: string,
+    verificationToken: string,
+    cohortId: string
+  ): Promise<ApiResponse<{ verificationUrl: string; emailSent: boolean }>> {
+    const baseUrl = window.location.origin;
+    const verificationUrl = `${baseUrl}/auth/self-registration-verification?token=${verificationToken}&cohort=${cohortId}`;
+
+    const request: EmailRequest = {
+      type: 'verification',
+      recipient: {
+        email,
+        name: `${firstName} ${lastName}`,
+      },
+      firstName,
+      lastName,
+      verificationToken,
+      cohortId,
+    };
+
+    const result = await this.sendEmail(request);
+
+    if (result.success && result.data) {
+      return {
+        data: {
+          verificationUrl,
+          emailSent: result.data.emailSent || false,
+        },
+        error: null,
+        success: true,
+      };
+    } else {
+      return {
+        data: null,
+        error: result.error || 'Failed to send verification email',
+        success: false,
+      };
+    }
+  }
+
+  /**
    * Send custom email
    */
   async sendCustomEmail(

@@ -83,7 +83,18 @@ export const UserFilters: React.FC = () => {
           </SelectItem>
           <SelectItem value='equipment_manager'>Equipment Manager</SelectItem>
           <SelectItem value='mentor_manager'>Mentor Manager</SelectItem>
-          <SelectItem value='experience_designer'>Experience Designer</SelectItem>
+          <SelectItem value='experience_designer'>
+            Experience Designer
+          </SelectItem>
+          <SelectItem value='applications_manager'>
+            Applications Manager
+          </SelectItem>
+          <SelectItem value='application_reviewer'>
+            Application Reviewer
+          </SelectItem>
+          <SelectItem value='litmus_test_reviewer'>
+            LITMUS Test Reviewer
+          </SelectItem>
         </SelectContent>
       </Select>
 

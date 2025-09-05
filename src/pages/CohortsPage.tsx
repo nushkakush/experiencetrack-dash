@@ -28,7 +28,9 @@ import DashboardShell from '@/components/DashboardShell';
 import { GlobalHolidayManagementDialog } from '@/components/holidays/GlobalHolidayManagementDialog';
 import { CombinedLeaderboard } from '@/components/attendance';
 import { FeeCollectionSetupModal } from '@/components/fee-collection';
+import { ApplicationConfigurationModal } from '@/components/applications/ApplicationConfigurationModal';
 import { FeeStructureService } from '@/services/feeStructure.service';
+import { ApplicationConfigurationService } from '@/services/applicationConfiguration.service';
 import { cohortsService } from '@/services/cohorts.service';
 import { CohortWithCounts } from '@/types/cohort';
 import {
@@ -55,6 +57,9 @@ const CohortsPage = () => {
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [selectedCohortForDelete, setSelectedCohortForDelete] =
     useState<CohortWithCounts | null>(null);
+  const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const [selectedCohortForApplications, setSelectedCohortForApplications] =
+    useState<CohortWithCounts | null>(null);
   const { cohorts, isLoading, refetch } = useCohorts();
   const {
     canManageCohorts,
@@ -62,6 +67,7 @@ const CohortsPage = () => {
     canViewCohorts,
     canSetupFeeStructure,
     canAccessCohortDetails,
+    canSetupApplicationConfiguration,
   } = useFeaturePermissions();
 
   // Redirect if user can't view cohorts
@@ -139,6 +145,51 @@ const CohortsPage = () => {
     }
   };
 
+  const handleApplicationsClick = async (cohort: CohortWithCounts) => {
+    try {
+      // Check if application configuration is already complete
+      const { isSetupComplete } =
+        await ApplicationConfigurationService.getCompleteConfiguration(
+          cohort.id
+        );
+
+      if (isSetupComplete) {
+        // Application configuration is complete, navigate directly to applications dashboard
+        navigate(`/cohorts/${cohort.id}/applications`);
+      } else {
+        // Application configuration is not complete or doesn't exist
+        if (canSetupApplicationConfiguration) {
+          // User has permission to set up application configuration
+          setSelectedCohortForApplications(cohort);
+          setApplicationModalOpen(true);
+        } else {
+          // User doesn't have permission to set up application configuration
+          toast.error(
+            `Application management setup is not complete for "${cohort.name}". Please contact your administrator to complete the application configuration.`,
+            {
+              duration: 5000,
+            }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error checking application configuration:', error);
+      if (canSetupApplicationConfiguration) {
+        // If there's an error and user has permission, default to opening the setup modal
+        setSelectedCohortForApplications(cohort);
+        setApplicationModalOpen(true);
+      } else {
+        // If there's an error and user doesn't have permission, show error message
+        toast.error(
+          `Unable to check application setup for "${cohort.name}". Please contact your administrator.`,
+          {
+            duration: 5000,
+          }
+        );
+      }
+    }
+  };
+
   const handleFeeSetupComplete = () => {
     refetch(); // Refresh cohorts list
     setFeeCollectionModalOpen(false);
@@ -147,6 +198,16 @@ const CohortsPage = () => {
       navigate(`/cohorts/${selectedCohortForFee.id}/fee-payment`);
     }
     setSelectedCohortForFee(null);
+  };
+
+  const handleApplicationSetupComplete = () => {
+    refetch(); // Refresh cohorts list
+    setApplicationModalOpen(false);
+    // Navigate to the applications dashboard after setup is complete
+    if (selectedCohortForApplications) {
+      navigate(`/cohorts/${selectedCohortForApplications.id}/applications`);
+    }
+    setSelectedCohortForApplications(null);
   };
 
   const handleEditClick = (cohort: CohortWithCounts) => {
@@ -257,6 +318,7 @@ const CohortsPage = () => {
                     : undefined
                 }
                 onFeeCollectionClick={() => handleFeeCollectionClick(cohort)}
+                onApplicationsClick={() => handleApplicationsClick(cohort)}
                 onEditClick={() => handleEditClick(cohort)}
                 onDeleteClick={() => handleDeleteClick(cohort)}
               />
@@ -357,6 +419,17 @@ const CohortsPage = () => {
               onModeChange={setFeeModalMode}
             />
           </FeeFeatureGate>
+        )}
+
+        {/* Application Configuration Modal */}
+        {selectedCohortForApplications && (
+          <ApplicationConfigurationModal
+            open={applicationModalOpen}
+            onOpenChange={setApplicationModalOpen}
+            cohortId={selectedCohortForApplications.id}
+            cohortName={selectedCohortForApplications.name}
+            onSetupComplete={handleApplicationSetupComplete}
+          />
         )}
 
         <Dialog

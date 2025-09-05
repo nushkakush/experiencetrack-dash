@@ -16,6 +16,7 @@ import {
   Edit,
   Trash2,
   BookOpen,
+  FileText,
 } from 'lucide-react';
 import { CohortWithCounts } from '@/types/cohort';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ interface CohortCardProps {
   cohort: CohortWithCounts;
   onClick?: () => void;
   onFeeCollectionClick?: () => void;
+  onApplicationsClick?: () => void;
   onEditClick?: () => void;
   onDeleteClick?: () => void;
 }
@@ -46,6 +48,7 @@ export default function CohortCard({
   cohort,
   onClick,
   onFeeCollectionClick,
+  onApplicationsClick,
   onEditClick,
   onDeleteClick,
 }: CohortCardProps) {
@@ -59,6 +62,7 @@ export default function CohortCard({
     canAccessFeeCollection,
     canAccessAttendance,
     canManagePrograms,
+    canManageApplications,
   } = useFeaturePermissions();
 
   const handleAttendanceClick = (e: React.MouseEvent) => {
@@ -76,6 +80,13 @@ export default function CohortCard({
   const handleProgramClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigate(`/cohorts/${cohort.id}/program`);
+  };
+
+  const handleApplicationsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onApplicationsClick) {
+      onApplicationsClick();
+    }
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -211,6 +222,19 @@ export default function CohortCard({
             >
               <DollarSign className='h-4 w-4' />
               Fee Collection
+            </Button>
+          )}
+
+          {/* Applications button - only for super_admin and applications_manager */}
+          {canManageApplications && (
+            <Button
+              onClick={handleApplicationsClick}
+              variant='outline'
+              size='sm'
+              className='flex items-center gap-2'
+            >
+              <FileText className='h-4 w-4' />
+              Applications
             </Button>
           )}
         </div>

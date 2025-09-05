@@ -15,6 +15,7 @@ interface UseInvitationAcceptanceProps {
     first_name: string | null;
     last_name: string | null;
     cohort_id: string;
+    invited_by?: string | null;
   } | null;
   cohortName: string;
   isExistingUser: boolean;
@@ -222,6 +223,65 @@ export const useInvitationAcceptance = ({
         Logger.getInstance().info('Successfully accepted invitation', {
           result: acceptResult.data,
         });
+
+        // Update the profiles record with the user_id
+        try {
+          const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({ user_id: userId })
+            .eq('email', student.email);
+
+          if (profileUpdateError) {
+            Logger.getInstance().error(
+              'Failed to update profile with user_id',
+              { error: profileUpdateError }
+            );
+          } else {
+            Logger.getInstance().info(
+              'Profile updated with user_id successfully'
+            );
+          }
+        } catch (error) {
+          Logger.getInstance().error('Error updating profile with user_id', {
+            error,
+          });
+        }
+
+        // Create a student_applications record for tracking
+        try {
+          const { error: applicationError } = await supabase
+            .from('student_applications')
+            .insert({
+              cohort_id: student.cohort_id,
+              student_id: acceptResult.data?.id, // cohort_students.id
+              application_data: {
+                registration_completed: true,
+                registration_date: new Date().toISOString(),
+                source: 'self_registration',
+              },
+              status: 'submitted',
+              submitted_at: new Date().toISOString(),
+            });
+
+          if (applicationError) {
+            Logger.getInstance().error(
+              'Failed to create student application record',
+              { error: applicationError }
+            );
+            // Don't fail the flow if application record creation fails
+          } else {
+            Logger.getInstance().info(
+              'Student application record created successfully'
+            );
+          }
+        } catch (error) {
+          Logger.getInstance().error(
+            'Error creating student application record',
+            { error }
+          );
+          // Don't fail the flow if application record creation fails
+        }
+
         toast.success(
           `Welcome to ExperienceTrack! You have successfully joined ${cohortName || 'the cohort'}.`
         );
@@ -230,10 +290,27 @@ export const useInvitationAcceptance = ({
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         try {
-          // Hard reload to ensure AuthProvider remounts with fresh session
-          window.location.assign('/dashboard');
+          // Check if student was invited by admin (has invited_by field) or self-registered
+          // Admin-registered students should go to dashboard, self-registered go to coming soon
+          const isAdminRegistered =
+            student.invited_by && student.invited_by !== '';
+
+          if (isAdminRegistered) {
+            // Admin-registered student - redirect to dashboard
+            window.location.assign('/dashboard');
+          } else {
+            // Self-registered student - redirect to coming soon page
+            window.location.assign('/auth/application-coming-soon');
+          }
         } catch {
-          navigate('/dashboard', { replace: true });
+          // Fallback navigation
+          const isAdminRegistered =
+            student.invited_by && student.invited_by !== '';
+          if (isAdminRegistered) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            navigate('/auth/application-coming-soon', { replace: true });
+          }
         }
       } catch (error) {
         console.error('Error accepting invitation:', error);

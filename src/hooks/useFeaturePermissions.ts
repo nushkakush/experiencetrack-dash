@@ -202,6 +202,13 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
   ]);
 
   const canManagePrograms = hasPermission('programs.manage');
+  const canManageApplications = hasAnyPermission([
+    'applications.view',
+    'applications.create',
+    'applications.edit',
+    'applications.delete',
+    'applications.manage',
+  ]);
 
   // Feature-specific permission helpers
   const canViewCohorts = hasPermission('cohorts.view');
@@ -259,6 +266,21 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
   const canViewPrograms = hasPermission('student.programs');
   const canViewOwnAttendance = hasPermission('student.attendance_view');
 
+  const canViewApplications = hasPermission('applications.view');
+  const canCreateApplications = hasPermission('applications.create');
+  const canEditApplications = hasPermission('applications.edit');
+  const canDeleteApplications = hasPermission('applications.delete');
+  const canReviewApplications = hasPermission('applications.review');
+  const canApproveApplications = hasPermission('applications.approve');
+  const canRejectApplications = hasPermission('applications.reject');
+  const canSetupApplicationConfiguration = hasPermission(
+    'applications.setup_configuration'
+  );
+  const canManageApplicationForms = hasPermission('applications.manage_forms');
+  const canReviewApplicationSubmissions = hasPermission(
+    'applications.review_applications'
+  );
+
   // Role-based access control helpers
   const canAccessFeeCollection = hasAnyPermission([
     'fees.collect',
@@ -314,6 +336,7 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
     canManagePlacements,
     canManageHolidays,
     canManagePrograms,
+    canManageApplications,
 
     // Feature-specific helpers
     canViewCohorts,
@@ -370,6 +393,17 @@ export const useFeaturePermissions = (): UseFeaturePermissionsReturn => {
     canViewAssignments,
     canViewPrograms,
     canViewOwnAttendance,
+
+    canViewApplications,
+    canCreateApplications,
+    canEditApplications,
+    canDeleteApplications,
+    canReviewApplications,
+    canApproveApplications,
+    canRejectApplications,
+    canSetupApplicationConfiguration,
+    canManageApplicationForms,
+    canReviewApplicationSubmissions,
 
     // Role-based access control helpers
     canAccessFeeCollection,

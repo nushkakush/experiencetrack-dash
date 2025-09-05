@@ -11,6 +11,7 @@ interface EmailRequest {
   type:
     | 'invitation'
     | 'user_invitation'
+    | 'verification'
     | 'custom'
     | 'payment_reminder'
     | 'notification'
@@ -39,6 +40,11 @@ interface EmailRequest {
   cohortName?: string;
   invitationType?: string;
   email?: string; // Legacy email field
+
+  // Verification email fields
+  verificationToken?: string;
+  cohortId?: string;
+  origin?: string;
 }
 
 serve(async req => {
@@ -217,6 +223,76 @@ serve(async req => {
       if (new Date(invitationExpiresAt) < new Date()) {
         throw new Error('Invitation has expired');
       }
+    } else if (requestData.type === 'verification') {
+      // Handle verification emails for self-registration
+      const { firstName, lastName, verificationToken, cohortId } = requestData;
+
+      email = requestData.recipient?.email || requestData.email;
+      recipientName = requestData.recipient?.name || `${firstName} ${lastName}`;
+
+      if (
+        !email ||
+        !firstName ||
+        !lastName ||
+        !verificationToken ||
+        !cohortId
+      ) {
+        throw new Error('Missing required verification fields');
+      }
+
+      // Get cohort name
+      const { data: cohort, error: cohortError } = await supabase
+        .from('cohorts')
+        .select('name')
+        .eq('id', cohortId)
+        .single();
+
+      if (cohortError || !cohort) {
+        throw new Error('Cohort not found');
+      }
+
+      const cohortName = cohort.name;
+
+      // Generate verification URL
+      const baseUrl =
+        requestData.origin ||
+        req.headers.get('origin') ||
+        req.headers.get('referer')?.replace(/\/.*$/, '') ||
+        Deno.env.get('FRONTEND_URL') ||
+        'http://localhost:3000';
+
+      invitationUrl = `${baseUrl}/auth/self-registration-verification?token=${verificationToken}&cohort=${cohortId}`;
+
+      // Set email content for verification
+      emailSubject = `Complete Your Registration - ${cohortName}`;
+      emailContent = `Dear ${firstName} ${lastName},
+
+Welcome to LIT School! You've successfully registered for ${cohortName}.
+
+To complete your registration and set up your account, please click the link below:
+
+${invitationUrl}
+
+This verification link will expire in 7 days. If you have any questions, please contact our support team.
+
+Best regards,
+LIT OS Team`;
+
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Complete Your Registration - ${cohortName}</h2>
+          <p>Dear ${firstName} ${lastName},</p>
+          <p>Welcome to LIT School! You've successfully registered for <strong>${cohortName}</strong>.</p>
+          <p>To complete your registration and set up your account, please click the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${invitationUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Complete Registration</a>
+          </div>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${invitationUrl}</p>
+          <p>This verification link will expire in 7 days. If you have any questions, please contact our support team.</p>
+          <p>Best regards,<br>LIT OS Team</p>
+        </div>
+      `;
     } else {
       // Handle custom emails (new functionality)
       if (

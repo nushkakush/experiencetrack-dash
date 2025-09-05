@@ -134,7 +134,10 @@ export const UserTable: React.FC<UserTableProps> = ({
         canManageCohortAssignments &&
         (user.role === 'program_manager' ||
           user.role === 'fee_collector' ||
-          user.role === 'equipment_manager')
+          user.role === 'equipment_manager' ||
+          user.role === 'applications_manager' ||
+          user.role === 'application_reviewer' ||
+          user.role === 'litmus_test_reviewer')
       );
     },
     [canManageCohortAssignments]
@@ -186,6 +189,9 @@ export const UserTable: React.FC<UserTableProps> = ({
       partnerships_head: 'bg-purple-100 text-purple-800',
       placement_coordinator: 'bg-indigo-100 text-indigo-800',
       equipment_manager: 'bg-orange-100 text-orange-800',
+      applications_manager: 'bg-cyan-100 text-cyan-800',
+      application_reviewer: 'bg-teal-100 text-teal-800',
+      litmus_test_reviewer: 'bg-violet-100 text-violet-800',
     };
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
