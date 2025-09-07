@@ -103,11 +103,21 @@ export interface OpenAIChatResponseData {
   isBackgroundTask?: boolean;
 }
 
+// Error types for better client-side handling
+export type OpenAIErrorType = 
+  | 'quota_exceeded'
+  | 'rate_limit'
+  | 'auth_error'
+  | 'model_error'
+  | 'content_length_error'
+  | 'unknown';
+
 // Main response interface
 export interface OpenAIChatResponse {
   success: boolean;
   data?: OpenAIChatResponseData;
   error?: string;
+  errorType?: OpenAIErrorType;
   metadata?: Record<string, any>;
 }
 

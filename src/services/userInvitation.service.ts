@@ -83,8 +83,23 @@ class UserInvitationService {
       return result;
     } catch (error) {
       // Fallback: create invitation URL without sending email
+      // First, get the invitation token for the URL
+      const { data: invitation } = await supabase
+        .from('user_invitations')
+        .select('invitation_token')
+        .eq('id', invitationId)
+        .single();
+
+      if (!invitation) {
+        return {
+          data: null,
+          error: 'Invitation not found',
+          success: false,
+        };
+      }
+
       const baseUrl = window.location.origin;
-      const invitationUrl = `${baseUrl}/user-invite/${invitationId}`;
+      const invitationUrl = `${baseUrl}/user-invite/${invitation.invitation_token}`;
 
       // Mark the invitation as sent in the database
       await this.markInvitationSent(invitationId);

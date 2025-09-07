@@ -1,197 +1,195 @@
-import { openaiService } from '@/services/openai.service';
+import { aiService } from '@/services/aiService';
 import { MagicBriefsService } from '@/services/magicBriefs.service';
+import { outcomeTracker } from './outcomeTracker';
 import type { 
   MagicBriefGenerationRequest, 
   MagicBriefExpansionRequest, 
   GeneratedMagicBrief 
 } from '@/types/magicBrief';
 import type { CreateExperienceRequest } from '@/types/experience';
-import { MAGIC_BRIEF_GENERATION_PROMPT, MAGIC_BRIEF_EXPANSION_PROMPT } from './magicBriefPrompts';
+import { extractContentText } from './responseParser';
+import { processAIResponse } from './jsonProcessor';
+import { buildMagicBriefPrompt, buildMagicBriefExpansionPrompt } from './promptBuilder';
+import { processExpandedExperience } from './experienceProcessor';
+import { withRetry } from './retryUtils';
 
 /**
- * Service for generating magic briefs using OpenAI
+ * Service for generating magic briefs using AI providers
+ * Uses Perplexity for web search and expansion, OpenAI for structured generation
  * Focused only on AI generation logic
  */
 export class MagicBriefGenerator {
   /**
-   * Generate magic briefs using GPT-4o
+   * Generate a single high-quality magic brief using GPT-4o
+   * Now supports sequential generation with learning outcome tracking
    */
   static async generateMagicBriefs(
     request: MagicBriefGenerationRequest
   ): Promise<GeneratedMagicBrief[]> {
-    const challengeCount = request.challenge_count || 5;
-    
-    // Get all existing brands to avoid duplication
-    const existingBrands = await MagicBriefsService.getAllExistingBrands();
-    
-    const context = openaiService.createContextBuilder()
-      .addStructured({
-        epic_id: request.epic_id,
-        epic_name: request.epic_name,
-        epic_description: request.epic_description,
-        epic_outcomes: request.epic_outcomes,
-        brand_names: request.brand_names,
-        challenge_count: challengeCount,
-        existing_brands: existingBrands
-      }, 'Epic Context')
-      .build();
-
-    const existingBrandsText = existingBrands.length > 0 
-      ? `\n\nCRITICAL: DO NOT use any of these existing brands (already used in the database): ${existingBrands.join(', ')}. You must choose completely different brands.`
-      : '';
-
-    const brandInstruction = request.brand_names?.length 
-      ? `. CRITICAL: You MUST use ALL of these brands first: ${request.brand_names.join(', ')}. Each brand should get at least one challenge. Only if you need more brands to reach ${challengeCount} total challenges, then choose additional relevant brands, prioritizing Indian companies and brands relevant to the Indian market context.${existingBrandsText}`
-      : `. Generate ${challengeCount} challenges using relevant brands, prioritizing Indian companies and brands that are relevant to the Indian market context.${existingBrandsText}`;
-
-    const response = await openaiService.generateWithWebSearch(
-      `Generate ${challengeCount} magic briefs for the epic: ${request.epic_name}${brandInstruction}`,
-      MAGIC_BRIEF_GENERATION_PROMPT + '\n\nCRITICAL: Use web search to find ONLY VERIFIED, DOCUMENTED facts about the brands. NO creativity or speculation. Only use information from credible sources like news articles, financial reports, SEC filings, and official company statements. Every claim must be verifiable and sourced.\n\nRESEARCH REQUIREMENT: Think like a PhD-level researcher. Conduct deep analysis of each brand\'s documented challenges, market position, financial performance, and strategic initiatives. Apply rigorous academic standards to fact-checking and source verification. Use advanced reasoning to identify the most educationally valuable and factually grounded challenges.',
-      'gpt-4o', // Use GPT-4o with PhD-level research approach
-      { maxResults: 15 },
-      {
-      context,
-        temperature: 0.1, // Very low temperature for maximum factual accuracy
-        maxTokens: 6000,
-        // reasoningEffort: 'high' // Note: Only available with o1 models in Responses API
-      }
+    return withRetry(
+      () => this.generateSingleBrief(request),
+      { maxRetries: 3, baseDelay: 2000 },
+      'generate magic brief'
     );
+  }
 
-    // Parse and validate JSON response
-    try {
-      console.log('Raw OpenAI response:', response);
-      console.log('Response data:', response.data);
-      console.log('Response content:', response.data?.content);
-      console.log('Response content type:', typeof response.data?.content);
-      
-      if (!response.data?.content) {
-        throw new Error('No content in OpenAI response');
-      }
-      
-      // Extract content from Responses API format
-      let contentText = '';
-      if (Array.isArray(response.data.content)) {
-        // Responses API returns array of content objects
-        console.log('Content array items:', response.data.content.map(item => ({ 
-          type: item.type, 
-          hasText: !!item.text,
-          hasContent: !!item.content,
-          contentLength: item.content?.length || 0,
-          textLength: item.text?.length || 0,
-          textPreview: item.text?.substring(0, 100) || 'no text'
-        })));
-        
-        // First try to find output_text items
-        contentText = response.data.content
-          .filter(item => item.type === 'output_text')
-          .map(item => item.text)
-          .join('');
-          
-        // If no output_text found, look for message items with nested content
-        if (!contentText) {
-          console.log('No output_text found, looking for message items with nested content...');
-          for (const item of response.data.content) {
-            if (item.type === 'message' && item.content && Array.isArray(item.content)) {
-              console.log('Found message item with nested content:', item.content.map(nested => ({
-                type: nested.type,
-                hasText: !!nested.text,
-                textLength: nested.text?.length || 0
-              })));
-              
-              // Extract text from nested content
-              const nestedText = item.content
-                .filter(nested => nested.type === 'output_text')
-                .map(nested => nested.text)
-                .join('');
-                
-              if (nestedText) {
-                contentText = nestedText;
-                break;
-              }
-            }
-          }
-        }
-        
-        // If still no content, try to get any text content from anywhere
-        if (!contentText) {
-          console.log('Still no content found, trying all possible text sources...');
-          contentText = response.data.content
-            .filter(item => item.text)
-            .map(item => item.text)
-            .join('');
-        }
-      } else if (typeof response.data.content === 'string') {
-        // Fallback for string content
-        contentText = response.data.content;
-      } else {
-        console.log('Unexpected content format:', response.data.content);
-        throw new Error('Unexpected content format in response');
-      }
-      
-      console.log('Extracted content text length:', contentText.length);
-      console.log('First 200 chars of content:', contentText.substring(0, 200));
+  /**
+   * Generate exactly the requested number of briefs with guaranteed 100% learning outcome coverage
+   * Intelligently distributes learning outcomes across the specified number of briefs
+   */
+  static async generateExactNumberWithFullCoverage(
+    request: MagicBriefGenerationRequest,
+    progressCallback?: (progress: {current: number, total: number}) => void
+  ): Promise<{
+    briefs: GeneratedMagicBrief[];
+    coverage: any;
+    iterations: number;
+  }> {
+    const totalBriefs = request.total_briefs || 7;
+    const allGeneratedBriefs: GeneratedMagicBrief[] = [];
+    let iterations = 0;
+    const maxAttempts = 3; // Limit regeneration attempts
 
-      // Clean the response content - extract JSON from the response
-      let cleanContent = contentText.trim();
-      
-      // Look for JSON array starting with [
-      const jsonStart = cleanContent.indexOf('[');
-      if (jsonStart !== -1) {
-        // Find the matching closing bracket
-        let bracketCount = 0;
-        let jsonEnd = -1;
-        for (let i = jsonStart; i < cleanContent.length; i++) {
-          if (cleanContent[i] === '[') bracketCount++;
-          if (cleanContent[i] === ']') bracketCount--;
-          if (bracketCount === 0) {
-            jsonEnd = i;
-            break;
-          }
-        }
-        
-        if (jsonEnd !== -1) {
-          cleanContent = cleanContent.substring(jsonStart, jsonEnd + 1);
-        }
-      }
-      
-      // Remove markdown code blocks if still present
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      console.log('Cleaned content:', cleanContent);
-      
-      if (!cleanContent) {
-        throw new Error('No content extracted from response');
-      }
-      
-      const briefs = JSON.parse(cleanContent);
-      
-      if (!Array.isArray(briefs)) {
-        throw new Error('Response is not an array');
-      }
-      
-      if (briefs.length !== challengeCount) {
-        throw new Error(`Expected ${challengeCount} briefs, got ${briefs.length}`);
-      }
-
-      // Validate each brief has required fields
-      briefs.forEach((brief, index) => {
-        if (!brief.title || !brief.brand_name || !brief.challenge_statement || 
-            !brief.connected_learning_outcomes || !brief.skill_focus || 
-            !brief.challenge_order || !brief.prerequisite_skills || !brief.skill_compounding) {
-          throw new Error(`Brief ${index + 1} is missing required fields`);
-        }
-      });
-
-      return briefs;
-    } catch (error) {
-      console.error('Magic briefs parsing error:', error);
-      console.error('Raw response that failed to parse:', response);
-      throw new Error(`Failed to parse magic briefs response: ${error.message}`);
+    // Initialize progress
+    if (progressCallback) {
+      progressCallback({ current: 0, total: totalBriefs });
     }
+
+    // Distribute learning outcomes across briefs
+    const outcomesPerBrief = Math.ceil(request.epic_outcomes.length / totalBriefs);
+    
+    for (let i = 0; i < totalBriefs; i++) {
+      iterations++;
+      
+      // Calculate which outcomes this brief should target
+      const startIndex = i * outcomesPerBrief;
+      const endIndex = Math.min(startIndex + outcomesPerBrief, request.epic_outcomes.length);
+      const targetOutcomes = request.epic_outcomes.slice(startIndex, endIndex);
+      
+      // If this is the last brief, include any remaining outcomes
+      if (i === totalBriefs - 1) {
+        const remainingOutcomes = request.epic_outcomes.slice(endIndex);
+        targetOutcomes.push(...remainingOutcomes);
+      }
+
+      const briefRequest = {
+        ...request,
+        brief_index: i + 1,
+        total_briefs: totalBriefs,
+        previous_briefs: allGeneratedBriefs,
+        target_outcomes: targetOutcomes,
+        epic_outcomes: targetOutcomes // Focus only on target outcomes for this brief
+      };
+
+      try {
+        const generatedBriefs = await this.generateSingleBrief(briefRequest);
+        allGeneratedBriefs.push(...generatedBriefs);
+        
+        // Update progress after each brief is generated
+        if (progressCallback) {
+          progressCallback({ current: allGeneratedBriefs.length, total: totalBriefs });
+        }
+      } catch (error) {
+        console.warn(`Failed to generate brief ${i + 1}:`, error);
+        // Continue with other briefs even if one fails
+      }
+    }
+
+    // Verify coverage and attempt to fix any gaps
+    let finalCoverage = outcomeTracker.analyzeCoverage(request.epic_outcomes, allGeneratedBriefs as any);
+    let retryAttempts = 0;
+
+    while (finalCoverage.uncoveredOutcomes.length > 0 && retryAttempts < maxAttempts) {
+      retryAttempts++;
+      console.log(`Retry ${retryAttempts}: Fixing coverage for ${finalCoverage.uncoveredOutcomes.length} uncovered outcomes`);
+      
+      // Find the brief with the least outcomes and add missing ones
+      const briefWithLeastOutcomes = allGeneratedBriefs.reduce((min, brief) => 
+        brief.connected_learning_outcomes.length < min.connected_learning_outcomes.length ? brief : min
+      );
+      
+      const briefIndex = allGeneratedBriefs.indexOf(briefWithLeastOutcomes);
+      
+      // Regenerate this brief with additional target outcomes
+      const enhancedRequest = {
+        ...request,
+        brief_index: briefIndex + 1,
+        total_briefs: totalBriefs,
+        previous_briefs: allGeneratedBriefs.filter((_, idx) => idx !== briefIndex),
+        target_outcomes: [...briefWithLeastOutcomes.connected_learning_outcomes, ...finalCoverage.uncoveredOutcomes.slice(0, 3)],
+        epic_outcomes: request.epic_outcomes
+      };
+
+      try {
+        const regeneratedBriefs = await this.generateSingleBrief(enhancedRequest);
+        if (regeneratedBriefs.length > 0) {
+          allGeneratedBriefs[briefIndex] = regeneratedBriefs[0];
+        }
+      } catch (error) {
+        console.warn(`Failed to regenerate brief ${briefIndex + 1}:`, error);
+        break;
+      }
+
+      finalCoverage = outcomeTracker.analyzeCoverage(request.epic_outcomes, allGeneratedBriefs as any);
+    }
+
+    return {
+      briefs: allGeneratedBriefs,
+      coverage: finalCoverage,
+      iterations: iterations + retryAttempts
+    };
+  }
+
+
+
+  private static async generateSingleBrief(
+    request: MagicBriefGenerationRequest
+  ): Promise<GeneratedMagicBrief[]> {
+    // Track which learning outcomes have been covered in previous briefs
+    const coveredOutcomes = request.previous_briefs?.flatMap(brief => brief.connected_learning_outcomes) || [];
+    const remainingOutcomes = request.epic_outcomes.filter(outcome => 
+      !coveredOutcomes.some(covered => covered.toLowerCase().includes(outcome.toLowerCase()))
+    );
+    
+    // Build context for AI
+    const contextData = {
+      epic_id: request.epic_id,
+      epic_name: request.epic_name,
+      epic_description: request.epic_description,
+      epic_outcomes: request.epic_outcomes,
+      brief_index: request.brief_index,
+      total_briefs: request.total_briefs,
+      covered_outcomes: coveredOutcomes,
+      remaining_outcomes: remainingOutcomes,
+      previous_briefs: request.previous_briefs
+    };
+
+    // Build the complete prompt using the new template system
+    const fullPrompt = buildMagicBriefPrompt(request, null, remainingOutcomes);
+    
+    // Generate the brief using OpenAI chat completions
+    const response = await aiService.generate({
+      prompt: `${fullPrompt}
+
+Context: ${JSON.stringify(contextData, null, 2)}`,
+      systemPrompt: 'You are an expert educational designer specializing in creating realistic business challenges for learning. Generate high-quality case study briefs that focus on real-world problems and challenges that companies face. Create engaging, educational content that helps students learn through practical scenarios.',
+      useCase: 'magic-briefs',
+      requiresWebSearch: false,
+      requiresCitations: false,
+      requiresRealtimeData: false,
+      model: 'gpt-4o',
+      temperature: 0.7,
+      maxTokens: 3000,
+      responseFormat: 'json_object',
+      metadata: { epic_id: request.epic_id, brief_index: request.brief_index }
+    });
+
+    // Parse and validate response using consolidated processor
+    const requiredFields = ['title', 'brand_name', 'challenge_statement', 'connected_learning_outcomes', 'skill_focus', 'challenge_order', 'prerequisite_skills', 'skill_compounding'];
+    const brief = processAIResponse(response, requiredFields, 'magic briefs response');
+
+    // Return as array with single brief to maintain compatibility
+    return [brief];
   }
 
   /**
@@ -200,221 +198,303 @@ export class MagicBriefGenerator {
   static async expandMagicBrief(
     request: MagicBriefExpansionRequest
   ): Promise<CreateExperienceRequest> {
-    const context = openaiService.createContextBuilder()
-      .addStructured({
-        brief_title: request.brief_title,
+    // Get the original brief to access its citations
+    const originalBrief = await MagicBriefsService.getMagicBrief(request.brief_id);
+    
+    const contextData = {
+      brief_title: request.brief_title,
+      brand_name: request.brand_name,
+      challenge_statement: request.challenge_statement,
+      epic_id: request.epic_id,
+      epic_name: request.epic_name,
+      epic_description: request.epic_description,
+      epic_outcomes: request.epic_outcomes,
+      original_citations: originalBrief.citations || []
+    };
+
+    const response = await aiService.generate({
+      prompt: `${buildMagicBriefExpansionPrompt()}
+
+Expand the brief "${request.brief_title}" for ${request.brand_name} into a complete CBL experience
+
+Context: ${JSON.stringify(contextData, null, 2)}`,
+      systemPrompt: 'You are an expert educational designer specializing in creating comprehensive learning experiences. Expand business challenges into complete educational programs that focus on skill development and practical learning.',
+      useCase: 'magic-briefs',
+      requiresWebSearch: false,
+      requiresCitations: false,
+      requiresRealtimeData: false,
+      model: 'gpt-4o',
+      temperature: 0.7,
+      maxTokens: 8000,
+      responseFormat: 'json_object',
+      metadata: { 
+        epic_id: request.epic_id, 
+        brief_id: request.brief_id,
         brand_name: request.brand_name,
-        challenge_statement: request.challenge_statement,
-        epic_id: request.epic_id,
-        epic_name: request.epic_name,
-        epic_description: request.epic_description,
-        epic_outcomes: request.epic_outcomes
-      }, 'Brief and Epic Context')
-      .build();
+        operation: 'magic_brief_expansion'
+      }
+    });
 
-    const response = await openaiService.generateWithWebSearch(
-      `Expand the brief "${request.brief_title}" for ${request.brand_name} into a complete CBL experience`,
-      MAGIC_BRIEF_EXPANSION_PROMPT + '\n\nCRITICAL: Use web search to find ONLY VERIFIED, DOCUMENTED facts about the brand and industry best practices. NO creativity or speculation. Only use information from credible sources like academic papers, industry reports, official methodologies, and documented case studies. Every claim must be verifiable and sourced.\n\nIMPORTANT: For each lecture, find 4-6 internet-curated resources including YouTube videos, blog posts, LinkedIn posts, case studies, industry reports, and podcasts that complement the lecture material. All resources must be current, relevant, and directly support the learning objectives.\n\nBRAND-AGNOSTIC REQUIREMENT: Create lectures and deliverables that focus on transferable skills and methodologies. The brand challenge should serve only as a contextual example, not as the foundation of the learning content. Each deliverable must include a separate "brand_context" field for brand-specific application context while keeping the core description focused on skill development.\n\nRESEARCH REQUIREMENT: Think like a PhD-level researcher. Apply rigorous academic methodology to curriculum design, learning outcome alignment, and resource curation. Conduct deep analysis of pedagogical best practices, industry standards, and educational research. Use advanced reasoning to create the most comprehensive, fact-based, and educationally effective CBL experience possible.',
-      'gpt-4o', // Use GPT-4o with PhD-level research approach
-      { maxResults: 20 },
-      {
-      context,
-        temperature: 0.1, // Very low temperature for maximum factual accuracy
-        maxTokens: 15000,
-        // reasoningEffort: 'high' // Note: Only available with o1 models in Responses API
-      }
-    );
-
-    // Parse and validate JSON response
-    try {
-      console.log('Raw OpenAI expansion response:', response);
-      console.log('Expansion response data:', response.data);
-      console.log('Expansion response content:', response.data?.content);
-      console.log('Expansion response content type:', typeof response.data?.content);
-      
-      if (!response.data?.content) {
-        throw new Error('No content in OpenAI expansion response');
-      }
-      
-      // Extract content from Responses API format
-      let contentText = '';
-      if (Array.isArray(response.data.content)) {
-        // Responses API returns array of content objects
-        console.log('Expansion content array items:', response.data.content.map(item => ({ 
-          type: item.type, 
-          hasText: !!item.text,
-          hasContent: !!item.content,
-          contentLength: item.content?.length || 0,
-          textLength: item.text?.length || 0,
-          textPreview: item.text?.substring(0, 100) || 'no text'
-        })));
-        
-        // First try to find output_text items
-        contentText = response.data.content
-          .filter(item => item.type === 'output_text')
-          .map(item => item.text)
-          .join('');
-          
-        // If no output_text found, look for message items with nested content
-        if (!contentText) {
-          console.log('No output_text found in expansion, looking for message items with nested content...');
-          for (const item of response.data.content) {
-            if (item.type === 'message' && item.content && Array.isArray(item.content)) {
-              console.log('Found expansion message item with nested content:', item.content.map(nested => ({
-                type: nested.type,
-                hasText: !!nested.text,
-                textLength: nested.text?.length || 0
-              })));
-              
-              // Extract text from nested content
-              const nestedText = item.content
-                .filter(nested => nested.type === 'output_text')
-                .map(nested => nested.text)
-                .join('');
-                
-              if (nestedText) {
-                contentText = nestedText;
-                break;
-              }
-            }
-          }
-        }
-        
-        // If still no content, try to get any text content from anywhere
-        if (!contentText) {
-          console.log('Still no content found in expansion, trying all possible text sources...');
-          contentText = response.data.content
-            .filter(item => item.text)
-            .map(item => item.text)
-            .join('');
-        }
-      } else if (typeof response.data.content === 'string') {
-        // Fallback for string content
-        contentText = response.data.content;
-      } else {
-        console.log('Unexpected expansion content format:', response.data.content);
-        throw new Error('Unexpected content format in expansion response');
-      }
-      
-      console.log('Extracted expansion content text length:', contentText.length);
-      console.log('First 200 chars of expansion content:', contentText.substring(0, 200));
-
-      // Clean the response content - extract JSON from the response
-      let cleanContent = contentText.trim();
-      
-      // Look for JSON object starting with {
-      const jsonStart = cleanContent.indexOf('{');
-      if (jsonStart !== -1) {
-        // Find the matching closing brace
-        let braceCount = 0;
-        let jsonEnd = -1;
-        for (let i = jsonStart; i < cleanContent.length; i++) {
-          if (cleanContent[i] === '{') braceCount++;
-          if (cleanContent[i] === '}') braceCount--;
-          if (braceCount === 0) {
-            jsonEnd = i;
-            break;
-          }
-        }
-        
-        if (jsonEnd !== -1) {
-          cleanContent = cleanContent.substring(jsonStart, jsonEnd + 1);
-        }
-      }
-      
-      // Remove markdown code blocks if still present
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      console.log('Cleaned expansion content:', cleanContent);
-      
-      if (!cleanContent) {
-        throw new Error('No content extracted from expansion response');
-      }
-      
-      const experience = JSON.parse(cleanContent);
-      
-      // Validate required fields
-      const requiredFields = ['title', 'learning_outcomes', 'type', 'challenge', 'deliverables', 'grading_rubric'];
-      for (const field of requiredFields) {
-        if (!experience[field]) {
-          throw new Error(`Missing required field: ${field}`);
-        }
-      }
-
-      // Normalize rubric criteria names (map title -> name if needed)
-      if (Array.isArray(experience.grading_rubric)) {
-        experience.grading_rubric.forEach((section: any) => {
-          if (Array.isArray(section.criteria)) {
-            section.criteria = section.criteria.map((c: any) => ({
-              ...c,
-              name: c?.name ?? c?.title ?? 'Criteria',
-            }));
-          }
-        });
-      }
-
-      // Ensure lectures have 5-6 learning outcomes and 2-3 connected deliverables
-      const deliverableIds: string[] = Array.isArray(experience.deliverables)
-        ? experience.deliverables.map((d: any) => d.id).filter(Boolean)
-        : [];
-      if (Array.isArray(experience.lecture_sessions)) {
-        experience.lecture_sessions.forEach((lec: any) => {
-          if (Array.isArray(lec.learning_outcomes)) {
-            if (lec.learning_outcomes.length > 6) {
-              lec.learning_outcomes = lec.learning_outcomes.slice(0, 6);
-            }
-          }
-          if (Array.isArray(lec.connected_deliverables)) {
-            const unique = Array.from(new Set(lec.connected_deliverables)).filter((id: string) => deliverableIds.includes(id));
-            // Backfill if less than 2
-            if (unique.length < 2 && deliverableIds.length > 0) {
-              for (const id of deliverableIds) {
-                if (!unique.includes(id)) unique.push(id);
-                if (unique.length >= 2) break;
-              }
-            }
-            lec.connected_deliverables = unique.slice(0, 3);
-          }
-        });
-      }
-
-      // Ensure deliverables have brand_context field for brand-agnostic design
-      if (Array.isArray(experience.deliverables)) {
-        experience.deliverables.forEach((deliverable: any) => {
-          // Ensure brand_context field exists, even if empty
-          if (!deliverable.brand_context) {
-            deliverable.brand_context = "Brand-specific application context and examples for this deliverable";
-          }
-        });
-      }
-
-      // Strengthen pass conditions default to >= 50 if present and lower
-      const normalizePass = (tree: any) => tree;
-      if (experience.pass_conditions?.type) {
-        // If single overall_score condition exists with value < 50, bump to 50
-        const bumpOverallScore = (node: any) => {
-          if (!node) return;
-          if (node.type === 'condition' && node.field_type === 'overall_score' && typeof node.value === 'number') {
-            if (node.comparison_operator === '>=' && node.value < 50) node.value = 50;
-          } else if (node.type === 'group' && Array.isArray(node.conditions)) {
-            node.conditions.forEach(bumpOverallScore);
-          }
-        };
-        bumpOverallScore(experience.pass_conditions);
-      }
-
-      // Ensure epic_id is set
-      experience.epic_id = request.epic_id;
-
-      return experience as CreateExperienceRequest;
-    } catch (error) {
-      console.error('Magic brief expansion parsing error:', error);
-      console.error('Raw expansion response that failed to parse:', response);
-      throw new Error(`Failed to parse expanded experience response: ${error.message}`);
+    // Parse and validate response using consolidated processor
+    const requiredFields = ['title', 'learning_outcomes', 'type', 'challenge', 'deliverables', 'grading_rubric'];
+    const experience = processAIResponse(response, requiredFields, 'expanded experience response');
+    
+    // Add citations from both original brief and new expansion research
+    const allCitations = [
+      ...(originalBrief.citations || []).map(citation => ({
+        ...citation,
+        source: 'original_brief'
+      })),
+      ...(response.citations || []).map(citation => ({
+        ...citation,
+        source: 'expansion_research'
+      }))
+    ];
+    
+    // Add citations to the experience metadata
+    if (allCitations.length > 0) {
+      experience.citations = allCitations;
     }
+    
+    // Process and normalize the expanded experience
+    return processExpandedExperience(experience, request.epic_id);
+  }
+
+  /**
+   * Regenerate a specific magic brief using its existing metadata
+   * Keeps the same Connected Learning Outcomes, Skill Focus, Prerequisite Skills, and Skill Compounding
+   * Only regenerates the Challenge Statement with fresh content
+   */
+  static async regenerateMagicBrief(
+    brief: any,
+    epicContext: {
+      epic_name: string;
+      epic_description: string;
+      epic_outcomes: string[];
+    }
+  ): Promise<GeneratedMagicBrief> {
+    return withRetry(
+      () => this.performRegenerateBrief(brief, epicContext),
+      { maxRetries: 3, baseDelay: 2000 },
+      'regenerate magic brief'
+    );
+  }
+
+  private static async performRegenerateBrief(
+    brief: any,
+    epicContext: {
+      epic_name: string;
+      epic_description: string;
+      epic_outcomes: string[];
+    }
+  ): Promise<GeneratedMagicBrief> {
+    // Build regeneration prompt that focuses only on regenerating the challenge statement
+    const regenerationPrompt = `
+You are regenerating a magic brief challenge statement while keeping all other elements exactly the same.
+
+KEEP THESE ELEMENTS EXACTLY THE SAME:
+- Connected Learning Outcomes: ${brief.connected_learning_outcomes.join(', ')}
+- Skill Focus: ${brief.skill_focus}
+- Prerequisite Skills: ${brief.prerequisite_skills}
+- Skill Compounding: ${brief.skill_compounding}
+- Brand Name: ${brief.brand_name}
+- Challenge Order: ${brief.challenge_order}
+
+REGENERATE ONLY:
+- Challenge Statement: Create a completely new, fresh challenge statement that still aligns with the existing learning outcomes and skill focus
+
+Epic Context:
+- Epic Name: ${epicContext.epic_name}
+- Epic Description: ${epicContext.epic_description}
+- Epic Outcomes: ${epicContext.epic_outcomes.join(', ')}
+
+Generate a new challenge statement that:
+1. Is completely different from the original but maintains the same educational value
+2. Still addresses the same Connected Learning Outcomes
+3. Fits the same Skill Focus area
+4. Uses the same brand/company name
+5. Maintains the same difficulty level and prerequisites
+
+IMPORTANT: Return ONLY a valid JSON object with this exact structure:
+{
+  "title": "Updated title that reflects the new challenge statement",
+  "challenge_statement": "Your completely new and creative challenge statement here",
+  "citations": []
+}
+
+Do not include any other text, explanations, or formatting. Just the JSON object.
+`;
+
+    // Generate the regenerated brief using OpenAI
+    const response = await aiService.generate({
+      prompt: regenerationPrompt,
+      systemPrompt: 'You are an expert educational designer specializing in creating realistic business challenges for learning. Regenerate only the challenge statement while keeping all other elements identical.',
+      useCase: 'magic-briefs',
+      requiresWebSearch: false,
+      requiresCitations: false,
+      requiresRealtimeData: false,
+      model: 'gpt-4o',
+      temperature: 0.8, // Higher temperature for more creative variation
+      maxTokens: 2000,
+      responseFormat: 'json_object',
+      metadata: { 
+        brief_id: brief.id, 
+        regeneration: true,
+        original_title: brief.title 
+      }
+    });
+
+    // Parse and validate the regenerated response
+    const processedBrief = await processAIResponse(response, ['challenge_statement'], 'magic-brief-regeneration');
+    
+    if (!processedBrief || !processedBrief.challenge_statement) {
+      console.error('Invalid regeneration response:', processedBrief);
+      throw new Error('Failed to regenerate magic brief: No challenge statement in response');
+    }
+
+    // Ensure we have a valid challenge statement
+    if (typeof processedBrief.challenge_statement !== 'string' || processedBrief.challenge_statement.trim().length === 0) {
+      console.error('Invalid challenge statement:', processedBrief.challenge_statement);
+      throw new Error('Failed to regenerate magic brief: Challenge statement is empty or invalid');
+    }
+
+    // Ensure we keep the original metadata but use the new challenge statement
+    const regeneratedBrief: GeneratedMagicBrief = {
+      title: processedBrief.title || brief.title,
+      brand_name: brief.brand_name,
+      challenge_statement: processedBrief.challenge_statement,
+      connected_learning_outcomes: brief.connected_learning_outcomes,
+      skill_focus: brief.skill_focus,
+      challenge_order: brief.challenge_order,
+      prerequisite_skills: brief.prerequisite_skills,
+      skill_compounding: brief.skill_compounding,
+      citations: processedBrief.citations || [],
+      rawResponse: response
+    };
+
+    return regeneratedBrief;
+  }
+
+  /**
+   * Generate a targeted magic brief focused on a specific learning outcome
+   * Ensures the brief addresses the target outcome while maintaining quality
+   */
+  static async generateTargetedMagicBrief(
+    targetOutcome: string,
+    epicContext: {
+      epic_id: string;
+      epic_name: string;
+      epic_description: string;
+      epic_outcomes: string[];
+    },
+    existingBriefs: any[] = []
+  ): Promise<GeneratedMagicBrief> {
+    return withRetry(
+      () => this.performTargetedGeneration(targetOutcome, epicContext, existingBriefs),
+      { maxRetries: 3, baseDelay: 2000 },
+      'generate targeted magic brief'
+    );
+  }
+
+  private static async performTargetedGeneration(
+    targetOutcome: string,
+    epicContext: {
+      epic_id: string;
+      epic_name: string;
+      epic_description: string;
+      epic_outcomes: string[];
+    },
+    existingBriefs: any[] = []
+  ): Promise<GeneratedMagicBrief> {
+    // Get existing brands to avoid duplicates
+    const existingBrands = existingBriefs.map(brief => brief.brand_name).filter(Boolean);
+    const existingBrandsText = existingBrands.length > 0 
+      ? `\n\nExisting brands used: ${existingBrands.join(', ')} (please use a different brand)`
+      : '';
+
+    // Build targeted generation prompt
+    const targetedPrompt = `
+You are creating a targeted magic brief that specifically addresses this learning outcome: "${targetOutcome}"
+
+Epic Context:
+- Epic Name: ${epicContext.epic_name}
+- Epic Description: ${epicContext.epic_description}
+- All Epic Outcomes: ${epicContext.epic_outcomes.join(', ')}
+
+TARGET LEARNING OUTCOME (MUST BE ADDRESSED): ${targetOutcome}
+
+Requirements:
+1. Create a realistic business challenge that directly addresses the target learning outcome
+2. The challenge should make the target outcome a central focus of the brief
+3. Choose a brand/company that fits the challenge context
+4. Include ONLY 1-2 additional relevant learning outcomes from the epic as secondary focuses (NOT ALL uncovered outcomes)
+5. Ensure the challenge is practical and engaging${existingBrandsText}
+
+IMPORTANT: Return ONLY a valid JSON object with this exact structure:
+{
+  "title": "Brief title that reflects the challenge",
+  "brand_name": "Company or brand name",
+  "challenge_statement": "Detailed challenge statement that prominently features the target learning outcome",
+  "connected_learning_outcomes": ["${targetOutcome}", "one additional outcome", "optional second additional outcome"],
+  "skill_focus": "Primary skill area being developed",
+  "prerequisite_skills": "Skills students should have before attempting this challenge",
+  "skill_compounding": "How this challenge builds upon previous learning",
+  "challenge_order": ${existingBriefs.length + 1},
+  "citations": []
+}
+
+The connected_learning_outcomes array MUST include "${targetOutcome}" as the first item and should contain a maximum of 3 total outcomes.
+IMPORTANT: Do not include ALL uncovered outcomes - only select 1-2 additional outcomes that are most relevant to the challenge.
+Do not include any other text, explanations, or formatting. Just the JSON object.
+`;
+
+    // Generate the targeted brief using OpenAI
+    const response = await aiService.generate({
+      prompt: targetedPrompt,
+      systemPrompt: 'You are an expert educational designer specializing in creating realistic business challenges for learning. Create a targeted magic brief that specifically addresses the given learning outcome.',
+      useCase: 'magic-briefs',
+      requiresWebSearch: false,
+      requiresCitations: false,
+      requiresRealtimeData: false,
+      model: 'gpt-4o',
+      temperature: 0.7,
+      maxTokens: 3000,
+      responseFormat: 'json_object',
+      metadata: { 
+        epic_id: epicContext.epic_id, 
+        targeted: true,
+        target_outcome: targetOutcome 
+      }
+    });
+
+    // Parse and validate the targeted response
+    const processedBrief = await processAIResponse(response, ['title', 'brand_name', 'challenge_statement', 'connected_learning_outcomes'], 'targeted-magic-brief');
+    
+    if (!processedBrief || !processedBrief.challenge_statement) {
+      console.error('Invalid targeted generation response:', processedBrief);
+      throw new Error('Failed to generate targeted magic brief: No challenge statement in response');
+    }
+
+    // Ensure the target outcome is included
+    if (!processedBrief.connected_learning_outcomes || !processedBrief.connected_learning_outcomes.includes(targetOutcome)) {
+      console.warn('Target outcome not found in connected outcomes, adding it');
+      processedBrief.connected_learning_outcomes = [targetOutcome, ...(processedBrief.connected_learning_outcomes || [])];
+    }
+
+    // Create the targeted brief
+    const targetedBrief: GeneratedMagicBrief = {
+      title: processedBrief.title,
+      brand_name: processedBrief.brand_name,
+      challenge_statement: processedBrief.challenge_statement,
+      connected_learning_outcomes: processedBrief.connected_learning_outcomes,
+      skill_focus: processedBrief.skill_focus || 'Strategic Analysis',
+      challenge_order: processedBrief.challenge_order || (existingBriefs.length + 1),
+      prerequisite_skills: processedBrief.prerequisite_skills || 'Basic business knowledge',
+      skill_compounding: processedBrief.skill_compounding || 'Builds analytical and problem-solving capabilities',
+      citations: processedBrief.citations || [],
+      rawResponse: response
+    };
+
+    return targetedBrief;
   }
 }

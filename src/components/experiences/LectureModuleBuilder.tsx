@@ -9,6 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BulletedInput } from '@/components/ui/bulleted-input';
 import type { LectureModule, Resource, Deliverable } from '@/types/experience';
 
+// Utility function to normalize a lecture module by ensuring all arrays are initialized
+const normalizeLectureModule = (module: LectureModule): LectureModule => ({
+  ...module,
+  learning_outcomes: module.learning_outcomes || [],
+  canva_deck_links: module.canva_deck_links || [],
+  canva_notes_links: module.canva_notes_links || [],
+  resources: module.resources || [],
+  connected_deliverables: module.connected_deliverables || []
+});
+
 interface LectureModuleBuilderProps {
   modules: LectureModule[];
   onChange: (modules: LectureModule[]) => void;
@@ -20,13 +30,16 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
   onChange,
   deliverables = []
 }) => {
+  // Normalize modules to ensure all arrays are initialized
+  const normalizedModules = modules.map(normalizeLectureModule);
+  
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
   const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null);
 
   const createNewModule = (): LectureModule => ({
     id: crypto.randomUUID(),
-    order: modules.length + 1,
+    order: normalizedModules.length + 1,
     title: '',
     description: '',
     learning_outcomes: [],
@@ -45,18 +58,18 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
   // Module operations
   const handleAddModule = () => {
     const newModule = createNewModule();
-    onChange([...modules, newModule]);
+    onChange([...normalizedModules, newModule]);
     setExpandedModules(prev => new Set(prev).add(newModule.id));
   };
 
   const handleUpdateModule = (moduleId: string, updates: Partial<LectureModule>) => {
-    onChange(modules.map(module => 
+    onChange(normalizedModules.map(module => 
       module.id === moduleId ? { ...module, ...updates } : module
     ));
   };
 
   const handleDeliverableToggle = (moduleId: string, deliverableId: string) => {
-    const module = modules.find(m => m.id === moduleId);
+    const module = normalizedModules.find(m => m.id === moduleId);
     if (!module) return;
 
     const currentDeliverables = module.connected_deliverables || [];
@@ -70,7 +83,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
   };
 
   const handleDeleteModule = (moduleId: string) => {
-    const filteredModules = modules.filter(module => module.id !== moduleId);
+    const filteredModules = normalizedModules.filter(module => module.id !== moduleId);
     // Reorder remaining modules
     const reorderedModules = filteredModules.map((module, index) => ({
       ...module,
@@ -85,7 +98,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
   };
 
   const handleReorderModule = (fromIndex: number, toIndex: number) => {
-    const newModules = [...modules];
+    const newModules = [...normalizedModules];
     const [movedItem] = newModules.splice(fromIndex, 1);
     newModules.splice(toIndex, 0, movedItem);
     
@@ -118,8 +131,8 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
       return;
     }
 
-    const draggedIndex = modules.findIndex(m => m.id === draggedModuleId);
-    const targetIndex = modules.findIndex(m => m.id === targetModuleId);
+    const draggedIndex = normalizedModules.findIndex(m => m.id === draggedModuleId);
+    const targetIndex = normalizedModules.findIndex(m => m.id === targetModuleId);
 
     if (draggedIndex !== -1 && targetIndex !== -1) {
       handleReorderModule(draggedIndex, targetIndex);
@@ -135,30 +148,30 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
   // Resource operations
   const handleAddResource = (moduleId: string) => {
     const newResource = createNewResource();
-    const module = modules.find(m => m.id === moduleId);
+    const module = normalizedModules.find(m => m.id === moduleId);
     if (!module) return;
 
     handleUpdateModule(moduleId, {
-      resources: [...module.resources, newResource]
+      resources: [...(module.resources || []), newResource]
     });
     setExpandedResources(prev => new Set(prev).add(newResource.id));
   };
 
   const handleUpdateResource = (moduleId: string, resourceId: string, updates: Partial<Resource>) => {
-    const module = modules.find(m => m.id === moduleId);
+    const module = normalizedModules.find(m => m.id === moduleId);
     if (!module) return;
 
-    const updatedResources = module.resources.map(resource =>
+    const updatedResources = (module.resources || []).map(resource =>
       resource.id === resourceId ? { ...resource, ...updates } : resource
     );
     handleUpdateModule(moduleId, { resources: updatedResources });
   };
 
   const handleDeleteResource = (moduleId: string, resourceId: string) => {
-    const module = modules.find(m => m.id === moduleId);
+    const module = normalizedModules.find(m => m.id === moduleId);
     if (!module) return;
 
-    const updatedResources = module.resources.filter(resource => resource.id !== resourceId);
+    const updatedResources = (module.resources || []).filter(resource => resource.id !== resourceId);
     handleUpdateModule(moduleId, { resources: updatedResources });
     setExpandedResources(prev => {
       const newSet = new Set(prev);
@@ -207,7 +220,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
         </Button>
       </div>
 
-      {modules.length === 0 ? (
+      {normalizedModules.length === 0 ? (
         <div className='border-2 border-dashed border-muted rounded-lg p-8 text-center'>
           <BookOpen className='h-8 w-8 mx-auto mb-2 text-muted-foreground' />
           <p className='text-muted-foreground mb-4'>No lecture modules added yet</p>
@@ -217,7 +230,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
         </div>
       ) : (
         <div className='space-y-4'>
-          {modules.map((module, index) => (
+          {normalizedModules.map((module, index) => (
             <Card 
               key={module.id} 
               className={`border-l-4 border-l-purple-500 cursor-move transition-opacity ${
@@ -258,7 +271,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                         {module.title || `Module ${module.order}`}
                       </h4>
                       <p className='text-sm text-muted-foreground'>
-                        {module.learning_outcomes.length} outcomes, {module.canva_deck_links.length} decks, {module.resources.length} resources
+                        {(module.learning_outcomes || []).length} outcomes, {(module.canva_deck_links || []).length} decks, {(module.resources || []).length} resources
                       </p>
                     </div>
                   </div>
@@ -311,11 +324,10 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                     </div>
 
                     <BulletedInput
-                      value={module.learning_outcomes}
+                      value={module.learning_outcomes || []}
                       onChange={(outcomes) => handleUpdateModule(module.id, { learning_outcomes: outcomes })}
                       placeholder='What will students learn from this module?'
                       label='Learning Outcomes'
-                      maxItems={6}
                     />
 
                     {/* Connected Deliverables */}
@@ -368,12 +380,12 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                     <div className='space-y-2'>
                       <Label>Canva Deck Links</Label>
                       <div className='space-y-2'>
-                        {module.canva_deck_links.map((link, linkIndex) => (
+                        {(module.canva_deck_links || []).map((link, linkIndex) => (
                           <div key={linkIndex} className='flex items-center space-x-2'>
                             <Input
                               value={link}
                               onChange={(e) => {
-                                const newLinks = [...module.canva_deck_links];
+                                const newLinks = [...(module.canva_deck_links || [])];
                                 newLinks[linkIndex] = e.target.value;
                                 handleCanvaLinksChange(module.id, newLinks, 'deck');
                               }}
@@ -384,7 +396,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                               variant='ghost'
                               size='sm'
                               onClick={() => {
-                                const newLinks = module.canva_deck_links.filter((_, i) => i !== linkIndex);
+                                const newLinks = (module.canva_deck_links || []).filter((_, i) => i !== linkIndex);
                                 handleCanvaLinksChange(module.id, newLinks, 'deck');
                               }}
                             >
@@ -397,7 +409,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                           variant='outline'
                           size='sm'
                           onClick={() => {
-                            handleCanvaLinksChange(module.id, [...module.canva_deck_links, ''], 'deck');
+                            handleCanvaLinksChange(module.id, [...(module.canva_deck_links || []), ''], 'deck');
                           }}
                         >
                           <Plus className='h-3 w-3 mr-1' />
@@ -409,12 +421,12 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                     <div className='space-y-2'>
                       <Label>Canva Notes Links</Label>
                       <div className='space-y-2'>
-                        {module.canva_notes_links.map((link, linkIndex) => (
+                        {(module.canva_notes_links || []).map((link, linkIndex) => (
                           <div key={linkIndex} className='flex items-center space-x-2'>
                             <Input
                               value={link}
                               onChange={(e) => {
-                                const newLinks = [...module.canva_notes_links];
+                                const newLinks = [...(module.canva_notes_links || [])];
                                 newLinks[linkIndex] = e.target.value;
                                 handleCanvaLinksChange(module.id, newLinks, 'notes');
                               }}
@@ -425,7 +437,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                               variant='ghost'
                               size='sm'
                               onClick={() => {
-                                const newLinks = module.canva_notes_links.filter((_, i) => i !== linkIndex);
+                                const newLinks = (module.canva_notes_links || []).filter((_, i) => i !== linkIndex);
                                 handleCanvaLinksChange(module.id, newLinks, 'notes');
                               }}
                             >
@@ -438,7 +450,7 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                           variant='outline'
                           size='sm'
                           onClick={() => {
-                            handleCanvaLinksChange(module.id, [...module.canva_notes_links, ''], 'notes');
+                            handleCanvaLinksChange(module.id, [...(module.canva_notes_links || []), ''], 'notes');
                           }}
                         >
                           <Plus className='h-3 w-3 mr-1' />
@@ -463,13 +475,13 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
                       </Button>
                     </div>
 
-                    {module.resources.length === 0 ? (
+                    {(module.resources || []).length === 0 ? (
                       <div className='border border-dashed rounded-lg p-4 text-center text-sm text-muted-foreground'>
                         No resources added yet
                       </div>
                     ) : (
                       <div className='space-y-2'>
-                        {module.resources.map((resource) => (
+                        {(module.resources || []).map((resource) => (
                           <Card key={resource.id} className='border-l-2 border-l-orange-400'>
                             <CardHeader className='pb-2'>
                               <div className='flex items-center justify-between'>
@@ -575,9 +587,9 @@ export const LectureModuleBuilder: React.FC<LectureModuleBuilderProps> = ({
         </div>
       )}
 
-      {modules.length > 0 && (
+      {normalizedModules.length > 0 && (
         <div className='text-xs text-muted-foreground'>
-          {modules.length} module{modules.length !== 1 ? 's' : ''} configured
+          {normalizedModules.length} module{normalizedModules.length !== 1 ? 's' : ''} configured
         </div>
       )}
     </div>

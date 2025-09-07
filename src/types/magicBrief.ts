@@ -1,3 +1,9 @@
+// Import centralized citation type
+import type { Citation } from './citations';
+
+// Re-export for backward compatibility
+export type MagicBriefCitation = Citation;
+
 // Magic Brief core types
 export interface MagicBrief {
   id: string;
@@ -14,6 +20,8 @@ export interface MagicBrief {
   created_at: string;
   expanded?: boolean;
   expanded_experience_id?: string;
+  citations?: MagicBriefCitation[];
+  rawResponse?: any;
 }
 
 // Request types for API calls
@@ -22,8 +30,10 @@ export interface MagicBriefGenerationRequest {
   epic_name: string;
   epic_description?: string;
   epic_outcomes: string[];
-  brand_names?: string[]; // Optional comma-separated brands
-  challenge_count?: number; // Number of challenges to generate (default: 5)
+  brief_index?: number; // Current brief being generated
+  total_briefs?: number; // Total number of briefs
+  previous_briefs?: GeneratedMagicBrief[]; // Previously generated briefs for context
+  target_outcomes?: string[]; // Specific outcomes to focus on for this brief
 }
 
 export interface MagicBriefExpansionRequest {
@@ -37,7 +47,7 @@ export interface MagicBriefExpansionRequest {
   epic_outcomes: string[];
 }
 
-// Response types from OpenAI
+// Response types from AI providers
 export interface GeneratedMagicBrief {
   title: string;
   brand_name: string;
@@ -47,6 +57,8 @@ export interface GeneratedMagicBrief {
   challenge_order: number;
   prerequisite_skills: string;
   skill_compounding: string;
+  citations?: MagicBriefCitation[];
+  rawResponse?: any;
 }
 
 // Epic context for magic brief generation

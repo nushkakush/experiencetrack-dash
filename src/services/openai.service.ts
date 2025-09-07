@@ -173,10 +173,39 @@ export class OpenAIService {
       const response = data as OpenAIChatResponse;
       
       if (!response.success) {
+        // Provide user-friendly error messages based on error type
+        let errorCode = 'OPENAI_ERROR';
+        let statusCode = 400;
+        
+        if (response.errorType) {
+          switch (response.errorType) {
+            case 'quota_exceeded':
+              errorCode = 'QUOTA_EXCEEDED';
+              statusCode = 429;
+              break;
+            case 'rate_limit':
+              errorCode = 'RATE_LIMIT_EXCEEDED';
+              statusCode = 429;
+              break;
+            case 'auth_error':
+              errorCode = 'AUTHENTICATION_ERROR';
+              statusCode = 401;
+              break;
+            case 'model_error':
+              errorCode = 'MODEL_ERROR';
+              statusCode = 400;
+              break;
+            case 'content_length_error':
+              errorCode = 'CONTENT_TOO_LONG';
+              statusCode = 400;
+              break;
+          }
+        }
+        
         throw new OpenAIError(
           response.error || 'Unknown error occurred',
-          'OPENAI_ERROR',
-          400,
+          errorCode,
+          statusCode,
           response
         );
       }

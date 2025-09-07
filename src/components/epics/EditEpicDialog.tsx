@@ -34,6 +34,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
   const [formData, setFormData] = useState<UpdateEpicRequest>({
     id: epic.id,
     name: epic.name,
+    subject: epic.subject || '',
     description: epic.description || '',
     outcomes: epic.outcomes || [],
   });
@@ -48,6 +49,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
     setFormData({
       id: epic.id,
       name: epic.name,
+      subject: epic.subject || '',
       description: epic.description || '',
       outcomes: epic.outcomes || [],
     });
@@ -151,6 +153,50 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className='space-y-6'>
+          {/* Avatar Image Section - At the very top */}
+          <div className='space-y-3'>
+            <Label className='text-sm font-medium'>Avatar Image</Label>
+            <div className='flex justify-center'>
+              {avatarPreview ? (
+                <div className='relative group'>
+                  <div className='w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden'>
+                    <img
+                      src={avatarPreview}
+                      alt='Avatar preview'
+                      className='w-full h-full object-cover'
+                    />
+                  </div>
+                  <Button
+                    type='button'
+                    variant='destructive'
+                    size='sm'
+                    className='absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
+                    onClick={() => handleRemoveImage('avatar')}
+                  >
+                    <X className='h-3 w-3' />
+                  </Button>
+                </div>
+              ) : (
+                <label className='cursor-pointer block'>
+                  <div className='w-24 h-24 rounded-full border-4 border-white shadow-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center group'>
+                    <Upload className='h-6 w-6 text-gray-400 group-hover:text-gray-500' />
+                    <input
+                      type='file'
+                      accept='image/*'
+                      className='hidden'
+                      onChange={(e) =>
+                        handleFileChange(e.target.files?.[0] || null, 'avatar')
+                      }
+                    />
+                  </div>
+                </label>
+              )}
+            </div>
+            <p className='text-xs text-gray-500 text-center'>
+              Recommended: Square image, 200x200px or larger
+            </p>
+          </div>
+
           {/* Basic Information */}
           <div className='space-y-4'>
             <div className='space-y-2'>
@@ -161,6 +207,16 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder='Enter epic name'
                 required
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='subject'>Subject</Label>
+              <Input
+                id='subject'
+                value={formData.subject}
+                onChange={(e) => handleInputChange('subject', e.target.value)}
+                placeholder='Enter subject (e.g., Mathematics, Science, Programming)'
               />
             </div>
 
@@ -180,79 +236,45 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
               onChange={(value) => handleInputChange('outcomes', value)}
               placeholder='What will learners achieve from this epic?'
               label='Learning Outcomes'
-              maxItems={8}
             />
           </div>
 
-          {/* Image Uploads */}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            {/* Avatar Upload */}
-            <div className='space-y-2'>
-              <Label>Avatar Image</Label>
-              <div className='border-2 border-dashed border-gray-300 rounded-lg p-4'>
-                {avatarPreview ? (
-                  <div className='relative'>
-                    <img
-                      src={avatarPreview}
-                      alt='Avatar preview'
-                      className='w-full h-32 object-cover rounded-lg'
-                    />
+          {/* Banner Image Section */}
+          <div className='space-y-3'>
+            <Label className='text-sm font-medium'>Banner Image</Label>
+            <div className='relative'>
+              {bannerPreview ? (
+                <div className='relative group'>
+                  <img
+                    src={bannerPreview}
+                    alt='Banner preview'
+                    className='w-full h-48 object-cover rounded-lg shadow-sm'
+                  />
+                  <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center'>
                     <Button
                       type='button'
                       variant='destructive'
                       size='sm'
-                      className='absolute top-2 right-2'
-                      onClick={() => handleRemoveImage('avatar')}
-                    >
-                      <X className='h-4 w-4' />
-                    </Button>
-                  </div>
-                ) : (
-                  <label className='cursor-pointer block text-center'>
-                    <Upload className='mx-auto h-8 w-8 text-gray-400 mb-2' />
-                    <span className='text-sm text-gray-600'>
-                      Click to upload avatar
-                    </span>
-                    <input
-                      type='file'
-                      accept='image/*'
-                      className='hidden'
-                      onChange={(e) =>
-                        handleFileChange(e.target.files?.[0] || null, 'avatar')
-                      }
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-
-            {/* Banner Upload */}
-            <div className='space-y-2'>
-              <Label>Banner Image</Label>
-              <div className='border-2 border-dashed border-gray-300 rounded-lg p-4'>
-                {bannerPreview ? (
-                  <div className='relative'>
-                    <img
-                      src={bannerPreview}
-                      alt='Banner preview'
-                      className='w-full h-32 object-cover rounded-lg'
-                    />
-                    <Button
-                      type='button'
-                      variant='destructive'
-                      size='sm'
-                      className='absolute top-2 right-2'
+                      className='opacity-0 group-hover:opacity-100 transition-opacity duration-200'
                       onClick={() => handleRemoveImage('banner')}
                     >
-                      <X className='h-4 w-4' />
+                      <X className='h-4 w-4 mr-1' />
+                      Remove
                     </Button>
                   </div>
-                ) : (
-                  <label className='cursor-pointer block text-center'>
-                    <Upload className='mx-auto h-8 w-8 text-gray-400 mb-2' />
-                    <span className='text-sm text-gray-600'>
-                      Click to upload banner
-                    </span>
+                </div>
+              ) : (
+                <label className='cursor-pointer block'>
+                  <div className='border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors duration-200 rounded-lg p-8 text-center group'>
+                    <Upload className='mx-auto h-12 w-12 text-gray-400 group-hover:text-gray-500 mb-3' />
+                    <div className='space-y-1'>
+                      <p className='text-sm font-medium text-gray-700'>
+                        Upload Banner Image
+                      </p>
+                      <p className='text-xs text-gray-500'>
+                        Recommended: 1200x400px or similar aspect ratio
+                      </p>
+                    </div>
                     <input
                       type='file'
                       accept='image/*'
@@ -261,9 +283,9 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
                         handleFileChange(e.target.files?.[0] || null, 'banner')
                       }
                     />
-                  </label>
-                )}
-              </div>
+                  </div>
+                </label>
+              )}
             </div>
           </div>
 

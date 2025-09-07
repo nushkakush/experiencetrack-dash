@@ -17,7 +17,7 @@ export class EpicsService {
     let query = supabase
       .from('epics')
       .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);

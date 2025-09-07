@@ -10,7 +10,6 @@ interface BulletedInputProps {
   onChange: (value: string[]) => void;
   placeholder?: string;
   label?: string;
-  maxItems?: number;
   className?: string;
 }
 
@@ -19,7 +18,6 @@ export const BulletedInput: React.FC<BulletedInputProps> = ({
   onChange,
   placeholder = 'Enter learning outcome...',
   label = 'Learning Outcomes',
-  maxItems = 10,
   className,
 }) => {
   const [items, setItems] = useState<string[]>(value);
@@ -29,11 +27,9 @@ export const BulletedInput: React.FC<BulletedInputProps> = ({
   }, [value]);
 
   const addItem = () => {
-    if (items.length < maxItems) {
-      const newItems = [...items, ''];
-      setItems(newItems);
-      onChange(newItems);
-    }
+    const newItems = [...items, ''];
+    setItems(newItems);
+    onChange(newItems);
   };
 
   const removeItem = (index: number) => {
@@ -66,7 +62,6 @@ export const BulletedInput: React.FC<BulletedInputProps> = ({
           variant='outline'
           size='sm'
           onClick={addItem}
-          disabled={items.length >= maxItems}
           className='h-8 px-2'
         >
           <Plus className='h-4 w-4 mr-1' />
@@ -124,7 +119,7 @@ export const BulletedInput: React.FC<BulletedInputProps> = ({
 
       {items.length > 0 && (
         <div className='text-xs text-muted-foreground'>
-          {items.length} of {maxItems} outcomes added
+          {items.length} outcomes added
         </div>
       )}
     </div>

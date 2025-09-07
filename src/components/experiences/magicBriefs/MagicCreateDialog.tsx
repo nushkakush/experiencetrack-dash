@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChipInput } from '@/components/ui/chip-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,42 +33,59 @@ export const MagicCreateDialog: React.FC<MagicCreateDialogProps> = ({
   onOpenChange,
   onSuccess,
 }) => {
-  const [brandNames, setBrandNames] = useState<string[]>([]);
-  const [challengeCount, setChallengeCount] = useState(5);
+  const [numberOfBriefs, setNumberOfBriefs] = useState<number>(7);
+  const [generationProgress, setGenerationProgress] = useState<{current: number, total: number} | null>(null);
   const { generateMagicBriefs, isGenerating } = useMagicBriefGeneration();
   const { isValid, error, isLoading } = useEpicValidation();
   const { toast } = useToast();
 
   const handleGenerate = async () => {
     try {
-      await generateMagicBriefs(
-        brandNames.length > 0 ? brandNames : undefined,
-        challengeCount
-      );
+      setGenerationProgress({ current: 0, total: numberOfBriefs }); // Initialize with the correct total
+      await generateMagicBriefs(numberOfBriefs, setGenerationProgress);
 
       toast({
         title: 'Magic Briefs Generated!',
-        description: `${challengeCount} brand challenges have been created successfully.`,
+        description: `${numberOfBriefs} high-quality business challenges created with 100% learning outcome coverage.`,
       });
 
       onSuccess();
       onOpenChange(false);
-      setBrandNames([]);
-      setChallengeCount(5);
+      setGenerationProgress(null);
     } catch (error) {
+      let title = 'Generation Failed';
+      let description = 'Failed to generate magic briefs';
+      
+      if (error.message) {
+        if (error.message.includes('quota exceeded')) {
+          title = 'OpenAI Quota Exceeded';
+          description = 'Your OpenAI account has reached its usage limit. Please check your billing settings and add credits to continue using AI features.';
+        } else if (error.message.includes('rate limit')) {
+          title = 'Rate Limit Exceeded';
+          description = 'Too many requests to OpenAI. Please wait a moment and try again.';
+        } else if (error.message.includes('API key')) {
+          title = 'API Configuration Error';
+          description = 'There\'s an issue with the OpenAI API configuration. Please contact your administrator.';
+        } else if (error.message.includes('too long')) {
+          title = 'Content Too Long';
+          description = 'The request content is too long for the AI model. Try reducing the number of learning outcomes or simplifying the content.';
+        } else {
+          description = error.message;
+        }
+      }
+      
       toast({
-        title: 'Generation Failed',
-        description: error.message || 'Failed to generate magic briefs',
+        title,
+        description,
         variant: 'destructive',
       });
+      setGenerationProgress(null);
     }
   };
 
   const handleClose = () => {
     if (!isGenerating) {
       onOpenChange(false);
-      setBrandNames([]);
-      setChallengeCount(5);
     }
   };
 
@@ -79,8 +95,9 @@ export const MagicCreateDialog: React.FC<MagicCreateDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Generate Magic Briefs</DialogTitle>
           <DialogDescription>
-            Generate brand case study challenges based on the active epic's
-            learning outcomes.
+            Generate high-quality business case study challenges with guaranteed 100% coverage
+            of all learning outcomes. The system will create exactly the number of briefs you
+            specify, intelligently distributing all learning outcomes across them.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,35 +118,47 @@ export const MagicCreateDialog: React.FC<MagicCreateDialogProps> = ({
           )}
 
           <div className='space-y-2'>
-            <Label htmlFor='challenge-count'>Number of Challenges</Label>
+            <Label htmlFor='number-of-briefs'>Number of Briefs</Label>
             <Input
-              id='challenge-count'
+              id='number-of-briefs'
               type='number'
               min='1'
-              max='10'
-              value={challengeCount}
-              onChange={e => setChallengeCount(parseInt(e.target.value) || 5)}
+              max='20'
+              value={numberOfBriefs}
+              onChange={(e) => setNumberOfBriefs(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+              placeholder='Enter number of briefs (1-20)'
               disabled={isGenerating || !isValid}
             />
             <p className='text-sm text-muted-foreground'>
-              Choose how many challenge statements to generate (1-10).
+              AI will generate exactly {numberOfBriefs} briefs with 100% coverage of all learning outcomes
+              intelligently distributed across them.
             </p>
           </div>
 
-          <div className='space-y-2'>
-            <Label htmlFor='brand-names'>Brand Names (Optional)</Label>
-            <ChipInput
-              value={brandNames}
-              onChange={setBrandNames}
-              placeholder='Type brand names and press comma...'
-              disabled={isGenerating || !isValid}
-            />
-            <p className='text-sm text-muted-foreground'>
-              {brandNames.length > 0
-                ? `You've specified ${brandNames.length} brand(s). AI will choose additional brands to reach ${challengeCount} total challenges.`
-                : `Leave empty to let AI choose all ${challengeCount} relevant brands automatically.`}
-            </p>
-          </div>
+          {/* Progress Display */}
+          {generationProgress && (
+            <div className='space-y-2'>
+              <div className='flex justify-between text-sm'>
+                <span>Generating {numberOfBriefs} briefs with full coverage...</span>
+                <span>
+                  {generationProgress.total > 0 
+                    ? `${generationProgress.current}/${generationProgress.total}`
+                    : `${generationProgress.current} generated`
+                  }
+                </span>
+              </div>
+              <div className='w-full bg-gray-200 rounded-full h-2'>
+                <div 
+                  className='bg-blue-600 h-2 rounded-full transition-all duration-300'
+                  style={{ 
+                    width: generationProgress.total > 0 
+                      ? `${(generationProgress.current / generationProgress.total) * 100}%`
+                      : '100%'
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -147,10 +176,10 @@ export const MagicCreateDialog: React.FC<MagicCreateDialogProps> = ({
             {isGenerating ? (
               <>
                 <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                Generating...
+                Generating Briefs with Full Coverage...
               </>
             ) : (
-              'Generate Briefs'
+              `Generate ${numberOfBriefs} Magic Briefs`
             )}
           </Button>
         </DialogFooter>

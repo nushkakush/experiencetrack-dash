@@ -45,9 +45,9 @@ export const MagicCreateButton: React.FC<MagicCreateButtonProps> = ({
         <DropdownMenuContent align='end'>
           <DropdownMenuItem onClick={handleCBLCreate} disabled={isDisabled}>
             <div className='flex flex-col'>
-              <span className='font-medium'>CBL Experience</span>
+              <span className='font-medium'>Magic Briefs</span>
               <span className='text-sm text-muted-foreground'>
-                Generate brand case study challenges
+                Generate 7 high-quality brand challenges
               </span>
             </div>
           </DropdownMenuItem>

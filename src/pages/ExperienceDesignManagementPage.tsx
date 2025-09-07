@@ -42,6 +42,7 @@ const ExperienceDesignManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [activeTab, setActiveTab] = useState<string>('experiences');
   
   // Epic context
   const { activeEpicId, setActiveEpicId } = useActiveEpic();
@@ -89,12 +90,30 @@ const ExperienceDesignManagementPage: React.FC = () => {
     fetchExperiences();
   }, [currentPage, searchTerm, typeFilter, activeEpicId]);
 
+  // Refresh experiences when switching to the experiences tab
+  useEffect(() => {
+    if (activeTab === 'experiences') {
+      setLoading(true);
+      fetchExperiences();
+    } else {
+      // Clear experiences when switching away to prevent stale data
+      setExperiences([]);
+      setTotalCount(0);
+      setTotalPages(0);
+      setLoading(false);
+    }
+  }, [activeTab]);
+
   // Listen for upserted experiences and refresh table
   useEffect(() => {
-    const handler = () => fetchExperiences();
+    const handler = () => {
+      if (activeTab === 'experiences') {
+        fetchExperiences();
+      }
+    };
     window.addEventListener('experience:upserted', handler);
     return () => window.removeEventListener('experience:upserted', handler);
-  }, []);
+  }, [activeTab]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -211,7 +230,7 @@ const ExperienceDesignManagementPage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="experiences" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="experiences" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />

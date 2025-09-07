@@ -17,6 +17,7 @@ interface MagicBriefsGridProps {
   briefs: MagicBrief[];
   onExpand: (brief: MagicBrief) => void;
   onDelete: (brief: MagicBrief) => void;
+  onRegenerate?: (updatedBrief: MagicBrief) => void;
   isLoading?: boolean;
 }
 
@@ -28,6 +29,7 @@ export const MagicBriefsGrid: React.FC<MagicBriefsGridProps> = ({
   briefs,
   onExpand,
   onDelete,
+  onRegenerate,
   isLoading = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +55,18 @@ export const MagicBriefsGrid: React.FC<MagicBriefsGridProps> = ({
   const handlePreview = (brief: MagicBrief) => {
     setPreviewBrief(brief);
     setPreviewOpen(true);
+  };
+
+  const handleRegenerate = (updatedBrief: MagicBrief) => {
+    // Update the preview brief if it's the same one that was regenerated
+    if (previewBrief && previewBrief.id === updatedBrief.id) {
+      setPreviewBrief(updatedBrief);
+    }
+    
+    // Notify parent component
+    if (onRegenerate) {
+      onRegenerate(updatedBrief);
+    }
   };
 
   if (isLoading) {
@@ -134,6 +148,7 @@ export const MagicBriefsGrid: React.FC<MagicBriefsGridProps> = ({
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         onExpand={onExpand}
+        onRegenerate={handleRegenerate}
       />
     </div>
   );

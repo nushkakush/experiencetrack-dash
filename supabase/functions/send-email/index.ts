@@ -132,7 +132,7 @@ serve(async req => {
         // User invitation - fetch from user_invitations table
         const { data: invitation, error: invitationError } = await supabase
           .from('user_invitations')
-          .select('invitation_expires_at')
+          .select('invitation_expires_at, invitation_token')
           .eq('id', studentId)
           .single();
 
@@ -141,13 +141,14 @@ serve(async req => {
         }
 
         invitationExpiresAt = invitation.invitation_expires_at;
+        invitationToken = invitation.invitation_token;
 
         // Check if invitation has expired
         if (new Date(invitationExpiresAt) < new Date()) {
           throw new Error('Invitation has expired');
         }
 
-        // Generate user invitation URL
+        // Generate user invitation URL using the invitation token
         const baseUrl =
           req.headers.get('origin') ||
           req.headers.get('referer')?.replace(/\/.*$/, '') ||
@@ -156,7 +157,7 @@ serve(async req => {
         const origin = baseUrl.startsWith('http')
           ? baseUrl
           : `https://${baseUrl}`;
-        invitationUrl = `${origin}/user-invite/${studentId}`;
+        invitationUrl = `${origin}/user-invite/${invitationToken}`;
 
         // User invitation email content
         const roleDisplayName =

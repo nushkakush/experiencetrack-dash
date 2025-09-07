@@ -251,6 +251,213 @@ export class FeatureFlagService {
         rolloutPercentage: 100,
         targetRoles: ['super_admin', 'admin'],
       },
+      // AI Service Configuration Flags
+      {
+        id: 'ai.openai.enabled',
+        name: 'OpenAI Service Enabled',
+        description: 'Enable OpenAI service integration',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          priority: 1,
+          fallbackProvider: 'perplexity'
+        }
+      },
+      {
+        id: 'ai.perplexity.enabled',
+        name: 'Perplexity Service Enabled',
+        description: 'Enable Perplexity service integration',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          priority: 2,
+          fallbackProvider: 'openai'
+        }
+      },
+      // AI Model Selection Flags
+      {
+        id: 'ai.model.magic-briefs',
+        name: 'Magic Briefs AI Model',
+        description: 'AI model selection for magic brief generation',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          openaiModel: 'gpt-4o-mini',
+          perplexityModel: 'sonar-pro',
+          preferredProvider: 'openai',
+          temperature: 0.7,
+          maxTokens: 4000,
+          enableWebSearch: true
+        }
+      },
+      {
+        id: 'ai.model.general-chat',
+        name: 'General Chat AI Model',
+        description: 'AI model selection for general chat interactions',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          openaiModel: 'gpt-4o-mini',
+          perplexityModel: 'sonar',
+          preferredProvider: 'openai',
+          temperature: 0.8,
+          maxTokens: 2000,
+          enableWebSearch: false
+        }
+      },
+      {
+        id: 'ai.model.research-tasks',
+        name: 'Research Tasks AI Model',
+        description: 'AI model selection for research and analysis tasks',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin'],
+        metadata: {
+          openaiModel: 'gpt-4o',
+          perplexityModel: 'sonar-deep-research',
+          preferredProvider: 'perplexity',
+          temperature: 0.3,
+          maxTokens: 8000,
+          enableWebSearch: true,
+          maxCitations: 15
+        }
+      },
+      {
+        id: 'ai.model.premium-tasks',
+        name: 'Premium AI Tasks Model',
+        description: 'High-end AI model for complex reasoning tasks',
+        enabled: true,
+        rolloutPercentage: 50,
+        targetRoles: ['super_admin'],
+        metadata: {
+          openaiModel: 'o1-preview',
+          perplexityModel: 'sonar-deep-research',
+          preferredProvider: 'openai',
+          temperature: 0.2,
+          maxTokens: 16000,
+          reasoningEffort: 'high'
+        }
+      },
+      // AI Cost Control Flags
+      {
+        id: 'ai.cost-controls.student',
+        name: 'Student AI Cost Controls',
+        description: 'Cost and usage limits for student AI access',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['student'],
+        metadata: {
+          maxRequestsPerHour: 10,
+          maxRequestsPerDay: 50,
+          maxTokensPerRequest: 2000,
+          allowedModels: ['gpt-4o-mini', 'gpt-3.5-turbo', 'sonar'],
+          restrictPremiumModels: true
+        }
+      },
+      {
+        id: 'ai.cost-controls.admin',
+        name: 'Admin AI Cost Controls',
+        description: 'Cost and usage limits for admin AI access',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['admin', 'super_admin'],
+        metadata: {
+          maxRequestsPerHour: 100,
+          maxRequestsPerDay: 500,
+          maxTokensPerRequest: 8000,
+          allowedModels: ['all'],
+          restrictPremiumModels: false
+        }
+      },
+      // AI Feature Toggle Flags
+      {
+        id: 'ai.features.web-search',
+        name: 'AI Web Search Feature',
+        description: 'Enable web search capabilities in AI responses',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          maxSearchResults: 10,
+          enableSnippets: true,
+          enableCitations: true
+        }
+      },
+      {
+        id: 'ai.features.file-search',
+        name: 'AI File Search Feature',
+        description: 'Enable file search capabilities in AI responses',
+        enabled: false,
+        rolloutPercentage: 0,
+        targetRoles: ['super_admin', 'admin'],
+        metadata: {
+          maxFileSize: '10MB',
+          allowedFileTypes: ['pdf', 'txt', 'docx', 'md']
+        }
+      },
+      {
+        id: 'ai.features.reasoning-mode',
+        name: 'AI Reasoning Mode',
+        description: 'Enable advanced reasoning mode for complex problems',
+        enabled: true,
+        rolloutPercentage: 25,
+        targetRoles: ['super_admin', 'admin'],
+        metadata: {
+          defaultEffort: 'medium',
+          enableReasoningSummary: true,
+          costMultiplier: 2.5
+        }
+      },
+      // AI Provider Fallback Configuration
+      {
+        id: 'ai.fallback.enabled',
+        name: 'AI Provider Fallback',
+        description: 'Enable automatic fallback between AI providers',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          maxRetries: 2,
+          fallbackDelay: 1000,
+          fallbackOrder: ['openai', 'perplexity'],
+          enableFallbackLogging: true
+        }
+      },
+      // AI Analytics and Monitoring
+      {
+        id: 'ai.analytics.enabled',
+        name: 'AI Usage Analytics',
+        description: 'Enable AI usage tracking and analytics',
+        enabled: true,
+        rolloutPercentage: 100,
+        targetRoles: ['super_admin', 'admin', 'student'],
+        metadata: {
+          trackUsage: true,
+          trackCosts: true,
+          trackPerformance: true,
+          trackErrors: true,
+          retentionDays: 30
+        }
+      },
+      {
+        id: 'ai.debug.enabled',
+        name: 'AI Debug Mode',
+        description: 'Enable detailed AI service debugging and logging',
+        enabled: false,
+        rolloutPercentage: 0,
+        targetRoles: ['super_admin'],
+        metadata: {
+          logRequests: true,
+          logResponses: true,
+          logTokenUsage: true,
+          logPerformance: true,
+          logLevel: 'debug'
+        }
+      }
     ];
 
     defaultFlags.forEach(flag => {
@@ -263,6 +470,13 @@ export class FeatureFlagService {
    */
   setContext(context: FeatureFlagContext): void {
     this.context = { ...this.context, ...context };
+  }
+
+  /**
+   * Get the current context for feature flag evaluation
+   */
+  getContext(): FeatureFlagContext {
+    return { ...this.context };
   }
 
   /**

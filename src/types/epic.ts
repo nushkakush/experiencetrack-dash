@@ -1,6 +1,7 @@
 export interface Epic {
   id: string;
   name: string;
+  subject?: string;
   description?: string;
   outcomes?: string[]; // Changed from string to string array for bulleted points
   avatar_url?: string;
@@ -12,6 +13,7 @@ export interface Epic {
 
 export interface CreateEpicRequest {
   name: string;
+  subject?: string;
   description?: string;
   outcomes?: string[]; // Changed from string to string array
   avatar_url?: string;

@@ -7,8 +7,8 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
-// OpenAI Responses API Configuration
-const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
+// OpenAI Chat Completions API Configuration  
+const OPENAI_CHAT_COMPLETIONS_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 // Supported models with their configurations
 const SUPPORTED_MODELS = {
@@ -264,57 +264,45 @@ class OpenAIResponsesClient {
       // Process tools
       const processedTools = ToolProcessor.processTools(request.tools);
       
-      // Build input for Responses API
-      const input = `${request.systemPrompt}\n\n${request.userPrompt}${processedContext}`;
+      // Build messages for Chat Completions API
+      const messages: any[] = [
+        {
+          role: 'system',
+          content: request.systemPrompt
+        },
+        {
+          role: 'user', 
+          content: `${request.userPrompt}${processedContext}`
+        }
+      ];
 
-      // Build request payload for Responses API
+      // Build request payload for Chat Completions API
       const payload: any = {
         model: request.model,
-        input
+        messages
       };
 
-                  // Add optional parameters only if they're supported by the model and API
-            if (request.model !== 'o1-preview' && request.model !== 'o1-mini') {
-              // These parameters are not supported by o1 models
-              if (request.temperature !== undefined) payload.temperature = request.temperature;
-              // Note: max_tokens, top_p, frequency_penalty, presence_penalty, and stream are not supported in Responses API
-              // if (request.maxTokens !== undefined) payload.max_tokens = request.maxTokens;
-              // if (request.topP !== undefined) payload.top_p = request.topP;
-              // if (request.frequencyPenalty !== undefined) payload.frequency_penalty = request.frequencyPenalty;
-              // if (request.presencePenalty !== undefined) payload.presence_penalty = request.presencePenalty;
-              // if (request.stream !== undefined) payload.stream = request.stream;
-            }
-
-      // Add tools if specified
-      if (processedTools.length > 0) {
-        payload.tools = processedTools;
+      // Add optional parameters based on model support
+      if (request.model !== 'o1-preview' && request.model !== 'o1-mini') {
+        // These parameters are not supported by o1 models
+        if (request.temperature !== undefined) payload.temperature = request.temperature;
+        if (request.maxTokens !== undefined) payload.max_tokens = request.maxTokens;
+        if (request.topP !== undefined) payload.top_p = request.topP;
+        if (request.frequencyPenalty !== undefined) payload.frequency_penalty = request.frequencyPenalty;
+        if (request.presencePenalty !== undefined) payload.presence_penalty = request.presencePenalty;
+        if (request.stream !== undefined) payload.stream = request.stream;
       }
 
-      // Add background mode if specified
-      if (request.backgroundMode?.enabled) {
-        payload.background_mode = {
-          enabled: true,
-          timeout: request.backgroundMode.timeout || 300
-        };
-      }
-
-      // Add reasoning effort if specified (for o1 models)
-      if (request.reasoningEffort) {
-        payload.reasoning = {
-          effort: request.reasoningEffort
-        };
-      }
-
-      // Note: reasoning_summary parameter is not currently supported in the Responses API
-      // The o1 models provide reasoning by default
-
+      // Note: Tools are not supported in basic Chat Completions API
+      // Advanced features like web_search, file_search, computer_use require function calling setup
+      
       // Add response format if specified
       if (request.responseFormat === 'json_object') {
         payload.response_format = { type: 'json_object' };
       }
 
       // Make API call
-      const response = await fetch(OPENAI_RESPONSES_API_URL, {
+      const response = await fetch(OPENAI_CHAT_COMPLETIONS_API_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
@@ -325,7 +313,39 @@ class OpenAIResponsesClient {
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`OpenAI Responses API error: ${response.status} - ${errorData}`);
+        let userFriendlyMessage = `OpenAI API error: ${response.status}`;
+        
+        try {
+          const errorJson = JSON.parse(errorData);
+          const openaiError = errorJson.error;
+          
+          if (openaiError) {
+            switch (openaiError.code) {
+              case 'insufficient_quota':
+                userFriendlyMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and add credits to continue using AI features.';
+                break;
+              case 'invalid_api_key':
+                userFriendlyMessage = 'Invalid OpenAI API key. Please check the API key configuration.';
+                break;
+              case 'model_not_found':
+                userFriendlyMessage = `The requested AI model (${request.model}) is not available. Please try a different model.`;
+                break;
+              case 'context_length_exceeded':
+                userFriendlyMessage = 'The request is too long for the AI model. Please reduce the content length and try again.';
+                break;
+              case 'rate_limit_exceeded':
+                userFriendlyMessage = 'OpenAI API rate limit exceeded. Please wait a moment and try again.';
+                break;
+              default:
+                userFriendlyMessage = openaiError.message || `OpenAI API error: ${response.status}`;
+            }
+          }
+        } catch (parseError) {
+          // If we can't parse the error, use the raw response
+          userFriendlyMessage = `OpenAI Chat Completions API error: ${response.status} - ${errorData}`;
+        }
+        
+        throw new Error(userFriendlyMessage);
       }
 
       const data = await response.json();
@@ -333,36 +353,12 @@ class OpenAIResponsesClient {
 
       // Calculate cost
       const modelConfig = SUPPORTED_MODELS[request.model];
-      const cost = (data.usage.total_tokens / 1000) * modelConfig.costPer1kTokens;
-
-      // Process tools used
-      const toolsUsed: ToolUsage[] = [];
-      if (data.tools_used) {
-        for (const tool of data.tools_used) {
-          toolsUsed.push({
-            tool: tool.type,
-            input: tool.input,
-            output: tool.output,
-            success: tool.success,
-            error: tool.error
-          });
-        }
-      }
-
-      // Process reasoning summary
-      let reasoningSummary: ReasoningSummary | undefined;
-      if (data.reasoning_summary) {
-        reasoningSummary = {
-          summary: data.reasoning_summary.summary,
-          keySteps: data.reasoning_summary.key_steps || [],
-          confidence: data.reasoning_summary.confidence || 0
-        };
-      }
+      const cost = (data.usage?.total_tokens / 1000) * modelConfig.costPer1kTokens;
 
       return {
         success: true,
         data: {
-          content: data.output || data.choices?.[0]?.message?.content || data.content,
+          content: data.choices?.[0]?.message?.content || '',
           model: data.model,
           usage: {
             promptTokens: data.usage?.prompt_tokens || 0,
@@ -372,22 +368,48 @@ class OpenAIResponsesClient {
           finishReason: data.choices?.[0]?.finish_reason || 'completed',
           responseTime,
           cost,
-          toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
-          reasoningSummary,
-          backgroundTaskId: data.background_task_id,
-          isBackgroundTask: data.is_background_task || false
+          // These features are not available in basic Chat Completions API
+          toolsUsed: undefined,
+          reasoningSummary: undefined,
+          backgroundTaskId: undefined,
+          isBackgroundTask: false
         },
         metadata: request.metadata
       };
 
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      console.error('OpenAI Responses API Error:', error);
+      console.error('OpenAI Chat Completions API Error:', error);
+      
+      let errorMessage = 'An unexpected error occurred while processing your AI request.';
+      let errorType = 'unknown';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Categorize error types for better client-side handling
+        if (error.message.includes('quota exceeded')) {
+          errorType = 'quota_exceeded';
+        } else if (error.message.includes('rate limit')) {
+          errorType = 'rate_limit';
+        } else if (error.message.includes('invalid_api_key')) {
+          errorType = 'auth_error';
+        } else if (error.message.includes('model') && error.message.includes('not available')) {
+          errorType = 'model_error';
+        } else if (error.message.includes('too long')) {
+          errorType = 'content_length_error';
+        }
+      }
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        metadata: { ...request.metadata, responseTime }
+        error: errorMessage,
+        errorType,
+        metadata: { 
+          ...request.metadata, 
+          responseTime,
+          timestamp: new Date().toISOString()
+        }
       };
     }
   }
@@ -491,7 +513,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('OpenAI Responses Edge Function Error:', error);
+    console.error('OpenAI Chat Completions Edge Function Error:', error);
     
     return new Response(
       JSON.stringify({

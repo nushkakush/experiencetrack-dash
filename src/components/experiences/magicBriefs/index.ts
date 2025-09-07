@@ -4,3 +4,7 @@ export { MagicCreateDialog } from './MagicCreateDialog';
 export { MagicBriefCard } from './MagicBriefCard';
 export { MagicBriefPreview } from './MagicBriefPreview';
 export { MagicBriefsGrid } from './MagicBriefsGrid';
+export { CompactCoverageProgress } from './CompactCoverageProgress';
+export { CoverageModal } from './CoverageModal';
+export { ExpandAllButton } from './ExpandAllButton';
+export { ExpandAllDialog } from './ExpandAllDialog';

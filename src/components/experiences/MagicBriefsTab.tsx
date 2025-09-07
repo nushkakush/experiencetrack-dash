@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useMagicBriefs, useMagicBriefExpansion } from '@/hooks/useMagicBriefs';
 import { MagicCreateButton, MagicBriefsGrid } from './magicBriefs';
+import { CompactCoverageProgress } from './magicBriefs/CompactCoverageProgress';
+import { ExpandAllButton } from './magicBriefs/ExpandAllButton';
+import { EpicsService } from '@/services/epics.service';
 import type { MagicBrief } from '@/types/magicBrief';
+import type { Epic } from '@/types/epic';
 
 /**
  * Main magic briefs tab component
@@ -33,6 +37,13 @@ export const MagicBriefsTab: React.FC = () => {
   const { expandMagicBrief, isExpanding } = useMagicBriefExpansion();
   const { toast } = useToast();
 
+  // State for epic data
+  const [activeEpic, setActiveEpic] = useState<Epic | null>(null);
+  const [epicLoading, setEpicLoading] = useState(false);
+  
+  // State to track individual vs bulk expansion
+  const [isIndividualExpanding, setIsIndividualExpanding] = useState(false);
+
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [briefToDelete, setBriefToDelete] = useState<{
@@ -40,7 +51,31 @@ export const MagicBriefsTab: React.FC = () => {
     title: string;
   } | null>(null);
 
+  // Load epic data when activeEpicId changes
+  useEffect(() => {
+    const loadEpicData = async () => {
+      if (!activeEpicId) {
+        setActiveEpic(null);
+        return;
+      }
+
+      setEpicLoading(true);
+      try {
+        const epic = await EpicsService.getEpic(activeEpicId);
+        setActiveEpic(epic);
+      } catch (error) {
+        console.error('Failed to load epic data:', error);
+        setActiveEpic(null);
+      } finally {
+        setEpicLoading(false);
+      }
+    };
+
+    loadEpicData();
+  }, [activeEpicId]);
+
   const handleExpand = async (brief: MagicBrief) => {
+    setIsIndividualExpanding(true);
     try {
       const experience = await expandMagicBrief(brief);
 
@@ -67,6 +102,28 @@ export const MagicBriefsTab: React.FC = () => {
         description: error.message || 'Failed to expand magic brief',
         variant: 'destructive',
       });
+    } finally {
+      setIsIndividualExpanding(false);
+    }
+  };
+
+  // Separate function for bulk expansion (Expand All) - doesn't trigger individual expanding overlay
+  const handleBulkExpand = async (brief: MagicBrief): Promise<void> => {
+    try {
+      const experience = await expandMagicBrief(brief);
+
+      // Notify experiences page to refresh the experience table
+      try {
+        window.dispatchEvent(
+          new CustomEvent('experience:upserted', { detail: experience })
+        );
+      } catch (error) {
+        // Ignore event dispatch errors
+        console.debug('Failed to dispatch experience:upserted event:', error);
+      }
+    } catch (error) {
+      console.error('Failed to expand brief:', error);
+      throw error; // Re-throw so ExpandAllDialog can handle it
     }
   };
 
@@ -106,6 +163,16 @@ export const MagicBriefsTab: React.FC = () => {
     loadMagicBriefs();
   };
 
+  const handleRegenerate = async (updatedBrief: MagicBrief) => {
+    // Refresh the briefs list to show the updated content
+    await loadMagicBriefs();
+    
+    toast({
+      title: 'Magic Brief Regenerated',
+      description: 'The magic brief has been successfully regenerated with fresh content.',
+    });
+  };
+
   // Show message when no epic is selected
   if (!activeEpicId) {
     return (
@@ -126,15 +193,31 @@ export const MagicBriefsTab: React.FC = () => {
         <div>
           <h2 className='text-2xl font-bold'>Magic Briefs</h2>
           <p className='text-muted-foreground'>
-            AI-generated brand case study challenges ready to expand into full
-            experiences
+            High-quality, research-backed brand case study challenges ready to expand into full
+            experiences. Generate 7 briefs sequentially to ensure comprehensive coverage of all
+            learning outcomes with maximum quality per brief.
           </p>
         </div>
 
-        <MagicCreateButton
-          onMagicBriefsGenerated={handleMagicBriefsGenerated}
-          disabled={!activeEpicId}
-        />
+        <div className="flex items-center gap-3">
+          {activeEpic && activeEpic.outcomes && activeEpic.outcomes.length > 0 && (
+            <CompactCoverageProgress
+              epicOutcomes={activeEpic.outcomes}
+              magicBriefs={savedBriefs}
+              onBriefGenerated={loadMagicBriefs}
+            />
+          )}
+          <ExpandAllButton
+            briefs={savedBriefs}
+            onExpand={handleBulkExpand}
+            onSuccess={loadMagicBriefs}
+            disabled={!activeEpicId || isExpanding}
+          />
+          <MagicCreateButton
+            onMagicBriefsGenerated={handleMagicBriefsGenerated}
+            disabled={!activeEpicId}
+          />
+        </div>
       </div>
 
       {/* Error Alert */}
@@ -145,8 +228,8 @@ export const MagicBriefsTab: React.FC = () => {
         </Alert>
       )}
 
-      {/* Expanding Overlay */}
-      {isExpanding && (
+      {/* Expanding Overlay - Only show for individual expansions */}
+      {isIndividualExpanding && (
         <Alert>
           <Loader2 className='h-4 w-4 animate-spin' />
           <AlertDescription>
@@ -161,6 +244,7 @@ export const MagicBriefsTab: React.FC = () => {
         briefs={savedBriefs}
         onExpand={handleExpand}
         onDelete={handleDeleteClick}
+        onRegenerate={handleRegenerate}
       />
 
       {/* Delete Confirmation Dialog */}

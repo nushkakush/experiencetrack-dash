@@ -350,6 +350,10 @@ const CohortsPage = () => {
         <CohortFeatureGate action='create'>
           <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
             <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+              <DialogTitle className='sr-only'>Create New Cohort</DialogTitle>
+              <DialogDescription className='sr-only'>
+                Create a new cohort with program details, schedule, and settings.
+              </DialogDescription>
               <CohortWizard
                 onCreated={() => {
                   refetch();
@@ -365,6 +369,10 @@ const CohortsPage = () => {
           <CohortFeatureGate action='edit'>
             <Dialog open={editWizardOpen} onOpenChange={setEditWizardOpen}>
               <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+                <DialogTitle className='sr-only'>Edit Cohort - {selectedCohortForEdit.name}</DialogTitle>
+                <DialogDescription className='sr-only'>
+                  Edit cohort details, schedule, and settings for {selectedCohortForEdit.name}.
+                </DialogDescription>
                 <CohortEditWizard
                   cohort={selectedCohortForEdit}
                   onUpdated={handleEditComplete}
@@ -390,6 +398,10 @@ const CohortsPage = () => {
           onOpenChange={setCombinedLeaderboardOpen}
         >
           <DialogContent className='max-w-7xl max-h-[90vh] overflow-y-auto'>
+            <DialogTitle className='sr-only'>Combined Leaderboard</DialogTitle>
+            <DialogDescription className='sr-only'>
+              View attendance leaderboard across all cohorts.
+            </DialogDescription>
             {cohorts && (
               <CombinedLeaderboard
                 availableCohorts={cohorts.map(cohort => ({

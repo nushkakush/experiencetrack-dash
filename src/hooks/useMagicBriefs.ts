@@ -127,8 +127,8 @@ export const useMagicBriefGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateMagicBriefs = async (
-    brandNames?: string[],
-    challengeCount?: number
+    numberOfBriefs: number = 7,
+    progressCallback?: (progress: {current: number, total: number}) => void
   ) => {
     if (!activeEpicId) {
       throw new Error('No active epic selected');
@@ -146,18 +146,21 @@ export const useMagicBriefGeneration = () => {
         throw new Error(validation.error);
       }
 
-      // Generate briefs using AI
-      const generatedBriefs = await MagicBriefGenerator.generateMagicBriefs({
+      // Generate exactly the requested number of briefs with guaranteed 100% coverage
+      const result = await MagicBriefGenerator.generateExactNumberWithFullCoverage({
         epic_id: activeEpicId,
         epic_name: epic.name,
         epic_description: epic.description,
         epic_outcomes: epic.outcomes || [],
-        brand_names: brandNames,
-        challenge_count: challengeCount,
-      });
+        total_briefs: numberOfBriefs,
+      }, progressCallback);
 
-      // Save to database
-      const briefsToSave = generatedBriefs.map(brief => ({
+      const allGeneratedBriefs = result.briefs;
+      const totalBriefs = allGeneratedBriefs.length;
+      const coverage = result.coverage;
+
+      // Save all briefs to database
+      const briefsToSave = allGeneratedBriefs.map(brief => ({
         title: brief.title,
         brand_name: brief.brand_name,
         challenge_statement: brief.challenge_statement,
@@ -166,13 +169,15 @@ export const useMagicBriefGeneration = () => {
         challenge_order: brief.challenge_order,
         prerequisite_skills: brief.prerequisite_skills,
         skill_compounding: brief.skill_compounding,
+        citations: brief.citations, // Include Perplexity citations
+        raw_response: brief.rawResponse, // Include raw response for debugging
         epic_id: activeEpicId,
         created_at: new Date().toISOString(),
       }));
 
       await MagicBriefsService.createMagicBriefs(briefsToSave);
 
-      return generatedBriefs;
+      return allGeneratedBriefs;
     } finally {
       setIsGenerating(false);
     }
@@ -286,4 +291,124 @@ export const useEpicValidation = () => {
   }, [activeEpicId]);
 
   return validationStatus;
+};
+
+/**
+ * Hook for magic brief regeneration
+ * Handles regenerating individual magic briefs with existing metadata
+ */
+export const useMagicBriefRegeneration = () => {
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const regenerateMagicBrief = async (brief: MagicBrief) => {
+    setIsRegenerating(true);
+
+    try {
+      // Get epic context for regeneration
+      const epic = await EpicsService.getEpic(brief.epic_id);
+
+      // Validate epic completeness
+      const validation = validateEpicForMagicBriefs(epic);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
+      // Regenerate the brief using AI
+      const regeneratedBrief = await MagicBriefGenerator.regenerateMagicBrief(brief, {
+        epic_name: epic.name,
+        epic_description: epic.description,
+        epic_outcomes: epic.outcomes || [],
+      });
+
+      // Update the brief in the database
+      const updatedBrief = await MagicBriefsService.updateMagicBrief(brief.id, {
+        title: regeneratedBrief.title,
+        challenge_statement: regeneratedBrief.challenge_statement,
+        citations: regeneratedBrief.citations,
+        rawResponse: regeneratedBrief.rawResponse,
+      });
+
+      return updatedBrief;
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  return {
+    regenerateMagicBrief,
+    isRegenerating,
+  };
+};
+
+/**
+ * Hook for targeted magic brief generation
+ * Handles generating magic briefs for specific learning outcomes
+ */
+export const useTargetedMagicBriefGeneration = () => {
+  const { activeEpicId } = useActiveEpic();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateTargetedMagicBrief = async (targetOutcome: string, existingBriefs: MagicBrief[] = []) => {
+    console.log('🚀 generateTargetedMagicBrief called with:', { targetOutcome, existingBriefsCount: existingBriefs.length });
+    
+    if (!activeEpicId) {
+      throw new Error('No active epic selected');
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Get epic context
+      const epic = await EpicsService.getEpic(activeEpicId);
+
+      // Validate epic completeness
+      const validation = validateEpicForMagicBriefs(epic);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
+      // Generate targeted brief using AI
+      const targetedBrief = await MagicBriefGenerator.generateTargetedMagicBrief(
+        targetOutcome,
+        {
+          epic_id: activeEpicId,
+          epic_name: epic.name,
+          epic_description: epic.description,
+          epic_outcomes: epic.outcomes || [],
+        },
+        existingBriefs
+      );
+
+      // Save the brief to database
+      const briefToSave = {
+        title: targetedBrief.title,
+        brand_name: targetedBrief.brand_name,
+        challenge_statement: targetedBrief.challenge_statement,
+        connected_learning_outcomes: targetedBrief.connected_learning_outcomes,
+        skill_focus: targetedBrief.skill_focus,
+        challenge_order: targetedBrief.challenge_order,
+        prerequisite_skills: targetedBrief.prerequisite_skills,
+        skill_compounding: targetedBrief.skill_compounding,
+        citations: targetedBrief.citations,
+        raw_response: targetedBrief.rawResponse,
+        epic_id: activeEpicId,
+        created_at: new Date().toISOString(),
+      };
+
+      const [savedBrief] = await MagicBriefsService.createMagicBriefs([briefToSave]);
+      console.log('💾 Targeted brief saved:', { 
+        id: savedBrief.id, 
+        title: savedBrief.title, 
+        connectedOutcomes: savedBrief.connected_learning_outcomes 
+      });
+      return savedBrief;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return {
+    generateTargetedMagicBrief,
+    isGenerating,
+  };
 };
