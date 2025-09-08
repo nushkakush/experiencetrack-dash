@@ -22,19 +22,20 @@ export const ExpandAllButton: React.FC<ExpandAllButtonProps> = ({
   onExpand,
   onSuccess,
   disabled = false,
-  className = ''
+  className = '',
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Filter briefs based on expansion status
   const unexpandedBriefs = briefs.filter(brief => !brief.expanded);
   const expandedBriefs = briefs.filter(brief => brief.expanded);
-  
-  // Calculate what will be expanded
+
+  // Calculate what will be expanded (default to unexpanded, but dialog allows including expanded)
   const totalToExpand = unexpandedBriefs.length;
-  
-  // Don't show button if no briefs to expand
-  if (briefs.length === 0 || totalToExpand === 0) {
+  const allExpanded = briefs.length > 0 && totalToExpand === 0;
+
+  // Don't show button if no briefs at all
+  if (briefs.length === 0) {
     return null;
   }
 
@@ -47,16 +48,16 @@ export const ExpandAllButton: React.FC<ExpandAllButtonProps> = ({
   return (
     <>
       <Button
-        variant="outline"
-        size="sm"
+        variant='outline'
+        size='sm'
         className={`${className} border-dashed border-blue-300 text-blue-700 hover:bg-blue-50`}
-        disabled={disabled || totalToExpand === 0}
+        disabled={disabled}
         onClick={() => setIsDialogOpen(true)}
       >
-        <Expand className="h-4 w-4 mr-2" />
-        Expand All
-        <Badge variant="secondary" className="ml-2 text-xs">
-          {totalToExpand}
+        <Expand className='h-4 w-4 mr-2' />
+        {allExpanded ? 'Re-expand All' : 'Expand All'}
+        <Badge variant='secondary' className='ml-2 text-xs'>
+          {allExpanded ? expandedBriefs.length : totalToExpand}
         </Badge>
       </Button>
 

@@ -29,6 +29,7 @@ export {
 } from './FeatureProtectedRoute';
 export { DashboardAccessControl } from './DashboardAccessControl';
 export { FeaturePermissionDebug } from './FeaturePermissionDebug';
+export { AccessDenied } from './AccessDenied';
 
 // SEO components
 export { SEO } from './SEO';

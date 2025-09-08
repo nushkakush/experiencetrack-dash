@@ -8,14 +8,19 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ActiveEpicProvider } from '@/contexts/ActiveEpicContext';
-import { ErrorBoundary, DashboardAccessControl } from '@/components/common';
+import {
+  ErrorBoundary,
+  DashboardAccessControl,
+  CohortFeatureGate,
+  AccessDenied,
+} from '@/components/common';
 import Index from './pages/Index';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import SelfRegistrationVerification from './pages/auth/SelfRegistrationVerification';
 import ResetPassword from './pages/auth/ResetPassword';
-import ApplicationComingSoon from './pages/auth/ApplicationComingSoon';
+import ApplicationProcess from './pages/auth/ApplicationProcess';
 import ProfilePage from './pages/ProfilePage';
 import DashboardRouter from './pages/DashboardRouter';
 import CohortsPage from './pages/CohortsPage';
@@ -204,8 +209,12 @@ const App = () => {
                           element={<SelfRegistrationVerification />}
                         />
                         <Route
-                          path='/auth/application-coming-soon'
-                          element={<ApplicationComingSoon />}
+                          path='/auth/application-process'
+                          element={
+                            <ProtectedRoute>
+                              <ApplicationProcess />
+                            </ProtectedRoute>
+                          }
                         />
                         <Route
                           path='/reset-password'
@@ -296,7 +305,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <CohortsPage />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Cohorts Access Denied'
+                                      description="You don't have permission to view cohorts."
+                                    />
+                                  }
+                                >
+                                  <CohortsPage />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -306,7 +325,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <CohortDetailsPage />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Cohort Details Access Denied'
+                                      description="You don't have permission to view cohort details."
+                                    />
+                                  }
+                                >
+                                  <CohortDetailsPage />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -316,7 +345,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <CohortAttendancePage />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Cohort Attendance Access Denied'
+                                      description="You don't have permission to view cohort attendance."
+                                    />
+                                  }
+                                >
+                                  <CohortAttendancePage />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -326,9 +365,19 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <ProgramFeatureGate action='manage'>
-                                  <CohortProgramPage />
-                                </ProgramFeatureGate>
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Cohort Program Access Denied'
+                                      description="You don't have permission to view cohort programs."
+                                    />
+                                  }
+                                >
+                                  <ProgramFeatureGate action='manage'>
+                                    <CohortProgramPage />
+                                  </ProgramFeatureGate>
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -338,7 +387,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <CohortAttendanceDashboard />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Attendance Dashboard Access Denied'
+                                      description="You don't have permission to view the attendance dashboard."
+                                    />
+                                  }
+                                >
+                                  <CohortAttendanceDashboard />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -348,7 +407,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <FeePaymentDashboard />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Fee Payment Access Denied'
+                                      description="You don't have permission to view fee payment details."
+                                    />
+                                  }
+                                >
+                                  <FeePaymentDashboard />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }
@@ -358,7 +427,17 @@ const App = () => {
                           element={
                             <ProtectedRoute>
                               <DashboardAccessControl>
-                                <CohortApplicationsDashboard />
+                                <CohortFeatureGate
+                                  action='view'
+                                  fallback={
+                                    <AccessDenied
+                                      title='Applications Access Denied'
+                                      description="You don't have permission to view cohort applications."
+                                    />
+                                  }
+                                >
+                                  <CohortApplicationsDashboard />
+                                </CohortFeatureGate>
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }

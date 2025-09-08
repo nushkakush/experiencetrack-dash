@@ -299,8 +299,8 @@ export const useInvitationAcceptance = ({
             // Admin-registered student - redirect to dashboard
             window.location.assign('/dashboard');
           } else {
-            // Self-registered student - redirect to coming soon page
-            window.location.assign('/auth/application-coming-soon');
+            // Self-registered student - redirect to application process page
+            window.location.assign('/auth/application-process');
           }
         } catch {
           // Fallback navigation
@@ -309,7 +309,7 @@ export const useInvitationAcceptance = ({
           if (isAdminRegistered) {
             navigate('/dashboard', { replace: true });
           } else {
-            navigate('/auth/application-coming-soon', { replace: true });
+            navigate('/auth/application-process', { replace: true });
           }
         }
       } catch (error) {

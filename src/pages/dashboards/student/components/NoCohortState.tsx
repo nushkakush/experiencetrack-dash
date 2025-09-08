@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -7,10 +7,24 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  StudentApplicationsService,
+  StudentApplicationWithCohort,
+} from '@/services/studentApplications.service';
 import PendingInvitesPanel from './PendingInvitesPanel';
 
 interface PendingInvite {
@@ -25,7 +39,12 @@ interface PendingInvite {
 
 export const NoCohortState: React.FC = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [loading, setLoading] = React.useState(false);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [registeredApplications, setRegisteredApplications] = useState<
+    StudentApplicationWithCohort[]
+  >([]);
   const [pendingInvites, setPendingInvites] = React.useState<PendingInvite[]>(
     []
   );
@@ -40,6 +59,30 @@ export const NoCohortState: React.FC = () => {
       navigate('/auth');
     }
   };
+
+  // Fetch registered applications
+  useEffect(() => {
+    const fetchRegisteredApplications = async () => {
+      if (!profile?.id) return;
+
+      setApplicationsLoading(true);
+      try {
+        const result =
+          await StudentApplicationsService.getRegisteredApplications(
+            profile.id
+          );
+        if (result.success && result.data) {
+          setRegisteredApplications(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching registered applications:', error);
+      } finally {
+        setApplicationsLoading(false);
+      }
+    };
+
+    fetchRegisteredApplications();
+  }, [profile?.id]);
 
   // Fetch any pending invitation for the current user's email
   React.useEffect(() => {
@@ -132,6 +175,110 @@ export const NoCohortState: React.FC = () => {
     );
   }
 
+  // Show registered applications if any exist
+  if (registeredApplications.length > 0) {
+    return (
+      <div className='space-y-6'>
+        <div className='text-center py-4'>
+          <h2 className='text-2xl font-bold mb-2'>Your Applications</h2>
+          <p className='text-muted-foreground'>
+            You're not enrolled in any cohort yet, but you have applications in
+            progress.
+          </p>
+        </div>
+
+        <div className='grid gap-4 max-w-4xl mx-auto'>
+          {applicationsLoading
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className='p-6'>
+                    <div className='space-y-3'>
+                      <Skeleton className='h-6 w-3/4' />
+                      <Skeleton className='h-4 w-1/2' />
+                      <Skeleton className='h-8 w-32' />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            : registeredApplications.map(application => {
+                const statusDisplay =
+                  StudentApplicationsService.getStatusDisplay(
+                    application.status
+                  );
+                const nextStep = StudentApplicationsService.getNextStep(
+                  application.status
+                );
+
+                return (
+                  <Card
+                    key={application.id}
+                    className='hover:shadow-md transition-shadow'
+                  >
+                    <CardContent className='p-6'>
+                      <div className='flex items-start justify-between'>
+                        <div className='flex-1'>
+                          <div className='flex items-center gap-3 mb-2'>
+                            <h3 className='text-lg font-semibold'>
+                              {application.cohort.name}
+                            </h3>
+                            <Badge
+                              variant={
+                                statusDisplay.color === 'green'
+                                  ? 'default'
+                                  : statusDisplay.color === 'blue'
+                                    ? 'secondary'
+                                    : statusDisplay.color === 'orange'
+                                      ? 'outline'
+                                      : 'secondary'
+                              }
+                              className={
+                                statusDisplay.color === 'green'
+                                  ? 'bg-green-100 text-green-800'
+                                  : statusDisplay.color === 'blue'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : statusDisplay.color === 'orange'
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : ''
+                              }
+                            >
+                              {statusDisplay.label}
+                            </Badge>
+                          </div>
+                          <p className='text-muted-foreground mb-3'>
+                            {application.cohort.description ||
+                              'No description available'}
+                          </p>
+                          <div className='flex items-center gap-2 text-sm text-muted-foreground mb-4'>
+                            <Clock className='h-4 w-4' />
+                            <span>Next: {nextStep.description}</span>
+                          </div>
+                          <div className='flex gap-3'>
+                            <Button
+                              onClick={() => navigate(nextStep.route)}
+                              className='flex items-center gap-2'
+                            >
+                              <FileText className='h-4 w-4' />
+                              {nextStep.action}
+                              <ArrowRight className='h-4 w-4' />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+        </div>
+
+        <div className='flex justify-center pt-4'>
+          <Button variant='outline' onClick={handleSignOut}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
       <div className='flex justify-center py-8'>
@@ -139,11 +286,11 @@ export const NoCohortState: React.FC = () => {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <AlertTriangle className='h-5 w-5 text-amber-500' />
-              You're not registered to any cohort
+              You're not enrolled in any cohort
             </CardTitle>
             <CardDescription>
-              It looks like your account isn’t linked to a cohort yet. Open your
-              invitation email and click the link to join. If you don’t have
+              It looks like your account isn't linked to a cohort yet. Open your
+              invitation email and click the link to join. If you don't have
               one, please contact your program coordinator.
             </CardDescription>
           </CardHeader>

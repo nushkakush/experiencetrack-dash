@@ -11,19 +11,30 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ExperiencesService } from '@/services/experiences.service';
 import { BulletedInput } from '@/components/ui/bulleted-input';
-import { 
-  WYSIWYGEditor, 
-  DeliverableBuilder, 
-  GradingRubricBuilder, 
-  ConditionBuilder, 
+import { ExperienceTypeForms } from '@/components/experiences/ExperienceTypeForms';
+import {
+  WYSIWYGEditor,
+  DeliverableBuilder,
+  GradingRubricBuilder,
+  ConditionBuilder,
   LectureModuleBuilder,
-  SampleProfilesBuilder
+  SampleProfilesBuilder,
 } from '@/components/experiences';
-import type { CreateExperienceRequest, Experience, ExperienceType } from '@/types/experience';
+import type {
+  CreateExperienceRequest,
+  Experience,
+  ExperienceType,
+} from '@/types/experience';
 import { EXPERIENCE_TYPES } from '@/types/experience';
 import { useActiveEpic } from '@/contexts/ActiveEpicContext';
 
@@ -34,15 +45,14 @@ interface ExperienceStepperDialogProps {
   existingExperience?: Experience | null;
 }
 
-export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = ({
-  open,
-  onOpenChange,
-  onExperienceSaved,
-  existingExperience = null,
-}) => {
+export const ExperienceStepperDialog: React.FC<
+  ExperienceStepperDialogProps
+> = ({ open, onOpenChange, onExperienceSaved, existingExperience = null }) => {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<CreateExperienceRequest & { id?: string }>({
+  const [formData, setFormData] = useState<
+    CreateExperienceRequest & { id?: string }
+  >({
     id: existingExperience?.id,
     title: existingExperience?.title || '',
     learning_outcomes: existingExperience?.learning_outcomes || [],
@@ -68,39 +78,95 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
         id: 1,
         title: 'Basic Information',
         description: 'Title, outcomes, and experience type',
-      }
+      },
     ];
 
-    if (type === 'CBL') {
-      return [
-        ...baseSteps,
-        {
-          id: 2,
-          title: 'CBL Content',
-          description: 'Challenge, deliverables, and grading',
-        },
-        {
-          id: 3,
-          title: 'Lecture Sessions',
-          description: 'Learning modules and resources',
-        },
-        {
-          id: 4,
-          title: 'Sample Profiles',
-          description: 'Brand, mentor, and judge profiles',
-        }
-      ];
+    switch (type) {
+      case 'CBL':
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'CBL Content',
+            description: 'Challenge, deliverables, and grading',
+          },
+          {
+            id: 3,
+            title: 'Lecture Sessions',
+            description: 'Learning modules and resources',
+          },
+          {
+            id: 4,
+            title: 'Sample Profiles',
+            description: 'Brand, mentor, and judge profiles',
+          },
+        ];
+
+      case 'Mock Challenge':
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'Challenge Content',
+            description: 'Challenge, deliverables, and grading (no lectures)',
+          },
+          {
+            id: 3,
+            title: 'Sample Profiles',
+            description: 'Reference profiles for the challenge',
+          },
+        ];
+
+      case 'Masterclass':
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'Sample Profiles',
+            description: 'Expert profiles and credentials',
+          },
+        ];
+
+      case 'Workshop':
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'Activity Details',
+            description: 'Activity description and materials',
+          },
+          {
+            id: 3,
+            title: 'SOP & Loom Video',
+            description: 'Standard operating procedure and instructional video',
+          },
+        ];
+
+      case 'GAP':
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'Activity Details',
+            description: 'Activity description and materials',
+          },
+          {
+            id: 3,
+            title: 'SOP & Loom Video',
+            description: 'Standard operating procedure and instructional video',
+          },
+        ];
+
+      default:
+        return [
+          ...baseSteps,
+          {
+            id: 2,
+            title: 'Content',
+            description: 'Experience-specific content',
+          },
+        ];
     }
-
-    // For other types, we'll add different steps later
-    return [
-      ...baseSteps,
-      {
-        id: 2,
-        title: 'Content',
-        description: 'Experience-specific content',
-      }
-    ];
   };
 
   const steps = getStepsForType(formData.type);
@@ -167,7 +233,8 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
           distinction_conditions: existingExperience.distinction_conditions,
           lecture_sessions: existingExperience.lecture_sessions || [],
           sample_brand_profiles: existingExperience.sample_brand_profiles || [],
-          sample_mentor_profiles: existingExperience.sample_mentor_profiles || [],
+          sample_mentor_profiles:
+            existingExperience.sample_mentor_profiles || [],
           sample_judge_profiles: existingExperience.sample_judge_profiles || [],
         });
       } else {
@@ -191,12 +258,15 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
     }
   }, [open, existingExperience, activeEpicId]);
 
-  const handleInputChange = (field: keyof CreateExperienceRequest, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof CreateExperienceRequest,
+    value: any
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleTypeChange = (type: ExperienceType) => {
-    setFormData((prev) => ({ ...prev, type }));
+    setFormData(prev => ({ ...prev, type }));
     // Reset to step 1 when type changes to show new step structure
     setCurrentStep(1);
   };
@@ -208,14 +278,15 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
 
     for (const section of formData.grading_rubric) {
       const sectionWeight = section.weight_percentage || 0;
-      const criteriaTotalWeight = section.criteria.reduce((total, criteria) => 
-        total + (criteria.weight_percentage || 0), 0
+      const criteriaTotalWeight = section.criteria.reduce(
+        (total, criteria) => total + (criteria.weight_percentage || 0),
+        0
       );
-      
+
       if (criteriaTotalWeight > sectionWeight) {
         return {
           isValid: false,
-          message: `Section "${section.title || 'Untitled'}" has criteria weights (${criteriaTotalWeight}%) that exceed the section weight (${sectionWeight}%). Please adjust the weights.`
+          message: `Section "${section.title || 'Untitled'}" has criteria weights (${criteriaTotalWeight}%) that exceed the section weight (${sectionWeight}%). Please adjust the weights.`,
         };
       }
     }
@@ -250,8 +321,9 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
 
     try {
       // Upsert the experience (auto-save)
-      const savedExperience = await ExperiencesService.upsertExperience(formData);
-      
+      const savedExperience =
+        await ExperiencesService.upsertExperience(formData);
+
       // Update form data with the saved experience ID if it's a new experience
       if (!formData.id && savedExperience.id) {
         setFormData(prev => ({ ...prev, id: savedExperience.id }));
@@ -263,7 +335,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
           description: `Experience ${isEditMode ? 'updated' : 'saved'} successfully.`,
         });
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error auto-saving experience:', error);
@@ -281,9 +353,9 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
   const handleSave = async () => {
     try {
       setLoading(true);
-      
+
       const success = await autoSave(true);
-      
+
       if (success) {
         // Reset form only on final save
         setFormData({
@@ -314,7 +386,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
     if (currentStep < steps.length) {
       // Auto-save before moving to next step
       const success = await autoSave(false);
-      
+
       if (success) {
         setCurrentStep(currentStep + 1);
       }
@@ -329,7 +401,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
 
   const handleClose = (open: boolean) => {
     console.log('🔍 handleClose called with:', { open, loading, isEditMode });
-    
+
     if (!open && !loading) {
       console.log('🔄 Resetting form data and closing modal');
       // Reset form data when closing
@@ -350,7 +422,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
       });
       setCurrentStep(1);
     }
-    
+
     console.log('📞 Calling onOpenChange with:', open);
     // Always call the parent's onOpenChange
     onOpenChange(open);
@@ -380,10 +452,13 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onOpenChange={(newOpen) => {
-        console.log('🎭 Dialog onOpenChange called with:', { newOpen, currentOpen: open });
+    <Dialog
+      open={open}
+      onOpenChange={newOpen => {
+        console.log('🎭 Dialog onOpenChange called with:', {
+          newOpen,
+          currentOpen: open,
+        });
         handleClose(newOpen);
       }}
     >
@@ -393,12 +468,11 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
             {isEditMode ? 'Edit Experience' : 'Create New Experience'}
           </DialogTitle>
           <DialogDescription>
-            {isEditMode 
+            {isEditMode
               ? 'Update your experience design and learning content.'
-              : 'Design a comprehensive learning experience with structured content and assessment.'
-            }
+              : 'Design a comprehensive learning experience with structured content and assessment.'}
           </DialogDescription>
-          
+
           {/* Step Indicator */}
           <div className='flex items-center justify-center space-x-4 py-4'>
             {steps.map((step, index) => (
@@ -417,9 +491,13 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                   )}
                 </div>
                 <div className='ml-2 hidden sm:block'>
-                  <div className={`text-sm font-medium ${
-                    currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'
-                  }`}>
+                  <div
+                    className={`text-sm font-medium ${
+                      currentStep >= step.id
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
                     {step.title}
                   </div>
                   <div className='text-xs text-muted-foreground'>
@@ -427,9 +505,11 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                   </div>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-8 h-0.5 mx-4 ${
-                    currentStep > step.id ? 'bg-primary' : 'bg-muted'
-                  }`} />
+                  <div
+                    className={`w-8 h-0.5 mx-4 ${
+                      currentStep > step.id ? 'bg-primary' : 'bg-muted'
+                    }`}
+                  />
                 )}
               </div>
             ))}
@@ -448,7 +528,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                     <Input
                       id='title'
                       value={formData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      onChange={e => handleInputChange('title', e.target.value)}
                       placeholder='Enter experience title'
                       required
                     />
@@ -456,12 +536,15 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
 
                   <div className='space-y-2'>
                     <Label htmlFor='type'>Experience Type *</Label>
-                    <Select value={formData.type} onValueChange={handleTypeChange}>
+                    <Select
+                      value={formData.type}
+                      onValueChange={handleTypeChange}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {EXPERIENCE_TYPES.map((type) => (
+                        {EXPERIENCE_TYPES.map(type => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
                           </SelectItem>
@@ -473,7 +556,9 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
 
                 <BulletedInput
                   value={formData.learning_outcomes}
-                  onChange={(value) => handleInputChange('learning_outcomes', value)}
+                  onChange={value =>
+                    handleInputChange('learning_outcomes', value)
+                  }
                   placeholder='What will learners achieve from this experience?'
                   label='Learning Outcomes'
                   maxItems={8}
@@ -488,26 +573,32 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
               <WYSIWYGEditor
                 label='Challenge Description *'
                 value={formData.challenge || ''}
-                onChange={(value) => handleInputChange('challenge', value)}
+                onChange={value => handleInputChange('challenge', value)}
                 placeholder='Describe the challenge students will work on...'
                 rows={8}
               />
 
               <DeliverableBuilder
                 deliverables={formData.deliverables || []}
-                onChange={(deliverables) => handleInputChange('deliverables', deliverables)}
+                onChange={deliverables =>
+                  handleInputChange('deliverables', deliverables)
+                }
               />
 
               <GradingRubricBuilder
                 rubricSections={formData.grading_rubric || []}
-                onChange={(sections) => handleInputChange('grading_rubric', sections)}
+                onChange={sections =>
+                  handleInputChange('grading_rubric', sections)
+                }
               />
 
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <ConditionBuilder
                   label='Pass Conditions'
                   conditions={formData.pass_conditions}
-                  onChange={(conditions) => handleInputChange('pass_conditions', conditions)}
+                  onChange={conditions =>
+                    handleInputChange('pass_conditions', conditions)
+                  }
                   rubricSections={formData.grading_rubric || []}
                   placeholder='Define requirements for passing this experience'
                 />
@@ -515,7 +606,9 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                 <ConditionBuilder
                   label='Distinction Conditions'
                   conditions={formData.distinction_conditions}
-                  onChange={(conditions) => handleInputChange('distinction_conditions', conditions)}
+                  onChange={conditions =>
+                    handleInputChange('distinction_conditions', conditions)
+                  }
                   rubricSections={formData.grading_rubric || []}
                   placeholder='Define requirements for distinction level'
                 />
@@ -528,7 +621,9 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
             <div className='space-y-6'>
               <LectureModuleBuilder
                 modules={formData.lecture_sessions || []}
-                onChange={(modules) => handleInputChange('lecture_sessions', modules)}
+                onChange={modules =>
+                  handleInputChange('lecture_sessions', modules)
+                }
                 deliverables={formData.deliverables || []}
               />
             </div>
@@ -540,25 +635,32 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
               <div className='space-y-6'>
                 <h3 className='text-lg font-semibold'>Sample Profiles</h3>
                 <p className='text-sm text-muted-foreground'>
-                  Provide sample profiles for reference during the experience. You can add multiple profiles for each type.
+                  Provide sample profiles for reference during the experience.
+                  You can add multiple profiles for each type.
                 </p>
 
                 <div className='space-y-8'>
                   <SampleProfilesBuilder
                     profiles={formData.sample_brand_profiles || []}
-                    onChange={(profiles) => handleInputChange('sample_brand_profiles', profiles)}
+                    onChange={profiles =>
+                      handleInputChange('sample_brand_profiles', profiles)
+                    }
                     profileType='brand'
                   />
 
                   <SampleProfilesBuilder
                     profiles={formData.sample_mentor_profiles || []}
-                    onChange={(profiles) => handleInputChange('sample_mentor_profiles', profiles)}
+                    onChange={profiles =>
+                      handleInputChange('sample_mentor_profiles', profiles)
+                    }
                     profileType='mentor'
                   />
 
                   <SampleProfilesBuilder
                     profiles={formData.sample_judge_profiles || []}
-                    onChange={(profiles) => handleInputChange('sample_judge_profiles', profiles)}
+                    onChange={profiles =>
+                      handleInputChange('sample_judge_profiles', profiles)
+                    }
                     profileType='judge'
                   />
                 </div>
@@ -566,17 +668,12 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
             </div>
           )}
 
-          {/* Step 2: Other Experience Types */}
-          {currentStep === 2 && formData.type !== 'CBL' && (
-            <div className='space-y-6'>
-              <div className='text-center py-8 text-muted-foreground'>
-                <h3 className='text-lg font-medium mb-2'>
-                  {EXPERIENCE_TYPES.find(t => t.value === formData.type)?.label} Content
-                </h3>
-                <p>Content builder for {formData.type} experiences will be available soon.</p>
-              </div>
-            </div>
-          )}
+          {/* Other Experience Types */}
+          <ExperienceTypeForms
+            currentStep={currentStep}
+            formData={formData}
+            handleInputChange={handleInputChange}
+          />
 
           <DialogFooter className='flex justify-between'>
             <div className='flex space-x-2'>
@@ -603,7 +700,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                 </Button>
               )}
             </div>
-            
+
             <div className='flex space-x-2'>
               {/* Save Button - Always visible */}
               <Button
@@ -615,7 +712,7 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                 <Save className='h-4 w-4 mr-2' />
                 {loading ? 'Saving...' : 'Save'}
               </Button>
-              
+
               {currentStep < steps.length ? (
                 <Button
                   type='button'
@@ -626,12 +723,18 @@ export const ExperienceStepperDialog: React.FC<ExperienceStepperDialogProps> = (
                   <ChevronRight className='h-4 w-4 ml-2' />
                 </Button>
               ) : (
-                <Button 
+                <Button
                   type='button'
-                  onClick={handleSave} 
+                  onClick={handleSave}
                   disabled={loading || !canProceedToNext()}
                 >
-                  {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Experience' : 'Create Experience')}
+                  {loading
+                    ? isEditMode
+                      ? 'Updating...'
+                      : 'Creating...'
+                    : isEditMode
+                      ? 'Update Experience'
+                      : 'Create Experience'}
                 </Button>
               )}
             </div>

@@ -45,6 +45,25 @@ export interface MagicBriefExpansionRequest {
   epic_name: string;
   epic_description?: string;
   epic_outcomes: string[];
+  experienceType?:
+    | 'CBL'
+    | 'Mock Challenge'
+    | 'Masterclass'
+    | 'Workshop'
+    | 'GAP';
+  // NEW: Add existing content context for overlap prevention
+  existing_lectures?: Array<{
+    id: string;
+    title: string;
+    learning_outcomes: string[];
+    brief_title: string;
+  }>;
+  existing_deliverables?: Array<{
+    id: string;
+    title: string;
+    type: string;
+    brief_title: string;
+  }>;
 }
 
 // Response types from AI providers

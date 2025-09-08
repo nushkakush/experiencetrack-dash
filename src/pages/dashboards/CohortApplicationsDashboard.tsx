@@ -350,128 +350,111 @@ const CohortApplicationsDashboard = () => {
         </div>
 
         {/* Applications List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Applications</CardTitle>
-            <CardDescription>
-              Manage and review student applications for this cohort
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {applicationsWithProfiles.length === 0 ? (
-              <div className='text-center py-8'>
-                <FileText className='h-12 w-12 mx-auto text-muted-foreground mb-4' />
-                <h3 className='text-lg font-semibold mb-2'>
-                  No applications yet
-                </h3>
-                <p className='text-muted-foreground'>
-                  Applications will appear here once students start registering.
-                </p>
-              </div>
-            ) : (
-              <div className='rounded-md border'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Registration Date</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead className='text-right'>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applicationsWithProfiles.map(application => (
-                      <TableRow
-                        key={application.id}
-                        className='hover:bg-muted/50'
-                      >
-                        <TableCell className='font-medium'>
-                          <div>
-                            <div className='font-semibold'>
-                              {application.profiles.first_name}{' '}
-                              {application.profiles.last_name}
-                            </div>
-                            <div className='text-sm text-muted-foreground'>
-                              ID: #{application.id.slice(-8)}
-                            </div>
+        {applicationsWithProfiles.length === 0 ? (
+          <div className='text-center py-8'>
+            <FileText className='h-12 w-12 mx-auto text-muted-foreground mb-4' />
+            <h3 className='text-lg font-semibold mb-2'>No applications yet</h3>
+            <p className='text-muted-foreground'>
+              Applications will appear here once students start registering.
+            </p>
+          </div>
+        ) : (
+          <div className='rounded-md border'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Registration Date</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead className='text-right'>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applicationsWithProfiles.map(application => (
+                  <TableRow key={application.id} className='hover:bg-muted/50'>
+                    <TableCell className='font-medium'>
+                      <div>
+                        <div className='font-semibold'>
+                          {application.profiles.first_name}{' '}
+                          {application.profiles.last_name}
+                        </div>
+                        <div className='text-sm text-muted-foreground'>
+                          ID: #{application.id.slice(-8)}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className='text-sm'>
+                        {application.profiles.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <ApplicationStatusBadge status={application.status} />
+                    </TableCell>
+                    <TableCell>
+                      <div className='text-sm'>
+                        <div>
+                          {new Date(
+                            application.registration_date ||
+                              application.created_at
+                          ).toLocaleDateString()}
+                        </div>
+                        {application.submitted_at && (
+                          <div className='text-muted-foreground'>
+                            Submitted:{' '}
+                            {new Date(
+                              application.submitted_at
+                            ).toLocaleDateString()}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className='text-sm'>
-                            {application.profiles.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <ApplicationStatusBadge status={application.status} />
-                        </TableCell>
-                        <TableCell>
-                          <div className='text-sm'>
-                            <div>
-                              {new Date(
-                                application.registration_date ||
-                                  application.created_at
-                              ).toLocaleDateString()}
-                            </div>
-                            {application.submitted_at && (
-                              <div className='text-muted-foreground'>
-                                Submitted:{' '}
-                                {new Date(
-                                  application.submitted_at
-                                ).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className='text-sm capitalize'>
-                            {application.registration_source.replace('_', ' ')}
-                          </div>
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          <div className='flex items-center justify-end gap-2'>
-                            <StatusTransitionDropdown
-                              currentStatus={application.status}
-                              onStatusChange={newStatus =>
-                                handleStatusChange(application.id, newStatus)
-                              }
-                            />
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() => {
-                                // TODO: Add view details functionality
-                                toast.info(
-                                  'View details functionality coming soon'
-                                );
-                              }}
-                            >
-                              <Eye className='h-4 w-4' />
-                            </Button>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() =>
-                                handleDeleteApplication(application.id)
-                              }
-                              disabled={
-                                deletingApplicationId === application.id
-                              }
-                              className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                            >
-                              <Trash2 className='h-4 w-4' />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className='text-sm capitalize'>
+                        {application.registration_source.replace('_', ' ')}
+                      </div>
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      <div className='flex items-center justify-end gap-2'>
+                        <StatusTransitionDropdown
+                          currentStatus={application.status}
+                          onStatusChange={newStatus =>
+                            handleStatusChange(application.id, newStatus)
+                          }
+                        />
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => {
+                            // TODO: Add view details functionality
+                            toast.info(
+                              'View details functionality coming soon'
+                            );
+                          }}
+                        >
+                          <Eye className='h-4 w-4' />
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() =>
+                            handleDeleteApplication(application.id)
+                          }
+                          disabled={deletingApplicationId === application.id}
+                          className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         {/* Settings Modal */}
         {cohortId && (

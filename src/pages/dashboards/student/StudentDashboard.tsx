@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import DashboardShell from '@/components/DashboardShell';
 import { AttendanceOverview } from './components/AttendanceOverview';
 import { FeePaymentSection } from './components/FeePaymentSection';
 import { useStudentData } from './hooks/useStudentData';
+import { useAuth } from '@/hooks/useAuth';
+import { StudentApplicationsService } from '@/services/studentApplications.service';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoCohortState } from './components/NoCohortState';
 import { useFeatureFlag } from '@/lib/feature-flags/useFeatureFlag';
@@ -15,8 +17,12 @@ interface StudentDashboardProps {
 const StudentDashboard = React.memo<StudentDashboardProps>(
   ({ currentRoute }) => {
     const location = useLocation();
+    const { profile } = useAuth();
     const { studentData, cohortData, loading, error, noCohort } =
       useStudentData();
+    const [hasRegisteredApplications, setHasRegisteredApplications] =
+      useState(false);
+    const [checkingApplications, setCheckingApplications] = useState(false);
 
     // Check if student payment dashboard feature flag is enabled
     const { isEnabled: showStudentPaymentDashboard } = useFeatureFlag(
@@ -25,6 +31,30 @@ const StudentDashboard = React.memo<StudentDashboardProps>(
         defaultValue: false,
       }
     );
+
+    // Check for registered applications when noCohort is true
+    useEffect(() => {
+      const checkRegisteredApplications = async () => {
+        if (!noCohort || !profile?.id) return;
+
+        setCheckingApplications(true);
+        try {
+          const result =
+            await StudentApplicationsService.getRegisteredApplications(
+              profile.id
+            );
+          if (result.success && result.data && result.data.length > 0) {
+            setHasRegisteredApplications(true);
+          }
+        } catch (error) {
+          console.error('Error checking registered applications:', error);
+        } finally {
+          setCheckingApplications(false);
+        }
+      };
+
+      checkRegisteredApplications();
+    }, [noCohort, profile?.id]);
 
     // Determine which tab to show based on currentRoute prop or URL
     const currentTab = React.useMemo(() => {

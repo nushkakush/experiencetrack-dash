@@ -135,11 +135,95 @@ export class ValidationUtils {
   }
 
   /**
-   * Validate phone number format
+   * Validate phone number format (Indian format)
    */
   static isValidPhone(phone: string): boolean {
-    const phoneRegex = /^\+?[\d\s\-()]{10,}$/;
-    return phoneRegex.test(phone.trim());
+    // Remove all non-digit characters except +
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    // Check for Indian phone number format: +91 followed by 10 digits, or just 10 digits
+    const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
+    return phoneRegex.test(cleaned);
+  }
+
+  /**
+   * Validate Indian postal code format
+   */
+  static isValidPostalCode(postalCode: string): boolean {
+    const postalRegex = /^[1-9][0-9]{5}$/;
+    return postalRegex.test(postalCode.trim());
+  }
+
+  /**
+   * Validate CIBIL score (300-900)
+   */
+  static isValidCibilScore(score: string): boolean {
+    const numScore = parseInt(score);
+    return !isNaN(numScore) && numScore >= 300 && numScore <= 900;
+  }
+
+  /**
+   * Validate loan amount (positive number)
+   */
+  static isValidLoanAmount(amount: string): boolean {
+    // Remove currency symbols and commas
+    const cleaned = amount.replace(/[₹,\s]/g, '');
+    const numAmount = parseFloat(cleaned);
+    return !isNaN(numAmount) && numAmount > 0;
+  }
+
+  /**
+   * Validate age from date of birth (minimum age)
+   */
+  static isValidAge(
+    day: string,
+    month: string,
+    year: string,
+    minAge: number = 16
+  ): boolean {
+    if (!day || !month || !year) return false;
+
+    const birthDate = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day)
+    );
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      return age - 1 >= minAge;
+    }
+
+    return age >= minAge;
+  }
+
+  /**
+   * Validate graduation year (not in future, not too old)
+   */
+  static isValidGraduationYear(year: number): boolean {
+    const currentYear = new Date().getFullYear();
+    return year <= currentYear && year >= currentYear - 50;
+  }
+
+  /**
+   * Validate work experience date range
+   */
+  static isValidWorkDateRange(
+    startYear: number,
+    startMonth: string,
+    endYear?: number,
+    endMonth?: string
+  ): boolean {
+    if (!endYear || !endMonth) return true; // Current job
+
+    const startDate = new Date(startYear, parseInt(startMonth) - 1);
+    const endDate = new Date(endYear, parseInt(endMonth) - 1);
+
+    return endDate >= startDate;
   }
 
   /**

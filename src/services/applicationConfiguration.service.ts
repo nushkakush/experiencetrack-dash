@@ -21,6 +21,8 @@ export class ApplicationConfigurationService {
     isSetupComplete: boolean;
   }> {
     try {
+      console.log('Getting configuration for cohortId:', cohortId);
+
       // Get the main configuration
       const { data: config, error: configError } = await supabase
         .from('application_configurations')
@@ -28,14 +30,19 @@ export class ApplicationConfigurationService {
         .eq('cohort_id', cohortId)
         .maybeSingle();
 
+      console.log('Config query result:', { config, configError });
+
       if (configError) {
         console.error('Error fetching application configuration:', configError);
         return { configuration: null, isSetupComplete: false };
       }
 
       if (!config) {
+        console.log('No configuration found for cohort:', cohortId);
         return { configuration: null, isSetupComplete: false };
       }
+
+      console.log('Found configuration:', config);
 
       // Get all questions for this configuration
       const { data: questions, error: questionsError } = await supabase
@@ -43,6 +50,8 @@ export class ApplicationConfigurationService {
         .select('*')
         .eq('configuration_id', config.id)
         .order('question_order', { ascending: true });
+
+      console.log('Questions query result:', { questions, questionsError });
 
       if (questionsError) {
         console.error(
@@ -55,6 +64,8 @@ export class ApplicationConfigurationService {
         ...config,
         questions: questions || [],
       };
+
+      console.log('Final configuration:', configuration);
 
       return {
         configuration,
@@ -456,6 +467,82 @@ export class ApplicationConfigurationService {
     } catch (error) {
       console.error('Error in reviewApplication:', error);
       return false;
+    }
+  }
+
+  /**
+   * Save application form answers for a student
+   */
+  static async saveFormAnswers(
+    studentApplicationId: string,
+    answers: Record<string, any>
+  ): Promise<boolean> {
+    try {
+      // Delete existing answers for this application
+      const { error: deleteError } = await supabase
+        .from('application_form_answers')
+        .delete()
+        .eq('student_application_id', studentApplicationId);
+
+      if (deleteError) {
+        console.error('Error deleting existing answers:', deleteError);
+        return false;
+      }
+
+      // Insert new answers
+      const answerEntries = Object.entries(answers).map(
+        ([questionId, answerValue]) => ({
+          student_application_id: studentApplicationId,
+          question_id: questionId,
+          answer_value: answerValue,
+        })
+      );
+
+      if (answerEntries.length > 0) {
+        const { error: insertError } = await supabase
+          .from('application_form_answers')
+          .insert(answerEntries);
+
+        if (insertError) {
+          console.error('Error inserting form answers:', insertError);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in saveFormAnswers:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get application form answers for a student
+   */
+  static async getFormAnswers(
+    studentApplicationId: string
+  ): Promise<Record<string, any>> {
+    try {
+      const { data, error } = await supabase
+        .from('application_form_answers')
+        .select('question_id, answer_value')
+        .eq('student_application_id', studentApplicationId);
+
+      if (error) {
+        console.error('Error fetching form answers:', error);
+        return {};
+      }
+
+      // Convert array to object
+      const answers: Record<string, any> = {};
+      data?.forEach(({ question_id, answer_value }) => {
+        answers[question_id] = answer_value;
+      });
+
+      return answers;
+    } catch (error) {
+      console.error('Error in getFormAnswers:', error);
+      return {};
     }
   }
 }

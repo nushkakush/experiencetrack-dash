@@ -12,7 +12,7 @@ export const useLoginState = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -28,7 +28,36 @@ export const useLoginState = () => {
       if (error) throw error;
 
       if (data.user) {
-        toast.success("Welcome back! You have been signed in successfully.");
+        // Check if user has a student application with registration_initiated status
+        const { data: applicationData, error: applicationError } =
+          await supabase
+            .from('student_applications')
+            .select('id, status')
+            .eq('profile_id', data.user.id)
+            .eq('status', 'registration_initiated')
+            .single();
+
+        if (applicationData && !applicationError) {
+          // Update status to registration_complete
+          const { error: updateError } = await supabase
+            .from('student_applications')
+            .update({
+              status: 'registration_complete',
+              registration_completed: true,
+            })
+            .eq('id', applicationData.id);
+
+          if (updateError) {
+            Logger.getInstance().error(
+              'Failed to update application status on login',
+              {
+                error: updateError,
+              }
+            );
+          }
+        }
+
+        toast.success('Welcome back! You have been signed in successfully.');
         navigate('/dashboard');
       }
     } catch (error: any) {
@@ -37,8 +66,6 @@ export const useLoginState = () => {
       setLoading(false);
     }
   };
-
-
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +78,7 @@ export const useLoginState = () => {
 
       if (error) throw error;
 
-      toast.success("Password reset email sent! Please check your inbox.");
+      toast.success('Password reset email sent! Please check your inbox.');
       setShowForgotPassword(false);
       setResetEmail('');
     } catch (error: any) {
@@ -80,6 +107,6 @@ export const useLoginState = () => {
     setResetEmail,
     handleSignIn,
     handleForgotPassword,
-    handleBackToSignIn
+    handleBackToSignIn,
   };
 };

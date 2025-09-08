@@ -4,6 +4,7 @@ export { useFeatureFlag } from './useFeatureFlag';
 export { useToast } from './use-toast';
 export { useMobile } from './use-mobile';
 export { useCurrentUrl } from './useCurrentUrl';
+export { useLocation } from './useLocation';
 
 // Attendance hooks
 export * from './attendance';

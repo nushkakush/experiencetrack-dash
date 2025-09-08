@@ -11,58 +11,129 @@ export type QuestionType =
   | 'time'
   | 'file_upload';
 
-export type ApplicationStatus =
-  | 'registration_initiated' // User registered, awaiting password setup
-  | 'registration_completed' // Password set, account created, ready for review
-  | 'draft' // Application form draft
-  | 'submitted' // Application submitted for review
-  | 'under_review' // Admin reviewing application
-  | 'approved' // Application approved
-  | 'rejected'; // Application rejected
+export enum ApplicationStatus {
+  // Registration flow
+  REGISTRATION_INITIATED = 'registration_initiated',
+  REGISTRATION_COMPLETE = 'registration_complete',
+  REGISTRATION_COMPLETED = 'registration_completed',
+  APPLICATION_FEE_PAID = 'application_fee_paid',
+
+  // Application flow
+  APPLICATION_INITIATED = 'application_initiated',
+  APPLICATION_ACCEPTED = 'application_accepted',
+  APPLICATION_REJECTED = 'application_rejected',
+  APPLICATION_ON_HOLD = 'application_on_hold',
+
+  // Interview flow
+  INTERVIEW_SCHEDULED = 'interview_scheduled',
+  INTERVIEW_SELECTED = 'interview_selected',
+  INTERVIEW_REJECTED = 'interview_rejected',
+
+  // Final enrollment
+  ENROLLED = 'enrolled',
+}
+
+export type ApplicationStatusType =
+  // Registration flow
+  | 'registration_initiated'
+  | 'registration_complete'
+  | 'registration_completed'
+  | 'application_fee_paid'
+
+  // Application flow
+  | 'application_initiated'
+  | 'application_accepted'
+  | 'application_rejected'
+  | 'application_on_hold'
+
+  // Interview flow
+  | 'interview_scheduled'
+  | 'interview_selected'
+  | 'interview_rejected'
+
+  // Final enrollment
+  | 'enrolled';
 
 // Status configuration for UI display
 export const APPLICATION_STATUS_CONFIG = {
-  registration_initiated: {
+  // Registration flow
+  [ApplicationStatus.REGISTRATION_INITIATED]: {
     label: 'Registration Initiated',
     description: 'User registered, awaiting password setup',
     color: 'blue',
     priority: 1,
   },
-  registration_completed: {
-    label: 'Registration Completed',
-    description: 'Password set, ready for review',
-    color: 'green',
+  [ApplicationStatus.REGISTRATION_COMPLETE]: {
+    label: 'Registration Complete',
+    description: 'Password set up and logged in',
+    color: 'blue',
     priority: 2,
   },
-  draft: {
-    label: 'Draft',
-    description: 'Application form in progress',
-    color: 'gray',
+  [ApplicationStatus.REGISTRATION_COMPLETED]: {
+    label: 'Registration Completed',
+    description: 'Registration form filled and completed',
+    color: 'blue',
     priority: 3,
   },
-  submitted: {
-    label: 'Submitted',
-    description: 'Application submitted for review',
-    color: 'purple',
+  [ApplicationStatus.APPLICATION_FEE_PAID]: {
+    label: 'Application Fee Paid',
+    description: 'Application fee has been paid successfully',
+    color: 'green',
     priority: 4,
   },
-  under_review: {
-    label: 'Under Review',
-    description: 'Admin reviewing application',
-    color: 'yellow',
+
+  // Application flow
+  [ApplicationStatus.APPLICATION_INITIATED]: {
+    label: 'Application Initiated',
+    description: 'Application form filled and submitted',
+    color: 'purple',
     priority: 5,
   },
-  approved: {
-    label: 'Approved',
-    description: 'Application approved',
+  [ApplicationStatus.APPLICATION_ACCEPTED]: {
+    label: 'Application Accepted',
+    description: 'Application has been accepted',
     color: 'green',
+    priority: 5,
+  },
+  [ApplicationStatus.APPLICATION_REJECTED]: {
+    label: 'Application Rejected',
+    description: 'Application has been rejected',
+    color: 'red',
     priority: 6,
   },
-  rejected: {
-    label: 'Rejected',
-    description: 'Application rejected',
-    color: 'red',
+  [ApplicationStatus.APPLICATION_ON_HOLD]: {
+    label: 'Application On Hold',
+    description: 'Application is on hold for review',
+    color: 'yellow',
     priority: 7,
+  },
+
+  // Interview flow
+  [ApplicationStatus.INTERVIEW_SCHEDULED]: {
+    label: 'Interview Scheduled',
+    description: 'Interview has been scheduled',
+    color: 'orange',
+    priority: 8,
+  },
+  [ApplicationStatus.INTERVIEW_SELECTED]: {
+    label: 'Interview Selected',
+    description: 'Selected after interview',
+    color: 'green',
+    priority: 9,
+  },
+  [ApplicationStatus.INTERVIEW_REJECTED]: {
+    label: 'Interview Rejected',
+    description: 'Rejected after interview',
+    color: 'red',
+    priority: 10,
+  },
+
+  // Final enrollment
+  [ApplicationStatus.ENROLLED]: {
+    label: 'Enrolled',
+    description: 'Student has enrolled and paid admission fee',
+    color: 'green',
+    priority: 11,
   },
 } as const;
 

@@ -2,7 +2,20 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, ExternalLink, FileText, Video, Link as LinkIcon, ChevronDown, ChevronUp, Package, Upload, CheckCircle } from 'lucide-react';
+import {
+  BookOpen,
+  ExternalLink,
+  FileText,
+  Video,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronUp,
+  Package,
+  Upload,
+  CheckCircle,
+  Wrench,
+  Monitor,
+} from 'lucide-react';
 import type { LectureModule, Deliverable } from '@/types/experience';
 
 interface LecturesTabProps {
@@ -19,31 +32,47 @@ interface ExpandableLectureDetailsProps {
   connectedDeliverables: Deliverable[];
   canvaDeckLinks?: string[];
   canvaNotesLinks?: string[];
+  lectureType?: 'conceptual' | 'tool';
+  toolsTaught?: Array<{
+    name: string;
+    category: 'software' | 'platform' | 'framework' | 'tool';
+    version?: string;
+    job_roles: string[];
+    learning_objective: string;
+    necessity_reason: string;
+  }>;
 }
 
-const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({ 
+const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
   learningOutcomes,
-  connectedDeliverables, 
-  canvaDeckLinks = [], 
-  canvaNotesLinks = [] 
+  connectedDeliverables,
+  canvaDeckLinks = [],
+  canvaNotesLinks = [],
+  lectureType = 'conceptual',
+  toolsTaught = [],
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  const totalContent = learningOutcomes.length + connectedDeliverables.length + canvaDeckLinks.length + canvaNotesLinks.length;
+
+  const totalContent =
+    learningOutcomes.length +
+    connectedDeliverables.length +
+    canvaDeckLinks.length +
+    canvaNotesLinks.length +
+    toolsTaught.length;
   const hasContent = totalContent > 0;
-  
+
   if (!hasContent) return null;
 
   const getDeliverableIcon = (type: string) => {
     switch (type) {
       case 'file_upload':
-        return <Upload className="h-3 w-3" />;
+        return <Upload className='h-3 w-3' />;
       case 'url':
-        return <LinkIcon className="h-3 w-3" />;
+        return <LinkIcon className='h-3 w-3' />;
       case 'text_submission':
-        return <FileText className="h-3 w-3" />;
+        return <FileText className='h-3 w-3' />;
       default:
-        return <Package className="h-3 w-3" />;
+        return <Package className='h-3 w-3' />;
     }
   };
 
@@ -61,25 +90,25 @@ const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h5 className="text-sm font-medium text-muted-foreground">
+    <div className='space-y-3'>
+      <div className='flex items-center justify-between'>
+        <h5 className='text-sm font-medium text-muted-foreground'>
           Details ({totalContent} items)
         </h5>
         <Button
-          variant="ghost"
-          size="sm"
+          variant='ghost'
+          size='sm'
           onClick={() => setIsExpanded(!isExpanded)}
-          className="h-6 px-2 text-xs"
+          className='h-6 px-2 text-xs'
         >
           {isExpanded ? (
             <>
-              <ChevronUp className="h-3 w-3 mr-1" />
+              <ChevronUp className='h-3 w-3 mr-1' />
               Hide Details
             </>
           ) : (
             <>
-              <ChevronDown className="h-3 w-3 mr-1" />
+              <ChevronDown className='h-3 w-3 mr-1' />
               Show Details
             </>
           )}
@@ -87,16 +116,21 @@ const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
       </div>
 
       {isExpanded && (
-        <div className="space-y-4 pl-4 border-l-2 border-muted">
+        <div className='space-y-4 pl-4 border-l-2 border-muted'>
           {/* Learning Outcomes */}
           {learningOutcomes.length > 0 && (
-            <div className="space-y-2">
-              <h6 className="text-sm font-medium text-muted-foreground">Learning Outcomes:</h6>
-              <ul className="space-y-1">
+            <div className='space-y-2'>
+              <h6 className='text-sm font-medium text-muted-foreground'>
+                Learning Outcomes:
+              </h6>
+              <ul className='space-y-1'>
                 {learningOutcomes.map((outcome, index) => (
-                  <li key={index} className="flex items-start space-x-2 text-sm">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                    <span className="text-foreground">{outcome}</span>
+                  <li
+                    key={index}
+                    className='flex items-start space-x-2 text-sm'
+                  >
+                    <div className='w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0' />
+                    <span className='text-foreground'>{outcome}</span>
                   </li>
                 ))}
               </ul>
@@ -105,35 +139,107 @@ const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
 
           {/* Connected Deliverables */}
           {connectedDeliverables.length > 0 && (
-            <div className="space-y-2">
-              <h6 className="text-sm font-medium text-muted-foreground">Connected Deliverables:</h6>
-              <div className="space-y-3">
-                {connectedDeliverables.map((deliverable) => (
-                  <div key={deliverable.id} className="p-3 border rounded-lg bg-muted/30">
-                    <div className="flex items-start space-x-2">
+            <div className='space-y-2'>
+              <h6 className='text-sm font-medium text-muted-foreground'>
+                Connected Deliverables:
+              </h6>
+              <div className='space-y-3'>
+                {connectedDeliverables.map(deliverable => (
+                  <div
+                    key={deliverable.id}
+                    className='p-3 border rounded-lg bg-muted/30'
+                  >
+                    <div className='flex items-start space-x-2'>
                       {getDeliverableIcon(deliverable.type)}
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <h7 className="text-sm font-medium text-foreground">{deliverable.title}</h7>
-                          <Badge variant="secondary" className="text-xs">
+                      <div className='flex-1 space-y-1'>
+                        <div className='flex items-center space-x-2'>
+                          <h7 className='text-sm font-medium text-foreground'>
+                            {deliverable.title}
+                          </h7>
+                          <Badge variant='secondary' className='text-xs'>
                             {getDeliverableTypeLabel(deliverable.type)}
                           </Badge>
                           {deliverable.required && (
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge variant='destructive' className='text-xs'>
                               Required
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{deliverable.description}</p>
+                        <p className='text-xs text-muted-foreground'>
+                          {deliverable.description}
+                        </p>
                         {deliverable.brand_context && (
-                          <p className="text-xs text-blue-600 font-medium">{deliverable.brand_context}</p>
+                          <p className='text-xs text-blue-600 font-medium'>
+                            {deliverable.brand_context}
+                          </p>
                         )}
                         {(deliverable.file_url || deliverable.url) && (
-                          <div className="flex items-center space-x-1">
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                            <span className="text-xs text-green-600">
-                              {deliverable.file_url ? 'File available' : 'URL provided'}
+                          <div className='flex items-center space-x-1'>
+                            <CheckCircle className='h-3 w-3 text-green-500' />
+                            <span className='text-xs text-green-600'>
+                              {deliverable.file_url
+                                ? 'File available'
+                                : 'URL provided'}
                             </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tools Taught (for tool lectures) */}
+          {lectureType === 'tool' && toolsTaught.length > 0 && (
+            <div className='space-y-2'>
+              <h6 className='text-sm font-medium text-muted-foreground'>
+                Tools & Software:
+              </h6>
+              <div className='space-y-3'>
+                {toolsTaught.map((tool, index) => (
+                  <div
+                    key={index}
+                    className='p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20'
+                  >
+                    <div className='flex items-start space-x-2'>
+                      <Wrench className='h-4 w-4 text-blue-600 mt-0.5' />
+                      <div className='flex-1 space-y-2'>
+                        <div className='flex items-center space-x-2'>
+                          <h7 className='text-sm font-medium text-foreground'>
+                            {tool.name}
+                          </h7>
+                          <Badge variant='secondary' className='text-xs'>
+                            {tool.category}
+                          </Badge>
+                          {tool.version && (
+                            <Badge variant='outline' className='text-xs'>
+                              v{tool.version}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className='text-xs text-muted-foreground'>
+                          <strong>Learning Objective:</strong>{' '}
+                          {tool.learning_objective}
+                        </p>
+                        <p className='text-xs text-muted-foreground'>
+                          <strong>Why Required:</strong> {tool.necessity_reason}
+                        </p>
+                        {tool.job_roles.length > 0 && (
+                          <div className='flex flex-wrap gap-1'>
+                            <span className='text-xs text-muted-foreground'>
+                              Job Roles:
+                            </span>
+                            {tool.job_roles.map((role, roleIndex) => (
+                              <Badge
+                                key={roleIndex}
+                                variant='outline'
+                                className='text-xs'
+                              >
+                                {role}
+                              </Badge>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -146,46 +252,48 @@ const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
 
           {/* Canva Links */}
           {(canvaDeckLinks.length > 0 || canvaNotesLinks.length > 0) && (
-            <div className="space-y-2">
-              <h6 className="text-sm font-medium text-muted-foreground">Presentation Materials:</h6>
-              <div className="flex flex-wrap gap-2">
+            <div className='space-y-2'>
+              <h6 className='text-sm font-medium text-muted-foreground'>
+                Presentation Materials:
+              </h6>
+              <div className='flex flex-wrap gap-2'>
                 {canvaDeckLinks.map((link, index) => (
                   <Button
                     key={`deck-${index}`}
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
+                    variant='outline'
+                    size='sm'
+                    className='h-8'
                     asChild
                   >
                     <a
                       href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1"
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='flex items-center space-x-1'
                     >
-                      <FileText className="h-3 w-3" />
-                      <span className="text-xs">Deck {index + 1}</span>
-                      <ExternalLink className="h-3 w-3" />
+                      <FileText className='h-3 w-3' />
+                      <span className='text-xs'>Deck {index + 1}</span>
+                      <ExternalLink className='h-3 w-3' />
                     </a>
                   </Button>
                 ))}
                 {canvaNotesLinks.map((link, index) => (
                   <Button
                     key={`notes-${index}`}
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
+                    variant='outline'
+                    size='sm'
+                    className='h-8'
                     asChild
                   >
                     <a
                       href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1"
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='flex items-center space-x-1'
                     >
-                      <FileText className="h-3 w-3" />
-                      <span className="text-xs">Notes {index + 1}</span>
-                      <ExternalLink className="h-3 w-3" />
+                      <FileText className='h-3 w-3' />
+                      <span className='text-xs'>Notes {index + 1}</span>
+                      <ExternalLink className='h-3 w-3' />
                     </a>
                   </Button>
                 ))}
@@ -199,15 +307,19 @@ const ExpandableLectureDetails: React.FC<ExpandableLectureDetailsProps> = ({
 };
 
 export const LecturesTab: React.FC<LecturesTabProps> = ({ groupedContent }) => {
-  const hasLectures = Object.values(groupedContent).some(group => group.lectures.length > 0);
+  const hasLectures = Object.values(groupedContent).some(
+    group => group.lectures.length > 0
+  );
 
   if (!hasLectures) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="text-center space-y-2">
-            <BookOpen className="h-8 w-8 text-muted-foreground mx-auto" />
-            <p className="text-muted-foreground">No lectures available for this epic</p>
+        <CardContent className='flex items-center justify-center py-8'>
+          <div className='text-center space-y-2'>
+            <BookOpen className='h-8 w-8 text-muted-foreground mx-auto' />
+            <p className='text-muted-foreground'>
+              No lectures available for this epic
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -215,60 +327,101 @@ export const LecturesTab: React.FC<LecturesTabProps> = ({ groupedContent }) => {
   }
 
   // Helper function to get connected deliverables for a lecture
-  const getConnectedDeliverables = (lecture: LectureModule, allDeliverables: Deliverable[]): Deliverable[] => {
-    if (!lecture.connected_deliverables || lecture.connected_deliverables.length === 0) {
+  const getConnectedDeliverables = (
+    lecture: LectureModule,
+    allDeliverables: Deliverable[]
+  ): Deliverable[] => {
+    if (
+      !lecture.connected_deliverables ||
+      lecture.connected_deliverables.length === 0
+    ) {
       return [];
     }
-    
-    return allDeliverables.filter(deliverable => 
+
+    return allDeliverables.filter(deliverable =>
       lecture.connected_deliverables!.includes(deliverable.id)
     );
   };
 
   return (
-    <div className="space-y-8">
-      {Object.entries(groupedContent).map(([challengeTitle, { lectures, deliverables }]) => {
-        if (lectures.length === 0) return null;
+    <div className='space-y-8'>
+      {Object.entries(groupedContent).map(
+        ([challengeTitle, { lectures, deliverables }]) => {
+          if (lectures.length === 0) return null;
 
-        return (
-          <div key={challengeTitle} className="space-y-6">
-            <div className="border-b pb-2">
-              <h3 className="text-xl font-semibold text-foreground">{challengeTitle}</h3>
-            </div>
-            <div className="space-y-6">
-              {lectures
-                .sort((a, b) => a.order - b.order)
-                .map((lecture) => {
-                  const connectedDeliverables = getConnectedDeliverables(lecture, deliverables);
-                  
-                  return (
-                    <div key={lecture.id} className="space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <h4 className="text-lg font-medium text-foreground">{lecture.title}</h4>
-                          {lecture.description && (
-                            <p className="text-muted-foreground">{lecture.description}</p>
-                          )}
+          return (
+            <div key={challengeTitle} className='space-y-6'>
+              <div className='border-b pb-2'>
+                <h3 className='text-xl font-semibold text-foreground'>
+                  {challengeTitle}
+                </h3>
+              </div>
+              <div className='space-y-6'>
+                {lectures
+                  .sort((a, b) => a.order - b.order)
+                  .map(lecture => {
+                    const connectedDeliverables = getConnectedDeliverables(
+                      lecture,
+                      deliverables
+                    );
+
+                    return (
+                      <div key={lecture.id} className='space-y-4'>
+                        <div className='flex items-start justify-between'>
+                          <div className='space-y-1'>
+                            <div className='flex items-center space-x-2'>
+                              <h4 className='text-lg font-medium text-foreground'>
+                                {lecture.title}
+                              </h4>
+                              <Badge
+                                variant={
+                                  lecture.type === 'tool'
+                                    ? 'default'
+                                    : 'secondary'
+                                }
+                                className='text-xs'
+                              >
+                                {lecture.type === 'tool' ? (
+                                  <div className='flex items-center space-x-1'>
+                                    <Wrench className='h-3 w-3' />
+                                    <span>Tool Lecture</span>
+                                  </div>
+                                ) : (
+                                  <div className='flex items-center space-x-1'>
+                                    <BookOpen className='h-3 w-3' />
+                                    <span>Conceptual</span>
+                                  </div>
+                                )}
+                              </Badge>
+                            </div>
+                            {lecture.description && (
+                              <p className='text-muted-foreground'>
+                                {lecture.description}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant='outline'>
+                            Session {lecture.order}
+                          </Badge>
                         </div>
-                        <Badge variant="outline">
-                          Session {lecture.order}
-                        </Badge>
-                      </div>
 
-                      {/* Expandable Learning Outcomes and Connected Deliverables */}
-                      <ExpandableLectureDetails
-                        learningOutcomes={lecture.learning_outcomes || []}
-                        connectedDeliverables={connectedDeliverables}
-                        canvaDeckLinks={lecture.canva_deck_links || []}
-                        canvaNotesLinks={lecture.canva_notes_links || []}
-                      />
-                    </div>
-                  );
-                })}
+                        {/* Expandable Learning Outcomes and Connected Deliverables */}
+                        <ExpandableLectureDetails
+                          learningOutcomes={lecture.learning_outcomes || []}
+                          connectedDeliverables={connectedDeliverables}
+                          canvaDeckLinks={lecture.canva_deck_links || []}
+                          canvaNotesLinks={lecture.canva_notes_links || []}
+                          lectureType={lecture.type || 'conceptual'}
+                          toolsTaught={lecture.tools_taught || []}
+                        />
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        }
+      )}
     </div>
   );
 };

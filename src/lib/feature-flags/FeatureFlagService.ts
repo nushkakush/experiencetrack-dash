@@ -120,7 +120,7 @@ export class FeatureFlagService {
         id: 'student-payment-dashboard',
         name: 'Student Payment Dashboard',
         description: 'Enable payment dashboard navigation for students',
-        enabled: true,
+        enabled: false,
         rolloutPercentage: 100,
         targetRoles: ['student'],
       },
@@ -261,8 +261,8 @@ export class FeatureFlagService {
         targetRoles: ['super_admin', 'admin', 'student'],
         metadata: {
           priority: 1,
-          fallbackProvider: 'perplexity'
-        }
+          fallbackProvider: 'perplexity',
+        },
       },
       {
         id: 'ai.perplexity.enabled',
@@ -273,8 +273,8 @@ export class FeatureFlagService {
         targetRoles: ['super_admin', 'admin', 'student'],
         metadata: {
           priority: 2,
-          fallbackProvider: 'openai'
-        }
+          fallbackProvider: 'openai',
+        },
       },
       // AI Model Selection Flags
       {
@@ -290,8 +290,8 @@ export class FeatureFlagService {
           preferredProvider: 'openai',
           temperature: 0.7,
           maxTokens: 4000,
-          enableWebSearch: true
-        }
+          enableWebSearch: true,
+        },
       },
       {
         id: 'ai.model.general-chat',
@@ -306,8 +306,8 @@ export class FeatureFlagService {
           preferredProvider: 'openai',
           temperature: 0.8,
           maxTokens: 2000,
-          enableWebSearch: false
-        }
+          enableWebSearch: false,
+        },
       },
       {
         id: 'ai.model.research-tasks',
@@ -323,8 +323,8 @@ export class FeatureFlagService {
           temperature: 0.3,
           maxTokens: 8000,
           enableWebSearch: true,
-          maxCitations: 15
-        }
+          maxCitations: 15,
+        },
       },
       {
         id: 'ai.model.premium-tasks',
@@ -339,8 +339,8 @@ export class FeatureFlagService {
           preferredProvider: 'openai',
           temperature: 0.2,
           maxTokens: 16000,
-          reasoningEffort: 'high'
-        }
+          reasoningEffort: 'high',
+        },
       },
       // AI Cost Control Flags
       {
@@ -355,8 +355,8 @@ export class FeatureFlagService {
           maxRequestsPerDay: 50,
           maxTokensPerRequest: 2000,
           allowedModels: ['gpt-4o-mini', 'gpt-3.5-turbo', 'sonar'],
-          restrictPremiumModels: true
-        }
+          restrictPremiumModels: true,
+        },
       },
       {
         id: 'ai.cost-controls.admin',
@@ -370,8 +370,8 @@ export class FeatureFlagService {
           maxRequestsPerDay: 500,
           maxTokensPerRequest: 8000,
           allowedModels: ['all'],
-          restrictPremiumModels: false
-        }
+          restrictPremiumModels: false,
+        },
       },
       // AI Feature Toggle Flags
       {
@@ -384,8 +384,8 @@ export class FeatureFlagService {
         metadata: {
           maxSearchResults: 10,
           enableSnippets: true,
-          enableCitations: true
-        }
+          enableCitations: true,
+        },
       },
       {
         id: 'ai.features.file-search',
@@ -396,8 +396,8 @@ export class FeatureFlagService {
         targetRoles: ['super_admin', 'admin'],
         metadata: {
           maxFileSize: '10MB',
-          allowedFileTypes: ['pdf', 'txt', 'docx', 'md']
-        }
+          allowedFileTypes: ['pdf', 'txt', 'docx', 'md'],
+        },
       },
       {
         id: 'ai.features.reasoning-mode',
@@ -409,8 +409,8 @@ export class FeatureFlagService {
         metadata: {
           defaultEffort: 'medium',
           enableReasoningSummary: true,
-          costMultiplier: 2.5
-        }
+          costMultiplier: 2.5,
+        },
       },
       // AI Provider Fallback Configuration
       {
@@ -424,8 +424,8 @@ export class FeatureFlagService {
           maxRetries: 2,
           fallbackDelay: 1000,
           fallbackOrder: ['openai', 'perplexity'],
-          enableFallbackLogging: true
-        }
+          enableFallbackLogging: true,
+        },
       },
       // AI Analytics and Monitoring
       {
@@ -440,8 +440,8 @@ export class FeatureFlagService {
           trackCosts: true,
           trackPerformance: true,
           trackErrors: true,
-          retentionDays: 30
-        }
+          retentionDays: 30,
+        },
       },
       {
         id: 'ai.debug.enabled',
@@ -455,9 +455,9 @@ export class FeatureFlagService {
           logResponses: true,
           logTokenUsage: true,
           logPerformance: true,
-          logLevel: 'debug'
-        }
-      }
+          logLevel: 'debug',
+        },
+      },
     ];
 
     defaultFlags.forEach(flag => {

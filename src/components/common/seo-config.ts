@@ -37,12 +37,12 @@ export const PageSEO = {
     type: 'website' as const,
   },
 
-  applicationComingSoon: {
-    title: 'Application Process Coming Soon',
+  applicationProcess: {
+    title: 'Application Process',
     description:
-      'Your LIT OS registration is complete! The application process for your selected cohort will begin soon. Stay tuned for updates.',
+      'Complete your LIT OS application in 3 simple steps: Application form, Interview scheduling, and LITMUS Test. Join the experiential learning revolution.',
     keywords:
-      'application coming soon, LIT OS, registration complete, cohort application, student onboarding',
+      'application process, LIT OS, student application, interview, LITMUS test, experiential learning, cohort application',
     type: 'website' as const,
   },
 

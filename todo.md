@@ -1,64 +1,23 @@
 DATA UPLOAD ISSUES
 
 1. Need to change all lit school IDs to personal IDs on the dashboard.
-2. Handle
-3. Did Kuldeep Rajput drop out from CP1? simran will get back
-
-COMPLETED
-
-- Experience Designer role setup with bare-shell dashboard and experience page
-- Epic Management system for Experience Designers:
-  - Extended epics table with description, outcomes, avatar_url, banner_url fields
-  - Created comprehensive Epic management page with CRUD operations
-  - Added image upload functionality for avatar and banner images
-  - Implemented search and filtering capabilities
-  - Added proper role-based permissions and database policies
-  - Created feature flags for Epic management functionality
-  - Updated learning outcomes to use bulleted points system with JSON storage
-  - Created reusable BulletedInput component for structured outcome entry
-- Epic Learning Paths Management system for Experience Designers:
-  - Created epic_learning_paths table with title, description, outcomes, avatar_url, banner_url, epics (JSON)
-  - Built comprehensive Epic Learning Paths management page with CRUD operations
-  - Implemented epic selection and reordering functionality within learning paths
-  - Added image upload for avatar and banner images
-  - Created bulleted learning outcomes system with JSON storage
-  - Added search, filtering, and pagination capabilities
-  - Implemented proper role-based permissions and database policies
-  - Created feature flags for Epic Learning Paths management
-  - Added navigation and routing for Epic Learning Paths page
-- Experience Design Management system for Experience Designers:
-  - Created experiences table with comprehensive CBL support and complex condition logic
-  - Built sophisticated condition builder system with nested AND/OR logic and real-time preview
-  - Created 4-step stepper dialog for experience creation (Basic Info, CBL Content, Lecture Sessions, Sample Profiles)
-  - Implemented WYSIWYG editor, deliverable builder, grading rubric builder, and lecture module builder
-  - Added comprehensive experience management page with search, filtering, and CRUD operations
-  - Created view and delete dialogs with detailed experience information display
-  - Implemented proper role-based permissions and database policies
-  - Added feature flags for Experience management functionality
-  - Added navigation and routing for Experience Design management page
-  - Integrated Epic selector with active epic context for automatic experience-epic linking
-  - Added epic_id field to experiences table with proper foreign key relationships
-  - Created reusable EpicSelector component and ActiveEpicContext for cross-application epic management
-
-3. un documented - dropout fees + refund
-4. Status of Mokshal Gandhi (cm5) (dropped) - reason?
-5. in informed/emepted, puttin in the reason is important.
-6. There were no uninformed absences
+2. There were no uninformed absences
    some people were uninformed LATE so its showing in the absences box
+3. Rearrange all the text fields in the application process page.
 
-7. after updating scholorship/payment plan the cell doesnt update until i hard refresh
-8. after dropdout status, in fee collector dashboard how should it work?
-9. how is refund stored, used of dropped out students?
+4. after updating scholorship/payment plan the cell doesnt update until i hard refresh
+5. after dropdout status, in fee collector dashboard how should it work?
+6. how is refund stored, used of dropped out students?
    AFTER CURRICULUM/PROGRAM APP
 
-10. Lets fix duplicate data in profile and cohort_studenets
-11. Scholorships are getting a duplicate
-12. Fee Payment Reports and Visibility
-13. have a waiver option
-14. Download fee structure PDF
-15. Late Fee needed
-16. deleting equipment is still throwing bugs
-17. Slack Integration
+7. Lets fix duplicate data in profile and cohort_studenets
+8. Scholorships are getting a duplicate
+9. Fee Payment Reports and Visibility
+10. have a waiver option
+11. Download fee structure PDF
+12. Late Fee needed
+13. deleting equipment is still throwing bugs
+14. Slack Integration
 
 BACKLOG
 

@@ -75,10 +75,11 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  html, body {
+  html,
+  body {
     margin: 0;
     padding: 0;
-    height: 100vh;
+    min-height: 100vh;
     width: 100vw;
     overflow-x: hidden;
   }
@@ -86,7 +87,7 @@ All colors MUST be HSL.
   #root {
     margin: 0;
     padding: 0;
-    height: 100vh;
+    min-height: 100vh;
     width: 100vw;
     overflow-x: hidden;
   }
@@ -97,11 +98,11 @@ All colors MUST be HSL.
   .grid {
     width: 100%;
   }
-  
+
   .grid > * {
     max-width: 100%;
   }
-  
+
   /* Ensure cards don't overflow */
   .card {
     max-width: 100%;

@@ -1,10 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  EpicLearningPath, 
-  CreateEpicLearningPathRequest, 
+import type {
+  EpicLearningPath,
+  CreateEpicLearningPathRequest,
   UpdateEpicLearningPathRequest,
   EpicLearningPathWithDetails,
-  EpicInPath 
+  EpicInPath,
 } from '@/types/epicLearningPath';
 import type { Epic } from '@/types/epic';
 
@@ -61,15 +61,17 @@ export class EpicLearningPathsService {
   }
 
   /**
-   * Get epic learning path with detailed epic information
+   * Get epic learning path with detailed epic information including lectures and deliverables count
    */
-  static async getEpicLearningPathWithDetails(id: string): Promise<EpicLearningPathWithDetails> {
+  static async getEpicLearningPathWithDetails(
+    id: string
+  ): Promise<EpicLearningPathWithDetails> {
     const learningPath = await this.getEpicLearningPath(id);
-    
+
     if (learningPath.epics.length === 0) {
       return {
         ...learningPath,
-        epics: []
+        epics: [],
       };
     }
 
@@ -84,29 +86,88 @@ export class EpicLearningPathsService {
       throw new Error(`Failed to fetch epic details: ${error.message}`);
     }
 
+    // Get experiences for all epics to count lectures and deliverables
+    const { data: experiences, error: experiencesError } = await supabase
+      .from('experiences')
+      .select('id, epic_id, lecture_sessions, deliverables')
+      .in('epic_id', epicIds);
+
+    if (experiencesError) {
+      throw new Error(
+        `Failed to fetch epic experiences: ${experiencesError.message}`
+      );
+    }
+
+    // Calculate lectures, deliverables, and tools count for each epic
+    const epicStats = new Map<
+      string,
+      { lecturesCount: number; deliverablesCount: number; toolsCount: number }
+    >();
+
+    experiences?.forEach(experience => {
+      const currentStats = epicStats.get(experience.epic_id) || {
+        lecturesCount: 0,
+        deliverablesCount: 0,
+        toolsCount: 0,
+      };
+
+      // Count lectures
+      if (
+        experience.lecture_sessions &&
+        Array.isArray(experience.lecture_sessions)
+      ) {
+        currentStats.lecturesCount += experience.lecture_sessions.length;
+
+        // Count tools from lecture sessions
+        experience.lecture_sessions.forEach(lecture => {
+          if (lecture.tools_taught && Array.isArray(lecture.tools_taught)) {
+            currentStats.toolsCount += lecture.tools_taught.length;
+          }
+        });
+      }
+
+      // Count deliverables
+      if (experience.deliverables && Array.isArray(experience.deliverables)) {
+        currentStats.deliverablesCount += experience.deliverables.length;
+      }
+
+      epicStats.set(experience.epic_id, currentStats);
+    });
+
     // Combine learning path epics with their details, maintaining order
     const epicsWithDetails = learningPath.epics
       .map(epicInPath => {
         const epicDetails = epics?.find(epic => epic.id === epicInPath.id);
+        const stats = epicStats.get(epicInPath.id) || {
+          lecturesCount: 0,
+          deliverablesCount: 0,
+          toolsCount: 0,
+        };
+
         return {
           ...epicInPath,
           name: epicDetails?.name || 'Unknown Epic',
           description: epicDetails?.description,
           avatar_url: epicDetails?.avatar_url,
+          lecturesCount: stats.lecturesCount,
+          deliverablesCount: stats.deliverablesCount,
+          toolsCount: stats.toolsCount,
         };
       })
       .sort((a, b) => a.order - b.order);
 
     return {
       ...learningPath,
-      epics: epicsWithDetails
+      epics: epicsWithDetails,
     };
   }
 
   /**
    * Create a new epic learning path
    */
-  static async createEpicLearningPath(learningPath: CreateEpicLearningPathRequest): Promise<EpicLearningPath> {
+  static async createEpicLearningPath(
+    learningPath: CreateEpicLearningPathRequest
+  ): Promise<EpicLearningPath> {
     const { data, error } = await supabase
       .from('epic_learning_paths')
       .insert({
@@ -126,9 +187,11 @@ export class EpicLearningPathsService {
   /**
    * Upsert an epic learning path (create or update)
    */
-  static async upsertEpicLearningPath(learningPath: CreateEpicLearningPathRequest & { id?: string }): Promise<EpicLearningPath> {
+  static async upsertEpicLearningPath(
+    learningPath: CreateEpicLearningPathRequest & { id?: string }
+  ): Promise<EpicLearningPath> {
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    
+
     if (learningPath.id) {
       // Update existing
       const { data, error } = await supabase
@@ -146,7 +209,9 @@ export class EpicLearningPathsService {
         .single();
 
       if (error) {
-        throw new Error(`Failed to update epic learning path: ${error.message}`);
+        throw new Error(
+          `Failed to update epic learning path: ${error.message}`
+        );
       }
 
       return data;
@@ -167,7 +232,9 @@ export class EpicLearningPathsService {
         .single();
 
       if (error) {
-        throw new Error(`Failed to create epic learning path: ${error.message}`);
+        throw new Error(
+          `Failed to create epic learning path: ${error.message}`
+        );
       }
 
       return data;
@@ -177,7 +244,9 @@ export class EpicLearningPathsService {
   /**
    * Update an existing epic learning path
    */
-  static async updateEpicLearningPath(learningPath: UpdateEpicLearningPathRequest): Promise<EpicLearningPath> {
+  static async updateEpicLearningPath(
+    learningPath: UpdateEpicLearningPathRequest
+  ): Promise<EpicLearningPath> {
     const { id, ...updateData } = learningPath;
 
     const { data, error } = await supabase
@@ -256,7 +325,7 @@ export class EpicLearningPathsService {
    * Reorder epics in a learning path
    */
   static async reorderEpics(
-    learningPathId: string, 
+    learningPathId: string,
     epics: EpicInPath[]
   ): Promise<EpicLearningPath> {
     const { data, error } = await supabase

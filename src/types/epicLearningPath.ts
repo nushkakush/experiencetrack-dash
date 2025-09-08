@@ -25,15 +25,20 @@ export interface CreateEpicLearningPathRequest {
   epics: EpicInPath[];
 }
 
-export interface UpdateEpicLearningPathRequest extends Partial<CreateEpicLearningPathRequest> {
+export interface UpdateEpicLearningPathRequest
+  extends Partial<CreateEpicLearningPathRequest> {
   id: string;
 }
 
 // Extended interface for display purposes (includes epic details)
-export interface EpicLearningPathWithDetails extends Omit<EpicLearningPath, 'epics'> {
+export interface EpicLearningPathWithDetails
+  extends Omit<EpicLearningPath, 'epics'> {
   epics: (EpicInPath & {
     name: string;
     description?: string;
     avatar_url?: string;
+    lecturesCount: number;
+    deliverablesCount: number;
+    toolsCount: number;
   })[];
 }

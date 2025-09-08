@@ -20,6 +20,7 @@ import { ValidationUtils } from '@/utils/validation';
 
 interface VerificationData {
   applicationId: string;
+  profileId: string;
   cohortId: string;
   firstName: string;
   lastName: string;
@@ -131,6 +132,7 @@ const SelfRegistrationVerification = () => {
 
       setVerificationData({
         applicationId: application.id,
+        profileId: application.profile_id,
         cohortId: application.cohort_id,
         firstName: profile.first_name,
         lastName: profile.last_name,
@@ -176,23 +178,69 @@ const SelfRegistrationVerification = () => {
     setProcessing(true);
 
     try {
-      // Create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: verificationData.email,
-        password: password,
-        options: {
-          data: {
-            first_name: verificationData.firstName,
-            last_name: verificationData.lastName,
-            role: 'student',
-          },
-          emailRedirectTo: `${window.location.origin}/auth/application-coming-soon`,
-        },
-      });
+      let authData;
+      let authError;
+
+      // Check if user is already signed in
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
+      if (currentUser && currentUser.email === verificationData.email) {
+        // User is already signed in with the correct email
+        authData = { user: currentUser };
+        authError = null;
+      } else {
+        // First, try to sign in with the email and password
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: verificationData.email,
+            password: password,
+          });
+
+        if (signInError) {
+          // If sign in fails, try to create a new account
+          if (
+            signInError.message.includes('Invalid login credentials') ||
+            signInError.message.includes('Email not confirmed')
+          ) {
+            const { data: signUpData, error: signUpError } =
+              await supabase.auth.signUp({
+                email: verificationData.email,
+                password: password,
+                options: {
+                  data: {
+                    first_name: verificationData.firstName,
+                    last_name: verificationData.lastName,
+                    role: 'student',
+                  },
+                  emailRedirectTo: `${window.location.origin}/auth/application-coming-soon`,
+                },
+              });
+
+            authData = signUpData;
+            authError = signUpError;
+          } else {
+            // Other sign in errors should be handled
+            authData = signInData;
+            authError = signInError;
+          }
+        } else {
+          // Sign in successful
+          authData = signInData;
+          authError = null;
+        }
+      }
 
       if (authError) {
         console.error('Auth error:', authError);
-        toast.error('Failed to create account. Please try again.');
+        if (authError.message.includes('User already registered')) {
+          toast.error(
+            'This email is already registered. Please try signing in instead.'
+          );
+        } else {
+          toast.error('Failed to create account. Please try again.');
+        }
         return;
       }
 
@@ -228,27 +276,71 @@ const SelfRegistrationVerification = () => {
         }
       }
 
-      // Update profiles table with user_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ user_id: authData.user.id })
-        .eq('email', verificationData.email);
+      // Check if there's already a profile with this user_id (created by database trigger)
+      const { data: existingProfile, error: existingProfileError } =
+        await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', authData.user.id)
+          .single();
 
-      if (profileError) {
-        Logger.getInstance().error('Failed to update profile with user_id', {
-          error: profileError,
+      if (existingProfileError && existingProfileError.code !== 'PGRST116') {
+        Logger.getInstance().error('Failed to check for existing profile', {
+          error: existingProfileError,
         });
+        toast.error('Failed to complete registration. Please contact support.');
+        return;
       }
 
-      // Update student_applications record
+      if (existingProfile) {
+        // Delete the empty profile created by database trigger
+        const { error: deleteError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', existingProfile.id);
+
+        if (deleteError) {
+          Logger.getInstance().error('Failed to delete empty profile', {
+            error: deleteError,
+          });
+        } else {
+          Logger.getInstance().info(
+            'Deleted empty profile created by trigger',
+            {
+              deletedProfileId: existingProfile.id,
+            }
+          );
+        }
+      }
+
+      // Update the existing profile (created during registration) with the user_id
+      // This preserves all the registration data (phone, qualification, date_of_birth)
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ user_id: authData.user.id })
+        .eq('id', verificationData.profileId);
+
+      if (profileUpdateError) {
+        Logger.getInstance().error('Failed to update profile with user_id', {
+          error: profileUpdateError,
+        });
+        toast.error('Failed to complete registration. Please contact support.');
+        return;
+      }
+
+      Logger.getInstance().info('Successfully updated profile with user_id', {
+        profileId: verificationData.profileId,
+        userId: authData.user.id,
+      });
+
+      // Update student_applications record status
       const { error: applicationError } = await supabase
         .from('student_applications')
         .update({
-          status: 'registration_completed',
+          status: 'registration_complete', // Password set up and logged in
           registration_completed: true,
-          submitted_at: new Date().toISOString(),
         })
-        .eq('id', verificationData.applicationId);
+        .eq('profile_id', verificationData.profileId);
 
       if (applicationError) {
         Logger.getInstance().error('Failed to update application', {
@@ -260,9 +352,9 @@ const SelfRegistrationVerification = () => {
         'Account created successfully! Welcome to ExperienceTrack!'
       );
 
-      // Navigate to application coming soon page
+      // Navigate to application process page
       setTimeout(() => {
-        navigate('/auth/application-coming-soon', { replace: true });
+        navigate('/auth/application-process', { replace: true });
       }, 1000);
     } catch (error) {
       Logger.getInstance().error('Password setup error', { error });

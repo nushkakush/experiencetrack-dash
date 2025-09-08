@@ -23,6 +23,7 @@ export interface RazorpayPaymentVerificationRequest {
   paymentPlan: string;
   installmentId?: string;
   semesterNumber?: number;
+  paymentType?: string;
 }
 
 export interface RazorpayOrderResponse {
@@ -48,40 +49,57 @@ export interface RazorpayPaymentVerificationResponse {
 }
 
 class RazorpayService {
-  async createOrder(data: RazorpayOrderRequest): Promise<RazorpayOrderResponse> {
+  async createOrder(
+    data: RazorpayOrderRequest
+  ): Promise<RazorpayOrderResponse> {
     try {
-      console.log('🔍 [DEBUG] Creating Razorpay order with data:', JSON.stringify(data, null, 2));
-      
+      console.log(
+        '🔍 [DEBUG] Creating Razorpay order with data:',
+        JSON.stringify(data, null, 2)
+      );
+
       // Check if user is authenticated
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: authError,
+      } = await supabase.auth.getSession();
       console.log('🔍 [DEBUG] Auth session:', session);
       console.log('🔍 [DEBUG] Auth error:', authError);
-      
+
       if (!session) {
         throw new Error('User not authenticated. Please log in and try again.');
       }
-      
+
       const requestBody = {
         action: 'create_order',
-        ...data
+        ...data,
       };
-      
-      console.log('🔍 [DEBUG] Sending request body:', JSON.stringify(requestBody, null, 2));
-      
+
+      console.log(
+        '🔍 [DEBUG] Sending request body:',
+        JSON.stringify(requestBody, null, 2)
+      );
+
       // Try direct fetch instead of supabase.functions.invoke
       console.log('🔍 [DEBUG] Using direct fetch to edge function');
-      
-      const response = await fetch('https://ghmpaghyasyllfvamfna.supabase.co/functions/v1/razorpay-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(requestBody)
-      });
+
+      const response = await fetch(
+        'https://ghmpaghyasyllfvamfna.supabase.co/functions/v1/razorpay-payment',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       console.log('🔍 [DEBUG] Fetch response status:', response.status);
-      console.log('🔍 [DEBUG] Fetch response headers:', Object.fromEntries(response.headers.entries()));
+      console.log(
+        '🔍 [DEBUG] Fetch response headers:',
+        Object.fromEntries(response.headers.entries())
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -103,31 +121,42 @@ class RazorpayService {
     }
   }
 
-  async verifyPayment(data: RazorpayPaymentVerificationRequest): Promise<RazorpayPaymentVerificationResponse> {
+  async verifyPayment(
+    data: RazorpayPaymentVerificationRequest
+  ): Promise<RazorpayPaymentVerificationResponse> {
     try {
-      console.log('🔍 [DEBUG] verifyPayment called with data:', JSON.stringify(data, null, 2));
-      
+      console.log(
+        '🔍 [DEBUG] verifyPayment called with data:',
+        JSON.stringify(data, null, 2)
+      );
+
       // Check if user is authenticated
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: authError,
+      } = await supabase.auth.getSession();
+
       if (!session) {
         throw new Error('User not authenticated. Please log in and try again.');
       }
-      
-      console.log('🔍 [DEBUG] Auth session:', { 
-        hasSession: !!session, 
-        accessToken: session.access_token ? 'present' : 'missing' 
+
+      console.log('🔍 [DEBUG] Auth session:', {
+        hasSession: !!session,
+        accessToken: session.access_token ? 'present' : 'missing',
       });
-      
-      const { data: response, error } = await supabase.functions.invoke('razorpay-payment', {
-        body: {
-          action: 'verify_payment',
-          ...data
-        },
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
+
+      const { data: response, error } = await supabase.functions.invoke(
+        'razorpay-payment',
+        {
+          body: {
+            action: 'verify_payment',
+            ...data,
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
-      });
+      );
 
       console.log('🔍 [DEBUG] Edge function response:', { response, error });
 
@@ -137,7 +166,10 @@ class RazorpayService {
       }
 
       if (!response.success) {
-        console.log('🔍 [DEBUG] Edge function returned success: false:', response);
+        console.log(
+          '🔍 [DEBUG] Edge function returned success: false:',
+          response
+        );
         throw new Error(response.error || 'Payment verification failed');
       }
 
@@ -159,9 +191,21 @@ class RazorpayService {
     onError?: (error: string) => void;
   }): Promise<void> {
     try {
-      console.log('🔍 [DEBUG] initiatePayment called with:', JSON.stringify(paymentData, null, 2));
-      
-      const { amount, studentId, cohortId, paymentPlan, installmentId, semesterNumber, onSuccess, onError } = paymentData;
+      console.log(
+        '🔍 [DEBUG] initiatePayment called with:',
+        JSON.stringify(paymentData, null, 2)
+      );
+
+      const {
+        amount,
+        studentId,
+        cohortId,
+        paymentPlan,
+        installmentId,
+        semesterNumber,
+        onSuccess,
+        onError,
+      } = paymentData;
 
       // Create Razorpay order
       const orderResponse = await this.createOrder({
@@ -171,13 +215,13 @@ class RazorpayService {
         notes: {
           paymentType: 'fee_payment',
           installmentId: installmentId || '',
-          semesterNumber: semesterNumber?.toString() || ''
+          semesterNumber: semesterNumber?.toString() || '',
         },
         studentId,
         cohortId,
         paymentPlan,
         installmentId,
-        semesterNumber
+        semesterNumber,
       });
 
       // Initialize Razorpay payment
@@ -185,7 +229,7 @@ class RazorpayService {
         key: orderResponse.key_id,
         amount: orderResponse.order.amount,
         currency: orderResponse.order.currency,
-        name: 'ExperienceTrack',
+        name: 'LIT School',
         description: 'Fee Payment',
         order_id: orderResponse.order.id,
         handler: async (response: {
@@ -204,9 +248,9 @@ class RazorpayService {
               amount,
               paymentPlan,
               installmentId,
-              semesterNumber
+              semesterNumber,
             });
-            
+
             // Verify payment
             const verificationResponse = await this.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -217,19 +261,27 @@ class RazorpayService {
               amount,
               paymentPlan,
               installmentId,
-              semesterNumber
+              semesterNumber,
             });
 
             if (verificationResponse.success) {
-              toast.success('Payment completed successfully! Your payment is under verification.');
+              toast.success(
+                'Payment completed successfully! Your payment is under verification.'
+              );
               onSuccess?.();
             } else {
-              throw new Error(verificationResponse.message || 'Payment verification failed');
+              throw new Error(
+                verificationResponse.message || 'Payment verification failed'
+              );
             }
-    } catch (error) {
+          } catch (error) {
             console.error('Payment verification error:', error);
             toast.error('Payment verification failed. Please contact support.');
-            onError?.(error instanceof Error ? error.message : 'Payment verification failed');
+            onError?.(
+              error instanceof Error
+                ? error.message
+                : 'Payment verification failed'
+            );
           }
         },
         prefill: {
@@ -241,8 +293,8 @@ class RazorpayService {
         modal: {
           ondismiss: () => {
             console.log('Payment modal dismissed');
-          }
-        }
+          },
+        },
       };
 
       // Load Razorpay script dynamically
@@ -251,11 +303,12 @@ class RazorpayService {
       // Initialize and open Razorpay
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
-
     } catch (error) {
       console.error('Error initiating Razorpay payment:', error);
       toast.error('Failed to initiate payment. Please try again.');
-      onError?.(error instanceof Error ? error.message : 'Payment initiation failed');
+      onError?.(
+        error instanceof Error ? error.message : 'Payment initiation failed'
+      );
     }
   }
 
@@ -270,7 +323,8 @@ class RazorpayService {
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Razorpay script'));
+      script.onerror = () =>
+        reject(new Error('Failed to load Razorpay script'));
       document.head.appendChild(script);
     });
   }

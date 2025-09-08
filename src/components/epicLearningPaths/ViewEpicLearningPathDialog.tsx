@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Calendar, User, Target, List, Award } from 'lucide-react';
+import {
+  BookOpen,
+  Calendar,
+  User,
+  Target,
+  List,
+  Award,
+  PlayCircle,
+  FileText,
+  Wrench,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +22,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { EpicLearningPathsService } from '@/services/epicLearningPaths.service';
-import type { EpicLearningPath, EpicLearningPathWithDetails } from '@/types/epicLearningPath';
+import type {
+  EpicLearningPath,
+  EpicLearningPathWithDetails,
+} from '@/types/epicLearningPath';
 
 interface ViewEpicLearningPathDialogProps {
   learningPath: EpicLearningPath;
@@ -20,12 +33,11 @@ interface ViewEpicLearningPathDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProps> = ({
-  learningPath,
-  open,
-  onOpenChange,
-}) => {
-  const [detailedLearningPath, setDetailedLearningPath] = useState<EpicLearningPathWithDetails | null>(null);
+export const ViewEpicLearningPathDialog: React.FC<
+  ViewEpicLearningPathDialogProps
+> = ({ learningPath, open, onOpenChange }) => {
+  const [detailedLearningPath, setDetailedLearningPath] =
+    useState<EpicLearningPathWithDetails | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,7 +49,10 @@ export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProp
   const loadDetailedLearningPath = async () => {
     try {
       setLoading(true);
-      const details = await EpicLearningPathsService.getEpicLearningPathWithDetails(learningPath.id);
+      const details =
+        await EpicLearningPathsService.getEpicLearningPathWithDetails(
+          learningPath.id
+        );
       setDetailedLearningPath(details);
     } catch (error) {
       console.error('Error loading learning path details:', error);
@@ -68,7 +83,9 @@ export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProp
           <div className='flex items-center justify-center py-8'>
             <div className='text-center'>
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2'></div>
-              <p className='text-sm text-muted-foreground'>Loading learning path details...</p>
+              <p className='text-sm text-muted-foreground'>
+                Loading learning path details...
+              </p>
             </div>
           </div>
         ) : detailedLearningPath ? (
@@ -87,18 +104,32 @@ export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProp
                 </AvatarFallback>
               </Avatar>
               <div className='flex-1'>
-                <h2 className='text-2xl font-bold'>{detailedLearningPath.title}</h2>
+                <h2 className='text-2xl font-bold'>
+                  {detailedLearningPath.title}
+                </h2>
                 {detailedLearningPath.description && (
-                  <p className='text-muted-foreground mt-2'>{detailedLearningPath.description}</p>
+                  <p className='text-muted-foreground mt-2'>
+                    {detailedLearningPath.description}
+                  </p>
                 )}
                 <div className='flex items-center space-x-4 mt-3 text-sm text-muted-foreground'>
                   <div className='flex items-center space-x-1'>
                     <Calendar className='h-4 w-4' />
-                    <span>Created {new Date(detailedLearningPath.created_at).toLocaleDateString()}</span>
+                    <span>
+                      Created{' '}
+                      {new Date(
+                        detailedLearningPath.created_at
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
                   <div className='flex items-center space-x-1'>
                     <User className='h-4 w-4' />
-                    <span>Updated {new Date(detailedLearningPath.updated_at).toLocaleDateString()}</span>
+                    <span>
+                      Updated{' '}
+                      {new Date(
+                        detailedLearningPath.updated_at
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -115,91 +146,187 @@ export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProp
               </div>
             )}
 
-            {/* Learning Outcomes */}
-            <div>
-              <h3 className='text-lg font-semibold mb-3'>Learning Outcomes</h3>
-              <div className='bg-muted/50 p-4 rounded-lg'>
-                {detailedLearningPath.outcomes && detailedLearningPath.outcomes.length > 0 ? (
-                  <ul className='space-y-2'>
-                    {detailedLearningPath.outcomes.map((outcome, index) => (
-                      <li key={index} className='flex items-start space-x-2 text-sm'>
-                        <span className='text-primary font-medium mt-0.5'>•</span>
-                        <span className='leading-relaxed'>{outcome}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className='text-sm text-muted-foreground'>
-                    No learning outcomes specified.
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Tabbed Content */}
+            <Tabs defaultValue='outcomes' className='w-full'>
+              <TabsList className='grid w-full grid-cols-2'>
+                <TabsTrigger
+                  value='outcomes'
+                  className='flex items-center space-x-2'
+                >
+                  <Target className='h-4 w-4' />
+                  <span>Learning Outcomes</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value='epics'
+                  className='flex items-center space-x-2'
+                >
+                  <List className='h-4 w-4' />
+                  <span>Epic Learning Path</span>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Epics in Learning Path */}
-            <div>
-              <div className='flex items-center justify-between mb-3'>
-                <h3 className='text-lg font-semibold'>Epics in Learning Path</h3>
-                <Badge variant='secondary'>
-                  {detailedLearningPath.epics.length} epic{detailedLearningPath.epics.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-              
-              {detailedLearningPath.epics.length > 0 ? (
-                <div className='space-y-3'>
-                  {detailedLearningPath.epics.map((epicInPath, index) => (
-                    <div
-                      key={epicInPath.id}
-                      className='flex items-center space-x-3 p-3 border rounded-lg bg-background hover:bg-muted/50 transition-colors'
-                    >
-                      <div className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium'>
-                        {epicInPath.order}
-                      </div>
-                      <Avatar className='h-10 w-10'>
-                        {epicInPath.avatar_url ? (
-                          <AvatarImage src={epicInPath.avatar_url} alt={epicInPath.name} />
-                        ) : null}
-                        <AvatarFallback>
-                          {epicInPath.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className='flex-1'>
-                        <h4 className='font-medium'>{epicInPath.name}</h4>
-                        {epicInPath.description && (
-                          <p className='text-sm text-muted-foreground mt-1 line-clamp-2'>
-                            {epicInPath.description}
-                          </p>
-                        )}
-                      </div>
+              <TabsContent value='outcomes' className='space-y-4'>
+                <div>
+                  <h3 className='text-lg font-semibold mb-3'>
+                    Learning Outcomes
+                  </h3>
+                  <div className='bg-muted/50 p-4 rounded-lg'>
+                    {detailedLearningPath.outcomes &&
+                    detailedLearningPath.outcomes.length > 0 ? (
+                      <ul className='space-y-2'>
+                        {detailedLearningPath.outcomes.map((outcome, index) => (
+                          <li
+                            key={index}
+                            className='flex items-start space-x-2 text-sm'
+                          >
+                            <span className='text-primary font-medium mt-0.5'>
+                              •
+                            </span>
+                            <span className='leading-relaxed'>{outcome}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className='text-sm text-muted-foreground'>
+                        No learning outcomes specified.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value='epics' className='space-y-4'>
+                <div>
+                  <div className='flex items-center justify-between mb-3'>
+                    <h3 className='text-lg font-semibold'>
+                      Epics in Learning Path
+                    </h3>
+                    <Badge variant='secondary'>
+                      {detailedLearningPath.epics.length} epic
+                      {detailedLearningPath.epics.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+
+                  {detailedLearningPath.epics.length > 0 ? (
+                    <div className='space-y-3'>
+                      {detailedLearningPath.epics.map((epicInPath, index) => (
+                        <Card
+                          key={epicInPath.id}
+                          className='hover:bg-muted/50 transition-colors'
+                        >
+                          <CardContent className='p-4'>
+                            <div className='flex items-center space-x-4'>
+                              <div className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium flex-shrink-0'>
+                                {epicInPath.order}
+                              </div>
+                              <Avatar className='h-12 w-12 flex-shrink-0'>
+                                {epicInPath.avatar_url ? (
+                                  <AvatarImage
+                                    src={epicInPath.avatar_url}
+                                    alt={epicInPath.name}
+                                  />
+                                ) : null}
+                                <AvatarFallback>
+                                  {epicInPath.name.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className='flex-1 min-w-0'>
+                                <h4 className='font-semibold text-lg mb-2'>
+                                  {epicInPath.name}
+                                </h4>
+                                {epicInPath.description && (
+                                  <p className='text-sm text-muted-foreground mb-3 line-clamp-2'>
+                                    {epicInPath.description}
+                                  </p>
+                                )}
+                                <div className='flex items-center space-x-6 text-sm'>
+                                  <div className='flex items-center space-x-2 text-muted-foreground'>
+                                    <PlayCircle className='h-4 w-4' />
+                                    <span>
+                                      {epicInPath.lecturesCount} lecture
+                                      {epicInPath.lecturesCount !== 1
+                                        ? 's'
+                                        : ''}
+                                    </span>
+                                  </div>
+                                  <div className='flex items-center space-x-2 text-muted-foreground'>
+                                    <Wrench className='h-4 w-4' />
+                                    <span>
+                                      {epicInPath.toolsCount} tool
+                                      {epicInPath.toolsCount !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  <div className='flex items-center space-x-2 text-muted-foreground'>
+                                    <FileText className='h-4 w-4' />
+                                    <span>
+                                      {epicInPath.deliverablesCount} deliverable
+                                      {epicInPath.deliverablesCount !== 1
+                                        ? 's'
+                                        : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className='text-center py-8 text-muted-foreground'>
+                      <BookOpen className='h-12 w-12 mx-auto mb-2 opacity-50' />
+                      <p>No epics added to this learning path yet.</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className='text-center py-8 text-muted-foreground'>
-                  <BookOpen className='h-12 w-12 mx-auto mb-2 opacity-50' />
-                  <p>No epics added to this learning path yet.</p>
-                </div>
-              )}
-            </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Learning Path Summary */}
             <div className='bg-muted/30 p-4 rounded-lg'>
               <h4 className='font-medium mb-2'>Learning Path Summary</h4>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+              <div className='grid grid-cols-1 md:grid-cols-5 gap-4 text-sm'>
                 <div>
                   <span className='text-muted-foreground'>Total Epics:</span>
-                  <span className='ml-2 font-medium'>{detailedLearningPath.epics.length}</span>
+                  <span className='ml-2 font-medium'>
+                    {detailedLearningPath.epics.length}
+                  </span>
                 </div>
                 <div>
-                  <span className='text-muted-foreground'>Learning Outcomes:</span>
+                  <span className='text-muted-foreground'>
+                    Learning Outcomes:
+                  </span>
                   <span className='ml-2 font-medium'>
                     {detailedLearningPath.outcomes?.length || 0}
                   </span>
                 </div>
                 <div>
-                  <span className='text-muted-foreground'>Created:</span>
+                  <span className='text-muted-foreground'>Total Lectures:</span>
                   <span className='ml-2 font-medium'>
-                    {new Date(detailedLearningPath.created_at).toLocaleDateString()}
+                    {detailedLearningPath.epics.reduce(
+                      (sum, epic) => sum + epic.lecturesCount,
+                      0
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className='text-muted-foreground'>Total Tools:</span>
+                  <span className='ml-2 font-medium'>
+                    {detailedLearningPath.epics.reduce(
+                      (sum, epic) => sum + epic.toolsCount,
+                      0
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className='text-muted-foreground'>
+                    Total Deliverables:
+                  </span>
+                  <span className='ml-2 font-medium'>
+                    {detailedLearningPath.epics.reduce(
+                      (sum, epic) => sum + epic.deliverablesCount,
+                      0
+                    )}
                   </span>
                 </div>
               </div>
@@ -207,7 +334,9 @@ export const ViewEpicLearningPathDialog: React.FC<ViewEpicLearningPathDialogProp
           </div>
         ) : (
           <div className='text-center py-8'>
-            <p className='text-muted-foreground'>Failed to load learning path details.</p>
+            <p className='text-muted-foreground'>
+              Failed to load learning path details.
+            </p>
           </div>
         )}
       </DialogContent>
