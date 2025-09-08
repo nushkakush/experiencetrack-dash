@@ -51,3 +51,20 @@ export async function getFullPaymentView(params: PaymentEngineParams) {
   if (error) throw error;
   return data; // Now includes breakdown, feeStructure, and aggregate
 }
+
+export async function getBatchPaymentSummary(params: {
+  cohortId: string;
+  studentIds: string[];
+  feeStructureData?: PaymentEngineParams['feeStructureData'];
+}) {
+  const { data, error } = await supabase.functions.invoke('payment-engine', {
+    body: {
+      action: 'batch_summary',
+      cohortId: params.cohortId,
+      studentIds: params.studentIds,
+      feeStructureData: params.feeStructureData,
+    },
+  });
+  if (error) throw error;
+  return data; // Returns batch results with feeStructure and scholarships
+}

@@ -32,6 +32,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
     students,
     feeStructure,
     scholarships,
+    statistics,
     loadData,
   } = useDashboardData({ cohortId });
 
@@ -110,6 +111,7 @@ const FeePaymentDashboard: React.FC<FeePaymentDashboardProps> = () => {
             students={students}
             selectedRows={selectedRows}
             feeStructure={feeStructure}
+            statistics={statistics}
             onStudentSelect={handleStudentSelect}
             onCloseStudentDetails={handleCloseStudentDetails}
             onRowSelection={handleRowSelection}

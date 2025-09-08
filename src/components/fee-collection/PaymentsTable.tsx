@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -7,6 +7,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import {
   TableFilters,
@@ -38,6 +47,9 @@ interface PaymentsTableProps {
   onExportSelected?: () => void;
   onVerificationUpdate?: () => void;
   onPendingCountUpdate?: () => void;
+  // Pagination props
+  pageSize?: number;
+  showPagination?: boolean;
 }
 
 export const PaymentsTable: React.FC<PaymentsTableProps> = ({
@@ -50,6 +62,8 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onExportSelected,
   onVerificationUpdate,
   onPendingCountUpdate,
+  pageSize = 25,
+  showPagination = true,
 }) => {
   const {
     searchTerm,
@@ -62,6 +76,31 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
     setPlanFilter,
     setScholarshipFilter,
   } = usePaymentsTable({ students });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPageSize, setCurrentPageSize] = useState(pageSize);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredStudents.length / currentPageSize);
+  const startIndex = currentPage * currentPageSize;
+  const endIndex = startIndex + currentPageSize;
+  const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(0);
+  }, [searchTerm, statusFilter, planFilter, scholarshipFilter]);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
+  };
+
+  const handlePageSizeChange = (newPageSize: string) => {
+    setCurrentPageSize(Number(newPageSize));
+    setCurrentPage(0);
+  };
 
   return (
     <div className='space-y-4'>
@@ -104,7 +143,7 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStudents.map(student => (
+            {paginatedStudents.map(student => (
               <PaymentsTableRow
                 key={student.student_id}
                 student={student}
@@ -125,6 +164,85 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
           <p className='text-muted-foreground'>
             No students found matching the criteria
           </p>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {showPagination && filteredStudents.length > 0 && (
+        <div className='flex items-center justify-between px-2 py-4'>
+          <div className='flex items-center space-x-2'>
+            <p className='text-sm text-muted-foreground'>
+              Showing {startIndex + 1} to{' '}
+              {Math.min(endIndex, filteredStudents.length)} of{' '}
+              {filteredStudents.length} students
+            </p>
+            <div className='flex items-center space-x-2'>
+              <p className='text-sm text-muted-foreground'>Rows per page:</p>
+              <Select
+                value={currentPageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className='w-20'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='10'>10</SelectItem>
+                  <SelectItem value='25'>25</SelectItem>
+                  <SelectItem value='50'>50</SelectItem>
+                  <SelectItem value='100'>100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className='flex items-center space-x-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className='h-4 w-4' />
+              Previous
+            </Button>
+
+            <div className='flex items-center space-x-1'>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i;
+                } else if (currentPage < 3) {
+                  pageNumber = i;
+                } else if (currentPage >= totalPages - 3) {
+                  pageNumber = totalPages - 5 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+
+                return (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => handlePageChange(pageNumber)}
+                    className='w-8 h-8 p-0'
+                  >
+                    {pageNumber + 1}
+                  </Button>
+                );
+              })}
+            </div>
+
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages - 1}
+            >
+              Next
+              <ChevronRight className='h-4 w-4' />
+            </Button>
+          </div>
         </div>
       )}
     </div>

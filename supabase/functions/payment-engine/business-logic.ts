@@ -433,14 +433,15 @@ export const generateFeeStructureReview = async (
     0
   );
   // Calculate total amount payable consistently with GST calculation
-  // For semester/installment plans, admission fee is already subtracted in semester calculations
-  // For one-shot plans, admission fee needs to be subtracted separately
+  // Include admission fee in total amount payable for both payment plans
   const totalAmountPayable =
     paymentPlan === 'one_shot'
       ? totalSemesterAmount +
-        (oneShotPayment?.amountPayable || 0) -
+        (oneShotPayment?.amountPayable || 0) +
         feeStructure.admission_fee
-      : totalSemesterAmount + (oneShotPayment?.amountPayable || 0);
+      : totalSemesterAmount +
+        (oneShotPayment?.amountPayable || 0) +
+        feeStructure.admission_fee;
 
   // Calculate overall GST correctly for the summary display
   // This should be GST on the total base amount after scholarship deduction

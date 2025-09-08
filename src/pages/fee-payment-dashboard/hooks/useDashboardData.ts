@@ -16,6 +16,7 @@ export const useDashboardData = ({ cohortId }: UseDashboardDataProps) => {
   const [students, setStudents] = useState<StudentPaymentSummary[]>([]);
   const [feeStructure, setFeeStructure] = useState<any>(null);
   const [scholarships, setScholarships] = useState<any[]>([]);
+  const [statistics, setStatistics] = useState<any>(null);
 
   useEffect(() => {
     if (cohortId) {
@@ -33,18 +34,45 @@ export const useDashboardData = ({ cohortId }: UseDashboardDataProps) => {
       }
 
       // Load fee structure
-      const { feeStructure: feeData, scholarships: scholarshipData } = 
+      const { feeStructure: feeData, scholarships: scholarshipData } =
         await FeeStructureService.getCompleteFeeStructure(cohortId!);
-      
+
       setFeeStructure(feeData);
       setScholarships(scholarshipData);
 
       // Load student payment summaries
-      const studentsResult = await studentPaymentsService.getStudentPaymentSummary(cohortId!);
+      const studentsResult =
+        await studentPaymentsService.getStudentPaymentSummary(cohortId!);
+      console.log('🔍 [useDashboardData] Students result:', {
+        success: studentsResult.success,
+        hasData: !!studentsResult.data,
+        dataLength: studentsResult.data?.length,
+        hasStatistics: !!(studentsResult as any).statistics,
+        statistics: (studentsResult as any).statistics,
+      });
+
       if (studentsResult.success && studentsResult.data) {
         setStudents(studentsResult.data);
+        // Set statistics if available from batch response
+        if ((studentsResult as any).statistics) {
+          const stats = (studentsResult as any).statistics;
+          console.log('🔍 [useDashboardData] Setting statistics:', {
+            averageScholarshipPercentage: stats.averageScholarshipPercentage,
+            totalPayable: stats.totalPayable,
+            totalCollected: stats.totalCollected,
+            collectionRate: stats.collectionRate,
+            cohortProgress: stats.cohortProgress,
+            dueThisMonth: stats.dueThisMonth,
+            overdue: stats.overdue,
+            thisMonthCollected: stats.thisMonthCollected,
+          });
+          setStatistics(stats);
+        } else {
+          console.log('⚠️ [useDashboardData] No statistics found in response');
+        }
       } else {
         setStudents([]);
+        setStatistics(null);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -60,6 +88,7 @@ export const useDashboardData = ({ cohortId }: UseDashboardDataProps) => {
     students,
     feeStructure,
     scholarships,
-    loadData
+    statistics,
+    loadData,
   };
 };

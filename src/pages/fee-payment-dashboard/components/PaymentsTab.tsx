@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { PaymentsTable } from '@/components/fee-collection/PaymentsTable';
 import { ExportDialog } from '@/components/fee-collection/ExportDialog';
+import { StatisticsDashboard } from '@/components/fee-collection/components/StatisticsDashboard';
 import { StudentPaymentSummary } from '@/types/fee';
 
 interface PaymentsTabProps {
   students: StudentPaymentSummary[];
   selectedRows: Set<string>;
   feeStructure: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  statistics?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   onStudentSelect: (student: StudentPaymentSummary) => void;
   onCloseStudentDetails: () => void;
   onRowSelection: (studentId: string, isSelected: boolean) => void;
@@ -22,6 +24,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   students,
   selectedRows,
   feeStructure,
+  statistics,
   onStudentSelect,
   onCloseStudentDetails,
   onRowSelection,
@@ -51,6 +54,9 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
         </div>
       </div>
 
+      {/* Statistics Dashboard */}
+      <StatisticsDashboard statistics={statistics} />
+
       {/* Main Content Area */}
       <div className='w-full'>
         <PaymentsTable
@@ -62,6 +68,8 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
           onSelectAll={onSelectAll}
           onVerificationUpdate={onVerificationUpdate}
           onPendingCountUpdate={onPendingCountUpdate}
+          pageSize={25}
+          showPagination={true}
         />
       </div>
 

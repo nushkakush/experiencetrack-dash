@@ -7,7 +7,10 @@ import {
   StudentPaymentSummaryRow,
 } from '@/types/payments/DatabaseAlignedTypes';
 import { Logger } from '@/lib/logging/Logger';
-import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
+import {
+  getFullPaymentView,
+  getBatchPaymentSummary,
+} from '@/services/payments/paymentEngineClient';
 import { FeeStructureService } from '@/services/feeStructure.service';
 import { studentScholarshipsService } from '@/services/studentScholarships.service';
 
@@ -98,6 +101,11 @@ export class PaymentQueryService {
     cohortId: string
   ): Promise<ApiResponse<StudentPaymentSummary[]>> {
     try {
+      console.log(
+        '🚀 [PaymentQueryService] Starting batch payment summary for cohort:',
+        cohortId
+      );
+
       // First, get all students in the cohort
       const { data: students, error: studentsError } = await supabase
         .from('cohort_students')
@@ -121,291 +129,74 @@ export class PaymentQueryService {
         };
       }
 
-      // Get all payments for the cohort
-      const { data: payments, error: paymentsError } = await supabase
-        .from('student_payments')
-        .select('*')
-        .eq('cohort_id', cohortId);
+      console.log(
+        `🚀 [PaymentQueryService] Found ${students.length} students, using batch processing`
+      );
 
-      if (paymentsError) {
-        Logger.getInstance().error(
-          'PaymentQueryService: Payments query error',
-          { error: paymentsError }
-        );
-        throw paymentsError;
-      }
-
-      // Get all payment transactions for the cohort
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('payment_transactions')
-        .select('*')
-        .in('payment_id', payments?.map(p => p.id) || []);
-
-      if (transactionsError) {
-        Logger.getInstance().error(
-          'PaymentQueryService: Transactions query error',
-          { error: transactionsError }
-        );
-        throw transactionsError;
-      }
-
-      // Load fee structure and scholarships for payment engine calls
-      const { feeStructure, scholarships } =
+      // Get fee structure once for the entire batch
+      const { feeStructure } =
         await FeeStructureService.getCompleteFeeStructure(cohortId);
-      const { data: studentScholarships } =
-        await studentScholarshipsService.getByCohort(cohortId);
 
-      // Create summary for each student
-      const summary: StudentPaymentSummary[] = await Promise.all(
-        students.map(async student => {
-          const studentPayment = payments?.find(
-            p => p.student_id === student.id
-          );
-          const studentScholarship = studentScholarships?.find(
-            s => s.student_id === student.id
-          );
-
-          if (!studentPayment) {
-            return {
-              student_id: student.id,
-              student_payment_id: '',
-              total_amount: 0,
-              paid_amount: 0,
-              pending_amount: 0,
-              overdue_amount: 0,
-              scholarship_name: undefined,
-              scholarship_id: undefined,
-              token_fee_paid: false,
-              payment_plan: 'not_selected',
-              student: student,
-              payments: [],
-              total_installments: 0,
-              completed_installments: 0,
-              aggregate_status: 'not_setup',
-            };
+      // Prepare fee structure data for batch processing
+      const feeStructureData = feeStructure
+        ? {
+            total_program_fee: Number(feeStructure.total_program_fee),
+            admission_fee: Number(feeStructure.admission_fee),
+            number_of_semesters: (feeStructure as Record<string, unknown>)
+              .number_of_semesters as number,
+            instalments_per_semester: (feeStructure as Record<string, unknown>)
+              .instalments_per_semester as number,
+            one_shot_discount_percentage: (
+              feeStructure as Record<string, unknown>
+            ).one_shot_discount_percentage as number,
+            program_fee_includes_gst:
+              (feeStructure as Record<string, unknown>)
+                .program_fee_includes_gst ?? true,
+            equal_scholarship_distribution:
+              (feeStructure as Record<string, unknown>)
+                .equal_scholarship_distribution ?? false,
+            one_shot_dates: (feeStructure as Record<string, unknown>)
+              .one_shot_dates as Record<string, string>,
+            sem_wise_dates: (feeStructure as Record<string, unknown>)
+              .sem_wise_dates as Record<string, unknown>,
+            instalment_wise_dates: (feeStructure as Record<string, unknown>)
+              .instalment_wise_dates as Record<string, unknown>,
           }
+        : undefined;
 
-          const studentTransactions =
-            transactions?.filter(t => t.payment_id === studentPayment.id) || [];
+      // Use batch payment engine call instead of individual calls
+      const batchResult = await getBatchPaymentSummary({
+        cohortId,
+        studentIds: students.map(s => s.id),
+        feeStructureData,
+      });
 
-          const convertedPayments = studentTransactions.map(transaction => ({
-            id: transaction.id,
-            payment_id: transaction.payment_id,
-            amount: transaction.amount,
-            payment_date: transaction.payment_date,
-            status:
-              transaction.status === 'success'
-                ? 'paid'
-                : transaction.status === 'waived'
-                  ? 'waived'
-                  : 'pending',
-            receipt_url:
-              transaction.receipt_url || transaction.proof_of_payment_url,
-            notes: transaction.notes,
-            created_at: transaction.created_at,
-            updated_at: transaction.updated_at,
-          }));
+      if (!batchResult.success) {
+        throw new Error('Batch payment summary failed');
+      }
 
-          // Use payment engine to get accurate aggregate status
-          let aggregateStatus = 'pending';
-          let totalAmount = studentPayment.total_amount_payable || 0;
-          let paidAmount = 0;
-          let pendingAmount = 0;
-          let overdueAmount = 0;
-          let paymentEngineBreakdown = null;
+      console.log('✅ [PaymentQueryService] Batch processing completed:', {
+        processed: batchResult.data.length,
+        cohortId,
+      });
 
-          try {
-            if (
-              studentPayment.payment_plan &&
-              studentPayment.payment_plan !== 'not_selected'
-            ) {
-              // First, try to get the student's custom fee structure (like FinancialSummary does)
-              const customFeeStructure =
-                await FeeStructureService.getFeeStructure(cohortId, student.id);
-
-              // Use custom structure if it exists, otherwise use the cohort structure
-              const feeStructureToUse = customFeeStructure || feeStructure;
-
-              const paymentEngineResult = await getFullPaymentView({
-                studentId: student.id,
-                cohortId: cohortId,
-                paymentPlan: studentPayment.payment_plan as string,
-                scholarshipId: studentScholarship?.scholarship_id,
-                additionalDiscountPercentage:
-                  studentScholarship?.additional_discount_percentage || 0,
-                feeStructureData: {
-                  total_program_fee: Number(
-                    feeStructureToUse.total_program_fee
-                  ),
-                  admission_fee: Number(feeStructureToUse.admission_fee),
-                  number_of_semesters: (
-                    feeStructureToUse as Record<string, unknown>
-                  ).number_of_semesters as number,
-                  instalments_per_semester: (
-                    feeStructureToUse as Record<string, unknown>
-                  ).instalments_per_semester as number,
-                  one_shot_discount_percentage: (
-                    feeStructureToUse as Record<string, unknown>
-                  ).one_shot_discount_percentage as number,
-                  // FIXED: Add missing toggle fields for accurate payment engine calculations
-                  program_fee_includes_gst:
-                    (feeStructureToUse as Record<string, unknown>)
-                      .program_fee_includes_gst ?? true,
-                  equal_scholarship_distribution:
-                    (feeStructureToUse as Record<string, unknown>)
-                      .equal_scholarship_distribution ?? false,
-                  one_shot_dates: (feeStructureToUse as Record<string, unknown>)
-                    .one_shot_dates as Record<string, string>,
-                  sem_wise_dates: (feeStructureToUse as Record<string, unknown>)
-                    .sem_wise_dates as Record<string, unknown>,
-                  instalment_wise_dates: (
-                    feeStructureToUse as Record<string, unknown>
-                  ).instalment_wise_dates as Record<string, unknown>,
-                },
-              });
-
-              // Debug logging to track fee structure data being sent
-              console.log(
-                '🔍 [PaymentQueryService] Fee structure data sent to payment engine:',
-                {
-                  student_id: student.id,
-                  cohort_id: cohortId,
-                  payment_plan: studentPayment.payment_plan,
-                  scholarship_id: studentScholarship?.scholarship_id,
-                  additional_discount_percentage:
-                    studentScholarship?.additional_discount_percentage || 0,
-                  using_custom_fee_structure: !!customFeeStructure,
-                  fee_structure: {
-                    total_program_fee: Number(
-                      feeStructureToUse.total_program_fee
-                    ),
-                    admission_fee: Number(feeStructureToUse.admission_fee),
-                    number_of_semesters: (
-                      feeStructureToUse as Record<string, unknown>
-                    ).number_of_semesters as number,
-                    instalments_per_semester: (
-                      feeStructureToUse as Record<string, unknown>
-                    ).instalments_per_semester as number,
-                    one_shot_discount_percentage: (
-                      feeStructureToUse as Record<string, unknown>
-                    ).one_shot_discount_percentage as number,
-                    // FIXED: Include toggle fields in debug logging
-                    program_fee_includes_gst:
-                      (feeStructureToUse as Record<string, unknown>)
-                        .program_fee_includes_gst ?? true,
-                    equal_scholarship_distribution:
-                      (feeStructureToUse as Record<string, unknown>)
-                        .equal_scholarship_distribution ?? false,
-                  },
-                }
-              );
-
-              if (paymentEngineResult.aggregate) {
-                aggregateStatus = paymentEngineResult.aggregate.paymentStatus;
-                totalAmount = paymentEngineResult.aggregate.totalPayable;
-                paidAmount = paymentEngineResult.aggregate.totalPaid;
-                pendingAmount = paymentEngineResult.aggregate.totalPending;
-                paymentEngineBreakdown = paymentEngineResult.breakdown;
-
-                // Include admission fee in paid amount since students have registered
-                // This makes the calculation consistent with FinancialSummary modal
-                const admissionFee =
-                  paymentEngineResult.breakdown?.admissionFee?.totalPayable ||
-                  0;
-                paidAmount += admissionFee;
-                pendingAmount = Math.max(0, totalAmount - paidAmount);
-
-                // Calculate overdue amount based on aggregate status
-                if (
-                  aggregateStatus === 'overdue' ||
-                  aggregateStatus === 'partially_paid_overdue'
-                ) {
-                  overdueAmount = pendingAmount;
-                }
-
-                // Debug logging to track payment engine values
-                console.log(
-                  '🔍 [PaymentQueryService] Payment engine values for student:',
-                  student.id,
-                  {
-                    original_total: paymentEngineResult.aggregate.totalPayable,
-                    original_paid: paymentEngineResult.aggregate.totalPaid,
-                    admission_fee: admissionFee,
-                    final_total: totalAmount,
-                    final_paid: paidAmount,
-                    final_pending: pendingAmount,
-                    aggregate_status: aggregateStatus,
-                    has_breakdown: !!paymentEngineBreakdown,
-                  }
-                );
-              }
-            }
-          } catch (error) {
-            Logger.getInstance().error(
-              'PaymentQueryService: Error calling payment engine for student',
-              { error, studentId: student.id, cohortId }
-            );
-            // Fallback to database values if payment engine fails
-            totalAmount = studentPayment.total_amount_payable || 0;
-            paidAmount = Math.max(
-              studentTransactions
-                .filter(t => t.verification_status === 'approved')
-                .reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0),
-              studentPayment.total_amount_paid || 0
-            );
-            pendingAmount = Math.max(0, totalAmount - paidAmount);
-          }
-
+      // Map batch results to the expected format and include student data
+      const summary: StudentPaymentSummary[] = batchResult.data.map(
+        (batchItem, index) => {
+          const student = students[index];
           return {
-            student_id: student.id,
-            // expose underlying record id so UI can fetch transactions reliably
-            student_payment_id: studentPayment.id,
-            total_amount: totalAmount,
-            paid_amount: paidAmount,
-            pending_amount: pendingAmount,
-            overdue_amount: overdueAmount,
-            scholarship_name: studentScholarship?.scholarship?.name,
-            scholarship_id: studentPayment.scholarship_id || undefined,
-            token_fee_paid: false, // TODO: Check if admission fee is paid
-            payment_plan: studentPayment.payment_plan || 'not_selected',
+            ...batchItem,
             student: student,
-            payments: convertedPayments,
-            // Calculate installment counts including ₹0 scholarship installments
-            total_installments: (() => {
-              if (studentPayment.payment_plan === 'one_shot') {
-                return 1;
-              } else if (studentPayment.payment_plan === 'sem_wise') {
-                return 4; // Default: 4 semesters
-              } else if (studentPayment.payment_plan === 'instalment_wise') {
-                return 12; // Default: 4 semesters × 3 installments
-              }
-              return 1;
-            })(),
-            completed_installments: (() => {
-              // Count approved transactions
-              const paidTransactionCount = studentTransactions.filter(
-                t => t.verification_status === 'approved'
-              ).length;
-
-              // TODO: Use InstallmentCalculationService for accurate scholarship counting
-              // For performance reasons, this is currently just transaction count
-              // To get accurate scholarship installment counting, use:
-              // InstallmentCalculationService.calculateInstallmentCounts()
-
-              return paidTransactionCount;
-            })(),
-            // Add aggregate status from payment engine
-            aggregate_status: aggregateStatus,
-            // Add payment engine breakdown for accurate next due calculation
-            payment_engine_breakdown: paymentEngineBreakdown,
+            token_fee_paid: false, // TODO: Check if admission fee is paid
           };
-        })
+        }
       );
 
       return {
         data: summary,
         error: null,
         success: true,
+        statistics: batchResult.statistics, // Include server-calculated statistics
       };
     } catch (error) {
       Logger.getInstance().error(
