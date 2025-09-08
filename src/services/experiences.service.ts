@@ -144,12 +144,7 @@ export class ExperiencesService {
           // challenge, deliverables, grading_rubric, pass_conditions, distinction_conditions, sample_judge_profiles
           // Masterclass fields
           expert_profile: experience.expert_profile,
-          // Workshop fields
-          activity_description: experience.activity_description,
-          materials_required: experience.materials_required,
-          sop_steps: experience.sop_steps,
-          loom_video_url: experience.loom_video_url,
-          // GAP fields (same as Workshop)
+          // Workshop fields (also used for GAP)
           activity_description: experience.activity_description,
           materials_required: experience.materials_required,
           sop_steps: experience.sop_steps,
@@ -187,12 +182,7 @@ export class ExperiencesService {
           // challenge, deliverables, grading_rubric, pass_conditions, distinction_conditions, sample_judge_profiles
           // Masterclass fields
           expert_profile: experience.expert_profile,
-          // Workshop fields
-          activity_description: experience.activity_description,
-          materials_required: experience.materials_required,
-          sop_steps: experience.sop_steps,
-          loom_video_url: experience.loom_video_url,
-          // GAP fields (same as Workshop)
+          // Workshop fields (also used for GAP)
           activity_description: experience.activity_description,
           materials_required: experience.materials_required,
           sop_steps: experience.sop_steps,
