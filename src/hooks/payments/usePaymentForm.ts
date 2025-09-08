@@ -499,17 +499,43 @@ export const usePaymentForm = ({
 
     // Validate payment mode specific fields
     if (selectedPaymentMode && selectedPaymentMode !== 'razorpay') {
-      const requiredFields = getRequiredFieldsForMode(selectedPaymentMode);
-      for (const field of requiredFields) {
-        if (!paymentDetails[field]) {
-          newErrors[field] =
-            `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
+      // For admin mode, only validate amount and payment method - all other fields are optional
+      if (isAdminMode) {
+        // Admin mode validation - only require amount and payment method
+        // All other fields are optional
+      } else {
+        // Student mode validation - require all fields as before
+        const requiredFields = getRequiredFieldsForMode(selectedPaymentMode);
+        for (const field of requiredFields) {
+          if (!paymentDetails[field]) {
+            newErrors[field] =
+              `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
+          }
         }
       }
     }
 
-    // Validate file uploads (skip for admin mode with razorpay)
-    if (!(isAdminMode && selectedPaymentMode === 'razorpay')) {
+    // Validate file uploads
+    if (isAdminMode) {
+      // Admin mode: Only require proof of payment file, make others optional
+      const proofOfPaymentFields = [
+        'bankTransferScreenshot',
+        'proofOfPayment',
+        'transactionScreenshot',
+        'ddReceipt',
+      ];
+      const hasAnyProofOfPayment = proofOfPaymentFields.some(
+        field => uploadedFiles[field]
+      );
+
+      if (!hasAnyProofOfPayment) {
+        newErrors.proofOfPayment = 'Please upload proof of payment';
+        console.log(
+          '❌ [usePaymentForm] Admin mode: No proof of payment uploaded'
+        );
+      }
+    } else {
+      // Student mode: Require all files as before
       const requiredFiles = getRequiredFilesForMode(selectedPaymentMode);
       console.log(
         '🔍 [usePaymentForm] Required files for mode:',

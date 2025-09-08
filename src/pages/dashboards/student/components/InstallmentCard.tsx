@@ -552,7 +552,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
                         )}
                         {tx.utr_number && (
                           <div className='text-xs text-yellow-700 dark:text-yellow-300 mt-1'>
-                            UTR: {tx.utr_number}
+                            UTR/Transaction ID: {tx.utr_number}
                           </div>
                         )}
                         {tx.bank_name && (

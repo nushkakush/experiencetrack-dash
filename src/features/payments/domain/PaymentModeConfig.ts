@@ -97,13 +97,13 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
       },
       {
         name: 'transactionId',
-        label: 'UTR Number',
+        label: 'UTR/Transaction ID',
         type: 'text',
-        placeholder: 'Enter UTR number',
+        placeholder: 'Enter UTR/Transaction ID',
         required: true,
         validation: {
           minLength: 3,
-          message: 'UTR number is required',
+          message: 'UTR/Transaction ID is required',
         },
       },
     ],

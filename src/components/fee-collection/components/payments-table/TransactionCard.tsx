@@ -170,11 +170,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           </div>
         )}
 
-        {/* UTR Number */}
+        {/* UTR/Transaction ID */}
         {transaction.utr_number && (
           <div className='space-y-1'>
             <p className='text-xs text-muted-foreground font-medium'>
-              UTR Number
+              UTR/Transaction ID
             </p>
             <p className='text-sm font-mono text-foreground'>
               {transaction.utr_number}

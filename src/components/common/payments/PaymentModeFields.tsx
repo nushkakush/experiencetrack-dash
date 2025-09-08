@@ -165,10 +165,10 @@ export const PaymentModeFields: React.FC<PaymentModeFieldsProps> = ({
             />
           </div>
           <div>
-            <Label htmlFor='transactionId'>UTR Number *</Label>
+            <Label htmlFor='transactionId'>UTR/Transaction ID *</Label>
             <Input
               id='transactionId'
-              placeholder='Enter UTR number'
+              placeholder='Enter UTR/Transaction ID'
               value={String(paymentDetails.transactionId ?? '')}
               onChange={e => handleFieldChange('transactionId', e.target.value)}
             />

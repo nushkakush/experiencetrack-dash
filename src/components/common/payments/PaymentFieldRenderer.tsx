@@ -21,6 +21,7 @@ interface PaymentFieldRendererProps {
   errors: FormErrors;
   onFieldChange: (fieldName: string, value: string | number | boolean) => void;
   onFileUpload: (fieldName: string, file: File | null) => void;
+  isAdminMode?: boolean;
 }
 
 export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(
@@ -31,6 +32,7 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(
     errors,
     onFieldChange,
     onFileUpload,
+    isAdminMode = false,
   }) => {
     // Debug logging
     console.log('🔍 [PaymentFieldRenderer] Rendering with:', {
@@ -193,9 +195,11 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(
                     key={field.name}
                     value={paymentDetails[field.name] || ''}
                     onValueChange={value => onFieldChange(field.name, value)}
-                    label={field.label}
+                    label={
+                      isAdminMode ? `${field.label} (Optional)` : field.label
+                    }
                     placeholder={field.placeholder}
-                    required={field.required}
+                    required={field.required && !isAdminMode}
                     error={errors[field.name]}
                   />
                 );
@@ -205,8 +209,13 @@ export const PaymentFieldRenderer = React.memo<PaymentFieldRendererProps>(
                 <div key={field.name}>
                   <Label htmlFor={field.name} className='text-sm font-medium'>
                     {field.label}
-                    {field.required && (
+                    {field.required && !isAdminMode && (
                       <span className='text-red-500 ml-1'>*</span>
+                    )}
+                    {isAdminMode && (
+                      <span className='text-muted-foreground ml-1'>
+                        (Optional)
+                      </span>
                     )}
                   </Label>
                   <Input

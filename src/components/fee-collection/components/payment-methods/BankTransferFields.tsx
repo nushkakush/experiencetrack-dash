@@ -145,13 +145,13 @@ export const BankTransferFields: React.FC<BankTransferFieldsProps> = ({
 
         <div className='space-y-2'>
           <Label htmlFor='utr-number' className='text-left block'>
-            UTR Number *
+            UTR/Transaction ID *
           </Label>
           <Input
             id='utr-number'
             value={transactionId}
             onChange={e => onTransactionIdChange(e.target.value)}
-            placeholder='Enter UTR number'
+            placeholder='Enter UTR/Transaction ID'
           />
         </div>
 

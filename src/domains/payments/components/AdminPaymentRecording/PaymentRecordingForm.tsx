@@ -104,10 +104,13 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
           newErrors.paymentMethod = 'Payment method is required';
         }
 
-        // Payment date validation
-        if (!formData.paymentDate) {
-          newErrors.paymentDate = 'Payment date is required';
-        } else {
+        // Payment proof validation - only required field for admin
+        if (!receipt) {
+          newErrors.receipt = 'Payment proof is required';
+        }
+
+        // Optional validations - only validate if fields are provided
+        if (formData.paymentDate) {
           const paymentDate = new Date(formData.paymentDate);
           const today = new Date();
           today.setHours(23, 59, 59, 999); // End of today
@@ -117,38 +120,9 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
           }
         }
 
-        // Payment time validation
-        if (!formData.paymentTime) {
-          newErrors.paymentTime = 'Payment time is required';
-        }
-
-        // Transaction ID validation for certain payment methods
-        if (
-          ['bank_transfer', 'upi', 'card', 'razorpay'].includes(
-            formData.paymentMethod
-          ) &&
-          !formData.transactionId
-        ) {
-          newErrors.transactionId =
-            'Transaction ID is required for this payment method';
-        }
-
-        // DD-specific validation
-        if (formData.paymentMethod === 'dd') {
-          if (!formData.ddNumber) {
-            newErrors.ddNumber = 'DD Number is required';
-          }
-          if (!formData.ddBankName) {
-            newErrors.ddBankName = 'Issuing Bank is required';
-          }
-          if (!formData.ddBranch) {
-            newErrors.ddBranch = 'Issuing Branch is required';
-          }
-        }
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-      }, [formData, outstandingAmount]);
+      }, [formData, outstandingAmount, receipt]);
 
       const handleSubmit = useCallback(
         async (e: React.FormEvent) => {
@@ -190,8 +164,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
         Object.keys(errors).length === 0 &&
         formData.amount > 0 &&
         formData.paymentMethod &&
-        formData.paymentDate &&
-        formData.paymentTime;
+        receipt;
 
       return (
         <form onSubmit={handleSubmit} className='space-y-6'>
@@ -283,9 +256,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
               {/* Payment Date and Time */}
               <div className='grid grid-cols-2 gap-4'>
                 <div className='space-y-2'>
-                  <Label htmlFor='paymentDate'>
-                    Payment Date <span className='text-red-500'>*</span>
-                  </Label>
+                  <Label htmlFor='paymentDate'>Payment Date (Optional)</Label>
                   <Input
                     id='paymentDate'
                     type='date'
@@ -305,9 +276,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
                   )}
                 </div>
                 <div className='space-y-2'>
-                  <Label htmlFor='paymentTime'>
-                    Payment Time <span className='text-red-500'>*</span>
-                  </Label>
+                  <Label htmlFor='paymentTime'>Payment Time (Optional)</Label>
                   <Input
                     id='paymentTime'
                     type='time'
@@ -333,12 +302,12 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
               ) && (
                 <div className='space-y-2'>
                   <Label htmlFor='transactionId'>
-                    Transaction ID <span className='text-red-500'>*</span>
+                    UTR/Transaction ID (Optional)
                   </Label>
                   <Input
                     id='transactionId'
                     type='text'
-                    placeholder='Enter transaction ID'
+                    placeholder='Enter UTR/Transaction ID'
                     value={formData.transactionId || ''}
                     onChange={e =>
                       updateFormData({ transactionId: e.target.value })
@@ -359,9 +328,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
               {formData.paymentMethod === 'dd' && (
                 <div className='space-y-4'>
                   <div className='space-y-2'>
-                    <Label htmlFor='ddNumber'>
-                      DD Number <span className='text-red-500'>*</span>
-                    </Label>
+                    <Label htmlFor='ddNumber'>DD Number (Optional)</Label>
                     <Input
                       id='ddNumber'
                       type='text'
@@ -387,17 +354,15 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
                       onValueChange={value =>
                         updateFormData({ ddBankName: value })
                       }
-                      label='Issuing Bank'
+                      label='Issuing Bank (Optional)'
                       placeholder='Select issuing bank'
-                      required={true}
+                      required={false}
                       error={errors.ddBankName}
                     />
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='ddBranch'>
-                      Issuing Branch <span className='text-red-500'>*</span>
-                    </Label>
+                    <Label htmlFor='ddBranch'>Issuing Branch (Optional)</Label>
                     <Input
                       id='ddBranch'
                       type='text'
@@ -439,19 +404,25 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
             <CardHeader className='pb-3'>
               <CardTitle className='text-base flex items-center gap-2'>
                 <FileText className='h-4 w-4' />
-                Payment Receipt (Optional)
+                Payment Proof <span className='text-red-500'>*</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <FileUploadField
                 fieldName='receipt'
-                label='Payment Receipt'
+                label='Payment Proof'
                 description='Upload payment receipt or proof of payment'
                 acceptedTypes='image/*,.pdf'
-                required={false}
+                required={true}
                 value={receipt}
                 onChange={(fieldName, file) => handleReceiptUpload(file)}
               />
+              {errors.receipt && (
+                <div className='text-sm text-red-600 flex items-center gap-1 mt-2'>
+                  <AlertTriangle className='h-3 w-3' />
+                  {errors.receipt}
+                </div>
+              )}
               {receipt && (
                 <div className='mt-2 flex items-center gap-2 text-sm'>
                   <FileText className='h-4 w-4' />

@@ -125,6 +125,7 @@ export const PaymentForm = React.memo<PaymentFormProps>(
                   errors={errors}
                   onFieldChange={handleFieldChange}
                   onFileUpload={handleFileUpload}
+                  isAdminMode={isAdminMode}
                 />
               </div>
             )}

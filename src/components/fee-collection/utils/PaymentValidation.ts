@@ -56,7 +56,7 @@ export const validatePaymentForm = (
         errors.push('Please enter bank branch');
       }
       if (!transactionId) {
-        errors.push('Please enter UTR number');
+        errors.push('Please enter UTR/Transaction ID');
       }
       if (!proofOfPaymentFile) {
         errors.push('Please upload proof of payment document');
@@ -76,7 +76,7 @@ export const validatePaymentForm = (
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
