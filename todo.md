@@ -17,7 +17,7 @@ DATA UPLOAD ISSUES
 11. Download fee structure PDF
 12. Late Fee needed
 13. deleting equipment is still throwing bugs
-14. Slack Integration
+14. Slack Integration - ?
 
 BACKLOG
 
