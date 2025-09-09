@@ -74,6 +74,11 @@ export interface PublicLeaderboardParams {
   includePrivate?: boolean;
 }
 
+export interface DropOutRadarParams {
+  cohortId: string;
+  epicId: string;
+}
+
 // Data Types
 export interface SessionStats {
   sessionNumber: number;
@@ -227,6 +232,30 @@ export interface Holiday {
   date: string;
   type: 'global' | 'cohort_specific';
   description?: string;
+}
+
+export interface DropOutCandidate {
+  student: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+  };
+  consecutiveUninformedAbsences: number;
+  lastAttendanceDate: string | null;
+  totalAbsences: number;
+  totalSessions: number;
+}
+
+export interface DropOutRadarData {
+  candidates: DropOutCandidate[];
+  totalCandidates: number;
+  epicInfo: {
+    id: string;
+    name: string;
+  };
+  calculatedAt: string;
 }
 
 // Database Types (matching your existing schema)

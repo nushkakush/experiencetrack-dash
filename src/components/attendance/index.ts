@@ -8,3 +8,4 @@ export { SessionStatistics } from './SessionStatistics';
 export { AttendanceLeaderboard } from './AttendanceLeaderboard';
 export { CopyLeaderboardButton } from './CopyLeaderboardButton';
 export { CombinedLeaderboard } from './CombinedLeaderboard';
+export { DropOutRadarDialog } from './DropOutRadarDialog';

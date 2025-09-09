@@ -92,6 +92,10 @@ serve(async req => {
         result = await calculator.getPublicLeaderboard(params);
         break;
 
+      case 'getDropOutRadar':
+        result = await calculator.getDropOutRadar(params);
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }

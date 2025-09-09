@@ -226,6 +226,25 @@ export class AttendanceCalculationsService {
     return response.data;
   }
 
+  /**
+   * Get drop out radar data - students with 3+ consecutive uninformed absences
+   */
+  static async getDropOutRadar(params: {
+    cohortId: string;
+    epicId: string;
+  }): Promise<any> {
+    const response = await this.callEdgeFunction<any>(
+      'getDropOutRadar',
+      params
+    );
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get drop out radar data');
+    }
+
+    return response.data;
+  }
+
   // ==================== UTILITY METHODS ====================
 
   /**
@@ -333,6 +352,11 @@ export const attendanceCalculations = {
 
   // Public methods
   getPublicLeaderboard: AttendanceCalculationsService.getPublicLeaderboard.bind(
+    AttendanceCalculationsService
+  ),
+
+  // Drop out radar
+  getDropOutRadar: AttendanceCalculationsService.getDropOutRadar.bind(
     AttendanceCalculationsService
   ),
 

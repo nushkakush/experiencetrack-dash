@@ -72,15 +72,7 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
 
   if (loading) {
     return (
-      <StatisticsGrid>
-        {/* Epic Attendance Skeleton */}
-        <StatisticItem
-          title='Epic Attendance'
-          value='--'
-          subtitle='overall attendance'
-          icon={<Users className='h-4 w-4' />}
-        />
-
+      <StatisticsGrid columns={4}>
         {/* Overall Average Skeleton */}
         <StatisticItem
           title='Overall Average'
@@ -184,31 +176,7 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
           </div>
         )}
 
-        <StatisticsGrid columns={5}>
-          <StatisticItem
-            icon={<Users className='h-5 w-5' />}
-            title={
-              <div className='flex items-center gap-2'>
-                {mode === 'epic' ? 'Epic Attendance' : 'Session Attendance'}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className='h-4 w-4 text-muted-foreground cursor-help' />
-                  </TooltipTrigger>
-                  <TooltipContent className='max-w-xs'>
-                    <p>
-                      {mode === 'epic'
-                        ? `Shows total attended sessions (present + late + exempted) out of all sessions in this epic. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${totalSessions} = ${attendanceBreakdown.attended}/${totalSessions}`
-                        : `Shows attended students (present + late + exempted) out of total students for this session. Calculated as: (${attendanceBreakdown.present} + ${attendanceBreakdown.late} + ${attendanceBreakdown.exempted}) / ${totalStudents} = ${attendanceBreakdown.attended}/${totalStudents}`}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            }
-            value={`${attendanceBreakdown.attended}/${mode === 'epic' ? totalSessions : totalStudents}`}
-            subtitle={getAttendanceSubtitle()}
-            variant='default'
-          />
-
+        <StatisticsGrid columns={4}>
           <StatisticItem
             icon={<TrendingUp className='h-5 w-5' />}
             title={
@@ -221,7 +189,7 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
                   <TooltipContent className='max-w-xs'>
                     <p>
                       {mode === 'epic'
-                        ? `Epic attendance rate calculated as: (attended sessions / total sessions) × 100 = (${attendanceBreakdown.attended} / ${totalSessions}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`
+                        ? `Epic attendance rate shows the average session attendance across all sessions in this epic. Each session's attendance percentage is calculated as (attended students / total students) × 100, then averaged across all ${totalSessions} sessions to get ${attendanceBreakdown.attendancePercentage.toFixed(1)}%.`
                         : `Session attendance rate calculated as: (attended students / total students) × 100 = (${attendanceBreakdown.attended} / ${totalStudents}) × 100 = ${attendanceBreakdown.attendancePercentage.toFixed(1)}%`}
                     </p>
                   </TooltipContent>

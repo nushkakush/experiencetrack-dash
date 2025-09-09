@@ -23,7 +23,7 @@ export class AttendanceCalculator {
     private userToken?: string | null
   ) {}
 
-  // Core calculation method - single source of truth
+  // Core calculation method for individual student attendance
   private calculateAttendanceBreakdown(records: AttendanceRecord[]) {
     const present = records.filter(r => r.status === 'present').length;
     const late = records.filter(r => r.status === 'late').length;
@@ -35,18 +35,102 @@ export class AttendanceCalculator {
     ).length;
 
     const attended = present + late + exempted;
+    // For individual student calculations, use records.length (total sessions for that student)
     const total = records.length;
     const percentage = total > 0 ? (attended / total) * 100 : 0;
 
     return {
       present,
       late,
-      absent: regularAbsent, // Add missing absent property
+      absent: regularAbsent,
       exempted,
       regularAbsent,
       attended,
       total,
       percentage: Math.round(percentage * 100) / 100,
+    };
+  }
+
+  // Cohort-level calculation method for overall statistics
+  private calculateCohortAttendanceBreakdown(
+    records: AttendanceRecord[],
+    totalStudents: number
+  ) {
+    const present = records.filter(r => r.status === 'present').length;
+    const late = records.filter(r => r.status === 'late').length;
+    const exempted = records.filter(
+      r => r.status === 'absent' && r.absence_type === 'exempted'
+    ).length;
+    const regularAbsent = records.filter(
+      r => r.status === 'absent' && r.absence_type !== 'exempted'
+    ).length;
+
+    const attended = present + late + exempted;
+
+    // Calculate average session attendance percentage
+    const uniqueSessions = new Set(
+      records.map(r => `${r.session_date}-${r.session_number}`)
+    );
+
+    if (uniqueSessions.size === 0) {
+      return {
+        present,
+        late,
+        absent: regularAbsent,
+        exempted,
+        regularAbsent,
+        attended,
+        total: 0,
+        percentage: 0,
+      };
+    }
+
+    // Group records by session and calculate attendance for each session
+    const sessionGroups = new Map<string, AttendanceRecord[]>();
+    records.forEach(record => {
+      const sessionKey = `${record.session_date}-${record.session_number}`;
+      if (!sessionGroups.has(sessionKey)) {
+        sessionGroups.set(sessionKey, []);
+      }
+      sessionGroups.get(sessionKey)!.push(record);
+    });
+
+    // Calculate average session attendance percentage
+    let totalSessionAttendance = 0;
+    let sessionCount = 0;
+
+    sessionGroups.forEach(sessionRecords => {
+      const sessionPresent = sessionRecords.filter(
+        r => r.status === 'present'
+      ).length;
+      const sessionLate = sessionRecords.filter(
+        r => r.status === 'late'
+      ).length;
+      const sessionExempted = sessionRecords.filter(
+        r => r.status === 'absent' && r.absence_type === 'exempted'
+      ).length;
+      const sessionAttended = sessionPresent + sessionLate + sessionExempted;
+      const sessionTotal = sessionRecords.length;
+
+      if (sessionTotal > 0) {
+        const sessionPercentage = (sessionAttended / sessionTotal) * 100;
+        totalSessionAttendance += sessionPercentage;
+        sessionCount++;
+      }
+    });
+
+    const averagePercentage =
+      sessionCount > 0 ? totalSessionAttendance / sessionCount : 0;
+
+    return {
+      present,
+      late,
+      absent: regularAbsent,
+      exempted,
+      regularAbsent,
+      attended,
+      total: records.length, // Total attendance records
+      percentage: Math.round(averagePercentage * 100) / 100,
     };
   }
 
@@ -112,7 +196,10 @@ export class AttendanceCalculator {
     if (studentsError) throw studentsError;
 
     const totalStudents = students.length;
-    const breakdown = this.calculateAttendanceBreakdown(records || []);
+    const breakdown = this.calculateCohortAttendanceBreakdown(
+      records || [],
+      totalStudents
+    );
     const absenceBreakdown = this.calculateAbsenceBreakdown(records || []);
 
     // Check if session is cancelled (no records but students exist)
@@ -165,7 +252,10 @@ export class AttendanceCalculator {
     if (studentsError) throw studentsError;
 
     const totalStudents = students.length;
-    const breakdown = this.calculateAttendanceBreakdown(records || []);
+    const breakdown = this.calculateCohortAttendanceBreakdown(
+      records || [],
+      totalStudents
+    );
 
     // Calculate unique sessions
     const uniqueSessions = new Set(
@@ -302,24 +392,71 @@ export class AttendanceCalculator {
       queryString: query.toString(),
     });
 
-    // Use raw SQL directly to bypass any RLS issues
-    console.log('🔍 Using raw SQL query to ensure we get all records...');
-    // Use optimized aggregated query - returns ~35 rows instead of 1500+
-    console.log('🚀 Using optimized aggregated query for calendar data...');
-    const { data: sessionSummaries, error } = await this.supabase.rpc(
-      'get_attendance_summary_by_month',
-      {
-        p_cohort_id: cohortId,
-        p_epic_id: epicId,
-        p_start_date: startDate,
-        p_end_date: endDate,
-      }
+    // Get total students count for accurate percentage calculation
+    const { data: students, error: calendarStudentsError } = await this.supabase
+      .from('cohort_students')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('dropped_out_status', 'active');
+
+    if (calendarStudentsError) {
+      console.error('❌ Error fetching students:', calendarStudentsError);
+      throw calendarStudentsError;
+    }
+
+    const calendarTotalStudents = students.length;
+    console.log('🔍 Total students in cohort:', calendarTotalStudents);
+
+    // Get all attendance records for the month
+    const { data: attendanceRecords, error: recordsError } = await this.supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('epic_id', epicId)
+      .gte('session_date', startDate)
+      .lte('session_date', endDate)
+      .order('session_date', { ascending: true });
+
+    if (recordsError) {
+      console.error('❌ Error fetching attendance records:', recordsError);
+      throw recordsError;
+    }
+
+    console.log(
+      '🔍 Attendance records fetched:',
+      attendanceRecords?.length || 0
     );
 
-    if (error) {
-      console.error('❌ Error fetching attendance summary:', error);
-      throw error;
-    }
+    // Group records by session date and session number
+    const sessionGroups = new Map<string, any[]>();
+    (attendanceRecords || []).forEach(record => {
+      const key = `${record.session_date}_${record.session_number}`;
+      if (!sessionGroups.has(key)) {
+        sessionGroups.set(key, []);
+      }
+      sessionGroups.get(key)!.push(record);
+    });
+
+    // Calculate session summaries
+    const sessionSummaries = Array.from(sessionGroups.entries()).map(
+      ([key, records]) => {
+        const [sessionDate, sessionNumber] = key.split('_');
+        const breakdown = this.calculateCohortAttendanceBreakdown(
+          records,
+          calendarTotalStudents
+        );
+
+        return {
+          session_date: sessionDate,
+          session_number: parseInt(sessionNumber),
+          total_students: calendarTotalStudents,
+          present_count: breakdown.present,
+          late_count: breakdown.late,
+          absent_count: breakdown.regularAbsent,
+          attendance_percentage: breakdown.percentage,
+        };
+      }
+    );
 
     console.log('🔍 Optimized query results:', {
       totalSessions: sessionSummaries?.length || 0,
@@ -427,7 +564,7 @@ export class AttendanceCalculator {
         absentCount: sessionSummary.absent_count,
         exemptedCount: 0, // Not tracked in current aggregation
         attendedCount: sessionSummary.present_count + sessionSummary.late_count,
-        attendancePercentage: parseFloat(sessionSummary.attendance_percentage),
+        attendancePercentage: sessionSummary.attendance_percentage,
         isCancelled: false,
         breakdown: {
           present: sessionSummary.present_count,
@@ -437,7 +574,7 @@ export class AttendanceCalculator {
           regularAbsent: sessionSummary.absent_count,
           attended: sessionSummary.present_count + sessionSummary.late_count,
           total: sessionSummary.total_students,
-          percentage: parseFloat(sessionSummary.attendance_percentage),
+          percentage: sessionSummary.attendance_percentage,
         },
         absenceBreakdown: {
           uninformed: 0, // Would need additional query for detailed breakdown
@@ -688,6 +825,16 @@ export class AttendanceCalculator {
     const { data: records, error } = await query;
     if (error) throw error;
 
+    // Get total students for accurate percentage calculation
+    const { data: allStudents, error: studentsError } = await this.supabase
+      .from('cohort_students')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('dropped_out_status', 'active');
+
+    if (studentsError) throw studentsError;
+    const totalStudents = allStudents.length;
+
     // Calculate stats
     const breakdown = this.calculateAttendanceBreakdown(records || []);
     const currentStreak = this.calculateCurrentStreak(records || []);
@@ -856,6 +1003,7 @@ export class AttendanceCalculator {
     );
 
     // Calculate stats for each student
+    const totalStudents = students.length;
     const studentStats = students.map(student => {
       const studentRecords = (records || []).filter(
         r => r.student_id === student.id
@@ -1085,5 +1233,114 @@ export class AttendanceCalculator {
       return { text: 'Fair', variant: 'warning' as const };
     }
     return { text: 'Needs Attention', variant: 'error' as const };
+  }
+
+  // Get drop out radar data - students with 3+ consecutive uninformed absences
+  async getDropOutRadar(params: {
+    cohortId: string;
+    epicId: string;
+  }): Promise<any> {
+    const { cohortId, epicId } = params;
+
+    // Get all students
+    const { data: students, error: studentsError } = await this.supabase
+      .from('cohort_students')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('dropped_out_status', 'active');
+
+    if (studentsError) throw studentsError;
+
+    const dropOutCandidates: any[] = [];
+
+    for (const student of students) {
+      // Get student's attendance records for this epic, ordered by date descending
+      const { data: records, error } = await this.supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .eq('epic_id', epicId)
+        .eq('student_id', student.id)
+        .order('session_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Calculate consecutive uninformed absences from the most recent records
+      const consecutiveUninformedAbsences =
+        this.calculateConsecutiveUninformedAbsences(records || []);
+
+      if (consecutiveUninformedAbsences >= 3) {
+        dropOutCandidates.push({
+          student: {
+            id: student.id,
+            first_name: student.first_name,
+            last_name: student.last_name,
+            email: student.email,
+            phone: student.phone,
+          },
+          consecutiveUninformedAbsences,
+          lastAttendanceDate: this.getLastAttendanceDate(records || []),
+          totalAbsences: (records || []).filter(r => r.status === 'absent')
+            .length,
+          totalSessions: (records || []).length,
+        });
+      }
+    }
+
+    // Sort by consecutive uninformed absences (descending)
+    dropOutCandidates.sort(
+      (a, b) =>
+        b.consecutiveUninformedAbsences - a.consecutiveUninformedAbsences
+    );
+
+    return {
+      candidates: dropOutCandidates,
+      totalCandidates: dropOutCandidates.length,
+      epicInfo: {
+        id: epicId,
+        name: 'Epic Name', // Would need to fetch epic name
+      },
+      calculatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Helper method to calculate consecutive uninformed absences from the most recent records
+  private calculateConsecutiveUninformedAbsences(
+    records: AttendanceRecord[]
+  ): number {
+    if (records.length === 0) return 0;
+
+    // Records are already ordered by date descending (most recent first)
+    let consecutiveCount = 0;
+
+    for (const record of records) {
+      // Check if this is an uninformed absence
+      if (
+        record.status === 'absent' &&
+        (!record.absence_type || record.absence_type === 'uninformed')
+      ) {
+        consecutiveCount++;
+      } else {
+        // If we hit a non-uninformed absence or a present/late record, break the streak
+        break;
+      }
+    }
+
+    return consecutiveCount;
+  }
+
+  // Helper method to get the last attendance date
+  private getLastAttendanceDate(records: AttendanceRecord[]): string | null {
+    if (records.length === 0) return null;
+
+    // Find the most recent record where student was present or late
+    const attendedRecord = records.find(
+      r =>
+        r.status === 'present' ||
+        r.status === 'late' ||
+        (r.status === 'absent' && r.absence_type === 'exempted')
+    );
+
+    return attendedRecord ? attendedRecord.session_date : null;
   }
 }

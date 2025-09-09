@@ -9,6 +9,7 @@ import {
   FileText,
   Clock,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ import { LeaveApprovalQueue } from './LeaveApprovalQueue';
 import { LeaveApplicationHistory } from './LeaveApplicationHistory';
 import { LeaveApprovalQueueSkeleton } from './LeaveApprovalQueueSkeleton';
 import { LeaveApplicationHistorySkeleton } from './LeaveApplicationHistorySkeleton';
+import { DropOutRadarDialog } from './DropOutRadarDialog';
 import { useLeaveApplications } from '@/hooks/useLeaveApplications';
 import { UpdateLeaveApplicationRequest } from '@/types/attendance';
 
@@ -64,6 +66,7 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
   const navigate = useNavigate();
   const [settingActiveEpic, setSettingActiveEpic] = useState(false);
   const [leaveManagementOpen, setLeaveManagementOpen] = useState(false);
+  const [dropOutRadarOpen, setDropOutRadarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
   const [modalLoading, setModalLoading] = useState(false);
   const [hasLeaveActions, setHasLeaveActions] = useState(false);
@@ -187,6 +190,16 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
       <div className='flex items-center justify-between'>
         <h1 className='text-3xl font-bold'>{cohort?.name} Attendance</h1>
         <div className='flex items-center gap-3'>
+          <Button
+            variant='outline'
+            onClick={() => setDropOutRadarOpen(true)}
+            className='flex items-center gap-2'
+            disabled={!cohort || !selectedEpic}
+          >
+            <AlertTriangle className='h-4 w-4' />
+            Drop Out Radar
+          </Button>
+
           <Button
             variant='outline'
             onClick={onMarkHolidays}
@@ -358,6 +371,18 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Drop Out Radar Dialog */}
+      {cohort && selectedEpic && (
+        <DropOutRadarDialog
+          open={dropOutRadarOpen}
+          onOpenChange={setDropOutRadarOpen}
+          cohortId={cohort.id}
+          epicId={selectedEpic}
+          cohortName={cohort.name}
+          epicName={epics.find(epic => epic.id === selectedEpic)?.name}
+        />
+      )}
     </>
   );
 };
