@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle,
-  DollarSign,
+  IndianRupee,
   Building2,
   FileText,
   CreditCard,
@@ -231,7 +231,7 @@ const PaymentPlanSelection: React.FC<PaymentPlanSelectionProps> = ({
   const getPlanIcon = (plan: PaymentPlan) => {
     switch (plan) {
       case 'one_shot':
-        return <DollarSign className='h-8 w-8 text-green-600' />;
+        return <IndianRupee className='h-8 w-8 text-green-600' />;
       case 'sem_wise':
         return <Building2 className='h-8 w-8 text-blue-600' />;
       case 'instalment_wise':

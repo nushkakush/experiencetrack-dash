@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard, Calendar, DollarSign } from 'lucide-react';
+import { CreditCard, Calendar, IndianRupee } from 'lucide-react';
 import { StudentPaymentSummary } from '@/types/fee';
 import { getTotalDiscountPercentage } from '@/utils/scholarshipUtils';
 import {
@@ -186,7 +186,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
           {/* Payment Plan Options Preview */}
           <div className='grid grid-cols-1 gap-3 max-w-xs mx-auto'>
             <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg'>
-              <DollarSign className='h-5 w-5 text-green-600' />
+              <IndianRupee className='h-5 w-5 text-green-600' />
               <div className='text-left'>
                 <p className='text-sm font-medium'>One-Shot Payment</p>
                 <p className='text-xs text-muted-foreground'>

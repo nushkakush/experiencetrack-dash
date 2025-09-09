@@ -1,4 +1,4 @@
-import { Building2, DollarSign, FileText, CreditCard } from 'lucide-react';
+import { Building2, IndianRupee, FileText, CreditCard } from 'lucide-react';
 
 export interface PaymentField {
   name: string;
@@ -132,7 +132,7 @@ export const PAYMENT_MODE_CONFIG: Record<string, PaymentModeConfig> = {
 
   cash: {
     name: 'Cash',
-    icon: DollarSign,
+    icon: IndianRupee,
     fields: [
       {
         name: 'paymentDate',

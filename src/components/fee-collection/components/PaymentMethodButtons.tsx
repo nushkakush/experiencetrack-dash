@@ -6,7 +6,7 @@ import {
   Building2,
   FileText,
   QrCode,
-  DollarSign,
+  IndianRupee,
 } from 'lucide-react';
 
 export interface PaymentMethodButtonsProps {
@@ -23,7 +23,7 @@ export const PaymentMethodButtons: React.FC<PaymentMethodButtonsProps> = ({
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case 'cash':
-        return <DollarSign className='h-5 w-5' />;
+        return <IndianRupee className='h-5 w-5' />;
       case 'bank_transfer':
         return <Building2 className='h-5 w-5' />;
       case 'cheque':

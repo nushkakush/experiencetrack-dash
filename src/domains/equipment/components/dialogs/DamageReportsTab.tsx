@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Calendar, User, DollarSign } from 'lucide-react';
+import { AlertTriangle, Calendar, User, IndianRupee } from 'lucide-react';
 import { EquipmentDamageReport } from '../../types';
 import { formatDate, formatCurrency } from '@/utils/dateUtils';
 
@@ -147,7 +147,7 @@ export const DamageReportsTab: React.FC<DamageReportsTabProps> = ({
 
                 {report.estimated_repair_cost && (
                   <div className='flex items-center space-x-2'>
-                    <DollarSign className='h-4 w-4 text-muted-foreground' />
+                    <IndianRupee className='h-4 w-4 text-muted-foreground' />
                     <span>
                       <span className='font-medium'>Est. Cost:</span>{' '}
                       {formatCurrency(report.estimated_repair_cost)}
@@ -157,7 +157,7 @@ export const DamageReportsTab: React.FC<DamageReportsTabProps> = ({
 
                 {report.actual_repair_cost && (
                   <div className='flex items-center space-x-2'>
-                    <DollarSign className='h-4 w-4 text-muted-foreground' />
+                    <IndianRupee className='h-4 w-4 text-muted-foreground' />
                     <span>
                       <span className='font-medium'>Actual Cost:</span>{' '}
                       {formatCurrency(report.actual_repair_cost)}

@@ -24,7 +24,7 @@ import {
   User,
   MapPin,
   Tag,
-  DollarSign,
+  IndianRupee,
   AlertTriangle,
   Clock,
   CheckCircle,

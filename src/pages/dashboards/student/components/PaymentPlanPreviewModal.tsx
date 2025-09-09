@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  DollarSign,
+  IndianRupee,
   Building2,
   FileText,
   CreditCard,
@@ -20,7 +20,10 @@ import { PaymentPlan, StudentScholarshipWithDetails } from '@/types/fee';
 import { FeeStructure } from '@/types/fee';
 import { CohortStudent, Cohort } from '@/types/cohort';
 import AdminLikePlanPreview from './AdminLikePlanPreview';
-import { getPaymentPlanDescription, getPaymentPlanTitle } from '@/utils/paymentPlanDescriptions';
+import {
+  getPaymentPlanDescription,
+  getPaymentPlanTitle,
+} from '@/utils/paymentPlanDescriptions';
 
 interface PaymentPlanPreviewModalProps {
   isOpen: boolean;
@@ -52,7 +55,7 @@ export const PaymentPlanPreviewModal: React.FC<
   const getPlanIcon = (plan: PaymentPlan) => {
     switch (plan) {
       case 'one_shot':
-        return <DollarSign className='h-6 w-6 text-green-600' />;
+        return <IndianRupee className='h-6 w-6 text-green-600' />;
       case 'sem_wise':
         return <Building2 className='h-6 w-6 text-blue-600' />;
       case 'instalment_wise':
@@ -61,8 +64,6 @@ export const PaymentPlanPreviewModal: React.FC<
         return <CreditCard className='h-6 w-6 text-gray-600' />;
     }
   };
-
-
 
   if (!feeStructure) {
     return (
@@ -113,9 +114,13 @@ export const PaymentPlanPreviewModal: React.FC<
           <AdminLikePlanPreview
             selectedPlan={selectedPlan}
             feeStructure={feeStructure}
-            cohortStartDate={cohortData?.start_date || new Date().toISOString().split('T')[0]}
+            cohortStartDate={
+              cohortData?.start_date || new Date().toISOString().split('T')[0]
+            }
             cohortId={cohortData?.id || ''}
-            selectedScholarshipId={studentScholarship?.scholarship_id || 'no_scholarship'}
+            selectedScholarshipId={
+              studentScholarship?.scholarship_id || 'no_scholarship'
+            }
             studentId={studentData?.id}
             studentScholarship={studentScholarship}
           />

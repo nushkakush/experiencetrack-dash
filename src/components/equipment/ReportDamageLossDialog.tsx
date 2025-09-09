@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, DollarSign } from 'lucide-react';
+import { AlertTriangle, IndianRupee } from 'lucide-react';
 import { useCreateDamageReport } from '@/hooks/equipment/useEquipment';
 import { CreateDamageReportData } from '@/types/equipment';
 import { toast } from 'sonner';
@@ -104,7 +104,7 @@ export const ReportDamageLossDialog: React.FC<ReportDamageLossDialogProps> = ({
               htmlFor='estimated_repair_cost'
               className='flex items-center gap-2'
             >
-              <DollarSign className='h-4 w-4' />
+              <IndianRupee className='h-4 w-4' />
               Estimated Repair/Replacement Cost (Optional)
             </Label>
             <Input

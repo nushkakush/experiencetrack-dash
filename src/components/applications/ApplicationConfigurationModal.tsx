@@ -25,7 +25,7 @@ import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { FormBuilder } from './FormBuilder';
 import { QuestionEditor } from './QuestionEditor';
 import {
-  DollarSign,
+  IndianRupee,
   FileText,
   Settings,
   CheckCircle,
@@ -74,7 +74,7 @@ export const ApplicationConfigurationModal: React.FC<
       id: 1,
       title: 'Application Fee',
       description: 'Set the application fee amount',
-      icon: DollarSign,
+      icon: IndianRupee,
       completed: false,
     },
     {
@@ -448,7 +448,7 @@ export const ApplicationConfigurationModal: React.FC<
                   <div className='space-y-4'>
                     <div className='flex items-center justify-between p-4 border rounded-lg'>
                       <div className='flex items-center gap-3'>
-                        <DollarSign className='h-5 w-5 text-green-600' />
+                        <IndianRupee className='h-5 w-5 text-green-600' />
                         <div>
                           <p className='font-medium'>Application Fee</p>
                           <p className='text-sm text-muted-foreground'>

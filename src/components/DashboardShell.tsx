@@ -21,7 +21,7 @@ import {
   Users,
   BarChart3,
   FileText,
-  DollarSign,
+  IndianRupee,
   Receipt,
   Handshake,
   TrendingUp,
@@ -151,7 +151,7 @@ const getNavigationItems = (
       {
         title: 'Fee Collection Dashboard',
         onClick: () => navigate('/cohorts'),
-        icon: DollarSign,
+        icon: IndianRupee,
       },
     ],
     partnerships_head: [

@@ -11,7 +11,7 @@ import {
   CalendarDays,
   Users,
   Clock,
-  DollarSign,
+  IndianRupee,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -220,7 +220,7 @@ export default function CohortCard({
               size='sm'
               className='flex items-center gap-2'
             >
-              <DollarSign className='h-4 w-4' />
+              <IndianRupee className='h-4 w-4' />
               Fee Collection
             </Button>
           )}

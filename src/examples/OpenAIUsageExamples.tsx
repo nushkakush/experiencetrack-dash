@@ -5,18 +5,30 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  useOpenAI, 
-  useStudentAI, 
-  useCohortAI, 
-  usePaymentAI, 
-  useSessionAI 
+import {
+  useOpenAI,
+  useStudentAI,
+  useCohortAI,
+  usePaymentAI,
+  useSessionAI,
 } from '@/hooks/useOpenAI';
 import { openaiService } from '@/services/openai.service';
 import { OpenAIModel } from '@/types/openai';
@@ -24,10 +36,12 @@ import { OpenAIModel } from '@/types/openai';
 // Example 1: Basic Text Generation
 export function BasicTextGenerationExample() {
   const [prompt, setPrompt] = useState('');
-  const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.');
+  const [systemPrompt, setSystemPrompt] = useState(
+    'You are a helpful assistant.'
+  );
   const [model, setModel] = useState<OpenAIModel>('gpt-4o-mini');
   const [result, setResult] = useState('');
-  
+
   const { state, generateText, clearError } = useOpenAI();
 
   const handleGenerate = async () => {
@@ -43,41 +57,46 @@ export function BasicTextGenerationExample() {
     <Card>
       <CardHeader>
         <CardTitle>Basic Text Generation</CardTitle>
-        <CardDescription>Simple text generation with custom system prompt</CardDescription>
+        <CardDescription>
+          Simple text generation with custom system prompt
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className='space-y-4'>
         <div>
-          <label className="text-sm font-medium">Model</label>
-          <Select value={model} onValueChange={(value: OpenAIModel) => setModel(value)}>
+          <label className='text-sm font-medium'>Model</label>
+          <Select
+            value={model}
+            onValueChange={(value: OpenAIModel) => setModel(value)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gpt-4o">GPT-4 Omni</SelectItem>
-              <SelectItem value="gpt-4o-mini">GPT-4 Omni Mini</SelectItem>
-              <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-              <SelectItem value="gpt-4">GPT-4</SelectItem>
-              <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+              <SelectItem value='gpt-4o'>GPT-4 Omni</SelectItem>
+              <SelectItem value='gpt-4o-mini'>GPT-4 Omni Mini</SelectItem>
+              <SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
+              <SelectItem value='gpt-4'>GPT-4</SelectItem>
+              <SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <label className="text-sm font-medium">System Prompt</label>
+          <label className='text-sm font-medium'>System Prompt</label>
           <Textarea
             value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder="Enter system prompt..."
+            onChange={e => setSystemPrompt(e.target.value)}
+            placeholder='Enter system prompt...'
             rows={3}
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium">User Prompt</label>
+          <label className='text-sm font-medium'>User Prompt</label>
           <Textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your prompt..."
+            onChange={e => setPrompt(e.target.value)}
+            placeholder='Enter your prompt...'
             rows={3}
           />
         </div>
@@ -87,9 +106,14 @@ export function BasicTextGenerationExample() {
         </Button>
 
         {state.error && (
-          <Alert variant="destructive">
+          <Alert variant='destructive'>
             <AlertDescription>{state.error}</AlertDescription>
-            <Button variant="outline" size="sm" onClick={clearError} className="mt-2">
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearError}
+              className='mt-2'
+            >
               Clear Error
             </Button>
           </Alert>
@@ -97,22 +121,22 @@ export function BasicTextGenerationExample() {
 
         {result && (
           <div>
-            <label className="text-sm font-medium">Result</label>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+            <label className='text-sm font-medium'>Result</label>
+            <div className='p-3 bg-gray-50 rounded-md'>
+              <pre className='whitespace-pre-wrap text-sm'>{result}</pre>
             </div>
           </div>
         )}
 
         {state.response?.data && (
-          <div className="flex gap-2">
-            <Badge variant="outline">
+          <div className='flex gap-2'>
+            <Badge variant='outline'>
               Tokens: {state.response.data.usage.totalTokens}
             </Badge>
-            <Badge variant="outline">
-              Cost: ${state.response.data.cost.toFixed(4)}
+            <Badge variant='outline'>
+              Cost: ₹{state.response.data.cost.toFixed(4)}
             </Badge>
-            <Badge variant="outline">
+            <Badge variant='outline'>
               Time: {state.response.data.responseTime}ms
             </Badge>
           </div>
@@ -124,9 +148,11 @@ export function BasicTextGenerationExample() {
 
 // Example 2: JSON Generation
 export function JSONGenerationExample() {
-  const [prompt, setPrompt] = useState('Generate a student report with performance metrics');
+  const [prompt, setPrompt] = useState(
+    'Generate a student report with performance metrics'
+  );
   const [result, setResult] = useState<any>(null);
-  
+
   const { state, generateJson, clearError } = useOpenAI();
 
   const handleGenerate = async () => {
@@ -147,13 +173,13 @@ export function JSONGenerationExample() {
         <CardTitle>JSON Generation</CardTitle>
         <CardDescription>Generate structured JSON responses</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className='space-y-4'>
         <div>
-          <label className="text-sm font-medium">Prompt</label>
+          <label className='text-sm font-medium'>Prompt</label>
           <Textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your prompt..."
+            onChange={e => setPrompt(e.target.value)}
+            placeholder='Enter your prompt...'
             rows={3}
           />
         </div>
@@ -163,9 +189,14 @@ export function JSONGenerationExample() {
         </Button>
 
         {state.error && (
-          <Alert variant="destructive">
+          <Alert variant='destructive'>
             <AlertDescription>{state.error}</AlertDescription>
-            <Button variant="outline" size="sm" onClick={clearError} className="mt-2">
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearError}
+              className='mt-2'
+            >
               Clear Error
             </Button>
           </Alert>
@@ -173,9 +204,9 @@ export function JSONGenerationExample() {
 
         {result && (
           <div>
-            <label className="text-sm font-medium">Generated JSON</label>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <pre className="text-sm overflow-auto">
+            <label className='text-sm font-medium'>Generated JSON</label>
+            <div className='p-3 bg-gray-50 rounded-md'>
+              <pre className='text-sm overflow-auto'>
                 {JSON.stringify(result, null, 2)}
               </pre>
             </div>
@@ -188,41 +219,54 @@ export function JSONGenerationExample() {
 
 // Example 3: Context-Aware Generation
 export function ContextAwareExample() {
-  const [prompt, setPrompt] = useState('Analyze this student\'s performance and provide recommendations');
+  const [prompt, setPrompt] = useState(
+    "Analyze this student's performance and provide recommendations"
+  );
   const [result, setResult] = useState('');
-  
+
   const { state, chatCompletion, clearError } = useOpenAI();
 
   const handleGenerate = async () => {
     try {
       // Build context with student data
-      const context = openaiService.createContextBuilder()
-        .addStructured({
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          cohort: 'LIT OS 2024',
-          program: 'Full Stack Development'
-        }, 'Student Information')
-        .addJson({
-          attendance: 85,
-          assignments: 12,
-          completed: 10,
-          averageScore: 78.5
-        }, 'Performance Data')
-        .addJson({
-          totalFees: 50000,
-          paid: 30000,
-          outstanding: 20000,
-          lastPayment: '2024-01-15'
-        }, 'Payment Information')
+      const context = openaiService
+        .createContextBuilder()
+        .addStructured(
+          {
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            cohort: 'LIT OS 2024',
+            program: 'Full Stack Development',
+          },
+          'Student Information'
+        )
+        .addJson(
+          {
+            attendance: 85,
+            assignments: 12,
+            completed: 10,
+            averageScore: 78.5,
+          },
+          'Performance Data'
+        )
+        .addJson(
+          {
+            totalFees: 50000,
+            paid: 30000,
+            outstanding: 20000,
+            lastPayment: '2024-01-15',
+          },
+          'Payment Information'
+        )
         .build();
 
       const response = await chatCompletion({
         model: 'gpt-4o-mini',
-        systemPrompt: 'You are an educational AI assistant specializing in student performance analysis. Provide detailed insights and actionable recommendations.',
+        systemPrompt:
+          'You are an educational AI assistant specializing in student performance analysis. Provide detailed insights and actionable recommendations.',
         userPrompt: prompt,
         context,
-        temperature: 0.7
+        temperature: 0.7,
       });
 
       if (response.success && response.data) {
@@ -237,15 +281,17 @@ export function ContextAwareExample() {
     <Card>
       <CardHeader>
         <CardTitle>Context-Aware Generation</CardTitle>
-        <CardDescription>Generate responses with structured context data</CardDescription>
+        <CardDescription>
+          Generate responses with structured context data
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className='space-y-4'>
         <div>
-          <label className="text-sm font-medium">Analysis Prompt</label>
+          <label className='text-sm font-medium'>Analysis Prompt</label>
           <Textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your analysis prompt..."
+            onChange={e => setPrompt(e.target.value)}
+            placeholder='Enter your analysis prompt...'
             rows={3}
           />
         </div>
@@ -255,9 +301,14 @@ export function ContextAwareExample() {
         </Button>
 
         {state.error && (
-          <Alert variant="destructive">
+          <Alert variant='destructive'>
             <AlertDescription>{state.error}</AlertDescription>
-            <Button variant="outline" size="sm" onClick={clearError} className="mt-2">
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearError}
+              className='mt-2'
+            >
               Clear Error
             </Button>
           </Alert>
@@ -265,9 +316,9 @@ export function ContextAwareExample() {
 
         {result && (
           <div>
-            <label className="text-sm font-medium">Analysis Result</label>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+            <label className='text-sm font-medium'>Analysis Result</label>
+            <div className='p-3 bg-gray-50 rounded-md'>
+              <pre className='whitespace-pre-wrap text-sm'>{result}</pre>
             </div>
           </div>
         )}
@@ -278,9 +329,11 @@ export function ContextAwareExample() {
 
 // Example 4: Student AI Analysis
 export function StudentAIAnalysisExample() {
-  const [analysisPrompt, setAnalysisPrompt] = useState('Analyze this student\'s performance trends and provide improvement recommendations');
+  const [analysisPrompt, setAnalysisPrompt] = useState(
+    "Analyze this student's performance trends and provide improvement recommendations"
+  );
   const [result, setResult] = useState('');
-  
+
   const { state, analyzeStudentPerformance, clearError } = useStudentAI();
 
   const handleAnalyze = async () => {
@@ -295,24 +348,27 @@ export function StudentAIAnalysisExample() {
         attendance: {
           totalSessions: 20,
           attended: 18,
-          percentage: 90
+          percentage: 90,
         },
         payments: {
           totalFees: 60000,
           paid: 45000,
           outstanding: 15000,
-          installments: 3
+          installments: 3,
         },
         performance: {
           averageScore: 85.5,
           assignments: 15,
           completed: 14,
           projects: 3,
-          completedProjects: 2
-        }
+          completedProjects: 2,
+        },
       };
 
-      const response = await analyzeStudentPerformance(studentData, analysisPrompt);
+      const response = await analyzeStudentPerformance(
+        studentData,
+        analysisPrompt
+      );
       setResult(response);
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -323,15 +379,17 @@ export function StudentAIAnalysisExample() {
     <Card>
       <CardHeader>
         <CardTitle>Student AI Analysis</CardTitle>
-        <CardDescription>Specialized student performance analysis</CardDescription>
+        <CardDescription>
+          Specialized student performance analysis
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className='space-y-4'>
         <div>
-          <label className="text-sm font-medium">Analysis Prompt</label>
+          <label className='text-sm font-medium'>Analysis Prompt</label>
           <Textarea
             value={analysisPrompt}
-            onChange={(e) => setAnalysisPrompt(e.target.value)}
-            placeholder="Enter your analysis prompt..."
+            onChange={e => setAnalysisPrompt(e.target.value)}
+            placeholder='Enter your analysis prompt...'
             rows={3}
           />
         </div>
@@ -341,9 +399,14 @@ export function StudentAIAnalysisExample() {
         </Button>
 
         {state.error && (
-          <Alert variant="destructive">
+          <Alert variant='destructive'>
             <AlertDescription>{state.error}</AlertDescription>
-            <Button variant="outline" size="sm" onClick={clearError} className="mt-2">
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearError}
+              className='mt-2'
+            >
               Clear Error
             </Button>
           </Alert>
@@ -351,9 +414,9 @@ export function StudentAIAnalysisExample() {
 
         {result && (
           <div>
-            <label className="text-sm font-medium">Analysis Result</label>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+            <label className='text-sm font-medium'>Analysis Result</label>
+            <div className='p-3 bg-gray-50 rounded-md'>
+              <pre className='whitespace-pre-wrap text-sm'>{result}</pre>
             </div>
           </div>
         )}
@@ -366,7 +429,7 @@ export function StudentAIAnalysisExample() {
 export function BatchProcessingExample() {
   const [results, setResults] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const { state, chatCompletion, clearError } = useOpenAI();
 
   const handleBatchProcess = async () => {
@@ -379,18 +442,18 @@ export function BatchProcessingExample() {
         {
           model: 'gpt-4o-mini' as OpenAIModel,
           systemPrompt: 'You are a helpful assistant.',
-          userPrompt: 'Explain machine learning in simple terms.'
+          userPrompt: 'Explain machine learning in simple terms.',
         },
         {
           model: 'gpt-4o-mini' as OpenAIModel,
           systemPrompt: 'You are a helpful assistant.',
-          userPrompt: 'What are the benefits of cloud computing?'
+          userPrompt: 'What are the benefits of cloud computing?',
         },
         {
           model: 'gpt-4o-mini' as OpenAIModel,
           systemPrompt: 'You are a helpful assistant.',
-          userPrompt: 'Describe the importance of data security.'
-        }
+          userPrompt: 'Describe the importance of data security.',
+        },
       ];
 
       // Process requests sequentially (you could also use batchChatCompletion for parallel processing)
@@ -399,7 +462,7 @@ export function BatchProcessingExample() {
         const response = await chatCompletion(request);
         responses.push({
           prompt: request.userPrompt,
-          result: response.success ? response.data?.content : response.error
+          result: response.success ? response.data?.content : response.error,
         });
       }
 
@@ -415,32 +478,48 @@ export function BatchProcessingExample() {
     <Card>
       <CardHeader>
         <CardTitle>Batch Processing</CardTitle>
-        <CardDescription>Process multiple requests sequentially</CardDescription>
+        <CardDescription>
+          Process multiple requests sequentially
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Button onClick={handleBatchProcess} disabled={isProcessing || state.isLoading}>
+      <CardContent className='space-y-4'>
+        <Button
+          onClick={handleBatchProcess}
+          disabled={isProcessing || state.isLoading}
+        >
           {isProcessing ? 'Processing...' : 'Process Batch'}
         </Button>
 
         {state.error && (
-          <Alert variant="destructive">
+          <Alert variant='destructive'>
             <AlertDescription>{state.error}</AlertDescription>
-            <Button variant="outline" size="sm" onClick={clearError} className="mt-2">
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearError}
+              className='mt-2'
+            >
               Clear Error
             </Button>
           </Alert>
         )}
 
         {results.length > 0 && (
-          <div className="space-y-4">
-            <label className="text-sm font-medium">Batch Results</label>
+          <div className='space-y-4'>
+            <label className='text-sm font-medium'>Batch Results</label>
             {results.map((result, index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-md">
-                <div className="font-medium text-sm mb-2">Prompt {index + 1}:</div>
-                <div className="text-sm text-gray-600 mb-2">{result.prompt}</div>
-                <div className="text-sm">
+              <div key={index} className='p-3 bg-gray-50 rounded-md'>
+                <div className='font-medium text-sm mb-2'>
+                  Prompt {index + 1}:
+                </div>
+                <div className='text-sm text-gray-600 mb-2'>
+                  {result.prompt}
+                </div>
+                <div className='text-sm'>
                   <strong>Result:</strong>
-                  <pre className="whitespace-pre-wrap mt-1">{result.result}</pre>
+                  <pre className='whitespace-pre-wrap mt-1'>
+                    {result.result}
+                  </pre>
                 </div>
               </div>
             ))}
@@ -454,15 +533,16 @@ export function BatchProcessingExample() {
 // Main Examples Component
 export function OpenAIUsageExamples() {
   return (
-    <div className="space-y-6 p-6">
+    <div className='space-y-6 p-6'>
       <div>
-        <h1 className="text-3xl font-bold">OpenAI Integration Examples</h1>
-        <p className="text-gray-600 mt-2">
-          Comprehensive examples showing how to use the OpenAI service in your application
+        <h1 className='text-3xl font-bold'>OpenAI Integration Examples</h1>
+        <p className='text-gray-600 mt-2'>
+          Comprehensive examples showing how to use the OpenAI service in your
+          application
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <BasicTextGenerationExample />
         <JSONGenerationExample />
         <ContextAwareExample />

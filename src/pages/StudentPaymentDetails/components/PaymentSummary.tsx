@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, CheckCircle } from 'lucide-react';
+import { IndianRupee, CheckCircle } from 'lucide-react';
 import { PaymentPlan } from '@/types/payments';
 
 interface PaymentSummaryProps {
@@ -23,47 +23,49 @@ export const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   feeStructure,
   cohortData,
   formatCurrency,
-  formatDate
+  formatDate,
 }) => {
   if (!paymentBreakdown) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+          <CardTitle className='flex items-center gap-2'>
+            <IndianRupee className='h-5 w-5' />
             Total Payment Required
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-green-600">
+          <div className='text-3xl font-bold text-green-600'>
             {formatCurrency(paymentBreakdown.overallSummary.totalAmountPayable)}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {selectedPaymentPlan === 'one_shot' && `As a one shot instalment starting before ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
-            {selectedPaymentPlan === 'sem_wise' && `Over ${feeStructure.number_of_semesters} instalments starting on ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
-            {selectedPaymentPlan === 'instalment_wise' && `Over ${feeStructure.number_of_semesters * feeStructure.instalments_per_semester} instalments starting on ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
+          <p className='text-sm text-muted-foreground mt-2'>
+            {selectedPaymentPlan === 'one_shot' &&
+              `As a one shot instalment starting before ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
+            {selectedPaymentPlan === 'sem_wise' &&
+              `Over ${feeStructure.number_of_semesters} instalments starting on ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
+            {selectedPaymentPlan === 'instalment_wise' &&
+              `Over ${feeStructure.number_of_semesters * feeStructure.instalments_per_semester} instalments starting on ${formatDate(cohortData?.start_date)}. This is inclusive of your scholarship waiver.`}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
+          <CardTitle className='flex items-center gap-2'>
+            <CheckCircle className='h-5 w-5' />
             Admission Fee Status
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-blue-600">
+          <div className='text-3xl font-bold text-blue-600'>
             {formatCurrency(paymentBreakdown.admissionFee.totalPayable)}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {paymentBreakdown.admissionFee.paymentDate 
+          <p className='text-sm text-muted-foreground mt-2'>
+            {paymentBreakdown.admissionFee.paymentDate
               ? `Admission fee due on ${formatDate(paymentBreakdown.admissionFee.paymentDate)}`
-              : 'Admission fee to be paid before course commencement'
-            }
+              : 'Admission fee to be paid before course commencement'}
           </p>
         </CardContent>
       </Card>

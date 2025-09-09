@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   Calendar,
-  DollarSign,
+  IndianRupee,
   CreditCard,
   FileText,
   AlertTriangle,
@@ -172,7 +172,7 @@ export const PaymentRecordingForm: React.FC<PaymentRecordingFormProps> =
           <Card>
             <CardHeader className='pb-3'>
               <CardTitle className='text-lg flex items-center gap-2'>
-                <DollarSign className='h-5 w-5' />
+                <IndianRupee className='h-5 w-5' />
                 Record Payment
               </CardTitle>
             </CardHeader>

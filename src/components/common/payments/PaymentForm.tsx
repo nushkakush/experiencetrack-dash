@@ -92,7 +92,7 @@ export const PaymentForm = React.memo<PaymentFormProps>(
       <div className='space-y-6'>
         {/* Form Title */}
         <div>
-          <h3 className='text-lg font-semibold'>$ Submit Payment</h3>
+          <h3 className='text-lg font-semibold'>₹ Submit Payment</h3>
           <p className='text-sm text-muted-foreground'>{getFormTitle()}</p>
         </div>
 

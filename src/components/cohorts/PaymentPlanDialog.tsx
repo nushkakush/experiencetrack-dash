@@ -17,7 +17,7 @@ import {
   CreditCard,
   CheckCircle,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Edit2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,7 +43,7 @@ const PAYMENT_PLAN_OPTIONS = [
     value: 'one_shot' as PaymentPlan,
     label: 'One Shot Payment',
     description: 'Full amount due at once',
-    icon: DollarSign,
+    icon: IndianRupee,
   },
   {
     value: 'sem_wise' as PaymentPlan,

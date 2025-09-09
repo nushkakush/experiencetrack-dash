@@ -8,7 +8,7 @@ import {
   User,
   MapPin,
   Tag,
-  DollarSign,
+  IndianRupee,
   AlertTriangle,
 } from 'lucide-react';
 import { Equipment } from '../../types';
@@ -96,7 +96,7 @@ export const EquipmentDetailsTab: React.FC<EquipmentDetailsTabProps> = ({
             </div>
 
             <div className='flex items-center space-x-2'>
-              <DollarSign className='h-4 w-4 text-muted-foreground' />
+              <IndianRupee className='h-4 w-4 text-muted-foreground' />
               <span className='text-sm'>
                 <span className='font-medium'>Purchase Cost:</span>{' '}
                 {equipment.purchase_cost

@@ -254,7 +254,7 @@ export const ExperienceTypeForms: React.FC<ExperienceTypeFormsProps> = ({
                         };
                         handleInputChange('materials_required', newMaterials);
                       }}
-                      placeholder='e.g., $50-100'
+                      placeholder='e.g., ₹50-100'
                     />
                   </div>
                 </div>
@@ -553,7 +553,7 @@ export const ExperienceTypeForms: React.FC<ExperienceTypeFormsProps> = ({
                         };
                         handleInputChange('materials_required', newMaterials);
                       }}
-                      placeholder='e.g., $50, ₹500'
+                      placeholder='e.g., ₹50, ₹500'
                     />
                   </div>
                 </div>
