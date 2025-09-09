@@ -14,6 +14,7 @@ import {
   AttendanceStats,
   EpicInfo,
 } from '../services/AttendanceService';
+import { AttendanceCalculationsService } from '@/services/attendanceCalculations.service';
 import { format } from 'date-fns';
 
 export interface UseAttendanceOptions {
@@ -297,58 +298,35 @@ export function useCohortEpics(cohortId: string) {
  */
 export function useAttendanceLeaderboard(cohortId: string, epicId?: string) {
   const {
-    data: summary = [],
+    data: leaderboardData,
     isLoading,
     error,
   } = useApiQuery({
     queryKey: ['attendance', 'leaderboard', cohortId, epicId],
-    queryFn: () => attendanceService.getAttendanceSummary(cohortId, epicId),
-    enabled: !!cohortId,
+    queryFn: async () => {
+      if (!epicId) {
+        throw new Error('Epic ID is required for leaderboard');
+      }
+      return await AttendanceCalculationsService.getLeaderboard({
+        cohortId,
+        epicId,
+        limit: 100, // Get all students
+      });
+    },
+    enabled: !!cohortId && !!epicId,
     staleTime: 2 * 60 * 1000,
   });
 
-  // Sort by attendance percentage and add rankings
+  // Process leaderboard data from edge function
   const leaderboard = useMemo(() => {
-    const sortedSummary = summary.sort(
-      (a, b) => b.attendance_percentage - a.attendance_percentage
-    );
+    if (!leaderboardData?.entries) return [];
 
-    // Assign ranks with proper tie handling
-    let currentRank = 1;
-    let currentIndex = 0;
-
-    while (currentIndex < sortedSummary.length) {
-      const currentStudent = sortedSummary[currentIndex];
-      let tiedCount = 1;
-
-      // Count how many students have the same attendance percentage
-      for (let i = currentIndex + 1; i < sortedSummary.length; i++) {
-        const nextStudent = sortedSummary[i];
-        if (
-          nextStudent.attendance_percentage ===
-          currentStudent.attendance_percentage
-        ) {
-          tiedCount++;
-        } else {
-          break;
-        }
-      }
-
-      // Assign the same rank to all tied students
-      for (let i = 0; i < tiedCount; i++) {
-        const student = sortedSummary[currentIndex + i];
-        student.rank = currentRank;
-        student.badge =
-          currentRank <= 3 ? ['🥇', '🥈', '🥉'][currentRank - 1] : undefined;
-      }
-
-      // Move to next rank and next group of students
-      currentRank += 1; // Increment by 1 for each unique rank
-      currentIndex += tiedCount;
-    }
-
-    return sortedSummary;
-  }, [summary]);
+    // The edge function already provides ranked data, so we just need to add badges
+    return leaderboardData.entries.map(entry => ({
+      ...entry,
+      badge: entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : undefined,
+    }));
+  }, [leaderboardData]);
 
   const topPerformers = useMemo(() => {
     return leaderboard.slice(0, 10);
@@ -362,8 +340,8 @@ export function useAttendanceLeaderboard(cohortId: string, epicId?: string) {
       poor: 0, // <75%
     };
 
-    summary.forEach(student => {
-      const percentage = student.attendance_percentage;
+    leaderboard.forEach(student => {
+      const percentage = student.attendancePercentage;
       if (percentage >= 95) ranges.excellent++;
       else if (percentage >= 85) ranges.good++;
       else if (percentage >= 75) ranges.average++;
@@ -371,7 +349,7 @@ export function useAttendanceLeaderboard(cohortId: string, epicId?: string) {
     });
 
     return ranges;
-  }, [summary]);
+  }, [leaderboard]);
 
   return {
     leaderboard,
