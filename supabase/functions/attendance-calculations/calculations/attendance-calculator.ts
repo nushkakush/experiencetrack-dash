@@ -223,6 +223,7 @@ export class AttendanceCalculator {
 
   // Get epic statistics
   async getEpicStats(params: EpicStatsParams): Promise<EpicStats> {
+    console.log('🔄 getEpicStats called with params:', params);
     const { cohortId, epicId, dateFrom, dateTo } = params;
 
     // Build query
@@ -902,7 +903,7 @@ export class AttendanceCalculator {
         averageStreak: streak.currentStreak,
       };
     } else {
-      // Get streaks for all students
+      // Get streaks for all students using the SAME data fetching strategy as leaderboard
       const { data: students, error } = await this.supabase
         .from('cohort_students')
         .select('*')
@@ -911,17 +912,73 @@ export class AttendanceCalculator {
 
       if (error) throw error;
 
-      const streaks = await Promise.all(
-        students.map(student =>
-          this.calculateStudentStreak(cohortId, epicId, student.id)
-        )
-      );
+      // Get all attendance records at once (same as calculateStudentStatsForEpic)
+      const { data: records, error: recordsError } = await this.supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .eq('epic_id', epicId)
+        .order('session_date', { ascending: false });
+
+      if (recordsError) throw recordsError;
+
+      // Calculate streaks for all students using the same records
+      const streaks = students.map(student => {
+        const studentRecords = (records || []).filter(
+          r => r.student_id === student.id
+        );
+        const currentStreak = this.calculateCurrentStreak(studentRecords);
+        const longestStreak = this.calculateLongestStreak(studentRecords);
+        const lastAttendanceDate =
+          studentRecords.length > 0 ? studentRecords[0].session_date : '';
+
+        console.log(
+          `🔍 Student ${student.first_name} ${student.last_name}: currentStreak=${currentStreak}, records=${studentRecords.length}`
+        );
+
+        return {
+          student: {
+            first_name: student.first_name,
+            last_name: student.last_name,
+          },
+          currentStreak,
+          longestStreak,
+          lastAttendanceDate,
+        };
+      });
 
       // Find top streak
       const maxStreak = Math.max(...streaks.map(s => s.currentStreak));
       const topStreakStudents = streaks
         .filter(s => s.currentStreak === maxStreak)
         .map(s => s.student.first_name + ' ' + s.student.last_name);
+
+      console.log(
+        '🔍 getStudentStreaks: All streaks calculated:',
+        streaks.map(s => ({
+          name: `${s.student.first_name} ${s.student.last_name}`,
+          currentStreak: s.currentStreak,
+        }))
+      );
+      console.log('🔍 getStudentStreaks: Max streak found:', maxStreak);
+      console.log(
+        '🔍 getStudentStreaks: Students with max streak:',
+        topStreakStudents.length
+      );
+      console.log('🔍 getStudentStreaks: Student names:', topStreakStudents);
+
+      // Debug: Check if we're missing students with streak 22
+      const studentsWith22 = streaks.filter(s => s.currentStreak === 22);
+      console.log(
+        '🔍 getStudentStreaks: Students with streak 22:',
+        studentsWith22.length
+      );
+      console.log(
+        '🔍 getStudentStreaks: Names of students with streak 22:',
+        studentsWith22.map(
+          s => `${s.student.first_name} ${s.student.last_name}`
+        )
+      );
 
       const averageStreak =
         streaks.length > 0
@@ -1178,47 +1235,32 @@ export class AttendanceCalculator {
 
   // Helper method to calculate top streak across all students
   private async calculateTopStreak(cohortId: string, epicId: string) {
-    // Get all students
-    const { data: students, error: studentsError } = await this.supabase
-      .from('cohort_students')
-      .select('*')
-      .eq('cohort_id', cohortId)
-      .eq('dropped_out_status', 'active');
+    // Use the EXACT same data source as the leaderboard
+    const studentStats = await this.calculateStudentStatsForEpic(
+      cohortId,
+      epicId
+    );
 
-    if (studentsError) throw studentsError;
+    // Find the maximum current streak
+    const maxStreak = Math.max(...studentStats.map(s => s.currentStreak));
 
-    if (students.length === 0) return { value: 0, studentNames: ['-'] };
+    // Get all students with the maximum streak
+    const topStreakStudents = studentStats
+      .filter(s => s.currentStreak === maxStreak)
+      .map(s => `${s.student.first_name} ${s.student.last_name}`);
 
-    let topStreak = 0;
-    let topStreakStudents: string[] = [];
+    console.log('🔍 calculateTopStreak: Using leaderboard data');
+    console.log('🔍 calculateTopStreak: Max streak found:', maxStreak);
+    console.log(
+      '🔍 calculateTopStreak: Students with max streak:',
+      topStreakStudents.length
+    );
+    console.log('🔍 calculateTopStreak: Student names:', topStreakStudents);
 
-    for (const student of students) {
-      // Get student's attendance records
-      const { data: studentRecords, error } = await this.supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('cohort_id', cohortId)
-        .eq('epic_id', epicId)
-        .eq('student_id', student.id)
-        .order('session_date', { ascending: false });
-
-      if (error) throw error;
-
-      // Calculate current streak for this student
-      const currentStreak = this.calculateCurrentStreak(studentRecords || []);
-
-      // Update top streak if this student has a higher streak
-      if (currentStreak > topStreak) {
-        topStreak = currentStreak;
-        topStreakStudents = [`${student.first_name} ${student.last_name}`];
-      }
-      // If this student has the same streak, add them to the list
-      else if (currentStreak === topStreak && currentStreak > 0) {
-        topStreakStudents.push(`${student.first_name} ${student.last_name}`);
-      }
-    }
-
-    return { value: topStreak, studentNames: topStreakStudents };
+    return {
+      value: maxStreak,
+      studentNames: topStreakStudents,
+    };
   }
 
   // Helper method to calculate epic status

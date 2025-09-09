@@ -123,11 +123,25 @@ export class AttendanceCalculationsService {
    * Get epic statistics for a cohort epic
    */
   static async getEpicStats(params: any): Promise<any> {
+    console.log(
+      '🔍 AttendanceCalculationsService: Calling getEpicStats with params:',
+      params
+    );
+
     const response = await this.callEdgeFunction<any>('getEpicStats', params);
 
     if (!response.success) {
       throw new Error(response.error || 'Failed to get epic stats');
     }
+
+    console.log(
+      '🔍 AttendanceCalculationsService: Edge function response:',
+      response
+    );
+    console.log(
+      '🔍 AttendanceCalculationsService: Top streak data from response:',
+      response.data?.topStreakData
+    );
 
     return response.data;
   }

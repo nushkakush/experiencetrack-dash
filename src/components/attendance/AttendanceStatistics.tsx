@@ -53,7 +53,52 @@ export const AttendanceStatistics: React.FC<AttendanceStatisticsProps> = ({
         const stats = await attendanceCalculations.getEpicStats({
           cohortId,
           epicId,
+          _cacheBust: Date.now(), // Force fresh request
+          _version: '2.0', // Version bump
         });
+
+        console.log('🔍 AttendanceStatistics: Epic stats received:', stats);
+        console.log(
+          '🔍 AttendanceStatistics: Top streak data:',
+          stats.topStreakData
+        );
+
+        // Debug: Let's also check what the leaderboard returns for comparison
+        try {
+          const leaderboardData = await attendanceCalculations.getLeaderboard({
+            cohortId,
+            epicId,
+            limit: 100,
+          });
+          console.log(
+            '🔍 AttendanceStatistics: Leaderboard data for comparison:',
+            leaderboardData
+          );
+
+          // Count students with max streak from leaderboard
+          const maxStreakFromLeaderboard = Math.max(
+            ...leaderboardData.entries.map((entry: any) => entry.currentStreak)
+          );
+          const studentsWithMaxStreak = leaderboardData.entries.filter(
+            (entry: any) => entry.currentStreak === maxStreakFromLeaderboard
+          );
+          console.log(
+            '🔍 AttendanceStatistics: Leaderboard max streak:',
+            maxStreakFromLeaderboard
+          );
+          console.log(
+            '🔍 AttendanceStatistics: Students with max streak from leaderboard:',
+            studentsWithMaxStreak.length
+          );
+          console.log(
+            '🔍 AttendanceStatistics: Student names from leaderboard:',
+            studentsWithMaxStreak.map(
+              (s: any) => `${s.student.first_name} ${s.student.last_name}`
+            )
+          );
+        } catch (err) {
+          console.error('Failed to get leaderboard data for comparison:', err);
+        }
 
         setEpicStats(stats);
       } catch (err) {
