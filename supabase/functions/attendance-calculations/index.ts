@@ -42,6 +42,20 @@ serve(async req => {
     let userToken = null;
     if (authHeader) {
       userToken = authHeader.replace('Bearer ', '');
+      // Set the user context for the service role client if we have a user token
+      if (userToken && userToken !== supabaseServiceKey) {
+        try {
+          await supabase.auth.setSession({
+            access_token: userToken,
+            refresh_token: '',
+          });
+        } catch (error) {
+          console.warn(
+            'Failed to set user session, continuing with service role:',
+            error
+          );
+        }
+      }
     }
 
     // Initialize calculator with user context

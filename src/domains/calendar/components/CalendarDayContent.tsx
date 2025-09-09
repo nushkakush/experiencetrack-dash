@@ -18,7 +18,10 @@ interface CalendarDayContentProps {
   day: CalendarDay;
   sessionsPerDay: number;
   plannedSessions: Session[];
-  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
+  sessionMentorAssignments?: Record<
+    string,
+    SessionMentorAssignmentWithMentor[]
+  >;
   loadingSessions: boolean;
   onDateSelect: (date: Date) => void;
   onPlanSession: (date: Date, sessionNumber: number) => void;
@@ -83,10 +86,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
           cohortId,
           epicId
         );
-        console.log(
-          `🔍 CalendarDayContent [${day.date.toISOString().split('T')[0]}]: CBL boundaries:`,
-          boundaries
-        );
+        // CBL boundaries loaded for visual display
         setCblBoundaries(boundaries);
       } catch (error) {
         console.error('Error fetching CBL boundaries:', error);
@@ -94,35 +94,15 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
       }
     };
     fetchBoundaries();
-  }, [plannedSessions, cohortId, epicId, day.date]);
+  }, [plannedSessions, cohortId, epicId]);
 
   // Check if current date/slot is between CBL boundaries
   const isSlotBetweenCBLBoundaries = React.useCallback(
     (date: Date, sessionNumber: number) => {
-      // Special test case for Day 5, Slot 2 to verify the fix
-      if (date.getDate() === 5 && sessionNumber === 2) {
-        console.log(`🧪 TESTING Day 5, Slot 2 boundary detection:`);
-        console.log(`   - Available boundaries:`, cblBoundaries);
-        cblBoundaries.forEach((boundary, index) => {
-          console.log(`   - Boundary ${index}:`, {
-            title: boundary.cblChallengeTitle,
-            startDate: boundary.cblStartDate?.toISOString().split('T')[0],
-            endDate: boundary.cblEndDate?.toISOString().split('T')[0],
-            slotRange: boundary.cblSlotRange,
-          });
-        });
-      }
-
-      console.log(
-        `🔍 Checking boundary for ${date.toISOString().split('T')[0]}, Slot ${sessionNumber}`
-      );
-      console.log(`   - Available boundaries:`, cblBoundaries);
+      // Check if slot is within CBL boundaries
 
       const result = cblBoundaries.some(boundary => {
         if (!boundary.cblStartDate || !boundary.cblEndDate) {
-          console.log(
-            `   - Boundary "${boundary.cblChallengeTitle}" missing dates`
-          );
           return false;
         }
 
@@ -145,16 +125,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
 
         const isDateInRange =
           currentDate >= startDate && currentDate <= endDate;
-        console.log(
-          `   - Date in range: ${isDateInRange} (${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]})`
-        );
-        console.log(
-          `   - Current date: ${currentDate.toISOString().split('T')[0]}`
-        );
-        console.log(
-          `   - Start date: ${startDate.toISOString().split('T')[0]}`
-        );
-        console.log(`   - End date: ${endDate.toISOString().split('T')[0]}`);
 
         if (!isDateInRange) return false;
 
@@ -162,50 +132,13 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
         if (currentDate.getTime() === endDate.getTime()) {
           const maxSlot = boundary.cblSlotRange?.max || 1;
           const isSlotInRange = sessionNumber <= maxSlot;
-
-          console.log(
-            `   - This is END date for "${boundary.cblChallengeTitle}"`
-          );
-          console.log(
-            `   - Max CBL slot: ${maxSlot}, Current slot: ${sessionNumber}`
-          );
-          console.log(`   - Slot in range: ${isSlotInRange}`);
-
-          if (isSlotInRange) {
-            console.log(
-              `🎨 Date ${date.toISOString().split('T')[0]} is END date for CBL challenge "${boundary.cblChallengeTitle}"`
-            );
-            console.log(
-              `   - Slot ${sessionNumber} is within CBL boundaries (max slot: ${maxSlot})`
-            );
-          } else {
-            console.log(
-              `🎨 Date ${date.toISOString().split('T')[0]} is END date for CBL challenge "${boundary.cblChallengeTitle}"`
-            );
-            console.log(
-              `   - Slot ${sessionNumber} is OUTSIDE CBL boundaries (max slot: ${maxSlot})`
-            );
-          }
-
           return isSlotInRange;
         }
 
         // If this is a middle date (between start and end), all slots are within boundaries
-        if (isDateInRange) {
-          console.log(
-            `🎨 Date ${date.toISOString().split('T')[0]} is between CBL boundaries for "${boundary.cblChallengeTitle}"`
-          );
-          console.log(`   - Start: ${startDate.toISOString().split('T')[0]}`);
-          console.log(`   - End: ${endDate.toISOString().split('T')[0]}`);
-          console.log(`   - All slots on this date are within CBL boundaries`);
-        }
-
         return isDateInRange;
       });
 
-      console.log(
-        `🎨 Final result for ${date.toISOString().split('T')[0]}, Slot ${sessionNumber}: ${result ? 'WITHIN boundaries' : 'OUTSIDE boundaries'}`
-      );
       return result;
     },
     [cblBoundaries]
@@ -214,7 +147,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   // Global drag end handler to ensure state is always cleared
   React.useEffect(() => {
     const handleGlobalDragEnd = () => {
-      console.log('🌍 Global drag end detected, clearing states');
       setIsDragOver(false);
       setHoveredSlot(null);
     };
@@ -229,14 +161,10 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   );
 
   const beginHover = () => {
-    console.log('🟢 beginHover called - setting isDragOver to true');
     setIsDragOver(true);
   };
 
   const endHover = () => {
-    console.log(
-      '🔴 endHover called - setting isDragOver to false, hoveredSlot to null'
-    );
     setIsDragOver(false);
     setHoveredSlot(null);
   };
@@ -251,28 +179,12 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   };
 
   const handleDropOnSlot = async (slot: number, e: React.DragEvent) => {
-    console.log(
-      '🎯 handleDropOnSlot called for slot:',
-      slot,
-      'day:',
-      day.date.toDateString()
-    );
-
     if (e) e.preventDefault();
     const movedSessionId = e?.dataTransfer.getData('sessionId');
     const sessionType = e?.dataTransfer.getData('sessionType');
     const sessionTitle = e?.dataTransfer.getData('sessionTitle');
     const sourceDateStr = e?.dataTransfer.getData('sessionDate');
     const sourceSlotStr = e?.dataTransfer.getData('sessionNumber');
-
-    console.log('📋 Drop data:', {
-      movedSessionId,
-      sessionType,
-      sessionTitle,
-      sourceDateStr,
-      sourceSlotStr,
-      slot,
-    });
 
     // Boundary awareness: block moves from inside CBL to outside, and block any drop that lands outside when source is inside
     const destIsWithinCBL = isSlotBetweenCBLBoundaries(day.date, slot);
@@ -296,9 +208,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
       sourceIsWithinCBL === true &&
       destIsWithinCBL === false
     ) {
-      console.warn(
-        '⛔ Blocked move: cannot move L/I/T session outside CBL boundaries'
-      );
       try {
         const { toast } = await import('sonner');
         toast.error(
@@ -313,7 +222,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
     }
 
     if (movedSessionId && onMoveSession) {
-      console.log('🔄 Processing session move...');
       const destDateStr = ((): string => {
         return (
           day.date.getFullYear() +
@@ -323,8 +231,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
           String(day.date.getDate()).padStart(2, '0')
         );
       })();
-
-      console.log('📍 Source date:', sourceDateStr, 'Dest date:', destDateStr);
 
       // Check if we're dropping on another session (same day, different slot)
       if (sourceDateStr === destDateStr && sourceSlotStr) {
@@ -336,37 +242,28 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
           );
 
           if (targetSession) {
-            console.log('🔄 Session swap detected - swapping positions');
             // This will trigger a swap - both sessions will be moved to their new positions
           }
         } else {
-          console.log('❌ No-op drop detected - clearing states and returning');
           setIsDragOver(false);
           setHoveredSlot(null);
           return;
         }
       }
 
-      console.log('✅ Valid move - calling onMoveSession');
       onMoveSession(movedSessionId, day.date, slot);
       // Clear drag states after successful move
-      console.log('🧹 Clearing drag states after move');
       setIsDragOver(false);
       setHoveredSlot(null);
       return;
     }
 
     if (sessionType && sessionTitle && onDropSession) {
-      console.log('🆕 Processing new session drop...');
-
       // For new sessions dragged from palette: only allow drop within CBL boundaries for Learn/Innovate/Transform
       const isIndividualCBL = ['learn', 'innovate', 'transform'].includes(
         sessionType
       );
       if (isIndividualCBL && !destIsWithinCBL) {
-        console.warn(
-          '⛔ Blocked drop: individual CBL sessions must be placed within CBL boundaries'
-        );
         try {
           const { toast } = await import('sonner');
           toast.error('Place Learn/Innovate/Transform within CBL boundaries');
@@ -380,7 +277,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
 
       onDropSession(day.date, slot, sessionType, sessionTitle);
       // Clear drag states after successful drop
-      console.log('🧹 Clearing drag states after new session drop');
       setIsDragOver(false);
       setHoveredSlot(null);
     }
@@ -404,37 +300,19 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
       )}
       onClick={() => onDateSelect(day.date)}
       onDragEnter={e => {
-        console.log(
-          '📥 onDragEnter triggered for day:',
-          day.date.toDateString()
-        );
         beginHover();
       }}
       onDragOver={e => {
         e.preventDefault();
-        console.log(
-          '🔄 onDragOver triggered for day:',
-          day.date.toDateString()
-        );
         beginHover();
       }}
       onDragLeave={e => {
-        console.log(
-          '📤 onDragLeave triggered for day:',
-          day.date.toDateString(),
-          'relatedTarget:',
-          e.relatedTarget
-        );
         // Only clear if we're leaving the entire cell, not just moving between slots
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          console.log('🚪 Actually leaving cell, calling endHover');
           endHover();
-        } else {
-          console.log('🔄 Still within cell, not calling endHover');
         }
       }}
       onDrop={e => {
-        console.log('📥 onDrop triggered for day:', day.date.toDateString());
         // Always clear drag state when drop occurs
         endHover();
       }}
@@ -526,19 +404,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
                 // Calculate how many slots are actually occupied
                 const occupiedSlots = plannedSessionsForDate.length;
 
-                // Debug logging for session slots
-                if (day.date.getDate() === 3) {
-                  console.log(
-                    `🔍 Slot ${sessionNumber}:`,
-                    sessionForSlot ? `Found "${sessionForSlot.title}"` : 'Empty'
-                  );
-                  console.log(`  - Occupied slots: ${occupiedSlots}`);
-                  console.log(`  - Is between CBL boundaries: ${isBetweenCBL}`);
-                  console.log(
-                    `  - Slot container uses: ${occupiedSlots === 1 && sessionForSlot ? 'h-full' : 'flex-1'} min-h-0 relative`
-                  );
-                  console.log(`  - Session card will use: text-xs h-full`);
-                }
+                // Calculate slot styling based on occupancy and CBL boundaries
 
                 return (
                   <div
@@ -547,35 +413,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
                   >
                     {sessionForSlot ? (
                       <>
-                        {/* Debug logging for session data */}
-                        {console.log(
-                          `🔍 CalendarDayContent Debug for slot ${sessionNumber}:`,
-                          {
-                            sessionTitle: sessionForSlot.title,
-                            sessionType: sessionForSlot.session_type,
-                            cblChallengeId: sessionForSlot.cbl_challenge_id,
-                            challengeTitle: sessionForSlot.challenge_title,
-                            isCBLType: [
-                              'cbl',
-                              'challenge_intro',
-                              'learn',
-                              'innovate',
-                              'transform',
-                              'reflection',
-                            ].includes(sessionForSlot.session_type),
-                          }
-                        )}
-                        {/* Additional detailed logging for the blue card */}
-                        {sessionForSlot.title === 'dxXZ' &&
-                          console.log(
-                            `🔍 DETAILED CalendarDayContent Debug for "dxXZ":`,
-                            {
-                              fullSession: sessionForSlot,
-                              sessionNumber,
-                              challengeTitleProp:
-                                sessionForSlot.challenge_title || undefined,
-                            }
-                          )}
                         <SessionCard
                           session={sessionForSlot}
                           sessionNumber={sessionNumber}
@@ -583,20 +420,15 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
                           challengeTitle={
                             sessionForSlot.challenge_title || undefined
                           }
-                          mentorAssignments={sessionMentorAssignments[sessionForSlot.id] || []}
+                          mentorAssignments={
+                            sessionMentorAssignments[sessionForSlot.id] || []
+                          }
                           onClick={() => onSessionClick?.(sessionForSlot)}
                           onDragStart={(e, session) => {
-                            console.log(
-                              '🚀 SessionCard onDragStart:',
-                              session.title,
-                              'sessionNumber:',
-                              sessionNumber,
-                              'raw session:',
-                              session
-                            );
+                            // Session drag started
                           }}
                           onDragEnd={e => {
-                            console.log('🏁 SessionCard onDragEnd');
+                            // Session drag ended
                           }}
                           onDelete={
                             onDeleteSession
@@ -658,7 +490,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
                                   : 'text-blue-600 hover:text-blue-700'
                               )}
                             >
-                              + Add Session{isBetweenCBL ? ' (CBL)' : ''}
+                              + Add Experience{isBetweenCBL ? ' (CBL)' : ''}
                             </div>
                           </button>
                         )}
@@ -679,12 +511,6 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
         hoveredSlot={hoveredSlot}
         getSlotState={getSlotState}
         onHoverSlot={slot => {
-          console.log(
-            '🎯 onHoverSlot called with slot:',
-            slot,
-            'previous hoveredSlot:',
-            hoveredSlot
-          );
           setHoveredSlot(slot);
         }}
         onLeave={endHover}

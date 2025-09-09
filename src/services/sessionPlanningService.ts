@@ -29,6 +29,7 @@ export interface PlannedSession {
   cbl_challenge_id?: string | null;
   original_cbl?: boolean;
   challenge_title?: string | null;
+  experience_id?: string | null; // Link to the experience that created this session
   mentor_assignments?: any[]; // Will be populated by SessionMentorService
 }
 
@@ -44,6 +45,7 @@ export interface CreatePlannedSessionData {
   end_time?: string; // ISO string (UTC)
   cbl_challenge_id?: string; // Link to CBL challenge
   original_cbl?: boolean; // Mark as original CBL session
+  experience_id?: string; // Link to the experience that created this session
 }
 
 export interface UpdatePlannedSessionData
@@ -603,6 +605,48 @@ class SessionPlanningService {
         success: false,
         isPlanned: false,
         error: 'Failed to check if session is planned',
+      };
+    }
+  }
+
+  /**
+   * Check if an experience has already been used in a cohort
+   */
+  async isExperienceAlreadyUsed(
+    cohortId: string,
+    experienceId: string
+  ): Promise<{
+    success: boolean;
+    isUsed: boolean;
+    error?: string;
+  }> {
+    try {
+      const { data: sessions, error } = await supabase
+        .from('planned_sessions')
+        .select('id')
+        .eq('cohort_id', cohortId)
+        .eq('experience_id', experienceId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking if experience is already used:', error);
+        return {
+          success: false,
+          isUsed: false,
+          error: error.message,
+        };
+      }
+
+      return {
+        success: true,
+        isUsed: sessions && sessions.length > 0,
+      };
+    } catch (error) {
+      console.error('Error checking if experience is already used:', error);
+      return {
+        success: false,
+        isUsed: false,
+        error: 'Failed to check if experience is already used',
       };
     }
   }

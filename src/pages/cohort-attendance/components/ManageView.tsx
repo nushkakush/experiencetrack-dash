@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { format } from 'date-fns';
 import {
   HolidayNotice,
   SessionTabs,
@@ -91,7 +92,7 @@ export const ManageView: React.FC<ManageViewProps> = ({
         onSessionChange={onSessionChange}
         cohortId={cohort.id}
         epicId={currentEpic?.id || ''}
-        sessionDate={selectedDate.toISOString().split('T')[0]}
+        sessionDate={format(selectedDate, 'yyyy-MM-dd')}
       />
 
       <AttendanceTable

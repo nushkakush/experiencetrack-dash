@@ -204,7 +204,7 @@ const CohortAttendancePage = () => {
                   onSessionChange={handleSessionChange}
                   cohortId={attendanceData.cohort.id}
                   epicId={attendanceData.currentEpic?.id || ''}
-                  sessionDate={selectedDate.toISOString().split('T')[0]}
+                  sessionDate={format(selectedDate, 'yyyy-MM-dd')}
                 />
 
                 <AttendanceTable

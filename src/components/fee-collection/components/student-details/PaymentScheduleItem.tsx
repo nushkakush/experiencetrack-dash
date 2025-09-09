@@ -309,11 +309,12 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
             0
           );
 
-        // Only show payment history if:
+        // Show payment history if:
         // 1. There are multiple transactions, OR
         // 2. There's a partial payment (amount paid < expected amount), OR
         // 3. There are rejected transactions (to show rejection reasons), OR
-        // 4. There are transactions with invoices (to show download options)
+        // 4. There are transactions with invoices (to show download options), OR
+        // 5. There are any transactions with verification details (photos, bank details, etc.)
         const hasMultipleTransactions = transactions.length > 1;
         const hasPartialPayment = totalPaid > 0 && totalPaid < item.amount;
         const hasRejectedTransactions = transactions.some(
@@ -321,6 +322,21 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
         );
         const hasTransactionsWithInvoices = transactions.some(
           t => t.lit_invoice_id
+        );
+
+        // Check if any transaction has verification details (photos, bank details, etc.)
+        const hasVerificationDetails = transactions.some(
+          t =>
+            t.receipt_url ||
+            t.proof_of_payment_url ||
+            t.transaction_screenshot_url ||
+            t.bank_name ||
+            t.utr_number ||
+            t.payer_upi_id ||
+            t.cheque_number ||
+            t.dd_number ||
+            t.verification_notes ||
+            t.reference_number
         );
 
         // For single transactions, check if it's a complete payment (regardless of status)
@@ -331,7 +347,8 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           hasMultipleTransactions ||
           hasPartialPayment ||
           hasRejectedTransactions ||
-          hasTransactionsWithInvoices;
+          hasTransactionsWithInvoices ||
+          hasVerificationDetails;
 
         // DEBUG LOGGING
         console.log('🔍 [PaymentSchedule] Payment History Visibility Check:', {
@@ -343,6 +360,7 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           hasPartialPayment,
           hasRejectedTransactions,
           hasTransactionsWithInvoices,
+          hasVerificationDetails,
           isSingleCompletePayment,
           shouldShowHistory,
           transactions: transactions.map(t => ({
@@ -351,6 +369,11 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
             status: t.verification_status,
             partial_sequence: t.partial_payment_sequence,
             lit_invoice_id: t.lit_invoice_id,
+            hasReceipt: !!t.receipt_url,
+            hasProofOfPayment: !!t.proof_of_payment_url,
+            hasScreenshot: !!t.transaction_screenshot_url,
+            hasBankDetails: !!(t.bank_name || t.utr_number || t.payer_upi_id),
+            hasVerificationNotes: !!t.verification_notes,
           })),
         });
 

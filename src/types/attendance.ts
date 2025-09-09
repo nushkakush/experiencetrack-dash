@@ -94,6 +94,9 @@ export interface SessionStats {
     attended: number;
     total: number;
   };
+  absenceBreakdown: {
+    uninformed: number;
+  };
 }
 
 export interface EpicStats {

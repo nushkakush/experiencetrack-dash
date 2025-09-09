@@ -116,6 +116,27 @@ export const ExperienceTypeForms: React.FC<ExperienceTypeFormsProps> = ({
             profileType='expert'
           />
         </div>
+
+        <div className='space-y-4'>
+          <h3 className='text-lg font-semibold'>Session Configuration</h3>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div>
+              <Label htmlFor='max-participants'>Max Participants</Label>
+              <Input
+                id='max-participants'
+                type='number'
+                value={formData.max_participants || ''}
+                onChange={e =>
+                  handleInputChange(
+                    'max_participants',
+                    parseInt(e.target.value) || undefined
+                  )
+                }
+                placeholder='e.g., 30'
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

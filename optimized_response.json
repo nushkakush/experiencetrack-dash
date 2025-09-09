@@ -1,0 +1,1095 @@
+{
+  "success": true,
+  "data": {
+    "month": "2025-08",
+    "days": [
+      {
+        "date": "2025-08-01",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-01",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-01",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-02",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-03",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-04",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-04",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-04",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-05",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-05",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-05",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-06",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-06",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-06",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-07",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-07",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-07",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-08",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-08",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-08",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-09",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-10",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-11",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-11",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-11",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-12",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-12",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-12",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-13",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-13",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-13",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-14",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-14",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-14",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-15",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-16",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-17",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-18",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-18",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-18",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-19",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-19",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 1,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-20",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-20",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 1,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-21",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-21",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-21",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-22",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-22",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-22",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-23",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-24",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-25",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-25",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-25",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-26",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-26",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-26",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-27",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-28",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-28",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          },
+          {
+            "sessionNumber": 2,
+            "sessionDate": "2025-08-28",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 2,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-29",
+        "sessions": [
+          {
+            "sessionNumber": 1,
+            "sessionDate": "2025-08-29",
+            "totalStudents": 49,
+            "presentCount": 0,
+            "lateCount": 0,
+            "absentCount": 0,
+            "exemptedCount": 0,
+            "attendedCount": 0,
+            "attendancePercentage": 0,
+            "isCancelled": false,
+            "breakdown": {
+              "present": 0,
+              "late": 0,
+              "absent": 0,
+              "exempted": 0,
+              "regularAbsent": 0,
+              "attended": 0,
+              "total": 1,
+              "percentage": 0
+            },
+            "absenceBreakdown": { "uninformed": 0 }
+          }
+        ],
+        "totalSessions": 1,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-30",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      },
+      {
+        "date": "2025-08-31",
+        "sessions": [],
+        "totalSessions": 0,
+        "overallAttendance": 0,
+        "isHoliday": false,
+        "holidays": []
+      }
+    ],
+    "monthlyStats": {
+      "daysWithAttendance": 19,
+      "totalSessions": 35,
+      "averageAttendance": 0
+    }
+  },
+  "metadata": {
+    "calculationTime": "2025-09-09T07:46:23.029Z",
+    "dataSource": "attendance-calculations-edge-function",
+    "filters": {
+      "cohortId": "a49ab406-f5b1-4557-a1c3-c612e3e9385b",
+      "epicId": "82833d79-f56f-4627-9854-4636d9f4813b",
+      "month": "2025-08"
+    },
+    "action": "getCalendarData"
+  }
+}

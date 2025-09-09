@@ -148,7 +148,10 @@ async function calculateCohortStatistics(
 
   // Count pending installments (individual installments with pending status) - OVERALL
   const pendingInstallments = allInstallments.filter(
-    inst => inst.status === 'pending' || inst.status === 'pending_10_plus_days'
+    inst =>
+      inst.status === 'pending' ||
+      inst.status === 'partially_paid_overdue' ||
+      inst.status === 'partially_paid_due'
   );
   const pendingStudents = new Set(
     pendingInstallments.map(inst => inst.student_id)
@@ -182,7 +185,10 @@ async function calculateCohortStatistics(
 
   // Count pending installments for current month only
   const currentMonthPendingInstallments = currentMonthInstallments.filter(
-    inst => inst.status === 'pending' || inst.status === 'pending_10_plus_days'
+    inst =>
+      inst.status === 'pending' ||
+      inst.status === 'partially_paid_overdue' ||
+      inst.status === 'partially_paid_due'
   );
   const currentMonthPendingStudents = new Set(
     currentMonthPendingInstallments.map(inst => inst.student_id)

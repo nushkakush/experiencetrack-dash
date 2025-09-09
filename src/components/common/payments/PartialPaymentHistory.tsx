@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   CreditCard,
   Clock,
@@ -12,6 +18,9 @@ import {
   HelpCircle,
   Download,
   FileText,
+  Image,
+  Eye,
+  ExternalLink,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useInvoiceManagement } from '@/components/fee-collection/components/student-details/hooks/useInvoiceManagement';
@@ -42,6 +51,38 @@ interface PaymentTransaction {
   partial_payment_sequence: number;
   payment_method?: string;
   lit_invoice_id?: string | null;
+
+  // Verification fields and uploaded files
+  receipt_url?: string | null;
+  proof_of_payment_url?: string | null;
+  transaction_screenshot_url?: string | null;
+
+  // Bank and payment details
+  bank_name?: string | null;
+  bank_branch?: string | null;
+  utr_number?: string | null;
+  account_number?: string | null;
+  cheque_number?: string | null;
+  payer_upi_id?: string | null;
+  qr_code_url?: string | null;
+  receiver_bank_name?: string | null;
+  receiver_bank_logo_url?: string | null;
+
+  // DD-specific fields
+  dd_number?: string | null;
+  dd_bank_name?: string | null;
+  dd_branch?: string | null;
+
+  // Payment dates
+  payment_date?: string | null;
+  transfer_date?: string | null;
+
+  // Verification tracking
+  verified_by?: string | null;
+  verified_at?: string | null;
+
+  // Reference number
+  reference_number?: string | null;
 }
 
 interface PartialPaymentHistoryProps {
@@ -182,6 +223,98 @@ const getPaymentLabel = (
   }
 };
 
+// Image Viewer Component
+const ImageViewer: React.FC<{
+  src: string;
+  alt: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}> = ({ src, alt, open, onOpenChange }) => {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='max-w-4xl max-h-[90vh]'>
+        <DialogHeader>
+          <DialogTitle>{alt}</DialogTitle>
+        </DialogHeader>
+        <div className='flex justify-center'>
+          <img
+            src={src}
+            alt={alt}
+            className='max-w-full max-h-[70vh] object-contain rounded-lg'
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Verification Photos Component
+const VerificationPhotos: React.FC<{
+  transaction: PaymentTransaction;
+}> = ({ transaction }) => {
+  const [viewingImage, setViewingImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+
+  const photos = [
+    {
+      url: transaction.receipt_url,
+      label: 'Receipt',
+      icon: <FileText className='h-4 w-4' />,
+    },
+    {
+      url: transaction.proof_of_payment_url,
+      label: 'Proof of Payment',
+      icon: <Image className='h-4 w-4' />,
+    },
+    {
+      url: transaction.transaction_screenshot_url,
+      label: 'Transaction Screenshot',
+      icon: <Image className='h-4 w-4' />,
+    },
+  ].filter(photo => photo.url);
+
+  if (photos.length === 0) return null;
+
+  return (
+    <div className='mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+      <div className='flex items-center gap-2 mb-2'>
+        <Image className='h-4 w-4 text-blue-600' />
+        <span className='text-sm font-medium text-blue-600'>
+          Verification Photos
+        </span>
+      </div>
+      <div className='flex flex-wrap gap-2'>
+        {photos.map((photo, index) => (
+          <Button
+            key={index}
+            size='sm'
+            variant='outline'
+            onClick={() =>
+              setViewingImage({ src: photo.url!, alt: photo.label })
+            }
+            className='h-8 px-3 text-xs'
+          >
+            {photo.icon}
+            <span className='ml-1'>{photo.label}</span>
+            <Eye className='h-3 w-3 ml-1' />
+          </Button>
+        ))}
+      </div>
+
+      {viewingImage && (
+        <ImageViewer
+          src={viewingImage.src}
+          alt={viewingImage.alt}
+          open={!!viewingImage}
+          onOpenChange={open => !open && setViewingImage(null)}
+        />
+      )}
+    </div>
+  );
+};
+
 // Transaction Item Component with Invoice Download
 const TransactionItem: React.FC<{
   transaction: PaymentTransaction;
@@ -263,12 +396,89 @@ const TransactionItem: React.FC<{
             </span>
           </div>
         )}
+        {transaction.reference_number && (
+          <div>
+            <span className='text-muted-foreground'>Reference:</span>
+            <span className='ml-1 font-mono text-xs'>
+              {transaction.reference_number}
+            </span>
+          </div>
+        )}
+        {transaction.utr_number && (
+          <div>
+            <span className='text-muted-foreground'>UTR:</span>
+            <span className='ml-1 font-mono text-xs'>
+              {transaction.utr_number}
+            </span>
+          </div>
+        )}
+        {transaction.bank_name && (
+          <div>
+            <span className='text-muted-foreground'>Bank:</span>
+            <span className='ml-1'>{transaction.bank_name}</span>
+          </div>
+        )}
+        {transaction.payer_upi_id && (
+          <div>
+            <span className='text-muted-foreground'>UPI ID:</span>
+            <span className='ml-1 font-mono text-xs'>
+              {transaction.payer_upi_id}
+            </span>
+          </div>
+        )}
+        {transaction.cheque_number && (
+          <div>
+            <span className='text-muted-foreground'>Cheque #:</span>
+            <span className='ml-1 font-mono text-xs'>
+              {transaction.cheque_number}
+            </span>
+          </div>
+        )}
+        {transaction.dd_number && (
+          <div>
+            <span className='text-muted-foreground'>DD #:</span>
+            <span className='ml-1 font-mono text-xs'>
+              {transaction.dd_number}
+            </span>
+          </div>
+        )}
+        {transaction.payment_date && (
+          <div>
+            <span className='text-muted-foreground'>Payment Date:</span>
+            <span className='ml-1'>{formatDate(transaction.payment_date)}</span>
+          </div>
+        )}
+        {transaction.transfer_date && (
+          <div>
+            <span className='text-muted-foreground'>Transfer Date:</span>
+            <span className='ml-1'>
+              {formatDate(transaction.transfer_date)}
+            </span>
+          </div>
+        )}
+        {transaction.verified_at && (
+          <div>
+            <span className='text-muted-foreground'>Verified:</span>
+            <span className='ml-1'>{formatDate(transaction.verified_at)}</span>
+          </div>
+        )}
       </div>
 
       {transaction.notes && (
         <div className='mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs'>
           <span className='text-muted-foreground'>Notes:</span>
           <span className='ml-1'>{transaction.notes}</span>
+        </div>
+      )}
+
+      {transaction.verification_notes && (
+        <div className='mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded text-xs'>
+          <span className='text-green-600 font-medium'>
+            Verification Notes:
+          </span>
+          <span className='ml-1 text-green-600'>
+            {transaction.verification_notes}
+          </span>
         </div>
       )}
 
@@ -280,6 +490,9 @@ const TransactionItem: React.FC<{
           </span>
         </div>
       )}
+
+      {/* Verification Photos */}
+      <VerificationPhotos transaction={transaction} />
 
       {hasInvoice && (
         <div className='mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs'>
@@ -462,6 +675,18 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
             </div>
           </div>
 
+          {/* Verification Notes */}
+          {transaction.verification_notes && (
+            <div className='mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded text-xs'>
+              <span className='text-green-600 font-medium'>
+                Verification Notes:
+              </span>
+              <span className='ml-1 text-green-600'>
+                {transaction.verification_notes}
+              </span>
+            </div>
+          )}
+
           {/* Rejection Reason - Show for rejected transactions */}
           {transaction.rejection_reason && (
             <div className='mt-2 p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs'>
@@ -473,6 +698,9 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
               </span>
             </div>
           )}
+
+          {/* Verification Photos */}
+          <VerificationPhotos transaction={transaction} />
 
           {/* Summary - only show if there's a meaningful difference */}
           {(safeTotalPaid > 0 || safeRemainingAmount > 0) && (

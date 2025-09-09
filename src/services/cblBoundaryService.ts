@@ -30,10 +30,6 @@ export class CBLBoundaryService {
     cohortId: string,
     epicId: string
   ): Promise<CBLBoundaryInfo> {
-    console.log(
-      `🔍 CBLBoundaryService.detectCBLBoundaries called for ${date.toISOString().split('T')[0]}, Slot ${sessionNumber}`
-    );
-
     // Use the visual boundary detection logic for consistency
     const visualBoundaries = await this.detectCBLVisualBoundaries(
       plannedSessions,
@@ -63,9 +59,6 @@ export class CBLBoundaryService {
       );
 
       const isDateInRange = currentDate >= startDate && currentDate <= endDate;
-      console.log(
-        `   - Date in range: ${isDateInRange} (${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]})`
-      );
 
       if (!isDateInRange) continue;
 
@@ -74,21 +67,7 @@ export class CBLBoundaryService {
         const maxSlot = boundary.cblSlotRange?.max || 1;
         const isSlotInRange = sessionNumber <= maxSlot;
 
-        console.log(
-          `   - This is END date for "${boundary.cblChallengeTitle}"`
-        );
-        console.log(
-          `   - Max CBL slot: ${maxSlot}, Current slot: ${sessionNumber}`
-        );
-        console.log(`   - Slot in range: ${isSlotInRange}`);
-
         if (isSlotInRange) {
-          console.log(
-            `✅ Date ${date.toISOString().split('T')[0]} is END date for CBL challenge "${boundary.cblChallengeTitle}"`
-          );
-          console.log(
-            `   - Slot ${sessionNumber} is within CBL boundaries (max slot: ${maxSlot})`
-          );
           return {
             isBetweenCBLSet: true,
             cblChallengeTitle: boundary.cblChallengeTitle,
@@ -103,12 +82,6 @@ export class CBLBoundaryService {
             isMockChallenge: boundary.isMockChallenge || false,
           };
         } else {
-          console.log(
-            `❌ Date ${date.toISOString().split('T')[0]} is END date for CBL challenge "${boundary.cblChallengeTitle}"`
-          );
-          console.log(
-            `   - Slot ${sessionNumber} is OUTSIDE CBL boundaries (max slot: ${maxSlot})`
-          );
           return {
             isBetweenCBLSet: false,
             cblChallengeTitle: null,
@@ -126,12 +99,6 @@ export class CBLBoundaryService {
 
       // If this is a middle date (between start and end), all slots are within boundaries
       if (isDateInRange) {
-        console.log(
-          `✅ Date ${date.toISOString().split('T')[0]} is between CBL boundaries for "${boundary.cblChallengeTitle}"`
-        );
-        console.log(`   - Start: ${startDate.toISOString().split('T')[0]}`);
-        console.log(`   - End: ${endDate.toISOString().split('T')[0]}`);
-        console.log(`   - All slots on this date are within CBL boundaries`);
         return {
           isBetweenCBLSet: true,
           cblChallengeTitle: boundary.cblChallengeTitle,
@@ -175,12 +142,6 @@ export class CBLBoundaryService {
     cohortId: string,
     epicId: string
   ): Promise<CBLVisualBoundaryInfo[]> {
-    console.log('🔍 CBL Visual Boundary Detection:', {
-      cohortId,
-      epicId,
-      totalPlannedSessions: plannedSessions.length,
-    });
-
     // Find all CBL and Mock Challenge sessions for this cohort and epic
     const cblSessions = plannedSessions.filter(
       session =>
@@ -197,16 +158,6 @@ export class CBLBoundaryService {
         ].includes(session.session_type)
     );
 
-    console.log(
-      '🔍 Found CBL sessions:',
-      cblSessions.map(s => ({
-        title: s.title,
-        session_type: s.session_type,
-        date: s.session_date,
-        session_number: s.session_number,
-      }))
-    );
-
     // Group CBL sessions by cbl_challenge_id to identify sets
     const cblSets = new Map<string, Session[]>();
     cblSessions.forEach(session => {
@@ -216,20 +167,6 @@ export class CBLBoundaryService {
       }
       cblSets.get(challengeId)!.push(session);
     });
-
-    console.log(
-      '🔍 CBL Sets found:',
-      Array.from(cblSets.entries()).map(([challengeId, sessions]) => ({
-        challengeId,
-        challengeTitle: sessions[0]?.challenge_title || 'Unknown',
-        sessionCount: sessions.length,
-        sessions: sessions.map(s => ({
-          type: s.session_type,
-          date: s.session_date,
-          slot: s.session_number,
-        })),
-      }))
-    );
 
     const boundaries: CBLVisualBoundaryInfo[] = [];
 

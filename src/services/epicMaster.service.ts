@@ -9,56 +9,79 @@ import type {
 
 export class EpicMasterService {
   /**
+   * Helper function to fetch mentor details
+   */
+  private static async fetchMentorDetails(mentorId: string) {
+    const { data, error } = await supabase
+      .from('mentors')
+      .select(
+        'id, first_name, last_name, email, specialization, current_company, avatar_url, status'
+      )
+      .eq('id', mentorId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching mentor details:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  /**
    * Get epic master assignment for a specific cohort epic
    */
   static async getEpicMasterAssignment(
     cohortEpicId: string
   ): Promise<ApiResponse<EpicMasterAssignmentWithMentors | null>> {
     try {
-      const { data, error } = await supabase
+      // First, get the epic master assignment
+      const { data: assignment, error: assignmentError } = await supabase
         .from('epic_master_assignments')
-        .select(`
-          *,
-          epic_master:mentors!epic_master_assignments_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          ),
-          associate_epic_master:mentors!epic_master_assignments_associate_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          )
-        `)
+        .select('*')
         .eq('cohort_epic_id', cohortEpicId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (assignmentError && assignmentError.code !== 'PGRST116') {
         // PGRST116 is "not found" error, which is acceptable
-        throw error;
+        throw assignmentError;
       }
 
-      return { 
-        data: data as EpicMasterAssignmentWithMentors | null, 
-        error: null, 
-        success: true 
+      if (!assignment) {
+        return {
+          data: null,
+          error: null,
+          success: true,
+        };
+      }
+
+      // Get the epic master details
+      const epicMaster = await this.fetchMentorDetails(
+        assignment.epic_master_id
+      );
+
+      // Get the associate epic master details
+      const associateEpicMaster = await this.fetchMentorDetails(
+        assignment.associate_epic_master_id
+      );
+
+      const result: EpicMasterAssignmentWithMentors = {
+        ...assignment,
+        epic_master: epicMaster,
+        associate_epic_master: associateEpicMaster,
+      };
+
+      return {
+        data: result,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Error fetching epic master assignment:', error);
-      return { 
-        data: null, 
-        error: (error as Error).message, 
-        success: false 
+      return {
+        data: null,
+        error: (error as Error).message,
+        success: false,
       };
     }
   }
@@ -72,7 +95,7 @@ export class EpicMasterService {
     try {
       // First, check if assignment already exists
       const existing = await this.getEpicMasterAssignment(input.cohort_epic_id);
-      
+
       let result;
       if (existing.data) {
         // Update existing assignment
@@ -83,33 +106,22 @@ export class EpicMasterService {
             associate_epic_master_id: input.associate_epic_master_id,
           })
           .eq('cohort_epic_id', input.cohort_epic_id)
-          .select(`
-            *,
-            epic_master:mentors!epic_master_assignments_epic_master_id_fkey(
-              id,
-              first_name,
-              last_name,
-              email,
-              specialization,
-              current_company,
-              avatar_url,
-              status
-            ),
-            associate_epic_master:mentors!epic_master_assignments_associate_epic_master_id_fkey(
-              id,
-              first_name,
-              last_name,
-              email,
-              specialization,
-              current_company,
-              avatar_url,
-              status
-            )
-          `)
+          .select('*')
           .single();
 
         if (error) throw error;
-        result = data;
+
+        // Fetch mentor details separately
+        const epicMaster = await this.fetchMentorDetails(data.epic_master_id);
+        const associateEpicMaster = await this.fetchMentorDetails(
+          data.associate_epic_master_id
+        );
+
+        result = {
+          ...data,
+          epic_master: epicMaster,
+          associate_epic_master: associateEpicMaster,
+        };
       } else {
         // Create new assignment
         const { data, error } = await supabase
@@ -120,46 +132,35 @@ export class EpicMasterService {
             associate_epic_master_id: input.associate_epic_master_id,
             created_by: input.created_by,
           })
-          .select(`
-            *,
-            epic_master:mentors!epic_master_assignments_epic_master_id_fkey(
-              id,
-              first_name,
-              last_name,
-              email,
-              specialization,
-              current_company,
-              avatar_url,
-              status
-            ),
-            associate_epic_master:mentors!epic_master_assignments_associate_epic_master_id_fkey(
-              id,
-              first_name,
-              last_name,
-              email,
-              specialization,
-              current_company,
-              avatar_url,
-              status
-            )
-          `)
+          .select('*')
           .single();
 
         if (error) throw error;
-        result = data;
+
+        // Fetch mentor details separately
+        const epicMaster = await this.fetchMentorDetails(data.epic_master_id);
+        const associateEpicMaster = await this.fetchMentorDetails(
+          data.associate_epic_master_id
+        );
+
+        result = {
+          ...data,
+          epic_master: epicMaster,
+          associate_epic_master: associateEpicMaster,
+        };
       }
 
-      return { 
-        data: result as EpicMasterAssignmentWithMentors, 
-        error: null, 
-        success: true 
+      return {
+        data: result as EpicMasterAssignmentWithMentors,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Error assigning epic masters:', error);
-      return { 
-        data: null as any, 
-        error: (error as Error).message, 
-        success: false 
+      return {
+        data: null as any,
+        error: (error as Error).message,
+        success: false,
       };
     }
   }
@@ -176,44 +177,34 @@ export class EpicMasterService {
         .from('epic_master_assignments')
         .update(updates)
         .eq('cohort_epic_id', cohortEpicId)
-        .select(`
-          *,
-          epic_master:mentors!epic_master_assignments_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          ),
-          associate_epic_master:mentors!epic_master_assignments_associate_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
-      return { 
-        data: data as EpicMasterAssignmentWithMentors, 
-        error: null, 
-        success: true 
+      // Fetch mentor details separately
+      const epicMaster = await this.fetchMentorDetails(data.epic_master_id);
+      const associateEpicMaster = await this.fetchMentorDetails(
+        data.associate_epic_master_id
+      );
+
+      const result = {
+        ...data,
+        epic_master: epicMaster,
+        associate_epic_master: associateEpicMaster,
+      };
+
+      return {
+        data: result as EpicMasterAssignmentWithMentors,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Error updating epic master assignment:', error);
-      return { 
-        data: null as any, 
-        error: (error as Error).message, 
-        success: false 
+      return {
+        data: null as any,
+        error: (error as Error).message,
+        success: false,
       };
     }
   }
@@ -232,17 +223,17 @@ export class EpicMasterService {
 
       if (error) throw error;
 
-      return { 
-        data: true, 
-        error: null, 
-        success: true 
+      return {
+        data: true,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Error removing epic master assignment:', error);
-      return { 
-        data: false, 
-        error: (error as Error).message, 
-        success: false 
+      return {
+        data: false,
+        error: (error as Error).message,
+        success: false,
       };
     }
   }
@@ -256,45 +247,45 @@ export class EpicMasterService {
     try {
       const { data, error } = await supabase
         .from('epic_master_assignments')
-        .select(`
+        .select(
+          `
           *,
-          epic_master:mentors!epic_master_assignments_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          ),
-          associate_epic_master:mentors!epic_master_assignments_associate_epic_master_id_fkey(
-            id,
-            first_name,
-            last_name,
-            email,
-            specialization,
-            current_company,
-            avatar_url,
-            status
-          ),
           cohort_epic:cohort_epics!epic_master_assignments_cohort_epic_id_fkey(*)
-        `)
+        `
+        )
         .eq('cohort_epic.cohort_id', cohortId);
 
       if (error) throw error;
 
-      return { 
-        data: data as EpicMasterAssignmentWithMentors[] || [], 
-        error: null, 
-        success: true 
+      // Fetch mentor details for each assignment
+      const assignmentsWithMentors = await Promise.all(
+        (data || []).map(async assignment => {
+          const epicMaster = await this.fetchMentorDetails(
+            assignment.epic_master_id
+          );
+          const associateEpicMaster = await this.fetchMentorDetails(
+            assignment.associate_epic_master_id
+          );
+
+          return {
+            ...assignment,
+            epic_master: epicMaster,
+            associate_epic_master: associateEpicMaster,
+          };
+        })
+      );
+
+      return {
+        data: assignmentsWithMentors as EpicMasterAssignmentWithMentors[],
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Error fetching cohort epic master assignments:', error);
-      return { 
-        data: [], 
-        error: (error as Error).message, 
-        success: false 
+      return {
+        data: [],
+        error: (error as Error).message,
+        success: false,
       };
     }
   }

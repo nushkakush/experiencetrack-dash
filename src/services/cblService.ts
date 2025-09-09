@@ -524,6 +524,12 @@ class CBLService {
             if (currentSlot > sessionsPerDay) {
               currentSlot = 1;
               currentDate.setDate(currentDate.getDate() + 1);
+
+              // Skip Sundays during automatic allocation
+              while (currentDate.getDay() === 0) {
+                // 0 = Sunday
+                currentDate.setDate(currentDate.getDate() + 1);
+              }
             }
           }
         }
@@ -543,6 +549,12 @@ class CBLService {
         if (currentSlot > sessionsPerDay) {
           currentSlot = 1;
           currentDate.setDate(currentDate.getDate() + 1);
+
+          // Skip Sundays during automatic allocation
+          while (currentDate.getDay() === 0) {
+            // 0 = Sunday
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
         }
       }
 

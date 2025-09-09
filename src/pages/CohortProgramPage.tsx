@@ -11,18 +11,21 @@ import { EpicMasterAssignment } from '@/components/epicMaster';
 import { ManageSessionDialog } from '@/components/sessions';
 import { DeleteSessionDialog } from '@/components/ui/sessions';
 import { EditChallengeNameDialog } from '@/components/ui/EditChallengeNameDialog';
+import { ExperienceLibrarySelector } from '@/components/experiences/ExperienceLibrarySelector';
 import { useProgramData } from '@/hooks/programs';
 import {
   sessionPlanningService,
   SessionType,
   PlannedSession,
 } from '@/services/sessionPlanningService';
+import { ExperienceToSessionService } from '@/services/experienceToSessionService';
 import { CBLBoundaryService } from '@/services/cblBoundaryService';
 import { cblService } from '@/services/cblService';
 import { cohortSettingsService } from '@/services/cohortSettingsService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import type { Experience } from '@/types/experience';
 
 const CohortProgramPage: React.FC = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -45,8 +48,17 @@ const CohortProgramPage: React.FC = () => {
     id: string;
     currentTitle: string;
   } | null>(null);
-  const [isManageSessionDialogOpen, setIsManageSessionDialogOpen] = useState(false);
-  const [sessionToManage, setSessionToManage] = useState<PlannedSession | null>(null);
+  const [isManageSessionDialogOpen, setIsManageSessionDialogOpen] =
+    useState(false);
+  const [sessionToManage, setSessionToManage] = useState<PlannedSession | null>(
+    null
+  );
+  const [isExperienceSelectorOpen, setIsExperienceSelectorOpen] =
+    useState(false);
+  const [experienceSelectorSession, setExperienceSelectorSession] = useState<{
+    date: Date;
+    sessionNumber: number;
+  } | null>(null);
 
   const [plannedSessions, setPlannedSessions] = useState<PlannedSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -81,22 +93,54 @@ const CohortProgramPage: React.FC = () => {
     }
   }, [plannedSessions.length]);
 
+  // Debug: Log when plannedSessions state changes
+  useEffect(() => {
+    console.log(
+      `🎯 plannedSessions state changed: ${plannedSessions.length} sessions`,
+      plannedSessions.map(s => ({
+        id: s.id,
+        title: s.title,
+        date: s.session_date,
+        slot: s.session_number,
+      }))
+    );
+  }, [plannedSessions]);
+
   const fetchPlannedSessions = async () => {
     if (!cohortId || !selectedEpic) return;
 
     setLoadingSessions(true);
     try {
+      console.log(
+        `🔍 Fetching planned sessions for cohort: ${cohortId}, epic: ${selectedEpic}`
+      );
       const result = await sessionPlanningService.getPlannedSessions(
         cohortId,
         selectedEpic
       );
       if (result.success) {
         const sessions = result.data || [];
+        console.log(
+          `📊 Fetched ${sessions.length} planned sessions:`,
+          sessions.map(s => ({
+            id: s.id,
+            title: s.title,
+            date: s.session_date,
+            slot: s.session_number,
+          }))
+        );
+
+        // Update state and log the change
+        console.log(
+          `🔄 Updating plannedSessions state from ${plannedSessions.length} to ${sessions.length} sessions`
+        );
         setPlannedSessions(sessions);
-        
+
         // Load session mentor assignments for these sessions
         const sessionIds = sessions.map(s => s.id);
         await loadSessionMentorAssignments(sessionIds);
+
+        console.log(`✅ State updated with ${sessions.length} sessions`);
       } else {
         console.error('Failed to fetch planned sessions:', result.error);
       }
@@ -174,8 +218,90 @@ const CohortProgramPage: React.FC = () => {
   };
 
   const handlePlanSession = (date: Date, sessionNumber: number) => {
-    setPlanningSession({ date, sessionNumber });
-    setIsPlanSessionModalOpen(true);
+    setExperienceSelectorSession({ date, sessionNumber });
+    setIsExperienceSelectorOpen(true);
+  };
+
+  const handleExperienceSelect = async (
+    experience: Experience,
+    date: Date,
+    sessionNumber: number
+  ) => {
+    if (!user || !cohortId || !selectedEpic) {
+      toast.error('Missing required information');
+      return;
+    }
+
+    // Show immediate feedback
+    const loadingToast = toast(`Adding ${experience.title} to timetable...`);
+
+    try {
+      // Check if this experience has already been used in this cohort
+      const duplicateCheck =
+        await sessionPlanningService.isExperienceAlreadyUsed(
+          cohortId,
+          experience.id
+        );
+
+      if (duplicateCheck.success && duplicateCheck.isUsed) {
+        loadingToast.dismiss();
+        toast.error(
+          `Experience "${experience.title}" has already been used in this cohort`
+        );
+        return;
+      }
+
+      if (!duplicateCheck.success) {
+        loadingToast.dismiss();
+        toast.error(
+          duplicateCheck.error || 'Failed to check for duplicate experiences'
+        );
+        return;
+      }
+
+      // Get cohort defaults once to avoid repeated database calls
+      const { cohortSettingsService } = await import(
+        '@/services/cohortSettingsService'
+      );
+      const defaults =
+        await cohortSettingsService.getDefaultSessionTimes(cohortId);
+
+      // For CBL challenges, we need to use the cohort_epic.id (selectedEpic) not the epic.id
+      // because the foreign key constraint references cohort_epics.id
+
+      const result = await ExperienceToSessionService.addExperienceToTimetable({
+        experience,
+        date,
+        sessionNumber,
+        cohortId,
+        epicId: selectedEpic, // Use cohort_epic.id directly
+        createdBy: user.id,
+        sessionsPerDay: cohort.sessions_per_day,
+        defaults,
+      });
+
+      console.log('🎯 ExperienceToSessionService result:', result);
+
+      if (result.success) {
+        loadingToast.dismiss();
+        toast.success(`Successfully added ${experience.title} to timetable`);
+
+        // Add a small delay to ensure database consistency
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Refresh the sessions
+        console.log('🔄 Refreshing planned sessions after CBL creation...');
+        await fetchPlannedSessions();
+        console.log('✅ Planned sessions refreshed');
+      } else {
+        loadingToast.dismiss();
+        toast.error(result.error || 'Failed to add experience to timetable');
+      }
+    } catch (error) {
+      loadingToast.dismiss();
+      console.error('Error adding experience to timetable:', error);
+      toast.error('Failed to add experience to timetable');
+    }
   };
 
   const handleConfirmPlanSession = async (
@@ -190,10 +316,13 @@ const CohortProgramPage: React.FC = () => {
     try {
       if (sessionType === 'cbl') {
         // Handle CBL challenge creation (no time overrides for CBL)
+        // For CBL challenges, we need to use the cohort_epic.id (selectedEpic) not the epic.id
+        // because the foreign key constraint references cohort_epics.id
+
         const result = await cblService.createCBLChallengeWithSessions(
           {
             cohort_id: cohortId,
-            epic_id: selectedEpic,
+            epic_id: selectedEpic, // Use cohort_epic.id directly
             title: title,
             created_by: user.id,
           },
@@ -245,7 +374,7 @@ const CohortProgramPage: React.FC = () => {
         const result = await cblService.createMockChallengeWithSessions(
           {
             cohort_id: cohortId,
-            epic_id: selectedEpic,
+            epic_id: selectedEpic, // Use cohort_epic.id directly
             title: title,
             created_by: user.id,
           },
@@ -297,9 +426,6 @@ const CohortProgramPage: React.FC = () => {
         );
 
         if (isIndividualCBL) {
-          console.log(
-            `🔍 Creating individual CBL session "${title}" of type "${sessionType}"`
-          );
           // Detect CBL boundaries to find the challenge ID
           const boundaries = await CBLBoundaryService.detectCBLVisualBoundaries(
             plannedSessions as any,
@@ -310,11 +436,6 @@ const CohortProgramPage: React.FC = () => {
             planningSession.date.getFullYear(),
             planningSession.date.getMonth(),
             planningSession.date.getDate()
-          );
-
-          console.log(`🔍 Available boundaries:`, boundaries);
-          console.log(
-            `🔍 Current date: ${currentDate.toISOString().split('T')[0]}`
           );
 
           const containingBoundary = boundaries.find(b => {
@@ -332,18 +453,8 @@ const CohortProgramPage: React.FC = () => {
             return currentDate >= startDate && currentDate <= endDate;
           });
 
-          console.log(`🔍 Containing boundary:`, containingBoundary);
-
           if (containingBoundary && containingBoundary.cblChallengeId) {
             cblChallengeId = containingBoundary.cblChallengeId;
-            console.log(
-              `✅ Setting cblChallengeId to: ${cblChallengeId} from boundary`
-            );
-          } else {
-            console.log(
-              `❌ No containing boundary found or no challenge ID in boundary`
-            );
-            console.log(`🔍 Boundary details:`, containingBoundary);
           }
         }
 
@@ -400,7 +511,7 @@ const CohortProgramPage: React.FC = () => {
         // Create the planned session
         const result = await sessionPlanningService.createPlannedSession({
           cohort_id: cohortId,
-          epic_id: selectedEpic,
+          epic_id: selectedEpic, // Use cohort_epic.id directly
           session_date: sessionDate,
           session_number: planningSession.sessionNumber,
           session_type: sessionType,
@@ -573,7 +684,11 @@ const CohortProgramPage: React.FC = () => {
         {selectedEpic && (
           <EpicMasterAssignment
             cohortEpicId={selectedEpic}
-            epicName={epics.find(epic => epic.id === selectedEpic)?.epic?.name || epics.find(epic => epic.id === selectedEpic)?.name || 'Unknown Epic'}
+            epicName={
+              epics.find(epic => epic.id === selectedEpic)?.epic?.name ||
+              epics.find(epic => epic.id === selectedEpic)?.name ||
+              'Unknown Epic'
+            }
             assignment={epicMasterAssignment}
             loading={loading}
             onAssignmentChange={refetchEpicMasterAssignment}
@@ -791,6 +906,23 @@ const CohortProgramPage: React.FC = () => {
           userId={user?.id || ''}
           plannedSessions={plannedSessions}
         />
+
+        {/* Experience Library Selector */}
+        {experienceSelectorSession && (
+          <ExperienceLibrarySelector
+            open={isExperienceSelectorOpen}
+            onOpenChange={setIsExperienceSelectorOpen}
+            onExperienceSelect={handleExperienceSelect}
+            selectedDate={experienceSelectorSession.date}
+            selectedSessionNumber={experienceSelectorSession.sessionNumber}
+            epicId={
+              epics.find(epic => epic.id === selectedEpic)?.epic_id ||
+              selectedEpic ||
+              ''
+            }
+            cohortId={cohortId || ''}
+          />
+        )}
 
         {/* Delete Session Dialog */}
         <DeleteSessionDialog

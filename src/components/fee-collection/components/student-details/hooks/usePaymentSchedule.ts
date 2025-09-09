@@ -140,6 +140,38 @@ export const usePaymentSchedule = ({
         verification_notes: tx.verification_notes,
         rejection_reason: tx.rejection_reason,
         lit_invoice_id: tx.lit_invoice_id, // Include this for invoice checking
+
+        // Verification fields and uploaded files
+        receipt_url: tx.receipt_url,
+        proof_of_payment_url: tx.proof_of_payment_url,
+        transaction_screenshot_url: tx.transaction_screenshot_url,
+
+        // Bank and payment details
+        bank_name: tx.bank_name,
+        bank_branch: tx.bank_branch,
+        utr_number: tx.utr_number,
+        account_number: tx.account_number,
+        cheque_number: tx.cheque_number,
+        payer_upi_id: tx.payer_upi_id,
+        qr_code_url: tx.qr_code_url,
+        receiver_bank_name: tx.receiver_bank_name,
+        receiver_bank_logo_url: tx.receiver_bank_logo_url,
+
+        // DD-specific fields
+        dd_number: tx.dd_number,
+        dd_bank_name: tx.dd_bank_name,
+        dd_branch: tx.dd_branch,
+
+        // Payment dates
+        payment_date: tx.payment_date,
+        transfer_date: tx.transfer_date,
+
+        // Verification tracking
+        verified_by: tx.verified_by,
+        verified_at: tx.verified_at,
+
+        // Reference number
+        reference_number: tx.reference_number,
       }));
     },
     [paymentTransactions]

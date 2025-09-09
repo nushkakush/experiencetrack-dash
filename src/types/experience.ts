@@ -62,6 +62,7 @@ export interface Experience {
   materials_required?: Material[];
   sop_steps?: SOPStep[]; // Step-by-step SOP instructions
   loom_video_url?: string; // Loom video URL for instructions
+  max_participants?: number; // Maximum number of participants for the experience
 
   created_by?: string;
   created_at: string;
@@ -102,6 +103,7 @@ export interface CreateExperienceRequest {
   materials_required?: Material[];
   sop_steps?: SOPStep[]; // Step-by-step SOP instructions
   loom_video_url?: string; // Loom video URL for instructions
+  max_participants?: number; // Maximum number of participants for the experience
 
   // GAP specific fields
   activity_type?: GAPActivityType;

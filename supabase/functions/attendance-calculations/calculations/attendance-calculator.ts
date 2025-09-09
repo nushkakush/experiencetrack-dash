@@ -82,6 +82,13 @@ export class AttendanceCalculator {
     const { cohortId, epicId, sessionDate, sessionNumber } = params;
 
     // Get attendance records for this session
+    console.log('Debug - Query parameters:', {
+      cohortId,
+      epicId,
+      sessionDate,
+      sessionNumber,
+    });
+
     const { data: records, error } = await this.supabase
       .from('attendance_records')
       .select('*')
@@ -89,6 +96,9 @@ export class AttendanceCalculator {
       .eq('epic_id', epicId)
       .eq('session_date', sessionDate)
       .eq('session_number', sessionNumber);
+
+    console.log('Debug - Query returned records:', records?.length || 0);
+    console.log('Debug - Query error:', error);
 
     if (error) throw error;
 
@@ -103,6 +113,7 @@ export class AttendanceCalculator {
 
     const totalStudents = students.length;
     const breakdown = this.calculateAttendanceBreakdown(records || []);
+    const absenceBreakdown = this.calculateAbsenceBreakdown(records || []);
 
     // Check if session is cancelled (no records but students exist)
     const isCancelled = totalStudents > 0 && (records || []).length === 0;
@@ -119,6 +130,7 @@ export class AttendanceCalculator {
       attendancePercentage: breakdown.percentage,
       isCancelled,
       breakdown,
+      absenceBreakdown,
     };
   }
 
@@ -220,15 +232,60 @@ export class AttendanceCalculator {
   async getCalendarData(params: CalendarDataParams): Promise<CalendarData> {
     const { cohortId, epicId, month } = params;
 
+    console.log('🔍 getCalendarData called with:', { cohortId, epicId, month });
+
+    // Check authentication context (optional for service role)
+    console.log('🔍 Using service role for database access, bypassing RLS');
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await this.supabase.auth.getUser();
+      console.log('🔍 Auth context:', {
+        user: user ? { id: user.id, email: user.email } : null,
+        authError,
+        hasServiceRole: true,
+      });
+
+      // Check user profile and role (optional)
+      if (user) {
+        const { data: profile, error: profileError } = await this.supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        console.log('🔍 User profile:', { profile, profileError });
+      }
+    } catch (authCheckError) {
+      console.log(
+        '🔍 Auth check failed, continuing with service role:',
+        authCheckError
+      );
+    }
+
     // Parse month to get date range
     const [year, monthNum] = month.split('-');
     const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(parseInt(year), parseInt(monthNum), 0)
-      .toISOString()
-      .split('T')[0];
+    // Get last day of the month - use monthNum (not monthNum-1) because we want the last day of the current month
+    const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+    const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
+
+    // Debug: Let's verify the date range calculation
+    console.log('🔍 Date range debug:', {
+      year: parseInt(year),
+      monthNum: parseInt(monthNum),
+      lastDay,
+      startDate,
+      endDate,
+      testDate: new Date(parseInt(year), parseInt(monthNum), 0).toISOString(),
+    });
+
+    console.log('📅 Date range calculated:', { startDate, endDate, lastDay });
 
     // Get all attendance records for the month
-    const { data: records, error } = await this.supabase
+    // Use service role to bypass RLS if needed
+    const query = this.supabase
       .from('attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
@@ -237,70 +294,240 @@ export class AttendanceCalculator {
       .lte('session_date', endDate)
       .order('session_date', { ascending: true });
 
-    if (error) throw error;
+    console.log('🔍 Executing query with params:', {
+      cohortId,
+      epicId,
+      startDate,
+      endDate,
+      queryString: query.toString(),
+    });
+
+    // Use raw SQL directly to bypass any RLS issues
+    console.log('🔍 Using raw SQL query to ensure we get all records...');
+    // Use optimized aggregated query - returns ~35 rows instead of 1500+
+    console.log('🚀 Using optimized aggregated query for calendar data...');
+    const { data: sessionSummaries, error } = await this.supabase.rpc(
+      'get_attendance_summary_by_month',
+      {
+        p_cohort_id: cohortId,
+        p_epic_id: epicId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+      }
+    );
+
+    if (error) {
+      console.error('❌ Error fetching attendance summary:', error);
+      throw error;
+    }
+
+    console.log('🔍 Optimized query results:', {
+      totalSessions: sessionSummaries?.length || 0,
+      august21to31Count:
+        sessionSummaries?.filter(
+          s => s.session_date >= '2025-08-21' && s.session_date <= '2025-08-31'
+        ).length || 0,
+    });
+
+    // For compatibility with existing code, assign sessionSummaries to records
+    const records = sessionSummaries;
+
+    console.log('📊 Found attendance sessions:', records?.length || 0);
+    if (records && records.length > 0) {
+      console.log('📊 Sample records:', records.slice(0, 3));
+      console.log('📊 Date range in records:', {
+        earliest: records[0]?.session_date,
+        latest: records[records.length - 1]?.session_date,
+      });
+
+      // Check specifically for records in the last two weeks
+      const lastTwoWeeksRecords = records.filter(record => {
+        const recordDate = new Date(record.session_date);
+        const recordDay = recordDate.getDate();
+        return recordDay >= 15; // Last two weeks of month
+      });
+      console.log(
+        '📊 Records in last two weeks (days 15-31):',
+        lastTwoWeeksRecords.length
+      );
+      if (lastTwoWeeksRecords.length > 0) {
+        console.log(
+          '📊 Last two weeks sample records:',
+          lastTwoWeeksRecords.slice(0, 3)
+        );
+      }
+
+      // Check specifically for August 21-31 records
+      const august21to31Records = records.filter(record => {
+        const recordDate = record.session_date; // Use string comparison directly
+        return recordDate >= '2025-08-21' && recordDate <= '2025-08-31';
+      });
+      console.log(
+        '📊 Records for August 21-31 (string comparison):',
+        august21to31Records.length
+      );
+      if (august21to31Records.length > 0) {
+        console.log(
+          '📊 August 21-31 sample records:',
+          august21to31Records.slice(0, 5)
+        );
+        console.log(
+          '📊 August 21-31 unique dates:',
+          [...new Set(august21to31Records.map(r => r.session_date))].sort()
+        );
+      }
+
+      // Also check with date parsing
+      const august21to31RecordsDateParsed = records.filter(record => {
+        const recordDate = new Date(record.session_date);
+        const recordDay = recordDate.getDate();
+        const recordMonth = recordDate.getMonth() + 1; // 0-indexed
+        return recordMonth === 8 && recordDay >= 21 && recordDay <= 31;
+      });
+      console.log(
+        '📊 Records for August 21-31 (date parsing):',
+        august21to31RecordsDateParsed.length
+      );
+    } else {
+      console.log('❌ No attendance records found for the month');
+      console.log('🔍 Query parameters:', {
+        cohortId,
+        epicId,
+        startDate,
+        endDate,
+      });
+    }
 
     // Get holidays for the month
     const holidays = await this.getHolidaysForMonth(cohortId, month);
 
-    // Group records by date
-    const recordsByDate = new Map<string, AttendanceRecord[]>();
-    (records || []).forEach(record => {
-      const date = record.session_date;
-      if (!recordsByDate.has(date)) {
-        recordsByDate.set(date, []);
+    // Group session summaries by date (optimized - no individual record processing)
+    const sessionsByDate = new Map<string, any[]>();
+    (records || []).forEach(sessionSummary => {
+      const date = sessionSummary.session_date;
+
+      // Debug specific dates that should have data
+      if (date >= '2025-08-18' && date <= '2025-08-29') {
+        console.log(
+          `🔍 Processing session for ${date}: session ${sessionSummary.session_number}, ${sessionSummary.total_students} students, ${sessionSummary.attendance_percentage}% attendance`
+        );
       }
-      recordsByDate.get(date)!.push(record);
+
+      if (!sessionsByDate.has(date)) {
+        sessionsByDate.set(date, []);
+      }
+
+      // Convert aggregated data to session format expected by frontend
+      sessionsByDate.get(date)!.push({
+        sessionNumber: sessionSummary.session_number,
+        sessionDate: sessionSummary.session_date,
+        totalStudents: sessionSummary.total_students,
+        presentCount: sessionSummary.present_count,
+        lateCount: sessionSummary.late_count,
+        absentCount: sessionSummary.absent_count,
+        exemptedCount: 0, // Not tracked in current aggregation
+        attendedCount: sessionSummary.present_count + sessionSummary.late_count,
+        attendancePercentage: parseFloat(sessionSummary.attendance_percentage),
+        isCancelled: false,
+        breakdown: {
+          present: sessionSummary.present_count,
+          late: sessionSummary.late_count,
+          absent: sessionSummary.absent_count,
+          exempted: 0,
+          regularAbsent: sessionSummary.absent_count,
+          attended: sessionSummary.present_count + sessionSummary.late_count,
+          total: sessionSummary.total_students,
+          percentage: parseFloat(sessionSummary.attendance_percentage),
+        },
+        absenceBreakdown: {
+          uninformed: 0, // Would need additional query for detailed breakdown
+        },
+      });
     });
+
+    // Debug: Check if sessionsByDate has the expected dates
+    console.log(
+      '🔍 sessionsByDate keys:',
+      Array.from(sessionsByDate.keys()).sort()
+    );
+    console.log('🔍 sessionsByDate size:', sessionsByDate.size);
+
+    // Check specifically for August 21-29
+    const august21to29Keys = Array.from(sessionsByDate.keys()).filter(
+      date => date >= '2025-08-21' && date <= '2025-08-29'
+    );
+    console.log('🔍 August 21-29 keys in sessionsByDate:', august21to29Keys);
+
+    if (august21to29Keys.length > 0) {
+      august21to29Keys.forEach(date => {
+        const daySessions = sessionsByDate.get(date) || [];
+        console.log(`🔍 ${date}: ${daySessions.length} sessions`);
+      });
+    }
 
     // Generate calendar days
     const days: any[] = [];
     const currentDate = new Date(startDate);
     const endOfMonth = new Date(endDate);
 
+    console.log(
+      '📅 Generating calendar days from:',
+      currentDate.toISOString().split('T')[0],
+      'to:',
+      endOfMonth.toISOString().split('T')[0]
+    );
+
+    // Get total students once for all sessions (optimization)
+    const { data: allStudents, error: studentsError } = await this.supabase
+      .from('cohort_students')
+      .select('*')
+      .eq('cohort_id', cohortId)
+      .eq('dropped_out_status', 'active');
+
+    if (studentsError) {
+      console.error('❌ Error fetching students:', studentsError);
+    }
+
+    const totalStudents = allStudents?.length || 0;
+    console.log('👥 Total active students:', totalStudents);
+
     while (currentDate <= endOfMonth) {
       const dateStr = currentDate.toISOString().split('T')[0];
-      const dayRecords = recordsByDate.get(dateStr) || [];
+      const daySessions = sessionsByDate.get(dateStr) || [];
 
-      // Group by session number
-      const sessionsByNumber = new Map<number, AttendanceRecord[]>();
-      dayRecords.forEach(record => {
-        if (!sessionsByNumber.has(record.session_number)) {
-          sessionsByNumber.set(record.session_number, []);
-        }
-        sessionsByNumber.get(record.session_number)!.push(record);
-      });
-
-      // Create session stats for each session
-      const sessions: SessionStats[] = [];
-      for (const [sessionNumber, sessionRecords] of sessionsByNumber) {
-        const breakdown = this.calculateAttendanceBreakdown(sessionRecords);
-
-        // Get total students
-        const { data: students } = await this.supabase
-          .from('cohort_students')
-          .select('*')
-          .eq('cohort_id', cohortId)
-          .eq('dropped_out_status', 'active');
-
-        sessions.push({
-          sessionNumber,
-          sessionDate: dateStr,
-          totalStudents: students?.length || 0,
-          presentCount: breakdown.present,
-          lateCount: breakdown.late,
-          absentCount: breakdown.regularAbsent,
-          exemptedCount: breakdown.exempted,
-          attendedCount: breakdown.attended,
-          attendancePercentage: breakdown.percentage,
-          isCancelled: false,
-          breakdown,
+      // Log specific dates that should have data
+      if (dateStr >= '2025-08-21' && dateStr <= '2025-08-31') {
+        console.log(`🔍 Checking date ${dateStr}:`, {
+          hasSessions: daySessions.length > 0,
+          sessionCount: daySessions.length,
+          sampleSessions: daySessions.slice(0, 2),
         });
       }
 
-      // Calculate overall attendance for the day
-      const allDayRecords = dayRecords;
-      const dayBreakdown = this.calculateAttendanceBreakdown(allDayRecords);
-      const overallAttendance = dayBreakdown.percentage;
+      // Sessions are already pre-aggregated - no need for individual record processing!
+      const sessions: SessionStats[] = daySessions.map(sessionData => ({
+        sessionNumber: sessionData.sessionNumber,
+        sessionDate: sessionData.sessionDate,
+        totalStudents: sessionData.totalStudents,
+        presentCount: sessionData.presentCount,
+        lateCount: sessionData.lateCount,
+        absentCount: sessionData.absentCount,
+        exemptedCount: sessionData.exemptedCount,
+        attendedCount: sessionData.attendedCount,
+        attendancePercentage: sessionData.attendancePercentage,
+        isCancelled: sessionData.isCancelled,
+        breakdown: sessionData.breakdown,
+        absenceBreakdown: sessionData.absenceBreakdown,
+      }));
+
+      // Calculate overall attendance for the day from aggregated session data
+      const overallAttendance =
+        sessions.length > 0
+          ? sessions.reduce(
+              (sum, session) => sum + session.attendancePercentage,
+              0
+            ) / sessions.length
+          : 0;
 
       // Check if it's a holiday
       const dayHolidays = holidays.filter(h => h.date === dateStr);
@@ -773,11 +1000,30 @@ export class AttendanceCalculator {
 
   // Helper method to calculate absence breakdown
   private calculateAbsenceBreakdown(records: AttendanceRecord[]) {
+    console.log(
+      'Debug - calculateAbsenceBreakdown called with records:',
+      records.length
+    );
+
+    const absentRecords = records.filter(r => r.status === 'absent');
+    console.log('Debug - absent records:', absentRecords.length);
+
     const uninformed = records.filter(
       r =>
         r.status === 'absent' &&
         (!r.absence_type || r.absence_type === 'uninformed')
     ).length;
+
+    console.log('Debug - uninformed count:', uninformed);
+    console.log(
+      'Debug - absent records details:',
+      absentRecords.map(r => ({
+        id: r.id,
+        status: r.status,
+        absence_type: r.absence_type,
+        student_id: r.student_id,
+      }))
+    );
 
     return { uninformed };
   }

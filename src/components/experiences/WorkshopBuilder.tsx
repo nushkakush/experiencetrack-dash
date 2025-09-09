@@ -364,11 +364,10 @@ export const WorkshopBuilder: React.FC<WorkshopBuilderProps> = ({
                   <Input
                     id='max-participants'
                     type='number'
-                    value={formData.workshop_max_participants || ''}
+                    value={formData.max_participants || ''}
                     onChange={e =>
                       onChange({
-                        workshop_max_participants:
-                          parseInt(e.target.value) || undefined,
+                        max_participants: parseInt(e.target.value) || undefined,
                       })
                     }
                     placeholder='e.g., 20'

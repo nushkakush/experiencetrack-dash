@@ -10,7 +10,10 @@ export interface ProgramCalendarGridProps {
   weekDayLabels: string[];
   sessionsPerDay: number;
   plannedSessions: Session[];
-  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
+  sessionMentorAssignments?: Record<
+    string,
+    SessionMentorAssignmentWithMentor[]
+  >;
   loadingSessions: boolean;
   selectedDate: Date | null;
   viewMode: 'month' | 'week';
@@ -58,11 +61,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
   cohortId,
   epicId,
 }) => {
-  console.log('🎯 ProgramCalendarGrid: Rendering with', {
-    viewMode,
-    daysCount: days.length,
-    days: days.map(d => d?.date?.toDateString()),
-  });
+  // Render calendar grid with provided days and configuration
   return (
     <div className='space-y-4 h-full flex flex-col'>
       {/* Week Day Headers */}

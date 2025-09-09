@@ -121,24 +121,8 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
     );
   }
 
-  const {
-    totalStudents,
-    attendedCount,
-    attendancePercentage,
-    breakdown,
-    absenceBreakdown,
-  } = sessionStats;
-
-  // Calculate uninformed absences if not provided by backend
-  const calculateUninformedAbsences = () => {
-    if (absenceBreakdown?.uninformed !== undefined) {
-      return absenceBreakdown.uninformed;
-    }
-    // Fallback: calculate from breakdown data
-    return breakdown.regularAbsent || 0;
-  };
-
-  const uninformedCount = calculateUninformedAbsences();
+  const { totalStudents, attendedCount, attendancePercentage, breakdown, absenceBreakdown } =
+    sessionStats;
 
   // Determine session status
   const getSessionStatus = () => {
@@ -238,18 +222,17 @@ export const SessionStatistics: React.FC<SessionStatisticsProps> = ({
                     provided or the absence type is "uninformed".
                     <br />
                     <br />
-                    Current count: {uninformedCount} out of{' '}
+                    Current count: {absenceBreakdown?.uninformed || 0} out of{' '}
                     {breakdown.regularAbsent} total absences
                     <br />
                     <br />
-                    Informed absences:{' '}
-                    {breakdown.regularAbsent - uninformedCount}
+                    Informed absences: {breakdown.regularAbsent - (absenceBreakdown?.uninformed || 0)}
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
           }
-          value={uninformedCount}
+          value={absenceBreakdown?.uninformed || 0}
           subtitle='For this session only'
           variant='default'
         />
