@@ -318,17 +318,30 @@ export const usePaymentForm = ({
 
     // Set the amount to maxAmount if:
     // 1. User hasn't manually entered a custom amount, OR
-    // 2. The current amount is not the correct pending amount (for partially paid installments)
-    if (!hasUserEnteredCustomAmount || amountToPay !== maxAmount) {
+    // 2. The current amount is 0 (initial state), OR
+    // 3. The current amount is significantly different from maxAmount (more than 1% difference)
+    //    This handles cases where the amount was set to an old value due to partial payment changes
+    const shouldUpdateAmount =
+      !hasUserEnteredCustomAmount ||
+      amountToPay === 0 ||
+      (maxAmount > 0 && Math.abs(amountToPay - maxAmount) / maxAmount > 0.01);
+
+    if (shouldUpdateAmount) {
       console.log(
         '🔍 [usePaymentForm] Updating amountToPay from',
         amountToPay,
         'to',
-        maxAmount
+        maxAmount,
+        'reason:',
+        !hasUserEnteredCustomAmount
+          ? 'user has not entered custom amount'
+          : amountToPay === 0
+            ? 'amount is 0'
+            : 'amount differs significantly from maxAmount'
       );
       setAmountToPay(maxAmount);
     }
-  }, [maxAmount, hasUserEnteredCustomAmount, amountToPay]); // Added amountToPay back to dependencies
+  }, [maxAmount, hasUserEnteredCustomAmount]); // Removed amountToPay from dependencies to prevent infinite loops
 
   // Reset custom amount flag when installment changes
   useEffect(() => {
@@ -398,9 +411,20 @@ export const usePaymentForm = ({
           : cleanValue;
 
       const amount = parseFloat(formattedValue) || 0;
+
+      console.log('🔍 [usePaymentForm] handleAmountChange called:', {
+        inputValue: value,
+        cleanValue,
+        formattedValue,
+        parsedAmount: amount,
+        currentAmountToPay: amountToPay,
+        maxAmount,
+        hasUserEnteredCustomAmount,
+      });
+
       setAmountToPay(amount);
 
-      // Mark that user has entered a custom amount
+      // Mark that user has entered a custom amount - this prevents the useEffect from resetting the amount
       setHasUserEnteredCustomAmount(true);
 
       // Only show validation error if amount is greater than 0 but exceeds max
@@ -419,7 +443,7 @@ export const usePaymentForm = ({
         amount: amountError,
       }));
     },
-    [maxAmount, formatCurrency]
+    [maxAmount, formatCurrency, amountToPay, hasUserEnteredCustomAmount]
   );
 
   const handlePaymentModeChange = useCallback((mode: string) => {

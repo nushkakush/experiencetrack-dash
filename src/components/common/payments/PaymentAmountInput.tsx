@@ -155,13 +155,39 @@ export const PaymentAmountInput = React.memo<PaymentAmountInputProps>(
         : !partialPaymentConfig.allowPartialPayments;
 
     // Set the amount to maxAmount when it's fixed (for partially paid installments)
+    // Only do this if the amount is 0 or significantly different from maxAmount
+    // This prevents resetting the amount when user is actively editing
     React.useEffect(() => {
       if (isFixedAmount && amount !== maxAmount) {
-        console.log('🔒 [PaymentAmountInput] Setting fixed amount:', {
-          currentAmount: amount,
-          maxAmount,
-        });
-        onAmountChange(maxAmount.toString());
+        // Only reset if amount is 0 (initial state) or significantly different (more than 1% difference)
+        const shouldReset =
+          amount === 0 ||
+          (maxAmount > 0 && Math.abs(amount - maxAmount) / maxAmount > 0.01);
+
+        if (shouldReset) {
+          console.log('🔒 [PaymentAmountInput] Setting fixed amount:', {
+            currentAmount: amount,
+            maxAmount,
+            reason:
+              amount === 0
+                ? 'amount is 0'
+                : 'amount differs significantly from maxAmount',
+          });
+          onAmountChange(maxAmount.toString());
+        } else {
+          console.log(
+            '🔒 [PaymentAmountInput] Skipping amount reset - user may be editing:',
+            {
+              currentAmount: amount,
+              maxAmount,
+              difference: Math.abs(amount - maxAmount),
+              percentageDifference:
+                maxAmount > 0
+                  ? (Math.abs(amount - maxAmount) / maxAmount) * 100
+                  : 0,
+            }
+          );
+        }
       }
     }, [isFixedAmount, amount, maxAmount, onAmountChange]);
 
