@@ -1,6 +1,8 @@
 import React from 'react';
 import { ProgramCalendarView as RefactoredCalendarView } from '@/domains/calendar';
 import type { Session } from '@/domains/sessions/types';
+import type { ExperienceType } from '@/types/experience';
+import type { SessionMentorAssignmentWithMentor } from '@/types/sessionMentorAssignment';
 
 export interface ProgramCalendarViewProps {
   cohortId: string;
@@ -26,7 +28,17 @@ export interface ProgramCalendarViewProps {
     updates: { title: string }
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
+  onSessionClick?: (session: Session) => void;
+  onExperienceDrop?: (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => void;
   plannedSessions: Session[];
+  sessionMentorAssignments?: Record<
+    string,
+    SessionMentorAssignmentWithMentor[]
+  >;
   loadingSessions: boolean;
   programCode?: string;
 }

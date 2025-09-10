@@ -4,6 +4,7 @@ import { cn } from '../../../lib/utils';
 import type { CalendarDay } from '../types';
 import type { Session } from '../../sessions/types';
 import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
+import type { ExperienceType } from '../../../types/experience';
 
 export interface ProgramCalendarGridProps {
   days: (CalendarDay | null)[];
@@ -37,6 +38,11 @@ export interface ProgramCalendarGridProps {
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
   onSessionClick?: (session: Session) => void;
+  onExperienceDrop?: (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => void;
   cohortId?: string;
   epicId?: string;
 }
@@ -58,6 +64,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
   onUpdateSession,
   onEditChallenge,
   onSessionClick,
+  onExperienceDrop,
   cohortId,
   epicId,
 }) => {
@@ -103,6 +110,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
           >
             {day ? (
               <CalendarDayContent
+                key={`${day.date.toISOString()}-sessions-${plannedSessions.length}`}
                 day={day}
                 sessionsPerDay={sessionsPerDay}
                 plannedSessions={plannedSessions}
@@ -116,6 +124,7 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
                 onUpdateSession={onUpdateSession}
                 onEditChallenge={onEditChallenge}
                 onSessionClick={onSessionClick}
+                onExperienceDrop={onExperienceDrop}
                 cohortId={cohortId}
                 epicId={epicId}
               />

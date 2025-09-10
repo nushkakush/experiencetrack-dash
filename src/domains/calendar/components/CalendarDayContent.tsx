@@ -3,6 +3,7 @@ import { Skeleton } from '../../../components/ui/skeleton';
 import { SessionCard } from '../../../components/ui/sessions';
 
 import { CalendarDropZone } from './CalendarDropZone';
+import { ExperienceDropZone } from '../../../components/calendar/CalendarDropZone';
 import { SessionService } from '../../sessions/services/SessionService';
 import {
   CBLBoundaryService,
@@ -11,6 +12,7 @@ import {
 import type { Session } from '../../sessions/types';
 import type { CalendarDay } from '../types';
 import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
+import type { ExperienceType } from '../../../types/experience';
 import { cn } from '../../../lib/utils';
 import { Sparkles } from 'lucide-react';
 
@@ -43,6 +45,11 @@ interface CalendarDayContentProps {
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
   onSessionClick?: (session: Session) => void;
+  onExperienceDrop?: (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => void;
   className?: string;
   cohortId?: string;
   epicId?: string;
@@ -62,6 +69,7 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   onUpdateSession,
   onEditChallenge,
   onSessionClick,
+  onExperienceDrop,
   className,
   cohortId,
   epicId,
@@ -77,16 +85,22 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
   React.useEffect(() => {
     const fetchBoundaries = async () => {
       if (!cohortId || !epicId) {
+        console.log('🔶 CBL boundaries cleared - missing cohortId or epicId');
         setCblBoundaries([]);
         return;
       }
       try {
+        console.log(
+          `🔶 Recalculating CBL boundaries for ${plannedSessions.length} sessions`
+        );
         const boundaries = await CBLBoundaryService.detectCBLVisualBoundaries(
           plannedSessions,
           cohortId,
           epicId
         );
-        // CBL boundaries loaded for visual display
+        console.log(
+          `🔶 CBL boundaries calculated: ${boundaries.length} boundaries found`
+        );
         setCblBoundaries(boundaries);
       } catch (error) {
         console.error('Error fetching CBL boundaries:', error);
@@ -406,97 +420,109 @@ export const CalendarDayContent: React.FC<CalendarDayContentProps> = ({
 
                 // Calculate slot styling based on occupancy and CBL boundaries
 
+                console.log('🎯 Rendering ExperienceDropZone for:', {
+                  sessionNumber,
+                  date: day.date,
+                  onExperienceDrop: !!onExperienceDrop,
+                  disabled: day.isHoliday,
+                });
                 return (
-                  <div
+                  <ExperienceDropZone
                     key={sessionNumber}
-                    className={cn('min-h-0 relative flex-1 h-full')}
+                    date={day.date}
+                    sessionNumber={sessionNumber}
+                    onDrop={onExperienceDrop || (() => {})}
+                    disabled={day.isHoliday}
+                    className='min-h-0 relative flex-1 h-full'
                   >
-                    {sessionForSlot ? (
-                      <>
-                        <SessionCard
-                          session={sessionForSlot}
-                          sessionNumber={sessionNumber}
-                          className='text-xs h-full'
-                          challengeTitle={
-                            sessionForSlot.challenge_title || undefined
-                          }
-                          mentorAssignments={
-                            sessionMentorAssignments[sessionForSlot.id] || []
-                          }
-                          onClick={() => onSessionClick?.(sessionForSlot)}
-                          onDragStart={(e, session) => {
-                            // Session drag started
-                          }}
-                          onDragEnd={e => {
-                            // Session drag ended
-                          }}
-                          onDelete={
-                            onDeleteSession
-                              ? (session, sessionNumber) => {
-                                  onDeleteSession(session.id);
-                                }
-                              : undefined
-                          }
-                          onUpdate={onUpdateSession}
-                        />
-                      </>
-                    ) : (
-                      <div
-                        className={cn(
-                          'h-full relative group transition-all duration-200',
-                          // Color coding for slots between CBL boundaries
-                          isBetweenCBL &&
-                            'bg-amber-50 border border-amber-200 rounded-lg',
-                          // Gray out on holiday
-                          day.isHoliday &&
-                            'bg-neutral-100 border border-neutral-200 rounded-lg opacity-70'
-                        )}
-                        onMouseEnter={() => setHoveredSlot(sessionNumber)}
-                        onMouseLeave={() => setHoveredSlot(null)}
-                      >
-                        {/* Holiday Indicator */}
-                        {day.isHoliday && (
-                          <div className='absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-neutral-200 text-neutral-700 font-medium'>
-                            {day.holidayTitle || 'Holiday'}
-                          </div>
-                        )}
-
-                        {/* CBL Boundary Indicator */}
-                        {isBetweenCBL && (
-                          <div className='absolute top-1 left-1 text-xs text-amber-600 font-medium'>
-                            CBL
-                          </div>
-                        )}
-
-                        {/* Hover Add Button (blocked on holiday) */}
-                        {hoveredSlot === sessionNumber && !day.isHoliday && (
-                          <button
-                            onClick={() =>
-                              onPlanSession(day.date, sessionNumber)
+                    <div className={cn('min-h-0 relative flex-1 h-full')}>
+                      {sessionForSlot ? (
+                        <>
+                          <SessionCard
+                            session={sessionForSlot}
+                            sessionNumber={sessionNumber}
+                            className='text-xs h-full'
+                            challengeTitle={
+                              sessionForSlot.challenge_title || undefined
                             }
-                            className={cn(
-                              'absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer group',
-                              isBetweenCBL
-                                ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/70 hover:border-amber-500'
-                                : 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-300/50 hover:border-blue-400/70'
-                            )}
-                            title={`Add session to slot ${sessionNumber}${isBetweenCBL ? ' (CBL boundary)' : ''}`}
-                          >
-                            <div
-                              className={cn(
-                                'font-medium text-sm',
-                                isBetweenCBL
-                                  ? 'text-amber-700 hover:text-amber-800'
-                                  : 'text-blue-600 hover:text-blue-700'
-                              )}
-                            >
-                              + Add Experience{isBetweenCBL ? ' (CBL)' : ''}
+                            mentorAssignments={
+                              sessionMentorAssignments[sessionForSlot.id] || []
+                            }
+                            onClick={() => onSessionClick?.(sessionForSlot)}
+                            onDragStart={(e, session) => {
+                              // Session drag started
+                            }}
+                            onDragEnd={e => {
+                              // Session drag ended
+                            }}
+                            onDelete={
+                              onDeleteSession
+                                ? (session, sessionNumber) => {
+                                    onDeleteSession(session.id);
+                                  }
+                                : undefined
+                            }
+                            onUpdate={onUpdateSession}
+                          />
+                        </>
+                      ) : (
+                        <div
+                          className={cn(
+                            'h-full relative group transition-all duration-200',
+                            // Color coding for slots between CBL boundaries
+                            isBetweenCBL &&
+                              'bg-amber-50 border border-amber-200 rounded-lg',
+                            // Gray out on holiday
+                            day.isHoliday &&
+                              'bg-neutral-100 border border-neutral-200 rounded-lg opacity-70'
+                          )}
+                          onMouseEnter={() => setHoveredSlot(sessionNumber)}
+                          onMouseLeave={() => setHoveredSlot(null)}
+                        >
+                          {/* Holiday Indicator */}
+                          {day.isHoliday && (
+                            <div className='absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-neutral-200 text-neutral-700 font-medium'>
+                              {day.holidayTitle || 'Holiday'}
                             </div>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          )}
+
+                          {/* CBL Boundary Indicator */}
+                          {isBetweenCBL && (
+                            <div className='absolute top-1 left-1 text-xs text-amber-600 font-medium'>
+                              CBL
+                            </div>
+                          )}
+
+                          {/* Hover Add Button (blocked on holiday) */}
+                          {hoveredSlot === sessionNumber && !day.isHoliday && (
+                            <button
+                              onClick={() =>
+                                onPlanSession(day.date, sessionNumber)
+                              }
+                              className={cn(
+                                'absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer group',
+                                isBetweenCBL
+                                  ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/70 hover:border-amber-500'
+                                  : 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-300/50 hover:border-blue-400/70'
+                              )}
+                              title={`Add session to slot ${sessionNumber}${isBetweenCBL ? ' (CBL boundary)' : ''}`}
+                            >
+                              <div
+                                className={cn(
+                                  'font-medium text-sm',
+                                  isBetweenCBL
+                                    ? 'text-amber-700 hover:text-amber-800'
+                                    : 'text-blue-600 hover:text-blue-700'
+                                )}
+                              >
+                                + Add Experience{isBetweenCBL ? ' (CBL)' : ''}
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </ExperienceDropZone>
                 );
               })}
             </div>

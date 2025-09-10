@@ -665,12 +665,18 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
           const hasSingleCompletePaymentWithInvoice =
             isSingleCompletePayment && transactions[0].lit_invoice_id;
 
+          // Check if any transaction is approved (admin-recorded payments)
+          const hasApprovedTransactions = transactions.some(
+            t => t.verification_status === 'approved'
+          );
+
           // Show history if any transaction has an invoice (this is the key condition)
           const shouldShowHistory =
             hasMultipleTransactions ||
             hasPartialPayment ||
             hasRejectedTransactions ||
-            hasTransactionsWithInvoices;
+            hasTransactionsWithInvoices ||
+            hasApprovedTransactions;
 
           // DEBUG LOGGING
           console.log(
@@ -684,6 +690,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
               hasPartialPayment,
               hasRejectedTransactions,
               hasTransactionsWithInvoices,
+              hasApprovedTransactions,
               isSingleCompletePayment,
               hasSingleCompletePaymentWithInvoice,
               shouldShowHistory,

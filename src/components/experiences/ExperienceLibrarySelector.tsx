@@ -141,6 +141,7 @@ export const ExperienceLibrarySelector: React.FC<
       const result = await ExperiencesService.getExperiences({
         epicId: epicId,
         limit: 100,
+        excludeCustom: true, // Only show library experiences, not custom ones
       });
 
       setExperiences(result.data);
@@ -196,38 +197,55 @@ export const ExperienceLibrarySelector: React.FC<
   };
 
   const handleExperienceSelect = async (experience: Experience) => {
-    // Prevent selection if already used
-    if (usedExperienceIds.has(experience.id)) {
-      toast.error(
-        `Experience "${experience.title}" has already been used in this cohort`
-      );
-      return;
-    }
-
-    // Check if there are enough spots available
-    const spotsCheck = await checkAvailableSpots(
-      experience,
-      selectedDate,
-      selectedSessionNumber
+    console.log(
+      '🔷 ExperienceLibrarySelector.handleExperienceSelect called with:',
+      experience.title
     );
-
-    if (!spotsCheck.hasEnoughSpace) {
-      const requiredSpots = spotsCheck.requiredSpots;
-      const availableSpots = spotsCheck.availableSpots;
-
-      if (spotsCheck.error) {
-        toast.error(`Failed to check available spots: ${spotsCheck.error}`);
+    try {
+      // Prevent selection if already used
+      if (usedExperienceIds.has(experience.id)) {
+        toast.error(
+          `Experience "${experience.title}" has already been used in this cohort`
+        );
         return;
       }
 
-      toast.error(
-        `Not enough space for "${experience.title}". Requires ${requiredSpots} ${requiredSpots === 1 ? 'spot' : 'spots'} but only ${availableSpots} ${availableSpots === 1 ? 'spot is' : 'spots are'} available.`
+      // Check if there are enough spots available
+      const spotsCheck = await checkAvailableSpots(
+        experience,
+        selectedDate,
+        selectedSessionNumber
       );
-      return;
-    }
 
-    onExperienceSelect(experience, selectedDate, selectedSessionNumber);
-    onOpenChange(false);
+      if (!spotsCheck.hasEnoughSpace) {
+        const requiredSpots = spotsCheck.requiredSpots;
+        const availableSpots = spotsCheck.availableSpots;
+
+        if (spotsCheck.error) {
+          toast.error(`Failed to check available spots: ${spotsCheck.error}`);
+          return;
+        }
+
+        toast.error(
+          `Not enough space for "${experience.title}". Requires ${requiredSpots} ${requiredSpots === 1 ? 'spot' : 'spots'} but only ${availableSpots} ${availableSpots === 1 ? 'spot is' : 'spots are'} available.`
+        );
+        return;
+      }
+
+      console.log('🔷 Calling onExperienceSelect...');
+      await onExperienceSelect(experience, selectedDate, selectedSessionNumber);
+      console.log('🔷 Closing dialog...');
+      onOpenChange(false);
+      console.log(
+        '🔷 ExperienceLibrarySelector.handleExperienceSelect completed'
+      );
+    } catch (error) {
+      console.error(
+        '🚨 Error in ExperienceLibrarySelector.handleExperienceSelect:',
+        error
+      );
+      toast.error('Failed to select experience');
+    }
   };
 
   const getExperienceTypeInfo = (type: ExperienceType) => {

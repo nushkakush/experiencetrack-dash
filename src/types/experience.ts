@@ -39,6 +39,7 @@ export interface Experience {
   learning_outcomes: string[];
   type: ExperienceType;
   epic_id: string; // Reference to the epic this experience belongs to
+  is_custom: boolean; // Whether this is a custom experience created by program manager
 
   // CBL-specific fields
   challenge?: string; // WYSIWYG HTML content
@@ -80,6 +81,7 @@ export interface CreateExperienceRequest {
   learning_outcomes: string[];
   type: ExperienceType;
   epic_id: string; // Reference to the epic this experience belongs to
+  is_custom?: boolean; // Whether this is a custom experience created by program manager
 
   // CBL-specific fields
   challenge?: string;

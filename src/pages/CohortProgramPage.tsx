@@ -12,6 +12,8 @@ import { ManageSessionDialog } from '@/components/sessions';
 import { DeleteSessionDialog } from '@/components/ui/sessions';
 import { EditChallengeNameDialog } from '@/components/ui/EditChallengeNameDialog';
 import { ExperienceLibrarySelector } from '@/components/experiences/ExperienceLibrarySelector';
+import { FloatingActionButtons } from '@/components/experiences/FloatingActionButtons';
+import { ExperienceStepperDialog } from '@/components/experiences/ExperienceStepperDialog';
 import { useProgramData } from '@/hooks/programs';
 import {
   sessionPlanningService,
@@ -25,7 +27,7 @@ import { cohortSettingsService } from '@/services/cohortSettingsService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import type { Experience } from '@/types/experience';
+import type { Experience, ExperienceType } from '@/types/experience';
 
 const CohortProgramPage: React.FC = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -58,6 +60,12 @@ const CohortProgramPage: React.FC = () => {
   const [experienceSelectorSession, setExperienceSelectorSession] = useState<{
     date: Date;
     sessionNumber: number;
+  } | null>(null);
+  const [isExperienceStepperOpen, setIsExperienceStepperOpen] = useState(false);
+  const [experienceStepperSession, setExperienceStepperSession] = useState<{
+    date: Date;
+    sessionNumber: number;
+    type: ExperienceType;
   } | null>(null);
 
   const [plannedSessions, setPlannedSessions] = useState<PlannedSession[]>([]);
@@ -222,84 +230,135 @@ const CohortProgramPage: React.FC = () => {
     setIsExperienceSelectorOpen(true);
   };
 
+  const handleExperienceDrop = (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => {
+    console.log('🎯 handleExperienceDrop called with:', {
+      type,
+      date,
+      sessionNumber,
+    });
+    setExperienceStepperSession({
+      date,
+      sessionNumber,
+      type,
+    });
+    setIsExperienceStepperOpen(true);
+    console.log('🎯 Modal should be opening now');
+  };
+
+  const handleExperienceCreated = async () => {
+    // Refresh the planned sessions after creating a new experience
+    await fetchPlannedSessions();
+    setIsExperienceStepperOpen(false);
+    setExperienceStepperSession(null);
+  };
+
   const handleExperienceSelect = async (
     experience: Experience,
     date: Date,
     sessionNumber: number
   ) => {
-    if (!user || !cohortId || !selectedEpic) {
-      toast.error('Missing required information');
-      return;
-    }
-
-    // Show immediate feedback
-    const loadingToast = toast(`Adding ${experience.title} to timetable...`);
-
     try {
-      // Check if this experience has already been used in this cohort
-      const duplicateCheck =
-        await sessionPlanningService.isExperienceAlreadyUsed(
-          cohortId,
-          experience.id
-        );
-
-      if (duplicateCheck.success && duplicateCheck.isUsed) {
-        loadingToast.dismiss();
-        toast.error(
-          `Experience "${experience.title}" has already been used in this cohort`
-        );
-        return;
-      }
-
-      if (!duplicateCheck.success) {
-        loadingToast.dismiss();
-        toast.error(
-          duplicateCheck.error || 'Failed to check for duplicate experiences'
-        );
-        return;
-      }
-
-      // Get cohort defaults once to avoid repeated database calls
-      const { cohortSettingsService } = await import(
-        '@/services/cohortSettingsService'
-      );
-      const defaults =
-        await cohortSettingsService.getDefaultSessionTimes(cohortId);
-
-      // For CBL challenges, we need to use the cohort_epic.id (selectedEpic) not the epic.id
-      // because the foreign key constraint references cohort_epics.id
-
-      const result = await ExperienceToSessionService.addExperienceToTimetable({
-        experience,
-        date,
+      console.log('🎯 handleExperienceSelect called with:', {
+        experienceTitle: experience.title,
+        experienceType: experience.type,
+        date: date.toISOString(),
         sessionNumber,
-        cohortId,
-        epicId: selectedEpic, // Use cohort_epic.id directly
-        createdBy: user.id,
-        sessionsPerDay: cohort.sessions_per_day,
-        defaults,
+        currentSessionCount: plannedSessions.length,
       });
 
-      console.log('🎯 ExperienceToSessionService result:', result);
+      if (!user || !cohortId || !selectedEpic) {
+        toast.error('Missing required information');
+        return;
+      }
 
-      if (result.success) {
-        loadingToast.dismiss();
-        toast.success(`Successfully added ${experience.title} to timetable`);
+      // Optional: keep UI responsive without sticky loading toasts
+      // toast.loading can cause dismiss issues in some environments; skip it
 
-        // Add a small delay to ensure database consistency
-        await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        // Check if this experience has already been used in this cohort
+        const duplicateCheck =
+          await sessionPlanningService.isExperienceAlreadyUsed(
+            cohortId,
+            experience.id
+          );
 
-        // Refresh the sessions
-        console.log('🔄 Refreshing planned sessions after CBL creation...');
-        await fetchPlannedSessions();
-        console.log('✅ Planned sessions refreshed');
-      } else {
-        loadingToast.dismiss();
-        toast.error(result.error || 'Failed to add experience to timetable');
+        if (duplicateCheck.success && duplicateCheck.isUsed) {
+          toast.error(
+            `Experience "${experience.title}" has already been used in this cohort`
+          );
+          return;
+        }
+
+        if (!duplicateCheck.success) {
+          toast.error(
+            duplicateCheck.error || 'Failed to check for duplicate experiences'
+          );
+          return;
+        }
+
+        // Get cohort defaults once to avoid repeated database calls
+        const { cohortSettingsService } = await import(
+          '@/services/cohortSettingsService'
+        );
+        const defaults =
+          await cohortSettingsService.getDefaultSessionTimes(cohortId);
+
+        // For CBL challenges, we need to use the cohort_epic.id (selectedEpic) not the epic.id
+        // because the foreign key constraint references cohort_epics.id
+
+        const result =
+          await ExperienceToSessionService.addExperienceToTimetable({
+            experience,
+            date,
+            sessionNumber,
+            cohortId,
+            epicId: selectedEpic, // Use cohort_epic.id directly
+            createdBy: user.id,
+            sessionsPerDay: cohort.sessions_per_day,
+            defaults,
+          });
+
+        console.log('🎯 ExperienceToSessionService result:', result);
+
+        if (result.success) {
+          // Add a short delay to ensure DB writes are visible
+          console.log('⏳ Waiting for database consistency...');
+          await new Promise(resolve => setTimeout(resolve, 800));
+
+          // Refresh the sessions to show new CBL sessions and update boundaries
+          console.log('🔄 Refreshing planned sessions after CBL creation...');
+          console.log(
+            `🔍 Current session count before refresh: ${plannedSessions.length}`
+          );
+          await fetchPlannedSessions();
+          console.log(
+            '✅ Planned sessions refreshed - CBL boundaries should be recalculated'
+          );
+
+          // Force a second refresh if no sessions were found (database consistency issue)
+          if (plannedSessions.length === 0) {
+            console.log(
+              '⚠️ No sessions found after first refresh, trying again in 1 second...'
+            );
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await fetchPlannedSessions();
+            console.log('🔄 Second refresh completed');
+          }
+
+          toast.success(`Successfully added ${experience.title} to timetable`);
+        } else {
+          toast.error(result.error || 'Failed to add experience to timetable');
+        }
+      } catch (error) {
+        console.error('Error adding experience to timetable:', error);
+        toast.error('Failed to add experience to timetable');
       }
     } catch (error) {
-      loadingToast.dismiss();
-      console.error('Error adding experience to timetable:', error);
+      console.error('🚨 Outer error in handleExperienceSelect:', error);
       toast.error('Failed to add experience to timetable');
     }
   };
@@ -540,6 +599,7 @@ const CohortProgramPage: React.FC = () => {
           setPlannedSessions(prev => [...prev, result.data]);
 
           // If this is a CBL session, refresh the sessions to ensure challenge_title is populated
+          // and CBL boundaries are recalculated
           if (cblChallengeId) {
             setTimeout(async () => {
               await fetchPlannedSessions();
@@ -620,6 +680,15 @@ const CohortProgramPage: React.FC = () => {
           setPlannedSessions(prev => prev.filter(s => s.id !== session.id));
           toast.success(`Session "${session.title}" deleted successfully`);
         }
+
+        // Refresh sessions after a brief delay to ensure CBL boundaries are recalculated
+        setTimeout(async () => {
+          console.log(
+            '🔄 Refreshing sessions after deletion to update CBL boundaries...'
+          );
+          await fetchPlannedSessions();
+        }, 300);
+
         handleCloseDeleteDialog();
       } else {
         toast.error(result.error || 'Failed to delete session');
@@ -886,6 +955,7 @@ const CohortProgramPage: React.FC = () => {
               setIsEditChallengeDialogOpen(true);
             }}
             onSessionClick={handleManageSession}
+            onExperienceDrop={handleExperienceDrop}
             plannedSessions={plannedSessions}
             sessionMentorAssignments={sessionMentorAssignments}
             loadingSessions={loadingSessions}
@@ -984,6 +1054,19 @@ const CohortProgramPage: React.FC = () => {
           currentTitle={challengeToEdit?.currentTitle || ''}
           challengeId={challengeToEdit?.id || ''}
         />
+
+        {/* Experience Stepper Dialog */}
+        <ExperienceStepperDialog
+          open={isExperienceStepperOpen}
+          onOpenChange={setIsExperienceStepperOpen}
+          onExperienceSaved={handleExperienceCreated}
+          existingExperience={null}
+          isCustomExperience={true}
+          presetType={experienceStepperSession?.type}
+        />
+
+        {/* Floating Action Buttons */}
+        <FloatingActionButtons />
       </div>
     </DashboardShell>
   );

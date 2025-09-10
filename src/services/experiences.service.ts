@@ -15,12 +15,14 @@ export class ExperiencesService {
     epicId,
     limit = 50,
     offset = 0,
+    excludeCustom = false,
   }: {
     search?: string;
     type?: string;
     epicId?: string;
     limit?: number;
     offset?: number;
+    excludeCustom?: boolean;
   } = {}): Promise<{ data: Experience[]; count: number }> {
     let query = supabase
       .from('experiences')
@@ -37,6 +39,10 @@ export class ExperiencesService {
 
     if (epicId) {
       query = query.eq('epic_id', epicId);
+    }
+
+    if (excludeCustom) {
+      query = query.eq('is_custom', false);
     }
 
     if (limit) {
@@ -130,6 +136,7 @@ export class ExperiencesService {
           learning_outcomes: experience.learning_outcomes,
           type: experience.type,
           epic_id: experience.epic_id,
+          is_custom: experience.is_custom || false,
           // CBL fields
           challenge: experience.challenge,
           deliverables: experience.deliverables,
@@ -168,6 +175,7 @@ export class ExperiencesService {
           learning_outcomes: experience.learning_outcomes,
           type: experience.type,
           epic_id: experience.epic_id,
+          is_custom: experience.is_custom || false,
           // CBL fields
           challenge: experience.challenge,
           deliverables: experience.deliverables,

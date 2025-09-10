@@ -13,6 +13,7 @@ import { cohortsService } from '../../../services/cohorts.service';
 import type { UserProfile } from '../../../types/auth';
 import type { Cohort } from '../../../types/cohort';
 import type { SessionMentorAssignmentWithMentor } from '../../../types/sessionMentorAssignment';
+import type { ExperienceType } from '../../../types/experience';
 
 export interface ProgramCalendarViewProps {
   cohortId: string;
@@ -39,8 +40,16 @@ export interface ProgramCalendarViewProps {
   ) => Promise<void>;
   onEditChallenge?: (challengeId: string, currentTitle: string) => void;
   onSessionClick?: (session: Session) => void;
+  onExperienceDrop?: (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => void;
   plannedSessions: Session[];
-  sessionMentorAssignments?: Record<string, SessionMentorAssignmentWithMentor[]>;
+  sessionMentorAssignments?: Record<
+    string,
+    SessionMentorAssignmentWithMentor[]
+  >;
   loadingSessions: boolean;
   programCode?: string;
 }
@@ -58,6 +67,7 @@ export const ProgramCalendarView: React.FC<ProgramCalendarViewProps> = ({
   onUpdateSession,
   onEditChallenge,
   onSessionClick,
+  onExperienceDrop,
   plannedSessions,
   sessionMentorAssignments = {},
   loadingSessions,
@@ -88,15 +98,59 @@ export const ProgramCalendarView: React.FC<ProgramCalendarViewProps> = ({
         } else {
           // Fallback to all mentors if no cohort-specific mentors found
           const fallbackResult = await MentorsService.getAllMentors();
-          if (fallbackResult.success && fallbackResult.data && fallbackResult.data.length > 0) {
+          if (
+            fallbackResult.success &&
+            fallbackResult.data &&
+            fallbackResult.data.length > 0
+          ) {
             setMentors(fallbackResult.data.slice(0, 4));
           } else {
             // If no mentors found, use placeholder data
             setMentors([
-              { id: '1', user_id: '1', first_name: 'LALITH', last_name: 'DHANUSH', email: 'lalith@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-              { id: '2', user_id: '2', first_name: 'SANJAY', last_name: 'SINGHA', email: 'sanjay@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-              { id: '3', user_id: '3', first_name: 'KANISHKAR', last_name: 'VELLINGIRI', email: 'kanishkar@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-              { id: '4', user_id: '4', first_name: 'KARAN', last_name: 'KATKE', email: 'karan@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+              {
+                id: '1',
+                user_id: '1',
+                first_name: 'LALITH',
+                last_name: 'DHANUSH',
+                email: 'lalith@example.com',
+                role: 'mentor_manager',
+                avatar_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                id: '2',
+                user_id: '2',
+                first_name: 'SANJAY',
+                last_name: 'SINGHA',
+                email: 'sanjay@example.com',
+                role: 'mentor_manager',
+                avatar_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                id: '3',
+                user_id: '3',
+                first_name: 'KANISHKAR',
+                last_name: 'VELLINGIRI',
+                email: 'kanishkar@example.com',
+                role: 'mentor_manager',
+                avatar_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                id: '4',
+                user_id: '4',
+                first_name: 'KARAN',
+                last_name: 'KATKE',
+                email: 'karan@example.com',
+                role: 'mentor_manager',
+                avatar_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
             ]);
           }
         }
@@ -104,10 +158,50 @@ export const ProgramCalendarView: React.FC<ProgramCalendarViewProps> = ({
         console.error('Error loading mentors:', error);
         // Use placeholder data on error
         setMentors([
-          { id: '1', user_id: '1', first_name: 'LALITH', last_name: 'DHANUSH', email: 'lalith@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { id: '2', user_id: '2', first_name: 'SANJAY', last_name: 'SINGHA', email: 'sanjay@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { id: '3', user_id: '3', first_name: 'KANISHKAR', last_name: 'VELLINGIRI', email: 'kanishkar@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { id: '4', user_id: '4', first_name: 'KARAN', last_name: 'KATKE', email: 'karan@example.com', role: 'mentor_manager', avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          {
+            id: '1',
+            user_id: '1',
+            first_name: 'LALITH',
+            last_name: 'DHANUSH',
+            email: 'lalith@example.com',
+            role: 'mentor_manager',
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            user_id: '2',
+            first_name: 'SANJAY',
+            last_name: 'SINGHA',
+            email: 'sanjay@example.com',
+            role: 'mentor_manager',
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: '3',
+            user_id: '3',
+            first_name: 'KANISHKAR',
+            last_name: 'VELLINGIRI',
+            email: 'kanishkar@example.com',
+            role: 'mentor_manager',
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: '4',
+            user_id: '4',
+            first_name: 'KARAN',
+            last_name: 'KATKE',
+            email: 'karan@example.com',
+            role: 'mentor_manager',
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
         ]);
       }
 
@@ -223,6 +317,7 @@ export const ProgramCalendarView: React.FC<ProgramCalendarViewProps> = ({
         onUpdateSession={onUpdateSession}
         onEditChallenge={onEditChallenge}
         onSessionClick={onSessionClick}
+        onExperienceDrop={onExperienceDrop}
         cohortId={cohortId}
         epicId={epicId}
       />

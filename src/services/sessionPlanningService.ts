@@ -195,6 +195,9 @@ class SessionPlanningService {
     error?: string;
   }> {
     try {
+      console.log(
+        `🔍 SessionPlanningService.getPlannedSessions called with cohortId: ${cohortId}, epicId: ${epicId}`
+      );
       let query = supabase
         .from('planned_sessions')
         .select(
@@ -217,6 +220,16 @@ class SessionPlanningService {
       }
 
       const { data: sessions, error } = await query;
+
+      console.log(
+        `🔍 Database returned ${sessions?.length || 0} sessions for cohort ${cohortId}, epic ${epicId}:`,
+        sessions?.map(s => ({
+          id: s.id,
+          type: s.session_type,
+          date: s.session_date,
+          cbl_id: s.cbl_challenge_id,
+        }))
+      );
 
       if (error) {
         console.error('Error fetching planned sessions:', error);

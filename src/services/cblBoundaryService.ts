@@ -142,6 +142,15 @@ export class CBLBoundaryService {
     cohortId: string,
     epicId: string
   ): Promise<CBLVisualBoundaryInfo[]> {
+    console.log(
+      `🔍 CBL boundary detection starting with ${plannedSessions.length} sessions:`,
+      plannedSessions.map(s => ({
+        id: s.id,
+        type: s.session_type,
+        date: s.session_date,
+        cbl_id: s.cbl_challenge_id,
+      }))
+    );
     // Find all CBL and Mock Challenge sessions for this cohort and epic
     const cblSessions = plannedSessions.filter(
       session =>
@@ -156,6 +165,16 @@ export class CBLBoundaryService {
           'reflection',
           'mock_challenge',
         ].includes(session.session_type)
+    );
+
+    console.log(
+      `🔍 Filtered CBL sessions: ${cblSessions.length}`,
+      cblSessions.map(s => ({
+        id: s.id,
+        type: s.session_type,
+        date: s.session_date,
+        cbl_id: s.cbl_challenge_id,
+      }))
     );
 
     // Group CBL sessions by cbl_challenge_id to identify sets
@@ -241,22 +260,32 @@ export class CBLBoundaryService {
       let isMockChallenge = false;
       if (cblChallengeId && cblChallengeId !== 'no-challenge-id') {
         try {
-          // Fetch the is_mock flag from the challenge record
+          // Try to fetch the is_mock flag from the challenge record
           const { data: challenge, error } = await supabase
             .from('cbl_challenges')
             .select('is_mock')
             .eq('id', cblChallengeId)
             .single();
 
-          if (!error && challenge) {
+          if (!error && challenge && challenge.is_mock !== undefined) {
             isMockChallenge = challenge.is_mock === true;
+            console.log(
+              `🔍 Successfully fetched is_mock flag: ${isMockChallenge} for challenge ${cblChallengeId}`
+            );
           } else {
             // Fallback: check if title contains "mock"
+            console.warn(
+              `Could not fetch is_mock flag for challenge ${cblChallengeId}, using title fallback. Error:`,
+              error
+            );
             isMockChallenge =
               challengeTitle?.toLowerCase().includes('mock') || false;
           }
         } catch (error) {
-          console.error('Error fetching challenge is_mock flag:', error);
+          console.warn(
+            'Database error fetching challenge is_mock flag, using title fallback:',
+            error
+          );
           // Fallback: check if title contains "mock"
           isMockChallenge =
             challengeTitle?.toLowerCase().includes('mock') || false;

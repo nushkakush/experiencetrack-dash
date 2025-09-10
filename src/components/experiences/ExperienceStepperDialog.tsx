@@ -43,11 +43,20 @@ interface ExperienceStepperDialogProps {
   onOpenChange: (open: boolean) => void;
   onExperienceSaved: () => void;
   existingExperience?: Experience | null;
+  isCustomExperience?: boolean; // Whether this is a custom experience from floating buttons
+  presetType?: ExperienceType; // Type preset from drag operation
 }
 
 export const ExperienceStepperDialog: React.FC<
   ExperienceStepperDialogProps
-> = ({ open, onOpenChange, onExperienceSaved, existingExperience = null }) => {
+> = ({
+  open,
+  onOpenChange,
+  onExperienceSaved,
+  existingExperience = null,
+  isCustomExperience = false,
+  presetType,
+}) => {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<
@@ -56,7 +65,8 @@ export const ExperienceStepperDialog: React.FC<
     id: existingExperience?.id,
     title: existingExperience?.title || '',
     learning_outcomes: existingExperience?.learning_outcomes || [],
-    type: existingExperience?.type || 'CBL',
+    type: existingExperience?.type || presetType || 'CBL',
+    is_custom: existingExperience?.is_custom || isCustomExperience,
     challenge: existingExperience?.challenge || '',
     deliverables: existingExperience?.deliverables || [],
     grading_rubric: existingExperience?.grading_rubric || [],
@@ -194,8 +204,9 @@ export const ExperienceStepperDialog: React.FC<
       setFormData({
         title: '',
         learning_outcomes: [],
-        type: 'CBL',
+        type: presetType || 'CBL',
         epic_id: activeEpicId || '', // Set the active epic
+        is_custom: isCustomExperience,
         challenge: '',
         deliverables: [],
         grading_rubric: [],
@@ -241,8 +252,9 @@ export const ExperienceStepperDialog: React.FC<
         setFormData({
           title: '',
           learning_outcomes: [],
-          type: 'CBL',
+          type: presetType || 'CBL',
           epic_id: activeEpicId || '',
+          is_custom: isCustomExperience,
           challenge: '',
           deliverables: [],
           grading_rubric: [],
@@ -256,7 +268,7 @@ export const ExperienceStepperDialog: React.FC<
       }
       setCurrentStep(1);
     }
-  }, [open, existingExperience, activeEpicId]);
+  }, [open, existingExperience, activeEpicId, presetType]);
 
   const handleInputChange = (
     field: keyof CreateExperienceRequest,
@@ -361,8 +373,9 @@ export const ExperienceStepperDialog: React.FC<
         setFormData({
           title: '',
           learning_outcomes: [],
-          type: 'CBL',
+          type: presetType || 'CBL',
           epic_id: activeEpicId || '',
+          is_custom: isCustomExperience,
           challenge: '',
           deliverables: [],
           grading_rubric: [],
@@ -408,7 +421,7 @@ export const ExperienceStepperDialog: React.FC<
       setFormData({
         title: '',
         learning_outcomes: [],
-        type: 'CBL',
+        type: presetType || 'CBL',
         epic_id: activeEpicId || '',
         challenge: '',
         deliverables: [],

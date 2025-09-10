@@ -339,6 +339,11 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
             t.reference_number
         );
 
+        // Check if any transaction is approved (admin-recorded payments)
+        const hasApprovedTransactions = transactions.some(
+          t => t.verification_status === 'approved'
+        );
+
         // For single transactions, check if it's a complete payment (regardless of status)
         const isSingleCompletePayment =
           transactions.length === 1 && transactions[0].amount >= item.amount;
@@ -348,7 +353,8 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           hasPartialPayment ||
           hasRejectedTransactions ||
           hasTransactionsWithInvoices ||
-          hasVerificationDetails;
+          hasVerificationDetails ||
+          hasApprovedTransactions;
 
         // DEBUG LOGGING
         console.log('🔍 [PaymentSchedule] Payment History Visibility Check:', {
@@ -361,6 +367,7 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           hasRejectedTransactions,
           hasTransactionsWithInvoices,
           hasVerificationDetails,
+          hasApprovedTransactions,
           isSingleCompletePayment,
           shouldShowHistory,
           transactions: transactions.map(t => ({

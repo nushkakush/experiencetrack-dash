@@ -541,21 +541,26 @@ export const usePaymentForm = ({
 
     // Validate file uploads
     if (isAdminMode) {
-      // Admin mode: Only require proof of payment file, make others optional
-      const proofOfPaymentFields = [
-        'bankTransferScreenshot',
-        'proofOfPayment',
-        'transactionScreenshot',
-        'ddReceipt',
-      ];
-      const hasAnyProofOfPayment = proofOfPaymentFields.some(
+      // Admin mode: Use the required files for the selected payment mode
+      const requiredFiles = getRequiredFilesForMode(selectedPaymentMode);
+      console.log(
+        '🔍 [usePaymentForm] Admin mode - Required files for mode:',
+        selectedPaymentMode,
+        requiredFiles
+      );
+
+      const hasAnyProofOfPayment = requiredFiles.some(
         field => uploadedFiles[field]
       );
 
       if (!hasAnyProofOfPayment) {
         newErrors.proofOfPayment = 'Please upload proof of payment';
         console.log(
-          '❌ [usePaymentForm] Admin mode: No proof of payment uploaded'
+          '❌ [usePaymentForm] Admin mode: No proof of payment uploaded',
+          'Required files:',
+          requiredFiles,
+          'Uploaded files:',
+          uploadedFiles
         );
       }
     } else {
