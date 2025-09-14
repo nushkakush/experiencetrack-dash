@@ -40,6 +40,7 @@ import {
   Route,
   CheckCircle,
   TestTube,
+  MessageCircle,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -133,6 +134,11 @@ const getNavigationItems = (
         title: 'Epic Learning Paths',
         onClick: () => navigate('/epic-learning-paths'),
         icon: Route,
+      },
+      {
+        title: 'Enquiries',
+        onClick: () => navigate('/enquiries'),
+        icon: MessageCircle,
       },
       {
         title: 'User Management',

@@ -23,4 +23,9 @@ verify_jwt = false
 import_map = "./functions/payment-engine/deno.json"
 entrypoint = "./functions/payment-engine/index.ts"
 
+[functions.webflow-enquiry-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/webflow-enquiry-webhook/deno.json"
+entrypoint = "./functions/webflow-enquiry-webhook/index.ts"
 

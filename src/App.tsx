@@ -44,6 +44,8 @@ import ExperienceDesignerPage from './pages/ExperienceDesignerPage';
 import ExperienceDesignManagementPage from './pages/ExperienceDesignManagementPage';
 import EpicsManagementPage from './pages/EpicsManagementPage';
 import EpicLearningPathsManagementPage from './pages/EpicLearningPathsManagementPage';
+import EnquiriesPage from './pages/EnquiriesPage';
+import WebflowTestComponent from './components/debug/WebflowTestComponent';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import {
@@ -488,6 +490,26 @@ const App = () => {
                         />
 
                         <Route path='/profile' element={<ProfilePage />} />
+                        <Route
+                          path='/enquiries'
+                          element={
+                            <ProtectedRoute allowedRoles={['super_admin']}>
+                              <DashboardAccessControl>
+                                <EnquiriesPage />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/debug/webflow'
+                          element={
+                            <ProtectedRoute allowedRoles={['super_admin']}>
+                              <DashboardAccessControl>
+                                <WebflowTestComponent />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
                         <Route
                           path='/invitation/:token'
                           element={<InvitationPage />}
