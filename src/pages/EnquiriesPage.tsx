@@ -447,20 +447,6 @@ export default function EnquiriesPage() {
     }
   };
 
-  useEffect(() => {
-    loadEnquiries();
-    loadStats();
-    loadFormNames();
-  }, [
-    filters,
-    activeTab,
-    currentPage,
-    pageSize,
-    showDeleted,
-    loadEnquiries,
-    loadFormNames,
-  ]);
-
   const loadEnquiries = async () => {
     const requestId = crypto.randomUUID();
     const currentFilters = {
@@ -533,6 +519,12 @@ export default function EnquiriesPage() {
       console.error('Error loading form names:', error);
     }
   };
+
+  useEffect(() => {
+    loadEnquiries();
+    loadStats();
+    loadFormNames();
+  }, [filters, activeTab, currentPage, pageSize, showDeleted]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
