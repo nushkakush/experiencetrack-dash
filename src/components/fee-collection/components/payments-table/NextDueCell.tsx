@@ -123,20 +123,28 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       (student as { payment_engine_breakdown?: unknown })
         .payment_engine_breakdown
     ) {
-      const breakdown = (student as { payment_engine_breakdown?: unknown })
-        .payment_engine_breakdown;
+      const paymentEngineData = (
+        student as { payment_engine_breakdown?: unknown }
+      ).payment_engine_breakdown as { breakdown?: any; aggregate?: any };
+
+      // Extract the actual breakdown from the payment engine data
+      const breakdown = paymentEngineData?.breakdown;
 
       console.log('🔍 [NextDueCell] Using payment engine breakdown:', {
         student_id: student.student_id,
+        payment_plan: student.payment_plan,
+        has_payment_engine_data: !!paymentEngineData,
         has_breakdown: !!breakdown,
         has_semesters: !!(
           breakdown?.semesters && Array.isArray(breakdown.semesters)
         ),
         semesters_count: breakdown?.semesters?.length || 0,
+        paymentEngineData,
+        breakdown: breakdown,
       });
 
       // Find the next pending installment from the breakdown
-      if (breakdown.semesters && Array.isArray(breakdown.semesters)) {
+      if (breakdown?.semesters && Array.isArray(breakdown.semesters)) {
         for (const semester of breakdown.semesters) {
           if (semester.instalments && Array.isArray(semester.instalments)) {
             for (const installment of semester.instalments) {
@@ -180,6 +188,18 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
 
     // For installment-wise payments, we need to determine which installment is next
     if (student.payment_plan === 'instalment_wise') {
+      console.log(
+        '🔍 [NextDueCell] Using fallback logic for installment-wise:',
+        {
+          student_id: student.student_id,
+          payment_plan: student.payment_plan,
+          total_paid: student.paid_amount,
+          total_amount: student.total_amount,
+          has_payment_schedule: !!student.payment_schedule,
+          payment_schedule: student.payment_schedule,
+        }
+      );
+
       // Calculate which installment should be next based on total paid amount
       const totalPaid = Number(student.paid_amount) || 0;
       const totalPayable = Number(student.total_amount) || 0;
@@ -191,6 +211,14 @@ export const NextDueCell: React.FC<NextDueCellProps> = ({
       const totalInstallments = Math.max(1, scheduleInstallments);
       const installmentAmount =
         totalInstallments > 0 ? totalPayable / totalInstallments : 0;
+
+      console.log('🔍 [NextDueCell] Fallback calculation:', {
+        totalPaid,
+        totalPayable,
+        totalInstallments,
+        installmentAmount,
+        scheduleInstallments,
+      });
 
       if (!isFinite(installmentAmount) || installmentAmount <= 0) {
         const today = new Date();

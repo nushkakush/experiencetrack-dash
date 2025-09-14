@@ -505,20 +505,6 @@ export class EnquiriesService {
   }
 
   /**
-   * Get Webflow sync logs
-   */
-  static getWebflowSyncLogs() {
-    return this.getWebflowService().getSyncLogs();
-  }
-
-  /**
-   * Download Webflow sync logs as JSON
-   */
-  static downloadWebflowSyncLogs() {
-    this.getWebflowService().downloadSyncLogs();
-  }
-
-  /**
    * Clear Webflow sync logs
    */
   static clearWebflowSyncLogs() {

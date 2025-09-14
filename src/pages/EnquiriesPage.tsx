@@ -66,7 +66,6 @@ import {
   Square,
   RefreshCw,
   Cloud,
-  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import DashboardShell from '@/components/DashboardShell';
@@ -399,7 +398,7 @@ export default function EnquiriesPage() {
             <span>
               {format(
                 new Date(enquiry.wf_created_at || enquiry.created_at),
-                'MMM dd, yyyy'
+                'MMM dd, yyyy HH:mm'
               )}
             </span>
           </div>
@@ -747,14 +746,6 @@ export default function EnquiriesPage() {
               ) : (
                 'Sync from Webflow'
               )}
-            </Button>
-            <Button
-              onClick={() => EnquiriesService.downloadWebflowSyncLogs()}
-              variant='outline'
-              disabled={!EnquiriesService.getWebflowSyncLogs()}
-            >
-              <FileText className='h-4 w-4 mr-2' />
-              Download Sync Logs
             </Button>
             <Button onClick={exportEnquiries} variant='outline'>
               <Download className='h-4 w-4 mr-2' />

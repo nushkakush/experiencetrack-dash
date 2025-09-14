@@ -209,39 +209,10 @@ export class WebflowService {
   }
 
   /**
-   * Get the current sync logs
-   */
-  getSyncLogs(): SyncLogs | null {
-    return this.syncLogs;
-  }
-
-  /**
    * Clear sync logs
    */
   clearSyncLogs(): void {
     this.syncLogs = null;
-  }
-
-  /**
-   * Download sync logs as JSON file
-   */
-  downloadSyncLogs(): void {
-    if (!this.syncLogs) {
-      console.warn('No sync logs available to download');
-      return;
-    }
-
-    const dataStr = JSON.stringify(this.syncLogs, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `webflow-sync-logs-${this.syncLogs.syncId}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   }
 
   /**

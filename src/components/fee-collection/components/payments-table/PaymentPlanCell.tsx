@@ -7,17 +7,22 @@ interface PaymentPlanCellProps {
   student: StudentPaymentSummary;
 }
 
-export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({ student }) => {
+export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({
+  student,
+}) => {
   const [scholarshipPercentage, setScholarshipPercentage] = useState<number>(0);
 
   useEffect(() => {
     const fetchScholarshipPercentage = async () => {
       if (student.scholarship_id && student.student_id) {
-        const percentage = await getTotalDiscountPercentage(student.student_id, student.scholarship_id);
+        const percentage = await getTotalDiscountPercentage(
+          student.student_id,
+          student.scholarship_id
+        );
         console.log('🎓 [PaymentPlanCell] Total scholarship percentage:', {
           student_id: student.student_id,
           scholarship_id: student.scholarship_id,
-          total_percentage: percentage
+          total_percentage: percentage,
         });
         setScholarshipPercentage(percentage);
       }
@@ -26,31 +31,36 @@ export const PaymentPlanCell: React.FC<PaymentPlanCellProps> = ({ student }) => 
     fetchScholarshipPercentage();
   }, [student.scholarship_id, student.student_id]);
 
-  const getPlanDisplay = (plan: PaymentPlan) => {
+  const getPlanDisplay = (plan: PaymentPlan, isCustom: boolean = false) => {
     if (!plan || plan === 'not_selected') {
       return '--';
     }
-    
+
+    const prefix = isCustom ? 'Custom ' : '';
+
     switch (plan) {
       case 'one_shot':
-        return 'One Shot';
+        return `${prefix}One Shot`;
       case 'sem_wise':
-        return 'Semester Wise';
+        return `${prefix}Semester Wise`;
       case 'instalment_wise':
-        return 'Instalment Wise';
+        return `${prefix}Instalment Wise`;
       default:
-        return plan;
+        return `${prefix}${plan}`;
     }
   };
 
   return (
     <TableCell>
       <div>
-        <div className="font-medium">
-          {getPlanDisplay(student.payment_plan)}
+        <div className='font-medium'>
+          {getPlanDisplay(
+            student.payment_plan,
+            student.fee_structure_type === 'custom'
+          )}
         </div>
         {student.scholarship_name && scholarshipPercentage > 0 && (
-          <div className="text-sm text-blue-600">
+          <div className='text-sm text-blue-600'>
             {student.scholarship_name} ({scholarshipPercentage}%)
           </div>
         )}

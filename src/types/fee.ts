@@ -186,6 +186,7 @@ export interface StudentPaymentSummary {
   scholarship_id?: string;
   token_fee_paid: boolean;
   payment_plan: PaymentPlan;
+  fee_structure_type?: 'cohort' | 'custom';
   // Joined fields
   student?: CohortStudent;
   payments?: StudentPayment[];

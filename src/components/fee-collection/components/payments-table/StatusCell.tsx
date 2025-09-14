@@ -354,6 +354,20 @@ export const StatusCell: React.FC<StatusCellProps> = ({
     });
 
     // Use the aggregate status from payment engine if available
+    console.log('🔍 [StatusCell] Checking aggregate_status field:', {
+      hasAggregateStatus: !!(student as { aggregate_status?: string })
+        .aggregate_status,
+      aggregateStatusValue: (student as { aggregate_status?: string })
+        .aggregate_status,
+      hasPaymentEngineBreakdown: !!(
+        student as { payment_engine_breakdown?: unknown }
+      ).payment_engine_breakdown,
+      studentKeys: Object.keys(student),
+      paymentEngineBreakdown: (student as { payment_engine_breakdown?: any })
+        .payment_engine_breakdown,
+      allStudentFields: student,
+    });
+
     if ((student as { aggregate_status?: string }).aggregate_status) {
       const aggregateStatus = (student as { aggregate_status?: string })
         .aggregate_status as string;

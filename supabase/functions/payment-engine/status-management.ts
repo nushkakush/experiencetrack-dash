@@ -9,8 +9,35 @@ import type {
 import { roundToRupee } from './calculations.ts';
 
 // Status derivation helpers
-export const normalizeDateOnly = (isoDate: string): number => {
-  const d = new Date(isoDate);
+export const normalizeDateOnly = (dateString: string): number => {
+  // Handle different date formats properly
+  let d: Date;
+
+  // Check if it's in DD/MM/YYYY format (Indian/European format)
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
+    // Parse DD/MM/YYYY format manually to avoid ambiguity
+    const parts = dateString.split('/');
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // Month is 0-indexed in JS
+    const year = parseInt(parts[2]);
+    d = new Date(year, month, day);
+
+    console.log('🔍 [PaymentEngine] Parsing DD/MM/YYYY date:', {
+      original: dateString,
+      parsed: { day, month: month + 1, year },
+      result: d.toISOString(),
+    });
+  } else {
+    // Use standard Date constructor for ISO dates (YYYY-MM-DD)
+    d = new Date(dateString);
+
+    console.log('🔍 [PaymentEngine] Parsing ISO date:', {
+      original: dateString,
+      result: d.toISOString(),
+    });
+  }
+
+  // Normalize to date-only (remove time component)
   const n = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   return n.getTime();
 };
@@ -32,6 +59,18 @@ export const deriveInstallmentStatus = (
   ).getTime();
   const d1 = normalizeDateOnly(dueDate);
   const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
+
+  console.log('🔍 [PaymentEngine] deriveInstallmentStatus called:', {
+    dueDate,
+    totalPayable,
+    allocatedPaid,
+    hasVerificationPendingTx,
+    hasApprovedTx,
+    approvedAmount,
+    scholarshipAmount,
+    daysUntilDue,
+    isOverdue: daysUntilDue < 0,
+  });
 
   // For status calculation, we need to consider both actual payments and scholarship
   // But scholarship should only affect status if there are actual payments made
@@ -99,10 +138,43 @@ export const deriveInstallmentStatus = (
     return 'partially_paid_verification_pending';
   }
   if (effectiveApproved >= totalPayable) return 'paid';
-  if (daysUntilDue < 0)
-    return allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
-  if (allocatedPaid > 0) return 'partially_paid_days_left';
-  if (daysUntilDue >= 10) return 'pending_10_plus_days';
+  if (daysUntilDue < 0) {
+    const status = allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
+    console.log(
+      '🔍 [PaymentEngine] deriveInstallmentStatus result (overdue):',
+      {
+        dueDate,
+        daysUntilDue,
+        allocatedPaid,
+        status,
+      }
+    );
+    return status;
+  }
+  if (allocatedPaid > 0) {
+    console.log(
+      '🔍 [PaymentEngine] deriveInstallmentStatus result (partially paid):',
+      {
+        dueDate,
+        status: 'partially_paid_days_left',
+      }
+    );
+    return 'partially_paid_days_left';
+  }
+  if (daysUntilDue >= 10) {
+    console.log(
+      '🔍 [PaymentEngine] deriveInstallmentStatus result (pending 10+):',
+      {
+        dueDate,
+        status: 'pending_10_plus_days',
+      }
+    );
+    return 'pending_10_plus_days';
+  }
+  console.log('🔍 [PaymentEngine] deriveInstallmentStatus result (pending):', {
+    dueDate,
+    status: 'pending',
+  });
   return 'pending';
 };
 
@@ -408,27 +480,54 @@ export const enrichWithStatuses = (
     hasPartiallyPaidInstallments,
     hasPendingInstallments,
     dueItemsCount: dueItems.length,
-    dueItems: dueItems.map(d => ({ status: d.status, pending: d.pending })),
+    dueItems: dueItems.map(d => ({
+      status: d.status,
+      pending: d.pending,
+      dueDate: d.dueDate,
+      isOverdue:
+        d.status === 'overdue' || d.status === 'partially_paid_overdue',
+    })),
+    overdueStatuses: dueItems.filter(
+      d => d.status === 'overdue' || d.status === 'partially_paid_overdue'
+    ),
   });
 
   // PRIORITY 1: Check for verification pending first (highest priority)
   if (hasVerificationPendingTx) {
+    console.log(
+      '🔍 [PaymentEngine] PRIORITY 1: Setting status to verification_pending'
+    );
     aggStatus = 'verification_pending';
   }
-  // PRIORITY 2: Check for partially paid installments (second highest)
+  // PRIORITY 2: Check for overdue payments (second highest - critical issue)
+  else if (anyOverdue) {
+    console.log('🔍 [PaymentEngine] PRIORITY 2: Setting status to overdue', {
+      anyOverdue,
+      overdueItems: dueItems.filter(
+        d => d.status === 'overdue' || d.status === 'partially_paid_overdue'
+      ),
+    });
+    aggStatus = 'overdue';
+  }
+  // PRIORITY 3: Check for partially paid installments (third highest)
   else if (hasPartiallyPaidInstallments) {
+    console.log(
+      '🔍 [PaymentEngine] PRIORITY 3: Setting status to partially_paid_days_left'
+    );
     aggStatus = 'partially_paid_days_left';
   }
-  // PRIORITY 3: Check if all pending installments are paid (due in <10 days)
+  // PRIORITY 4: Check if all installments are paid (only if no overdue issues)
   else if (allInstallmentsPaid && hasApprovedTx) {
+    console.log('🔍 [PaymentEngine] PRIORITY 4: Setting status to paid', {
+      allInstallmentsPaid,
+      hasApprovedTx,
+      totalPending,
+    });
     aggStatus = 'paid';
-  }
-  // PRIORITY 4: Check for overdue payments
-  else if (anyOverdue) {
-    aggStatus = 'overdue';
   }
   // PRIORITY 5: Check for pending installments (due in <10 days)
   else if (hasPendingInstallments) {
+    console.log('🔍 [PaymentEngine] PRIORITY 5: Setting status to pending');
     aggStatus = 'pending';
   }
   // PRIORITY 6: Derive based on nearest due date (lowest priority)
@@ -443,17 +542,41 @@ export const enrichWithStatuses = (
       const d1 = normalizeDateOnly(nextDue);
       const daysUntilDue = Math.ceil((d1 - d0) / (1000 * 60 * 60 * 24));
       aggStatus = daysUntilDue >= 10 ? 'pending_10_plus_days' : 'pending';
+      console.log(
+        '🔍 [PaymentEngine] PRIORITY 6: Setting status based on next due date',
+        {
+          nextDue,
+          daysUntilDue,
+          aggStatus,
+        }
+      );
     } else {
       // If no next due date and all installments are paid, it's complete
       if (allInstallmentsPaid) {
         aggStatus = 'complete';
+        console.log(
+          '🔍 [PaymentEngine] PRIORITY 6: Setting status to complete (no next due)'
+        );
       } else {
         aggStatus = 'pending';
+        console.log(
+          '🔍 [PaymentEngine] PRIORITY 6: Setting status to pending (fallback)'
+        );
       }
     }
   }
 
-  console.log('🔍 [PaymentEngine] Final aggregate status:', aggStatus);
+  console.log('🔍 [PaymentEngine] Final aggregate status decision:', {
+    finalStatus: aggStatus,
+    reasoning: {
+      hasVerificationPendingTx,
+      anyOverdue,
+      hasPartiallyPaidInstallments,
+      allInstallmentsPaid,
+      hasApprovedTx,
+      hasPendingInstallments,
+    },
+  });
 
   // Find the current installment status (the most recently completed or currently being processed)
   let currentInstallmentStatus = 'pending';

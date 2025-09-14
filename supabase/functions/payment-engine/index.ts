@@ -510,6 +510,7 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
             scholarship_name: studentScholarship?.scholarship?.name,
             scholarship_id: studentPayment.scholarship_id,
             student_payment_id: studentPayment.id,
+            fee_structure_type: 'cohort', // Default to cohort, will be updated if custom
             payments: studentTransactions.map(transaction => ({
               id: transaction.id,
               payment_id: transaction.payment_id,
@@ -557,9 +558,16 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
                 studentScholarship?.additional_discount_percentage || 0,
                 studentId,
                 null,
-                feeStructureData,
+                null, // Don't pass feeStructureData in batch mode - let each student load their own (custom or cohort)
                 null
               );
+
+              // Update fee structure type based on what was loaded
+              if (
+                paymentEngineResult.feeStructure?.structure_type === 'custom'
+              ) {
+                result.fee_structure_type = 'custom';
+              }
 
               console.log(
                 `🔍 [BATCH] Payment engine result for student ${studentId}:`,
@@ -581,21 +589,21 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
                 console.log(
                   `🔍 [BATCH] Enriched breakdown for student ${studentId}:`,
                   {
+                    hasBreakdown: !!enriched,
+                    hasAggregate: !!aggregate,
                     hasOverallSummary: !!enriched?.overallSummary,
                     totalAmountPayable:
                       enriched?.overallSummary?.totalAmountPayable,
-                    totalPaid: enriched?.overallSummary?.totalPaid,
-                    totalPending: enriched?.overallSummary?.totalPending,
-                    paymentStatus: enriched?.overallSummary?.paymentStatus,
+                    aggregatePaymentStatus: aggregate?.paymentStatus,
                   }
                 );
 
-                if (enriched?.overallSummary) {
+                if (enriched?.overallSummary && aggregate) {
                   const summary = enriched.overallSummary;
                   totalAmount = summary.totalAmountPayable;
-                  paidAmount = summary.totalPaid;
-                  pendingAmount = summary.totalPending;
-                  aggregateStatus = summary.paymentStatus;
+                  paidAmount = aggregate.totalPaid;
+                  pendingAmount = aggregate.totalPending;
+                  aggregateStatus = aggregate.paymentStatus;
 
                   if (
                     aggregateStatus === 'overdue' ||
@@ -610,6 +618,12 @@ const handleRequest = async (request: EdgeRequest): Promise<EdgeResponse> => {
                   result.pending_amount = pendingAmount;
                   result.overdue_amount = overdueAmount;
                   result.aggregate_status = aggregateStatus;
+
+                  // FIXED: Include payment engine breakdown for NextDueCell and StatusCell
+                  result.payment_engine_breakdown = {
+                    breakdown: enriched,
+                    aggregate,
+                  };
                 }
 
                 // Extract individual installment statuses for statistics
