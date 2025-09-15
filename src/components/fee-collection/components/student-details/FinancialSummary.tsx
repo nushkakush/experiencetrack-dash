@@ -9,6 +9,8 @@ import {
   ProgressCalculator,
   ProgressCalculationResult,
 } from '@/utils/progressCalculation';
+import { getFullPaymentView } from '@/services/payments/paymentEngineClient';
+import { supabase } from '@/integrations/supabase/client';
 import { CommunicationPreferences } from './CommunicationPreferences';
 
 interface FinancialSummaryProps {
@@ -23,6 +25,13 @@ interface FinancialSummaryProps {
     sem_wise_dates?: Record<string, string | Record<string, unknown>>;
     instalment_wise_dates?: Record<string, string | Record<string, unknown>>;
   };
+  paymentEngineBreakdown?: {
+    overallSummary?: {
+      totalScholarship?: number;
+      totalProgramFee?: number;
+      totalAmountPayable?: number;
+    };
+  };
 }
 
 // Use the centralized progress calculation result
@@ -33,9 +42,11 @@ type CalculatedFinancialData = ProgressCalculationResult & {
 export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
   student,
   feeStructure,
+  paymentEngineBreakdown,
 }) => {
   const [totalScholarshipPercentage, setTotalScholarshipPercentage] =
     useState<number>(0);
+  const [scholarshipAmount, setScholarshipAmount] = useState<number>(0);
   const [financialData, setFinancialData] = useState<CalculatedFinancialData>({
     totalAmount: 0,
     paidAmount: 0,
@@ -88,13 +99,165 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
       try {
         setLoading(true);
 
-        // Fetch total scholarship percentage (base + additional)
-        if (student.scholarship_id) {
+        // Try to fetch payment engine breakdown if student has a payment plan
+        let paymentEngineScholarshipAmount = 0;
+        if (
+          student.payment_plan &&
+          student.payment_plan !== 'not_selected' &&
+          student.student?.cohort_id
+        ) {
+          try {
+            console.log(
+              '🔍 [FinancialSummary] Fetching payment engine breakdown for student:',
+              {
+                student_id: student.student_id,
+                cohort_id: student.student.cohort_id,
+                payment_plan: student.payment_plan,
+              }
+            );
+
+            // Get additional discount percentage - payment engine needs this explicitly
+            let additionalDiscountPercentage = 0;
+
+            // First get the scholarship_id from student_payments (payment engine will do this too)
+            const { data: sp } = await supabase
+              .from('student_payments')
+              .select('scholarship_id')
+              .eq('student_id', student.student_id)
+              .eq('cohort_id', student.student.cohort_id)
+              .maybeSingle();
+
+            const scholarshipId = sp?.scholarship_id;
+
+            // Get additional discount from student_scholarships if scholarship exists
+            if (scholarshipId) {
+              const { data: scholarship } = await supabase
+                .from('student_scholarships')
+                .select('additional_discount_percentage')
+                .eq('student_id', student.student_id)
+                .eq('scholarship_id', scholarshipId)
+                .maybeSingle();
+
+              if (scholarship?.additional_discount_percentage) {
+                additionalDiscountPercentage =
+                  scholarship.additional_discount_percentage;
+              }
+            }
+
+            console.log('🔍 [FinancialSummary] Scholarship parameters:', {
+              student_id: student.student_id,
+              scholarshipId,
+              additionalDiscountPercentage,
+            });
+
+            // Let the payment engine handle everything automatically:
+            // - Custom fee structures (if student has one)
+            // - Cohort fee structures (as fallback)
+            // - Base scholarships (automatic via scholarshipId lookup)
+            // - Need-based scholarships (via additionalDiscountPercentage)
+            const { breakdown } = await getFullPaymentView({
+              studentId: student.student_id,
+              cohortId: student.student.cohort_id,
+              paymentPlan: student.payment_plan as
+                | 'one_shot'
+                | 'sem_wise'
+                | 'instalment_wise',
+              additionalDiscountPercentage, // ✅ Need to pass this explicitly
+              // Don't pass feeStructureData - let payment engine load the correct structure
+              // Don't pass scholarshipId - payment engine will fetch it automatically
+            });
+
+            if (breakdown?.overallSummary?.totalScholarship) {
+              paymentEngineScholarshipAmount =
+                breakdown.overallSummary.totalScholarship;
+              const totalProgramFee =
+                breakdown.overallSummary.totalProgramFee || 0;
+              const scholarshipPercentage =
+                totalProgramFee > 0
+                  ? (paymentEngineScholarshipAmount / totalProgramFee) * 100
+                  : 0;
+
+              setScholarshipAmount(paymentEngineScholarshipAmount);
+              setTotalScholarshipPercentage(scholarshipPercentage);
+
+              console.log(
+                '🔍 [FinancialSummary] Using payment engine scholarship data:',
+                {
+                  student_id: student.student_id,
+                  scholarshipAmount: paymentEngineScholarshipAmount,
+                  totalProgramFee,
+                  scholarshipPercentage,
+                  breakdown_summary: breakdown.overallSummary,
+                }
+              );
+            } else {
+              console.log(
+                '🔍 [FinancialSummary] No scholarship data in payment engine response'
+              );
+            }
+          } catch (error) {
+            console.warn(
+              '🔍 [FinancialSummary] Failed to fetch payment engine breakdown:',
+              error
+            );
+          }
+        }
+
+        // Use payment engine breakdown data if available (prop-based - for future use)
+        if (paymentEngineBreakdown?.overallSummary?.totalScholarship) {
+          const scholarshipAmount =
+            paymentEngineBreakdown.overallSummary.totalScholarship;
+          const totalProgramFee =
+            paymentEngineBreakdown.overallSummary.totalProgramFee || 0;
+          const scholarshipPercentage =
+            totalProgramFee > 0
+              ? (scholarshipAmount / totalProgramFee) * 100
+              : 0;
+
+          setScholarshipAmount(scholarshipAmount);
+          setTotalScholarshipPercentage(scholarshipPercentage);
+
+          console.log(
+            '🔍 [FinancialSummary] Using payment engine scholarship data (prop):',
+            {
+              student_id: student.student_id,
+              scholarshipAmount,
+              totalProgramFee,
+              scholarshipPercentage,
+            }
+          );
+        } else if (
+          paymentEngineScholarshipAmount === 0 &&
+          student.scholarship_id &&
+          feeStructure
+        ) {
+          // Only fallback to client-side calculation if payment engine failed AND we have the necessary data
+          console.log(
+            '🔍 [FinancialSummary] Falling back to client-side calculation'
+          );
+
           const totalPercentage = await getTotalDiscountPercentage(
             student.student_id,
             student.scholarship_id
           );
           setTotalScholarshipPercentage(totalPercentage);
+
+          // Calculate scholarship amount from percentage using cohort fee structure
+          const totalProgramFee = feeStructure.total_program_fee || 0;
+          const calculatedScholarshipAmount =
+            (totalProgramFee * totalPercentage) / 100;
+          setScholarshipAmount(calculatedScholarshipAmount);
+
+          console.log(
+            '🔍 [FinancialSummary] Using calculated scholarship data (fallback):',
+            {
+              student_id: student.student_id,
+              totalPercentage,
+              totalProgramFee,
+              calculatedScholarshipAmount,
+              note: 'This might not account for custom fee structures',
+            }
+          );
         }
 
         // Calculate financial data
@@ -118,7 +281,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     };
 
     fetchFinancialData();
-  }, [calculateFinancialData]);
+  }, [student, feeStructure, paymentEngineBreakdown, calculateFinancialData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -248,13 +411,26 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
             </span>
           </div>
           {student.scholarship_name && totalScholarshipPercentage > 0 && (
-            <div className='flex justify-between items-center'>
-              <span className='text-sm text-muted-foreground'>
-                Scholarship:
-              </span>
-              <span className='font-medium text-blue-400'>
-                {student.scholarship_name} ({totalScholarshipPercentage}%)
-              </span>
+            <div className='space-y-1'>
+              <div className='flex justify-between items-center'>
+                <span className='text-sm text-muted-foreground'>
+                  Scholarship:
+                </span>
+                <span className='font-medium text-blue-400'>
+                  {student.scholarship_name} (
+                  {totalScholarshipPercentage.toFixed(1)}%)
+                </span>
+              </div>
+              {scholarshipAmount > 0 && (
+                <div className='flex justify-between items-center'>
+                  <span className='text-xs text-muted-foreground pl-2'>
+                    Amount:
+                  </span>
+                  <span className='text-xs font-medium text-green-400'>
+                    {formatCurrency(scholarshipAmount)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

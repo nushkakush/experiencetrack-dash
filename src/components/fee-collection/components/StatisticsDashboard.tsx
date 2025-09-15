@@ -156,12 +156,26 @@ export const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({
             {statistics.averageScholarshipPercentage.toFixed(1)}%
           </div>
           <div className='text-xs text-muted-foreground'>
-            {statistics.scholarshipDistribution.find(d => d.tier === '0-25%')
-              ?.count || 0}{' '}
-            students with 0-25%
+            {statistics.scholarshipDistribution.reduce(
+              (total, d) => total + d.count,
+              0
+            )}{' '}
+            students with avg scholarship{' '}
+            {statistics.scholarshipDistribution.reduce(
+              (total, d) => total + d.count,
+              0
+            ) > 0
+              ? formatCurrency(
+                  statistics.totalScholarshipValue /
+                    statistics.scholarshipDistribution.reduce(
+                      (total, d) => total + d.count,
+                      0
+                    )
+                )
+              : formatCurrency(0)}
           </div>
           <div className='text-xs text-muted-foreground'>
-            Value: {formatCurrency(statistics.totalScholarshipValue)}
+            Total Value: {formatCurrency(statistics.totalScholarshipValue)}
           </div>
         </CardContent>
       </Card>

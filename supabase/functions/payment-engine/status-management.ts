@@ -72,10 +72,9 @@ export const deriveInstallmentStatus = (
     isOverdue: daysUntilDue < 0,
   });
 
-  // For status calculation, we need to consider both actual payments and scholarship
-  // But scholarship should only affect status if there are actual payments made
-  const effectivePaid = allocatedPaid + scholarshipAmount;
-  const effectiveApproved = approvedAmount + scholarshipAmount;
+  // For status calculation, totalPayable already has scholarship applied
+  // So we only need to compare against actual payments made
+  // The scholarship amount is only used for display purposes, not for status calculation
 
   // If total payable is 0 (fully covered by scholarship), it's waived
   if (totalPayable <= 0) {
@@ -83,13 +82,14 @@ export const deriveInstallmentStatus = (
   }
 
   // Check if fully covered by scholarship (no actual payments needed)
-  if (scholarshipAmount >= totalPayable) {
+  // This should only happen if the totalPayable is 0, which we already checked above
+  if (scholarshipAmount >= totalPayable && totalPayable > 0) {
     return 'waived';
   }
 
-  // Check if there are actual payments made (not just scholarship)
+  // Check if there are actual payments made
   if (allocatedPaid > 0) {
-    // PRIORITY 1: Check for verification pending status first (regardless of scholarship)
+    // PRIORITY 1: Check for verification pending status first
     if (hasVerificationPendingTx) {
       if (allocatedPaid >= totalPayable) {
         return 'verification_pending';
@@ -98,31 +98,16 @@ export const deriveInstallmentStatus = (
       }
     }
 
-    // PRIORITY 2: Check if fully paid (scholarship + payments)
-    if (effectiveApproved >= totalPayable) {
-      return 'paid'; // Fully paid (scholarship + payments)
+    // PRIORITY 2: Check if fully paid
+    if (approvedAmount >= totalPayable) {
+      return 'paid'; // Fully paid
     }
 
-    // PRIORITY 3: Check for partial payment status (with or without scholarship)
-    if (scholarshipAmount > 0) {
-      // If there are actual payments made (not just scholarship), show partially paid
-      if (allocatedPaid > 0) {
-        if (daysUntilDue < 0) {
-          return 'partially_paid_overdue';
-        } else {
-          return 'partially_paid_days_left';
-        }
-      } else {
-        // Only scholarship, no actual payments
-        return 'partially_waived';
-      }
+    // PRIORITY 3: Check for partial payment status
+    if (daysUntilDue < 0) {
+      return 'partially_paid_overdue';
     } else {
-      // Only payments, no scholarship
-      if (daysUntilDue < 0) {
-        return 'partially_paid_overdue';
-      } else {
-        return 'partially_paid_days_left';
-      }
+      return 'partially_paid_days_left';
     }
   }
 
@@ -130,14 +115,14 @@ export const deriveInstallmentStatus = (
   // Scholarship will reduce the amount payable but won't affect the status
 
   // Regular payment logic (no scholarship involved)
-  if (hasApprovedTx && effectiveApproved >= totalPayable) {
+  if (hasApprovedTx && approvedAmount >= totalPayable) {
     return 'paid';
   }
   if (hasVerificationPendingTx && allocatedPaid > 0) {
     if (allocatedPaid >= totalPayable) return 'verification_pending';
     return 'partially_paid_verification_pending';
   }
-  if (effectiveApproved >= totalPayable) return 'paid';
+  if (approvedAmount >= totalPayable) return 'paid';
   if (daysUntilDue < 0) {
     const status = allocatedPaid > 0 ? 'partially_paid_overdue' : 'overdue';
     console.log(

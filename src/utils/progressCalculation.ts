@@ -131,8 +131,9 @@ export class ProgressCalculator {
         feeReview?.admissionFee?.totalPayable ||
         feeStructureToUse.admission_fee;
 
-      // For financial summary, total amount should include admission fee
-      const totalAmount = programFeeAmount + admissionFee;
+      // For financial summary, total amount should NOT add admission fee separately
+      // because programFeeAmount (totalAmountPayable) already includes admission fee
+      const totalAmount = programFeeAmount;
 
       console.log('🔍 [ProgressCalculator] Total amount calculation:', {
         programFeeAmount,
