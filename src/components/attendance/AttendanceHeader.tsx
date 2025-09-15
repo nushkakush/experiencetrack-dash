@@ -10,9 +10,15 @@ import {
   Clock,
   Loader2,
   AlertTriangle,
+  Settings,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -30,8 +36,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CohortFeatureGate } from '@/components/common';
 import { AttendanceService } from '@/services/attendance.service';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Cohort, CohortEpic } from '@/types/attendance';
+import type { CohortEpic } from '@/types/attendance';
+import type { Cohort } from '@/types/cohort';
 import BulkAttendanceUploadDialog from '@/components/common/bulk-upload/BulkAttendanceUploadDialog';
 import { BulkAttendanceConfig } from '@/components/common/bulk-upload/types/attendance';
 import { LeaveApprovalQueue } from './LeaveApprovalQueue';
@@ -70,6 +78,11 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
   const [activeTab, setActiveTab] = useState('pending');
   const [modalLoading, setModalLoading] = useState(false);
   const [hasLeaveActions, setHasLeaveActions] = useState(false);
+  const [maxLeave, setMaxLeave] = useState<number>(6);
+  const [savingMaxLeave, setSavingMaxLeave] = useState(false);
+  const [maxLeaveTimeout, setMaxLeaveTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
 
   // Leave applications hook - using cohort ID for program manager view
   const {
@@ -81,6 +94,22 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
     fetchPendingLeaveApplications,
     fetchAllLeaveApplications,
   } = useLeaveApplications('', cohort?.id || '');
+
+  // Initialize max leave value from cohort
+  useEffect(() => {
+    if (cohort?.max_leave) {
+      setMaxLeave(cohort.max_leave);
+    }
+  }, [cohort]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (maxLeaveTimeout) {
+        clearTimeout(maxLeaveTimeout);
+      }
+    };
+  }, [maxLeaveTimeout]);
 
   // Reload data when modal opens
   useEffect(() => {
@@ -155,6 +184,54 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
       console.error('Error rejecting leave application:', error);
       toast.error('Failed to reject leave application');
     }
+  };
+
+  // Handle max leave update with debouncing
+  const handleMaxLeaveUpdate = async (newValue: number) => {
+    if (!cohort?.id || newValue < 1) {
+      toast.error('Please enter a valid number of maximum leave days');
+      return;
+    }
+
+    setSavingMaxLeave(true);
+    try {
+      const { error } = await supabase
+        .from('cohorts')
+        .update({ max_leave: newValue })
+        .eq('id', cohort.id);
+
+      if (error) throw error;
+
+      toast.success(`Maximum leave days updated to ${newValue}`);
+    } catch (error) {
+      console.error('Error updating max leave:', error);
+      toast.error('Failed to update maximum leave days');
+    } finally {
+      setSavingMaxLeave(false);
+    }
+  };
+
+  // Debounced max leave update
+  const updateMaxLeaveWithDebounce = (newValue: number) => {
+    setMaxLeave(newValue);
+
+    // Clear existing timeout
+    if (maxLeaveTimeout) {
+      clearTimeout(maxLeaveTimeout);
+    }
+
+    // Set new timeout for debounced save
+    const timeout = setTimeout(() => {
+      handleMaxLeaveUpdate(newValue);
+    }, 1000); // 1 second delay
+
+    setMaxLeaveTimeout(timeout);
+  };
+
+  // Handle increment/decrement
+  const handleMaxLeaveChange = (delta: number) => {
+    const newValue = Math.max(1, Math.min(365, maxLeave + delta));
+    updateMaxLeaveWithDebounce(newValue);
   };
 
   const handleSetActiveEpic = async (epicId: string) => {
@@ -249,7 +326,7 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
               <SelectContent>
                 {epics.map(epic => (
                   <SelectItem key={epic.id} value={epic.id}>
-                    {epic.epic?.name || epic.name}
+                    {epic.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -309,6 +386,51 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
               Review and manage student leave applications for this cohort
             </DialogDescription>
           </DialogHeader>
+
+          {/* Max Leave Configuration */}
+          <Card className='mb-4'>
+            <CardContent className='pt-6'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Settings className='h-4 w-4 text-muted-foreground' />
+                  <Label className='font-medium text-sm'>
+                    Maximum Leave Days (Including Informed & Uninformed)
+                  </Label>
+                </div>
+
+                <div className='flex items-center gap-3'>
+                  <Button
+                    onClick={() => handleMaxLeaveChange(-1)}
+                    disabled={savingMaxLeave || maxLeave <= 1}
+                    size='sm'
+                    variant='outline'
+                    className='h-8 w-8 p-0'
+                  >
+                    <Minus className='h-4 w-4' />
+                  </Button>
+
+                  <div className='flex items-center gap-2'>
+                    <div className='text-2xl font-bold text-foreground min-w-[3rem] text-center'>
+                      {maxLeave}
+                    </div>
+                    {savingMaxLeave && (
+                      <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={() => handleMaxLeaveChange(1)}
+                    disabled={savingMaxLeave || maxLeave >= 365}
+                    size='sm'
+                    variant='outline'
+                    className='h-8 w-8 p-0'
+                  >
+                    <Plus className='h-4 w-4' />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Tabs
             value={activeTab}
