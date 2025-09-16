@@ -22,6 +22,7 @@ interface AttendanceLeaderboardProps {
   layout?: 'table' | 'grid';
   hideFields?: ('email' | 'late' | 'absent')[];
   showExemptedNotice?: boolean;
+  maxLeave?: number;
   studentStats?: Array<{
     student: CohortStudent;
     attendancePercentage: number;
@@ -39,6 +40,7 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
   layout = 'table',
   hideFields = [],
   showExemptedNotice = true,
+  maxLeave = 6,
   studentStats = [],
 }) => {
   // Check if any students have exempted absences
@@ -137,12 +139,14 @@ export const AttendanceLeaderboard: React.FC<AttendanceLeaderboardProps> = ({
           studentStats={studentStats}
           attendanceRecords={attendanceRecords}
           hideFields={hideFields}
+          maxLeave={maxLeave}
         />
       ) : (
         <TableLayout
           studentStats={studentStats}
           attendanceRecords={attendanceRecords}
           hideFields={hideFields}
+          maxLeave={maxLeave}
         />
       )}
 

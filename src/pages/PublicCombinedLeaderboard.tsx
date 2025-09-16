@@ -321,6 +321,7 @@ const PublicCombinedLeaderboard = () => {
                             currentEpic={data.primaryEpic}
                             layout='grid'
                             hideFields={['email', 'late', 'absent']}
+                            maxLeave={data.cohort?.max_leave || 6}
                           />
                         ) : (
                           <div className='text-center py-8'>

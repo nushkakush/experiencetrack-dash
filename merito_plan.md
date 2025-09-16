@@ -36,8 +36,8 @@ This document outlines the integration plan for syncing student enquiries and ap
 - **URL**: `https://api.nopaperforms.io/lead/v1/createOrUpdate`
 - **Method**: POST
 - **Headers**:
-  - `secret-key: <your-secret-key>`
-  - `access-key: <your-access-key>`
+  - `secret-key: <7073a99d3efe4b0c9066e84e08d9916d>`
+  - `access-key: <314c10e35cbc48acbcd95daaec207a8a>`
 
 #### Required Parameters
 

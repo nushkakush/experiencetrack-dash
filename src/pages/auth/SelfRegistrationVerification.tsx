@@ -334,18 +334,45 @@ const SelfRegistrationVerification = () => {
       });
 
       // Update student_applications record status
-      const { error: applicationError } = await supabase
+      const { data: updatedApplication, error: applicationError } = await supabase
         .from('student_applications')
         .update({
           status: 'registration_complete', // Password set up and logged in
           registration_completed: true,
         })
-        .eq('profile_id', verificationData.profileId);
+        .eq('profile_id', verificationData.profileId)
+        .select()
+        .single();
 
       if (applicationError) {
         Logger.getInstance().error('Failed to update application', {
           error: applicationError,
         });
+      } else {
+        // Sync updated status to Meritto after email confirmation and password setup
+        try {
+          console.log('🚀 Syncing registration completion to Meritto via Edge Function');
+          
+          const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+            'merito-registration-sync',
+            {
+              body: {
+                profileId: verificationData.profileId,
+                applicationId: updatedApplication.id,
+                syncType: 'registration'
+              }
+            }
+          );
+
+          if (syncError) {
+            console.warn('Failed to sync registration completion to Meritto:', syncError.message);
+          } else if (syncResult?.success) {
+            console.log('✅ Registration completion synced to Meritto successfully');
+          }
+        } catch (meritoError) {
+          console.warn('Meritto sync error (non-blocking):', meritoError);
+          // Don't block user flow for Meritto sync failures
+        }
       }
 
       toast.success(

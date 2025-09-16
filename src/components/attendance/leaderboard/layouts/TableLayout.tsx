@@ -14,9 +14,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Shield, Info, Trophy, TrendingUp } from 'lucide-react';
+import { Shield, Info, Trophy, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { AttendanceRecord } from '@/types/attendance';
+import { calculateLeaveUsage, getLeaveStatusColor, getLeaveStatusIcon, getLeaveStatusLabel, getLeaveStatusMessage } from '@/utils/leaveCalculations';
 
 interface StudentStats {
   student: {
@@ -36,12 +37,14 @@ interface TableLayoutProps {
   studentStats: StudentStats[];
   attendanceRecords: AttendanceRecord[];
   hideFields?: ('email' | 'late' | 'absent')[];
+  maxLeave?: number;
 }
 
 export const TableLayout: React.FC<TableLayoutProps> = ({
   studentStats,
   attendanceRecords,
   hideFields = [],
+  maxLeave = 6,
 }) => {
   const getAttendanceColor = (percentage: number) => {
     if (percentage >= 95) return 'text-green-600 font-semibold';
@@ -73,6 +76,13 @@ export const TableLayout: React.FC<TableLayoutProps> = ({
     return studentRecords.filter(
       record => record.status === 'absent' && record.absence_type === 'exempted'
     ).length;
+  };
+
+  const getStudentLeaveStats = (studentId: string) => {
+    const studentRecords = attendanceRecords.filter(
+      record => record.student_id === studentId
+    );
+    return calculateLeaveUsage(studentRecords, maxLeave);
   };
 
   const getExemptedTooltipContent = (studentId: string) => {
@@ -141,6 +151,7 @@ export const TableLayout: React.FC<TableLayoutProps> = ({
               <TableHead className='text-center'>Absent</TableHead>
             )}
             <TableHead className='text-center'>Total Sessions</TableHead>
+            <TableHead className='text-center'>Leave Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -271,6 +282,42 @@ export const TableLayout: React.FC<TableLayoutProps> = ({
                 )}
                 <TableCell className='text-center'>
                   {stat.totalSessions}
+                </TableCell>
+                <TableCell className='text-center'>
+                  {(() => {
+                    const leaveStats = getStudentLeaveStats(stat.student.id);
+                    const statusIcon = getLeaveStatusIcon(leaveStats.status);
+                    const statusLabel = getLeaveStatusLabel(leaveStats.status);
+                    const statusMessage = getLeaveStatusMessage(leaveStats);
+                    const colorClass = getLeaveStatusColor(leaveStats.status);
+
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant='outline'
+                              className={`cursor-help ${colorClass}`}
+                            >
+                              <span className="mr-1">{statusIcon}</span>
+                              {leaveStats.totalLeaves}/{leaveStats.maxAllowed}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className='max-w-xs'>
+                              <p className='font-semibold mb-2'>Leave Status: {statusLabel}</p>
+                              <p className='text-sm mb-2'>{statusMessage}</p>
+                              <div className='text-sm space-y-1'>
+                                <p>• Informed: {leaveStats.informedLeaves}</p>
+                                <p>• Uninformed: {leaveStats.uninformedLeaves}</p>
+                                <p>• Exempted: {leaveStats.exemptedLeaves} (not counted)</p>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             );

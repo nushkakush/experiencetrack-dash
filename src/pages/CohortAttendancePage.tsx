@@ -243,6 +243,7 @@ const CohortAttendancePage = () => {
               epicId={attendanceData.currentEpic?.id || ''}
               cohortName={attendanceData.cohort?.name}
               epicName={attendanceData.currentEpic?.name}
+              maxLeave={attendanceData.cohort?.max_leave || 6}
               onLayoutChange={pageState.setLeaderboardLayout}
             />
           )}

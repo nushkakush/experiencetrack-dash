@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { MeritoService } from '@/services/merito.service';
 import {
   ArrowLeft,
   FileText,
@@ -178,6 +179,29 @@ const CohortApplicationsDashboard = () => {
         console.error('Error updating application status:', error);
         toast.error('Failed to update application status');
         return;
+      }
+
+      // Sync to Merito CRM
+      try {
+        if (MeritoService.isEnabled()) {
+          // Get the updated application data for Merito sync
+          const { data: applicationData } = await supabase
+            .from('student_applications')
+            .select(`
+              *,
+              profile:profiles(*)
+            `)
+            .eq('id', applicationId)
+            .single();
+
+          if (applicationData) {
+            await MeritoService.syncApplication(applicationData);
+            console.log('✅ Application status synced to Merito CRM');
+          }
+        }
+      } catch (meritoError) {
+        console.error('❌ Failed to sync application status to Merito:', meritoError);
+        // Don't fail the status update if Merito sync fails
       }
 
       toast.success('Application status updated successfully');

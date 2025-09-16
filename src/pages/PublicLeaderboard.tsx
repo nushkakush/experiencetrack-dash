@@ -232,6 +232,7 @@ const PublicLeaderboard = () => {
               currentEpic={currentEpic}
               layout='grid'
               hideFields={['email', 'late', 'absent']}
+              maxLeave={cohort?.max_leave || 6}
             />
 
             <div className='text-center text-xs text-muted-foreground mt-8'>

@@ -14,7 +14,11 @@ import {
   TrendingUp,
   Users,
   Calendar,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
+import { calculateLeaveUsage, getLeaveStatusColor, getLeaveStatusIcon, getLeaveStatusLabel, getLeaveStatusMessage } from '@/utils/leaveCalculations';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { AttendanceRecord } from '@/types/attendance';
 
@@ -36,12 +40,14 @@ interface GridLayoutProps {
   studentStats: StudentStats[];
   attendanceRecords: AttendanceRecord[];
   hideFields?: ('email' | 'late' | 'absent')[];
+  maxLeave?: number;
 }
 
 export const GridLayout: React.FC<GridLayoutProps> = ({
   studentStats,
   attendanceRecords,
   hideFields = [],
+  maxLeave = 6,
 }) => {
   const getAttendanceColor = (percentage: number) => {
     if (percentage >= 95) return 'text-green-600';
@@ -80,6 +86,13 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
     return studentRecords.filter(
       record => record.status === 'absent' && record.absence_type === 'exempted'
     ).length;
+  };
+
+  const getStudentLeaveStats = (studentId: string) => {
+    const studentRecords = attendanceRecords.filter(
+      record => record.student_id === studentId
+    );
+    return calculateLeaveUsage(studentRecords, maxLeave);
   };
 
   const getExemptedTooltipContent = (studentId: string) => {
@@ -193,9 +206,43 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
                       </div>
                     </div>
 
-                    {/* Right side - Trophy and Exempted badge */}
+                    {/* Right side - Trophy, Leave Status and Exempted badge */}
                     <div className='flex items-center gap-2'>
                       {getRankIcon(stat.rank)}
+                      {(() => {
+                        const leaveStats = getStudentLeaveStats(stat.student.id);
+                        const statusIcon = getLeaveStatusIcon(leaveStats.status);
+                        const statusLabel = getLeaveStatusLabel(leaveStats.status);
+                        const statusMessage = getLeaveStatusMessage(leaveStats);
+                        const colorClass = getLeaveStatusColor(leaveStats.status);
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant='outline'
+                                  className={`cursor-help text-xs ${colorClass}`}
+                                >
+                                  <span className="mr-1">{statusIcon}</span>
+                                  {leaveStats.totalLeaves}/{leaveStats.maxAllowed}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className='max-w-xs'>
+                                  <p className='font-semibold mb-2'>Leave Status: {statusLabel}</p>
+                                  <p className='text-sm mb-2'>{statusMessage}</p>
+                                  <div className='text-sm space-y-1'>
+                                    <p>• Informed: {leaveStats.informedLeaves}</p>
+                                    <p>• Uninformed: {leaveStats.uninformedLeaves}</p>
+                                    <p>• Exempted: {leaveStats.exemptedLeaves} (not counted)</p>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                       {isExempted && (
                         <TooltipProvider>
                           <Tooltip>
@@ -274,25 +321,61 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
                       </div>
                     </div>
 
-                    {/* Right side - Exempted badge if any */}
-                    {isExempted && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant='outline'
-                              className='bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
-                            >
-                              <Shield className='h-3 w-3 mr-1' />
-                              {exemptedCount}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {getExemptedTooltipContent(stat.student.id)}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    {/* Right side - Leave Status and Exempted badge */}
+                    <div className='flex items-center gap-2'>
+                      {(() => {
+                        const leaveStats = getStudentLeaveStats(stat.student.id);
+                        const statusIcon = getLeaveStatusIcon(leaveStats.status);
+                        const statusLabel = getLeaveStatusLabel(leaveStats.status);
+                        const statusMessage = getLeaveStatusMessage(leaveStats);
+                        const colorClass = getLeaveStatusColor(leaveStats.status);
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant='outline'
+                                  className={`cursor-help text-xs ${colorClass}`}
+                                >
+                                  <span className="mr-1">{statusIcon}</span>
+                                  {leaveStats.totalLeaves}/{leaveStats.maxAllowed}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className='max-w-xs'>
+                                  <p className='font-semibold mb-2'>Leave Status: {statusLabel}</p>
+                                  <p className='text-sm mb-2'>{statusMessage}</p>
+                                  <div className='text-sm space-y-1'>
+                                    <p>• Informed: {leaveStats.informedLeaves}</p>
+                                    <p>• Uninformed: {leaveStats.uninformedLeaves}</p>
+                                    <p>• Exempted: {leaveStats.exemptedLeaves} (not counted)</p>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
+                      {isExempted && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant='outline'
+                                className='bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+                              >
+                                <Shield className='h-3 w-3 mr-1' />
+                                {exemptedCount}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {getExemptedTooltipContent(stat.student.id)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

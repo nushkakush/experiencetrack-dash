@@ -6,10 +6,7 @@ export interface ProfileExtended {
   contact_no_verified?: boolean;
   currently_a?:
     | 'Student'
-    | 'Working Professional'
-    | 'Freelancer'
-    | 'Entrepreneur'
-    | 'Other';
+    | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;
@@ -77,10 +74,7 @@ export interface ProfileExtendedInsert {
   contact_no_verified?: boolean;
   currently_a?:
     | 'Student'
-    | 'Working Professional'
-    | 'Freelancer'
-    | 'Entrepreneur'
-    | 'Other';
+    | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;
@@ -142,10 +136,7 @@ export interface ProfileExtendedUpdate {
   contact_no_verified?: boolean;
   currently_a?:
     | 'Student'
-    | 'Working Professional'
-    | 'Freelancer'
-    | 'Entrepreneur'
-    | 'Other';
+    | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;

@@ -8,6 +8,7 @@ export interface Cohort {
   description?: string | null;
   sessions_per_day: number;
   max_students: number;
+  max_leave?: number | null; // Maximum allowed leave days (default: 6)
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -42,6 +43,7 @@ export interface NewCohortInput {
   description?: string;
   sessions_per_day: number;
   max_students: number;
+  max_leave?: number;
 }
 
 export interface NewEpicInput {

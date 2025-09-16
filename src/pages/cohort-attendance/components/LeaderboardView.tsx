@@ -16,6 +16,7 @@ interface LeaderboardViewProps {
   epicId: string;
   cohortName?: string;
   epicName?: string;
+  maxLeave?: number;
   onLayoutChange: (layout: 'table' | 'grid') => void;
 }
 
@@ -25,6 +26,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   epicId,
   cohortName,
   epicName,
+  maxLeave = 6,
   onLayoutChange,
 }) => {
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
@@ -232,6 +234,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         currentEpic={currentEpic}
         layout={leaderboardLayout}
         hideFields={['email', 'late', 'absent']}
+        maxLeave={maxLeave}
         studentStats={studentStats}
       />
     </div>

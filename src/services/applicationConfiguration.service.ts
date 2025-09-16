@@ -10,6 +10,7 @@ import {
   StudentApplicationInsert,
   StudentApplicationUpdate,
 } from '@/types/applications';
+import { MeritoService } from './merito.service';
 
 export class ApplicationConfigurationService {
   /**
@@ -461,6 +462,29 @@ export class ApplicationConfigurationService {
       if (error) {
         console.error('Error reviewing application:', error);
         return false;
+      }
+
+      // Sync to Merito CRM
+      try {
+        if (MeritoService.isEnabled()) {
+          // Get the updated application data for Merito sync
+          const { data: applicationData } = await supabase
+            .from('student_applications')
+            .select(`
+              *,
+              profile:profiles(*)
+            `)
+            .eq('id', applicationId)
+            .single();
+
+          if (applicationData) {
+            await MeritoService.syncApplication(applicationData);
+            console.log('✅ Application review synced to Merito CRM');
+          }
+        }
+      } catch (meritoError) {
+        console.error('❌ Failed to sync application review to Merito:', meritoError);
+        // Don't fail the review if Merito sync fails
       }
 
       return true;

@@ -27,6 +27,7 @@ import {
   getStatusBadge,
 } from './utils/paymentScheduleUtils';
 import { InvoiceUploadDialog } from './InvoiceUploadDialog';
+import { NotesManagementDialog } from './NotesManagementDialog';
 import { useInvoiceManagement } from './hooks/useInvoiceManagement';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -71,6 +72,7 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
   const { profile } = useAuth();
   const [showInvoiceUpload, setShowInvoiceUpload] = useState(false);
   const [showCallDialog, setShowCallDialog] = useState(false);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
 
   // Get the first approved transaction for this payment item
   const transactions = getRelevantTransactions(item);
@@ -220,6 +222,38 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
         )}
         {/* FIXED: Remove verificationStatus display - payment engine status is the single source of truth */}
       </div>
+
+      {/* Payment Notes - Show for paid payments with approved transactions */}
+      {isPaid && hasApprovedTransaction && (
+        <div className='mt-3 pt-3 border-t'>
+          <div className='space-y-2'>
+            <div className='flex items-center justify-between'>
+              <span className='text-xs font-medium text-muted-foreground'>
+                Payment Notes
+              </span>
+              {canManageInvoices && (
+                <Button
+                  size='sm'
+                  variant='outline'
+                  onClick={() => setShowNotesDialog(true)}
+                  className='h-6 px-2 text-xs'
+                >
+                  {approvedTransaction.notes ? 'Edit Notes' : 'Add Notes'}
+                </Button>
+              )}
+            </div>
+            {approvedTransaction.notes ? (
+              <div className='text-xs text-foreground bg-muted/50 p-2 rounded border'>
+                {approvedTransaction.notes}
+              </div>
+            ) : (
+              <div className='text-xs text-muted-foreground italic'>
+                No notes added yet
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Invoice Management - Only show for paid payments with approved transactions */}
       {isPaid && hasApprovedTransaction && (
@@ -442,6 +476,22 @@ export const PaymentScheduleItem: React.FC<PaymentScheduleItemProps> = ({
           onRecordCall?.(item);
         }}
       />
+
+      {/* Notes Management Dialog */}
+      {hasApprovedTransaction && (
+        <NotesManagementDialog
+          open={showNotesDialog}
+          onOpenChange={setShowNotesDialog}
+          transactionId={approvedTransaction.id}
+          currentNotes={approvedTransaction.notes || ''}
+          onNotesUpdated={(notes) => {
+            // Update the local transaction object to reflect the changes
+            approvedTransaction.notes = notes;
+            // Force a re-render by updating the state
+            setShowNotesDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 };

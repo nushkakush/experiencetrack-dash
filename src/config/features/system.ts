@@ -29,6 +29,13 @@ export const SYSTEM_FEATURES: Record<FeatureKey, FeatureMetadata> = {
     category: 'system',
     requiresAuthentication: true,
   },
+  'system.merito_integration': {
+    key: 'system.merito_integration',
+    name: 'Merito CRM Integration',
+    description: 'Sync enquiries and applications to Merito CRM',
+    category: 'system',
+    requiresAuthentication: true,
+  },
 } as const;
 
 export const SYSTEM_FEATURE_KEYS = Object.keys(SYSTEM_FEATURES) as FeatureKey[];

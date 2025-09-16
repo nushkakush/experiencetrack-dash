@@ -104,16 +104,44 @@ const ApplicationStep = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Debug useEffect to track formData changes
+  useEffect(() => {
+    console.log('🔍 [DEBUG] formData state changed:', formData);
+    console.log('🔍 [DEBUG] formData required field check:', {
+      contact_no: formData.contact_no,
+      gender: formData.gender,
+      current_address: formData.current_address,
+      city: formData.city,
+      state: formData.state,
+      postal_zip_code: formData.postal_zip_code,
+      father_first_name: formData.father_first_name,
+      mother_first_name: formData.mother_first_name,
+      emergency_first_name: formData.emergency_first_name,
+    });
+  }, [formData]);
+
   // Load profile data from both profiles and profile_extended tables
   useEffect(() => {
     console.log(
-      'ApplicationStep useEffect triggered with profileId:',
+      '🔍 [DEBUG] ApplicationStep useEffect triggered with profileId:',
       profileId
     );
     console.log(
-      'ApplicationStep should not be rendered for users with registration_paid status'
+      '🔍 [DEBUG] profileId type:',
+      typeof profileId
     );
+    console.log(
+      '🔍 [DEBUG] profileId truthy:',
+      !!profileId
+    );
+    
+    if (!profileId) {
+      console.log('❌ [DEBUG] No profileId available, skipping data load');
+      return;
+    }
+    
     const loadProfileData = async () => {
+      console.log('🔍 [DEBUG] Starting loadProfileData...');
       try {
         // Load basic profile data from profiles table
         const { data: basicProfile, error: basicError } = await supabase
@@ -123,15 +151,17 @@ const ApplicationStep = ({
           .single();
 
         if (basicError && basicError.code !== 'PGRST116') {
-          console.error('Error loading basic profile:', basicError);
+          console.error('❌ [DEBUG] Error loading basic profile:', basicError);
+          return; // Don't continue if we can't load basic profile
         } else {
-          console.log('Basic profile loaded:', basicProfile);
+          console.log('✅ [DEBUG] Basic profile loaded:', basicProfile);
         }
 
         // Load extended profile data from profile_extended table
+        console.log('🔍 [DEBUG] Loading extended profile data...');
         const service = ProfileExtendedService.getInstance();
         const extendedData = await service.getProfileExtended(profileId);
-        console.log('Extended profile data loaded:', extendedData);
+        console.log('✅ [DEBUG] Extended profile data loaded:', extendedData);
 
         // Parse date of birth from profiles table
         let parsedDateOfBirth = { day: '', month: '', year: '' };
@@ -142,11 +172,13 @@ const ApplicationStep = ({
             month: (date.getMonth() + 1).toString().padStart(2, '0'),
             year: date.getFullYear().toString(),
           };
+          console.log('✅ [DEBUG] Parsed date of birth:', parsedDateOfBirth);
+        } else {
+          console.log('❌ [DEBUG] No date of birth in basic profile');
         }
 
         // Combine data from both tables, prioritizing profiles table for disabled fields
-        setFormData(prev => ({
-          ...prev,
+        const newFormData = {
           // Personal Information - use profiles table data for disabled fields, extended for editable
           full_name:
             (basicProfile
@@ -204,10 +236,28 @@ const ApplicationStep = ({
           emergency_last_name: extendedData?.emergency_last_name || '',
           emergency_contact_no: extendedData?.emergency_contact_no || '',
           emergency_relationship: extendedData?.emergency_relationship || '',
-        }));
+        };
+
+        console.log('🔍 [DEBUG] About to set form data:', newFormData);
+        console.log('🔍 [DEBUG] Form data keys:', Object.keys(newFormData));
+        console.log('🔍 [DEBUG] Form data has required fields:', {
+          contact_no: !!newFormData.contact_no,
+          gender: !!newFormData.gender,
+          current_address: !!newFormData.current_address,
+          city: !!newFormData.city,
+          state: !!newFormData.state,
+          postal_zip_code: !!newFormData.postal_zip_code,
+          father_first_name: !!newFormData.father_first_name,
+          mother_first_name: !!newFormData.mother_first_name,
+          emergency_first_name: !!newFormData.emergency_first_name,
+        });
+        
+        setFormData(newFormData);
+        console.log('✅ [DEBUG] Form data has been set');
 
         if (extendedData) {
           setProfileData(extendedData);
+          console.log('✅ [DEBUG] Profile data has been set');
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -498,15 +548,21 @@ const ApplicationStep = ({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    console.log('🔍 [DEBUG] validateForm called with formData:', formData);
+
     // Personal Info validation - skip disabled fields (full_name, email)
     // Full name and email are loaded from profiles table and disabled
 
     // Contact number validation
     if (!formData.contact_no.trim()) {
       newErrors['contact_no'] = 'Contact number is required';
+      console.log('❌ [DEBUG] Contact number validation failed: empty');
     } else if (!ValidationUtils.isValidPhone(formData.contact_no)) {
       newErrors['contact_no'] =
         'Please enter a valid Indian phone number (10 digits starting with 6-9)';
+      console.log('❌ [DEBUG] Contact number validation failed: invalid format');
+    } else {
+      console.log('✅ [DEBUG] Contact number validation passed');
     }
 
     // Date of birth validation
@@ -516,6 +572,11 @@ const ApplicationStep = ({
       !formData.date_of_birth.year
     ) {
       newErrors['date_of_birth'] = 'Date of birth is required';
+      console.log('❌ [DEBUG] Date of birth validation failed: missing parts', {
+        day: formData.date_of_birth.day,
+        month: formData.date_of_birth.month,
+        year: formData.date_of_birth.year
+      });
     } else if (
       !ValidationUtils.isValidAge(
         formData.date_of_birth.day,
@@ -525,28 +586,47 @@ const ApplicationStep = ({
       )
     ) {
       newErrors['date_of_birth'] = 'You must be at least 16 years old to apply';
+      console.log('❌ [DEBUG] Date of birth validation failed: age requirement');
+    } else {
+      console.log('✅ [DEBUG] Date of birth validation passed');
     }
 
     // Gender validation
     if (!formData.gender) {
       newErrors['gender'] = 'Please select your gender';
+      console.log('❌ [DEBUG] Gender validation failed: empty');
+    } else {
+      console.log('✅ [DEBUG] Gender validation passed');
     }
 
     // Address validation
     if (!formData.current_address.trim()) {
       newErrors['current_address'] = 'Current address is required';
+      console.log('❌ [DEBUG] Current address validation failed: empty');
+    } else {
+      console.log('✅ [DEBUG] Current address validation passed');
     }
     if (!formData.city.trim()) {
       newErrors['city'] = 'City is required';
+      console.log('❌ [DEBUG] City validation failed: empty');
+    } else {
+      console.log('✅ [DEBUG] City validation passed');
     }
     if (!formData.state.trim()) {
       newErrors['state'] = 'State is required';
+      console.log('❌ [DEBUG] State validation failed: empty');
+    } else {
+      console.log('✅ [DEBUG] State validation passed');
     }
     if (!formData.postal_zip_code.trim()) {
       newErrors['postal_zip_code'] = 'Postal/Zip code is required';
+      console.log('❌ [DEBUG] Postal code validation failed: empty');
     } else if (!ValidationUtils.isValidPostalCode(formData.postal_zip_code)) {
       newErrors['postal_zip_code'] =
         'Please enter a valid 6-digit Indian postal code';
+      console.log('❌ [DEBUG] Postal code validation failed: invalid format');
+    } else {
+      console.log('✅ [DEBUG] Postal code validation passed');
     }
 
     // LinkedIn profile validation (optional but if provided, must be valid URL)
@@ -687,8 +767,14 @@ const ApplicationStep = ({
         'Emergency contact relationship is required';
     }
 
+    console.log('🔍 [DEBUG] Validation complete. Errors found:', newErrors);
+    console.log('🔍 [DEBUG] Total errors count:', Object.keys(newErrors).length);
+    
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log('🔍 [DEBUG] Form validation result:', isValid ? 'VALID' : 'INVALID');
+    
+    return isValid;
   };
 
   const handleSave = async () => {
@@ -704,51 +790,74 @@ const ApplicationStep = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+    console.log('🔍 [DEBUG] handleSubmit called');
+    console.log('🔍 [DEBUG] feeInfo:', feeInfo);
+    console.log('🔍 [DEBUG] isPaymentCompleted:', isPaymentCompleted);
+    
+    const isFormValid = validateForm();
+    console.log('🔍 [DEBUG] Form validation result in handleSubmit:', isFormValid);
+    
+    if (isFormValid) {
       // Check if payment is required and not already completed
       if (feeInfo && feeInfo.amount > 0 && !isPaymentCompleted) {
+        console.log('🔍 [DEBUG] Payment required, proceeding to payment flow');
         // First, save all pending data before initiating payment
         await submitAllDataAndProceedToPayment();
       } else {
+        console.log('🔍 [DEBUG] No payment required or already completed, proceeding to next step');
         // No payment required or payment already completed, proceed directly
         proceedToNextStep();
       }
     } else {
+      console.log('❌ [DEBUG] Form validation failed, showing error toast');
       toast.error('Please fill in all required fields');
     }
   };
 
   const submitAllDataAndProceedToPayment = async () => {
     try {
+      console.log('🔍 [DEBUG] submitAllDataAndProceedToPayment called');
+      
       // Notify parent that payment process is starting
       onPaymentInitiated?.();
 
+      console.log('🔍 [DEBUG] Force saving all pending changes...');
       // Force save all pending changes using the unified auto-save system
       await forceSave();
 
-      // Also save using the ProfileExtendedService to ensure everything is saved
+      console.log('🔍 [DEBUG] Saving using ProfileExtendedService...');
+      // Also save using the ProfileExtendedService and sync to Meritto
       const service = ProfileExtendedService.getInstance();
-      await service.forceSave(profileId);
+      await service.forceSaveAndSyncToMerito(profileId);
 
       // Show success message
       toast.success('All data saved successfully!');
 
+      console.log('🔍 [DEBUG] Initiating payment...');
       // Now initiate payment with success callback
       await initiatePayment(() => {
+        console.log('🔍 [DEBUG] Payment completed, proceeding to next step');
         onPaymentCompleted?.();
         proceedToNextStep();
       });
     } catch (error) {
-      console.error('Error saving data before payment:', error);
+      console.error('❌ [DEBUG] Error saving data before payment:', error);
       toast.error('Failed to save data. Please try again.');
       onPaymentCompleted?.();
     }
   };
 
-  const proceedToNextStep = () => {
-    // Convert formData to ApplicationData format for compatibility
-    const applicationData = {
-      personalInfo: {
+  const proceedToNextStep = async () => {
+    try {
+      // Force save all pending changes and sync to Meritto before proceeding
+      await forceSave();
+      
+      const service = ProfileExtendedService.getInstance();
+      await service.forceSaveAndSyncToMerito(profileId);
+      
+      // Convert formData to ApplicationData format for compatibility
+      const applicationData = {
+        personalInfo: {
         firstName: formData.full_name.split(' ')[0] || '',
         lastName: formData.full_name.split(' ').slice(1).join(' ') || '',
         email: formData.email,
@@ -779,7 +888,11 @@ const ApplicationStep = ({
       },
     };
 
-    onComplete(applicationData);
+      onComplete(applicationData);
+    } catch (error) {
+      console.error('Error completing extended registration:', error);
+      toast.error('Failed to save extended registration data. Please try again.');
+    }
   };
 
   const getError = (field: string) => {

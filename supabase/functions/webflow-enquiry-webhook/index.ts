@@ -184,6 +184,11 @@ Deno.serve(async (req: Request) => {
       JSON.stringify(submissionData, null, 2)
     );
 
+    // DEBUG: Log all form field names for debugging
+    console.log('🔍 DEBUG - Raw form field names:');
+    console.log('Available keys:', Object.keys(submissionData.formResponse || {}));
+    console.log('Raw form data:', JSON.stringify(submissionData.formResponse, null, 2));
+
     // Transform Webflow form submission to enquiry format
     let enquiryData;
     try {
@@ -230,7 +235,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check if enquiry already exists to prevent duplicates
+    // Check if enquiry already exists to prevent duplicates in Supabase
     const existingEnquiry = await checkExistingEnquiry(
       supabase,
       enquiryData.email,
@@ -238,9 +243,17 @@ Deno.serve(async (req: Request) => {
     );
 
     if (existingEnquiry) {
-      console.log('Enquiry already exists, skipping:', enquiryData.email);
+      console.log('Enquiry already exists in Supabase, skipping database insert:', enquiryData.email);
+      // Still sync to Merito for lead updates
+      try {
+        await syncEnquiryToMerito(enquiryData);
+        console.log('✅ Duplicate enquiry synced to Merito CRM for lead update');
+      } catch (meritoError) {
+        console.error('❌ Failed to sync duplicate enquiry to Merito:', meritoError);
+      }
+      
       return new Response(
-        JSON.stringify({ message: 'Enquiry already exists' }),
+        JSON.stringify({ message: 'Enquiry already exists, but synced to Merito' }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -267,6 +280,15 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('Successfully created enquiry:', createdEnquiry.id);
+
+    // Sync to Merito CRM
+    try {
+      await syncEnquiryToMerito(createdEnquiry);
+      console.log('✅ Enquiry synced to Merito CRM');
+    } catch (meritoError) {
+      console.error('❌ Failed to sync enquiry to Merito:', meritoError);
+      // Don't fail the webhook if Merito sync fails
+    }
 
     return new Response(
       JSON.stringify({
@@ -382,37 +404,62 @@ async function transformSubmissionToEnquiry(
       // Generic mapping for other forms (Contact Form, etc.)
       enquiryData = {
         full_name:
+          data['Full Name'] ||
           data['First Name'] ||
           data.name ||
           data['First-Name'] ||
           data['first-name'] ||
           data.firstName ||
           '',
-        email: data['Email'] || data.email || '',
+        email: 
+          data['Email ID'] ||
+          data['Email'] || 
+          data.email || '',
         date_of_birth:
+          data['Date of Birth'] ||
+          data['date-of-birth'] ||
+          data['dateOfBirth'] ||
+          data.dateOfBirth ||
           data['DoB'] ||
           data.dob ||
           data.DoB ||
-          data['date-of-birth'] ||
-          data.dateOfBirth ||
           data.birthday ||
+          data['birth-date'] ||
+          data.birthDate ||
+          data['Date-of-Birth'] ||
           null, // set to null if missing
         age: parseAge(data.age || data.Age || data['age'] || data['Age']),
         phone:
+          data['Phone No.'] ||
           data['Phone'] ||
           data.phone ||
           data['phone-number'] ||
           data.phoneNumber ||
           '',
-        gender: data['Gender'] || data.gender || undefined,
+        gender: 
+          data['Specify Your Gender'] ||
+          data['specify-your-gender'] ||
+          data['Gender'] || 
+          data.gender ||
+          data['sex'] ||
+          data.sex ||
+          undefined,
         location:
+          data['Where Do You Live?'] ||
+          data['where-do-you-live'] ||
           data['Location'] ||
           data.location ||
           data.city ||
           data.address ||
+          data['current-location'] ||
+          data.currentLocation ||
+          data['place'] ||
+          data.place ||
           undefined,
         professional_status: mapProfessionalStatus(
-          data['i-am-a'] ||
+          data['I am...'] ||
+            data['i-am'] ||
+            data['i-am-a'] ||
             data['I am'] ||
             data['You are currently a'] ||
             data.professionalStatus ||
@@ -420,10 +467,13 @@ async function transformSubmissionToEnquiry(
             data['professional-status'] ||
             data.occupation ||
             data.role ||
+            data['status'] ||
+            data.status ||
             ''
         ),
         relocation_possible: mapRelocationPossible(
-          data['relocate-intent'] ||
+          data['Will it be possible for you to relocate to Bangalore for this program?'] ||
+            data['relocate-intent'] ||
             data.relocationPossible ||
             data.relocation_possible ||
             data['relocation-possible'] ||
@@ -431,7 +481,8 @@ async function transformSubmissionToEnquiry(
             'Maybe'
         ),
         investment_willing: mapInvestmentWilling(
-          data['time-intent'] ||
+          data['Are you willing to invest 1-2 years of your time for your future?'] ||
+            data['time-intent'] ||
             data.investmentWilling ||
             data.investment_willing ||
             data['investment-willing'] ||
@@ -440,6 +491,7 @@ async function transformSubmissionToEnquiry(
             'Maybe'
         ),
         career_goals:
+          data['What are your career goals?'] ||
           data['Career Goals'] ||
           data['Career-Goals'] ||
           data.careerGoals ||
@@ -486,6 +538,16 @@ async function transformSubmissionToEnquiry(
       isProgramBrochureForm,
       full_data: enquiryData,
     });
+
+    // DEBUG: Log specific field mappings
+    console.log('🔍 DEBUG - Field Mapping Results:');
+    console.log('date_of_birth:', enquiryData.date_of_birth);
+    console.log('gender:', enquiryData.gender);
+    console.log('location:', enquiryData.location);
+    console.log('professional_status:', enquiryData.professional_status);
+    console.log('relocation_possible:', enquiryData.relocation_possible);
+    console.log('investment_willing:', enquiryData.investment_willing);
+    console.log('career_goals:', enquiryData.career_goals);
 
     // Validate required fields based on form type
     if (formName === 'Email Form') {
@@ -721,4 +783,289 @@ async function checkExistingEnquiry(
     console.error('Error checking existing enquiry:', error);
     return false;
   }
+}
+
+/**
+ * Sync enquiry to Merito CRM
+ */
+async function syncEnquiryToMerito(enquiry: any): Promise<void> {
+  try {
+    // Get Supabase client for secrets
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase credentials not found for Merito sync');
+      return;
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check if Merito integration is enabled
+    const { data: meritoEnabled, error: enabledError } = await supabase.rpc(
+      'get_secret',
+      { secret_key: 'MERITO_ENABLED' }
+    );
+    
+    if (enabledError || meritoEnabled !== 'true') {
+      console.log('Merito integration is disabled, skipping sync');
+      return;
+    }
+
+    // Get Merito API credentials from Supabase secrets
+    const { data: secretKey, error: secretError } = await supabase.rpc(
+      'get_secret',
+      { secret_key: 'MERITO_SECRET_KEY' }
+    );
+    
+    const { data: accessKey, error: accessError } = await supabase.rpc(
+      'get_secret',
+      { secret_key: 'MERITO_ACCESS_KEY' }
+    );
+
+    if (secretError || accessError || !secretKey || !accessKey) {
+      console.error('Merito API credentials not found:', { secretError, accessError });
+      return;
+    }
+
+    // DEBUG: Log the enquiry data from Supabase
+    console.log('🔍 DEBUG - Supabase Enquiry Data:');
+    console.log('Full enquiry object:', JSON.stringify(enquiry, null, 2));
+    console.log('Key fields:');
+    console.log('- email:', enquiry.email);
+    console.log('- full_name:', enquiry.full_name);
+    console.log('- phone:', enquiry.phone);
+    console.log('- date_of_birth:', enquiry.date_of_birth);
+    console.log('- gender:', enquiry.gender);
+    console.log('- location:', enquiry.location);
+    console.log('- professional_status:', enquiry.professional_status);
+    console.log('- career_goals:', enquiry.career_goals);
+    console.log('- course_of_interest:', enquiry.course_of_interest);
+    
+    // DEBUG: Log the formatted fields for Merito
+    console.log('🔍 DEBUG - Formatted Fields for Merito:');
+    console.log('- cf_date_of_birth:', formatDateOfBirthForMerito(enquiry.date_of_birth));
+    console.log('- cf_career_goals:', enquiry.career_goals);
+
+    // Helper function to clean mobile number
+    const cleanMobile = (phone: string | null): string | undefined => {
+      if (!phone) return undefined;
+      
+      // Remove all non-digits
+      const digits = phone.replace(/\D/g, '');
+      
+      // Ensure it's a valid Indian mobile number (10 digits)
+      if (digits.length === 10) {
+        return digits;
+      } else if (digits.length === 12 && digits.startsWith('91')) {
+        // Remove country code if present
+        return digits.substring(2);
+      } else if (digits.length === 13 && digits.startsWith('91')) {
+        // Handle +91 case
+        return digits.substring(2);
+      }
+      
+      console.warn('Invalid phone number format:', phone, 'digits:', digits);
+      return undefined;
+    };
+
+    // Map directly from Supabase database fields to Merito using correct field keys
+    const leadData = {
+      // Core required fields
+      email: enquiry.email,
+      mobile: cleanMobile(enquiry.phone),
+      search_criteria: 'email',
+      name: enquiry.full_name ? enquiry.full_name.replace(/[^a-zA-Z\s]/g, '').trim() : 'Unknown User',
+      
+      // Personal details (using correct Merito field keys)
+      // cf_date_of_birth: formatDateOfBirthForMerito(enquiry.date_of_birth), // Temporarily disabled - Meritto validation issue
+      cf_specify_your_gender: enquiry.gender,
+      cf_where_do_you_live: enquiry.location,
+      cf_state: enquiry.state,
+      cf_city: enquiry.city,
+      cf_current_address: enquiry.address,
+      cf_postal_zip_code: enquiry.pincode,
+      
+      // Professional info (using correct Merito field keys)
+      cf_i_am: mapProfessionalStatusToMerito(enquiry.professional_status),
+      cf_can_you_relocate_to_bangalore_for_this_program: mapRelocationToMerito(enquiry.relocation_possible),
+      cf_do_you_have_1_or_2_years_of_your_time_for_your_future: mapInvestmentToMerito(enquiry.investment_willing),
+      
+      // Career goals field
+      cf_career_goals: enquiry.career_goals,
+      
+      // Education info
+      cf_highest_education_level: enquiry.qualification,
+      cf_field_of_study: enquiry.course_of_interest,
+      cf_institution_name: enquiry.institution_name,
+      cf_graduation_month_new: enquiry.graduation_month,
+      cf_graduation_year: enquiry.graduation_year,
+      
+      // Work experience
+      cf_do_you_have_work_experience: enquiry.work_experience,
+      cf_work_experience_type: enquiry.work_experience_type,
+      cf_job_description: enquiry.job_description,
+      cf_company_name: enquiry.company,
+      cf_work_start_year: enquiry.work_start_year,
+      cf_work_end_month_new: enquiry.work_end_month,
+      
+      // UTM tracking (using correct field keys)
+      source: enquiry.utm_source,
+      medium: enquiry.utm_medium,
+      campaign: enquiry.utm_campaign,
+      
+      // Additional fields
+      notes: `Enquiry from ${enquiry.form_name || 'website'} - ${enquiry.career_goals || 'No specific goals mentioned'}`,
+      phone: enquiry.phone,
+      application_status: 'enquiry',
+      lead_quality: determineLeadQuality(enquiry),
+      conversion_stage: 'awareness',
+    };
+
+    // Validate required fields
+    if (!leadData.email || !leadData.name) {
+      console.warn('Missing required fields for Merito sync:', leadData);
+      return;
+    }
+
+    // DEBUG: Log the final leadData being sent to Merito
+    console.log('🔍 DEBUG - Final Lead Data for Merito API:');
+    console.log('- cf_date_of_birth:', leadData.cf_date_of_birth);
+    console.log('- cf_career_goals:', leadData.cf_career_goals);
+    console.log('Full leadData:', JSON.stringify(leadData, null, 2));
+
+    // Make API call to Merito
+    const response = await fetch('https://api.nopaperforms.io/lead/v1/createOrUpdate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'secret-key': secretKey,
+        'access-key': accessKey,
+      },
+      body: JSON.stringify(leadData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Merito API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.status) {
+      throw new Error(`Merito API returned error: ${result.message}`);
+    }
+
+    console.log(`✅ Lead synced to Merito CRM. Lead ID: ${result.data?.lead_id}`);
+  } catch (error) {
+    console.error('Error syncing enquiry to Merito:', error);
+    throw error;
+  }
+}
+
+/**
+ * Format date of birth for Merito API (DD/MM/YYYY format)
+ */
+function formatDateOfBirthForMerito(dateOfBirth: string | null): string | undefined {
+  if (!dateOfBirth) {
+    return undefined;
+  }
+  
+  try {
+    // Parse the date (assuming it's in ISO format from Supabase: YYYY-MM-DD)
+    const date = new Date(dateOfBirth);
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date of birth format:', dateOfBirth);
+      return undefined;
+    }
+    
+    // Format as DD/MM/YYYY for Merito
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // getMonth() returns 0-11
+    const year = date.getFullYear().toString();
+    
+    const formattedDate = `${day}/${month}/${year}`;
+    console.log(`📅 Formatted date of birth: ${dateOfBirth} → ${formattedDate}`);
+    
+    return formattedDate;
+  } catch (error) {
+    console.error('Error formatting date of birth:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Map professional status to Merito dropdown values
+ */
+function mapProfessionalStatusToMerito(status: string): string {
+  switch (status) {
+    case 'student':
+      return 'A Student';
+    case 'A Working Professional':
+      return 'Working Professional';
+    case 'In Between Jobs':
+      return 'In Between Jobs';
+    default:
+      return 'A Student';
+  }
+}
+
+/**
+ * Map relocation possibility to Merito dropdown values
+ */
+function mapRelocationToMerito(relocation: string): string {
+  switch (relocation) {
+    case 'Yes':
+      return 'Yes';
+    case 'No':
+      return 'No';
+    case 'Maybe':
+      return 'May Be';
+    default:
+      return 'May Be';
+  }
+}
+
+/**
+ * Map investment willingness to Merito dropdown values
+ */
+function mapInvestmentToMerito(investment: string): string {
+  switch (investment) {
+    case 'Yes':
+      return 'Yes';
+    case 'No':
+      return 'No';
+    case 'Maybe':
+      return 'May Be';
+    default:
+      return 'May Be';
+  }
+}
+
+/**
+ * Determine lead quality for enquiry based on criteria
+ */
+function determineLeadQuality(enquiry: any): 'cold' | 'warm' | 'hot' {
+  // High-value indicators
+  const hasCourseInterest = enquiry.course_of_interest && enquiry.course_of_interest !== '';
+  const hasProfessionalStatus = enquiry.professional_status && enquiry.professional_status !== '';
+  const hasCareerGoals = enquiry.career_goals && enquiry.career_goals !== '';
+  const isWorkingProfessional = enquiry.professional_status === 'A Working Professional';
+  const hasInvestmentWilling = enquiry.investment_willing === 'Yes';
+  const hasRelocationPossible = enquiry.relocation_possible === 'Yes';
+  
+  // Scoring system
+  let score = 0;
+  if (hasCourseInterest) score += 1;
+  if (hasProfessionalStatus) score += 1;
+  if (hasCareerGoals) score += 2;
+  if (isWorkingProfessional) score += 2;
+  if (hasInvestmentWilling) score += 2;
+  if (hasRelocationPossible) score += 1;
+  
+  if (score >= 5) return 'hot';
+  if (score >= 3) return 'warm';
+  return 'cold';
 }

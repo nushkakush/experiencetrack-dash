@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Cohort } from '@/types/cohort';
 import { ApplicationConfiguration } from '@/types/applications';
 import { Logger } from '@/lib/logging/Logger';
+import { MeritoService } from './merito.service';
 
 export interface CohortWithOpenApplications extends Cohort {
   application_fee?: number;
@@ -158,6 +159,8 @@ export class RegistrationService {
           error: 'Failed to create application record. Please try again.',
         };
       }
+
+      // Note: Merito sync is now handled after email verification to ensure user identity is confirmed
 
       // Send verification email via Edge Function
       try {

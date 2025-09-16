@@ -193,6 +193,31 @@ export const PaymentForm = React.memo<PaymentFormProps>(
 
         <Separator />
 
+        {/* Notes Section - Only show in admin mode */}
+        {isAdminMode && (
+          <div className='space-y-4'>
+            <div>
+              <label className='block text-sm font-medium mb-2'>
+                Payment Notes
+              </label>
+              <textarea
+                placeholder='Add any notes about this payment...'
+                value={paymentDetails.notes || ''}
+                onChange={e =>
+                  handleFieldChange('notes', e.target.value)
+                }
+                className='w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-background min-h-[80px] resize-vertical'
+                rows={3}
+              />
+              <p className='text-sm text-muted-foreground mt-1'>
+                Add any additional notes or comments about this payment installment.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <Separator />
+
         {/* Submit Button */}
         <div className='flex justify-end'>
           <Button

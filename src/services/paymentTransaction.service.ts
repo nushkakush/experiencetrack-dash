@@ -823,6 +823,28 @@ class PaymentTransactionService extends BaseService<PaymentTransactionRow> {
       return { data, error: null };
     });
   }
+
+  // Update payment transaction notes
+  async updateNotes(
+    transactionId: string,
+    notes: string
+  ): Promise<ApiResponse<PaymentTransactionRow>> {
+    return this.executeQuery(async () => {
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .update({ 
+          notes: notes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', transactionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    });
+  }
 }
 
 export const paymentTransactionService = new PaymentTransactionService();

@@ -481,6 +481,7 @@ export const AttendanceOverview = React.memo<AttendanceOverviewProps>(
                       layout='grid'
                       hideFields={['email', 'late', 'absent']}
                       showExemptedNotice={false}
+                      maxLeave={cohortData.max_leave || 6}
                       studentStats={
                         leaderboardData?.entries?.map((entry: any) => ({
                           student: students.find(

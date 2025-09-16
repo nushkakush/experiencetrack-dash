@@ -112,66 +112,76 @@ export default function EnquiriesPage() {
   const getVisibleColumns = () => {
     if (enquiries.length === 0) return [];
 
-    const sampleEnquiry = enquiries[0];
     const columns = [];
 
     // Always show these columns (actions will be added at the end)
     columns.push('name', 'contact', 'created');
 
+    // Check if any enquiry has specific data to determine column visibility
+    const hasProfessionalStatus = enquiries.some(e => e.professional_status);
+    const hasAge = enquiries.some(e => e.age !== undefined && e.age !== null);
+    const hasLocation = enquiries.some(e => e.location);
+    const hasRelocation = enquiries.some(e => e.relocation_possible);
+    const hasInvestment = enquiries.some(e => e.investment_willing);
+    const hasGender = enquiries.some(e => e.gender);
+    const hasCareerGoals = enquiries.some(e => e.career_goals);
+    const hasCourseOfInterest = enquiries.some(e => e.course_of_interest);
+    const hasUtmData = enquiries.some(e => e.utm_source || e.utm_campaign);
+
     // Form-specific column logic
-    const formName = sampleEnquiry.form_name;
+    const formName = enquiries[0]?.form_name;
 
     // For Program files-Brochure form, show age and professional status
     if (formName === 'Program files-Brochure') {
       // Show professional status if any enquiry has it
-      if (sampleEnquiry.professional_status) {
+      if (hasProfessionalStatus) {
         columns.push('professional_status');
       }
 
       // Show age if any enquiry has it (age is directly from Webflow for this form)
-      if (sampleEnquiry.age !== undefined && sampleEnquiry.age !== null) {
+      if (hasAge) {
         columns.push('age');
       }
     }
     // For Contact Form, show these additional columns
     else if (formName === 'Contact Form') {
       // Show professional status if any enquiry has it
-      if (sampleEnquiry.professional_status) {
+      if (hasProfessionalStatus) {
         columns.push('professional_status');
       }
 
       // Show location if any enquiry has it
-      if (sampleEnquiry.location) {
+      if (hasLocation) {
         columns.push('location');
       }
 
       // Show relocation if any enquiry has it
-      if (sampleEnquiry.relocation_possible) {
+      if (hasRelocation) {
         columns.push('relocation');
       }
 
       // Show investment if any enquiry has it
-      if (sampleEnquiry.investment_willing) {
+      if (hasInvestment) {
         columns.push('investment');
       }
 
       // Show gender if any enquiry has it
-      if (sampleEnquiry.gender) {
+      if (hasGender) {
         columns.push('gender');
       }
 
       // Show career goals if any enquiry has it
-      if (sampleEnquiry.career_goals) {
+      if (hasCareerGoals) {
         columns.push('career_goals');
       }
 
       // Show course of interest if any enquiry has it
-      if (sampleEnquiry.course_of_interest) {
+      if (hasCourseOfInterest) {
         columns.push('course_of_interest');
       }
 
       // Show UTM parameters if any enquiry has them
-      if (sampleEnquiry.utm_source || sampleEnquiry.utm_campaign) {
+      if (hasUtmData) {
         columns.push('utm_info');
       }
     }
