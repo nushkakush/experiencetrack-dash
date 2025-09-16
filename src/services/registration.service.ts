@@ -11,6 +11,129 @@ export interface CohortWithOpenApplications extends Cohort {
 
 export class RegistrationService {
   /**
+   * Send verification email with retry mechanism
+   */
+  private static async sendVerificationEmailWithRetry(params: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    verificationToken: string;
+    cohortId: string;
+    origin: string;
+  }): Promise<boolean> {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            type: 'verification',
+            recipient: {
+              email: params.email,
+              name: `${params.firstName} ${params.lastName}`,
+            },
+            firstName: params.firstName,
+            lastName: params.lastName,
+            verificationToken: params.verificationToken,
+            cohortId: params.cohortId,
+            origin: params.origin,
+          }),
+        });
+
+        const emailResult = await response.json();
+
+        if (emailResult.success) {
+          Logger.getInstance().info(
+            `registerUser: Verification email sent successfully (attempt ${attempt})`,
+            {
+              email: params.email,
+              token: params.verificationToken,
+            }
+          );
+          return true;
+        } else {
+          Logger.getInstance().warn(
+            `registerUser: Email sending failed (attempt ${attempt}/${maxRetries})`,
+            {
+              error: emailResult.error,
+              email: params.email,
+            }
+          );
+        }
+      } catch (emailError) {
+        Logger.getInstance().warn(
+          `registerUser: Email service error (attempt ${attempt}/${maxRetries})`,
+          {
+            error: emailError,
+            email: params.email,
+          }
+        );
+      }
+
+      // Wait before retry (except on last attempt)
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+      }
+    }
+
+    Logger.getInstance().error('registerUser: All email sending attempts failed', {
+      email: params.email,
+      maxRetries,
+    });
+    return false;
+  }
+
+  /**
+   * Store verification URL for manual retrieval when email fails
+   */
+  private static async storeVerificationUrlForManualRetrieval(
+    email: string,
+    token: string,
+    cohortId: string
+  ): Promise<void> {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const verificationUrl = `${window.location.origin}/auth/self-registration-verification?token=${token}&cohort=${cohortId}`;
+      
+      // Store in a table for manual retrieval
+      const { error } = await supabase
+        .from('failed_email_notifications')
+        .insert({
+          email,
+          token,
+          cohort_id: cohortId,
+          verification_url: verificationUrl,
+          type: 'verification',
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        Logger.getInstance().error('Failed to store verification URL for manual retrieval', {
+          error: error.message,
+          email,
+        });
+      } else {
+        Logger.getInstance().info('Verification URL stored for manual retrieval', {
+          email,
+          verificationUrl,
+        });
+      }
+    } catch (error) {
+      Logger.getInstance().error('Error storing verification URL for manual retrieval', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        email,
+      });
+    }
+  }
+
+  /**
    * Get all cohorts where application registration is currently open
    */
   static async getCohortsWithOpenApplications(): Promise<{
@@ -162,50 +285,29 @@ export class RegistrationService {
 
       // Note: Merito sync is now handled after email verification to ensure user identity is confirmed
 
-      // Send verification email via Edge Function
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            type: 'verification',
-            recipient: {
-              email: data.email,
-              name: `${data.firstName} ${data.lastName}`,
-            },
-            firstName: data.firstName,
-            lastName: data.lastName,
-            verificationToken: invitationToken,
-            cohortId: data.cohortId,
-            origin: window.location.origin,
-          }),
-        });
+      // Send verification email via Edge Function with retry mechanism
+      const emailSent = await this.sendVerificationEmailWithRetry({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        verificationToken: invitationToken,
+        cohortId: data.cohortId,
+        origin: window.location.origin,
+      });
 
-        const emailResult = await response.json();
-
-        if (!emailResult.success) {
-          Logger.getInstance().error('registerUser: Email sending error', {
-            error: emailResult.error,
-          });
-          // Don't fail the registration if email fails - user can still use the verification URL
-        } else {
-          Logger.getInstance().info(
-            'registerUser: Verification email sent successfully',
-            {
-              email: data.email,
-              token: invitationToken,
-            }
-          );
-        }
-      } catch (emailError) {
-        Logger.getInstance().error('registerUser: Email service error', {
-          error: emailError,
+      if (!emailSent) {
+        // If email sending fails completely, we need to notify the user
+        Logger.getInstance().error('registerUser: All email sending attempts failed', {
+          email: data.email,
+          token: invitationToken,
         });
-        // Don't fail the registration if email fails
+        
+        // Store the verification URL for manual retrieval
+        await this.storeVerificationUrlForManualRetrieval(
+          data.email,
+          invitationToken,
+          data.cohortId
+        );
       }
 
       return {

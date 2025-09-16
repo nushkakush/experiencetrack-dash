@@ -173,10 +173,22 @@ export class ProfileExtendedService {
       }
 
       // If save was successful and we have significant profile data, sync to Meritto
+      console.log('💾 Save completed, checking if should sync to MERITTO:', {
+        saveSuccessful,
+        changesCount: Object.keys(changesToSave).length,
+        changes: Object.keys(changesToSave)
+      });
+      
       if (saveSuccessful && this.shouldSyncToMerito(changesToSave)) {
+        console.log('✅ Triggering real-time MERITTO sync...');
         // Use real-time sync for auto-save (non-blocking)
         this.realtimeSyncToMerito(profileId).catch(error => {
           console.warn('Real-time sync failed during auto-save:', error);
+        });
+      } else {
+        console.log('⏭️ Skipping MERITTO sync:', {
+          saveSuccessful,
+          shouldSync: this.shouldSyncToMerito(changesToSave)
         });
       }
     } catch (error) {
@@ -216,10 +228,12 @@ export class ProfileExtendedService {
    */
   async realtimeSyncToMerito(profileId: string): Promise<void> {
     try {
+      console.log('🚀 Starting real-time MERITTO sync for profileId:', profileId);
+      
       // Get the application data to get the application ID
       const applicationData = await this.getApplicationData(profileId);
       if (!applicationData) {
-        console.log('Application not found for real-time Meritto sync', { profileId });
+        console.log('❌ Application not found for real-time Meritto sync', { profileId });
         return;
       }
 
@@ -305,20 +319,16 @@ export class ProfileExtendedService {
    * Determine if the changes are significant enough to trigger Meritto sync
    */
   private shouldSyncToMerito(changes: Partial<ProfileExtendedUpdate>): boolean {
-    // Trigger sync if we have key profile completion indicators
-    const significantFields = [
-      'current_address',
-      'institution_name', 
-      'linkedin_profile',
-      'father_first_name',
-      'mother_first_name',
-      'emergency_first_name',
-      'highest_qualification',
-      'company_name',
-      'has_work_experience'
-    ];
-
-    return significantFields.some(field => changes.hasOwnProperty(field) && changes[field]);
+    // Always sync for any changes during real-time updates
+    // This ensures all field updates are synced to MERITTO
+    const hasChanges = Object.keys(changes).length > 0;
+    
+    if (hasChanges) {
+      console.log('🔄 Changes detected, triggering MERITTO sync:', Object.keys(changes));
+      return true;
+    }
+    
+    return false;
   }
 
   /**

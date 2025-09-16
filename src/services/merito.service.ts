@@ -10,45 +10,9 @@ export class MeritoService {
    * Create or update a lead in Merito CRM
    */
   static async createOrUpdateLead(leadData: MeritoLeadData): Promise<MeritoResponse> {
-    try {
-      // Get Merito credentials from Supabase secrets
-      const { data: secretKey, error: secretError } = await supabase.rpc('get_secret', {
-        secret_key: 'MERITO_SECRET_KEY'
-      });
-
-      const { data: accessKey, error: accessError } = await supabase.rpc('get_secret', {
-        secret_key: 'MERITO_ACCESS_KEY'
-      });
-
-      if (secretError || accessError || !secretKey || !accessKey) {
-        throw new Error('Merito API credentials not found in Supabase secrets');
-      }
-
-      const response = await fetch(this.API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'secret-key': secretKey,
-          'access-key': accessKey,
-        },
-        body: JSON.stringify(leadData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result: MeritoResponse = await response.json();
-      
-      if (!result.status) {
-        throw new Error(`Merito API error: ${result.message}`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Merito API call failed:', error);
-      throw error;
-    }
+    // For frontend services, we should use Edge Functions to make API calls
+    // since they have access to Supabase Secrets. This is more secure.
+    throw new Error('Use the merito-registration-sync Edge Function instead for secure API calls');
   }
 
   /**
@@ -574,19 +538,10 @@ export class MeritoService {
    * Check if Merito integration is enabled
    */
   static async isEnabled(): Promise<boolean> {
-    try {
-      const { data: secretKey, error: secretError } = await supabase.rpc('get_secret', {
-        secret_key: 'MERITO_SECRET_KEY'
-      });
-
-      const { data: accessKey, error: accessError } = await supabase.rpc('get_secret', {
-        secret_key: 'MERITO_ACCESS_KEY'
-      });
-
-      return !secretError && !accessError && !!secretKey && !!accessKey;
-    } catch (error) {
-      console.error('Error checking Merito credentials:', error);
-      return false;
-    }
+    // For frontend services, we can't access Supabase Secrets directly
+    // This should be checked via an Edge Function or environment variable
+    // For now, return false to indicate this method is not available in frontend
+    console.warn('Merito.isEnabled() should be called from an Edge Function that has access to secrets');
+    return false;
   }
 }

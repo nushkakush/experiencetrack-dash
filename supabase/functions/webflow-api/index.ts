@@ -54,20 +54,13 @@ Deno.serve(async (req: Request) => {
       offset = 0,
     }: WebflowApiRequest = await req.json();
 
-    // Get Webflow credentials from secrets
-    const { data: tokenData, error: tokenError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'webflow_api_token' }
-    );
+    // Get Webflow credentials from Supabase Secrets
+    const tokenData = Deno.env.get('WEBFLOW_API_TOKEN');
+    const siteIdData = Deno.env.get('WEBFLOW_SITE_ID');
 
-    const { data: siteIdData, error: siteIdError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'webflow_site_id' }
-    );
-
-    if (tokenError || siteIdError || !tokenData || !siteIdData) {
+    if (!tokenData || !siteIdData) {
       return new Response(
-        JSON.stringify({ error: 'Webflow API credentials not found' }),
+        JSON.stringify({ error: 'Webflow API credentials not found in environment variables' }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

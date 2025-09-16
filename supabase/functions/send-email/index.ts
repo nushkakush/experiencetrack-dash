@@ -328,15 +328,36 @@ LIT OS Team`;
     const emailSender = getEmailSender(requestData.type, requestData.context);
 
     if (!sendgridApiKey) {
+      console.error('SendGrid API key not configured');
+      
+      // Log the failed email attempt
+      try {
+        await supabase.from('email_logs').insert({
+          type: requestData.type,
+          template: requestData.template,
+          subject: emailSubject,
+          content: emailContent,
+          recipient_email: email,
+          recipient_name: recipientName,
+          context: requestData.context,
+          status: 'failed',
+          error_message: 'SendGrid not configured',
+          ai_enhanced: requestData.enhanceWithAI || false,
+        });
+      } catch (logError) {
+        console.error('Failed to log email failure:', logError);
+      }
+
       // If SendGrid is not configured, just return the invitation URL for invitations
       if (
         requestData.type === 'invitation' ||
-        requestData.type === 'user_invitation'
+        requestData.type === 'user_invitation' ||
+        requestData.type === 'verification'
       ) {
         return new Response(
           JSON.stringify({
             success: true,
-            message: 'Invitation prepared successfully',
+            message: 'Email service not configured - invitation URL provided',
             invitationUrl,
             emailSent: false,
             note: 'SendGrid not configured - email not sent',
@@ -407,6 +428,25 @@ LIT OS Team`;
       console.error('SendGrid error:', errorText);
       console.error('SendGrid status:', sendgridResponse.status);
       console.error('Email data:', JSON.stringify(emailData, null, 2));
+      
+      // Log the failed email attempt
+      try {
+        await supabase.from('email_logs').insert({
+          type: requestData.type,
+          template: requestData.template,
+          subject: emailSubject,
+          content: emailContent,
+          recipient_email: email,
+          recipient_name: recipientName,
+          context: requestData.context,
+          status: 'failed',
+          error_message: `SendGrid error: ${sendgridResponse.status} - ${errorText}`,
+          ai_enhanced: requestData.enhanceWithAI || false,
+        });
+      } catch (logError) {
+        console.error('Failed to log email failure:', logError);
+      }
+      
       throw new Error(
         `Failed to send email: ${sendgridResponse.status} - ${errorText}`
       );

@@ -59,43 +59,14 @@ export class WebflowService {
     if (this.initialized) return;
 
     try {
-      // Get API token from Supabase secrets
-      const { data: tokenData, error: tokenError } = await supabase.rpc(
-        'get_secret',
-        { secret_key: 'webflow_api_token' }
-      );
-
-      if (tokenError) {
-        throw new Error(
-          `Failed to get Webflow API token: ${tokenError.message}`
-        );
-      }
-
-      // Get site ID from Supabase secrets
-      const { data: siteIdData, error: siteIdError } = await supabase.rpc(
-        'get_secret',
-        { secret_key: 'webflow_site_id' }
-      );
-
-      if (siteIdError) {
-        throw new Error(
-          `Failed to get Webflow site ID: ${siteIdError.message}`
-        );
-      }
-
-      if (!tokenData || !siteIdData) {
-        throw new Error('Webflow API credentials not found in secrets');
-      }
-
-      this.webflow = new WebflowClient({ token: tokenData });
-      this.siteId = siteIdData;
+      // For frontend services, we'll use environment variables or make API calls through Edge Functions
+      // Since Webflow credentials are sensitive, we should use the webflow-api Edge Function instead
+      // This approach is more secure as it keeps credentials on the server side
+      
+      // For now, we'll mark as initialized and use the Edge Function for API calls
       this.initialized = true;
-
-      console.log('WebflowService initialized successfully', {
-        tokenLength: tokenData?.length,
-        siteId: siteIdData,
-        siteIdType: typeof siteIdData,
-      });
+      
+      console.log('WebflowService initialized - will use Edge Functions for API calls');
     } catch (error) {
       console.error('Failed to initialize WebflowService:', error);
       throw new Error(`Webflow API initialization failed: ${error.message}`);

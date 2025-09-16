@@ -585,20 +585,13 @@ async function getFormName(
   formId: string
 ): Promise<string> {
   try {
-    // Get Webflow credentials from secrets
-    const { data: tokenData, error: tokenError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'webflow_api_token' }
-    );
+    // Get Webflow credentials from Supabase Secrets
+    const tokenData = Deno.env.get('WEBFLOW_API_TOKEN');
+    const siteIdData = Deno.env.get('WEBFLOW_SITE_ID');
 
-    const { data: siteIdData, error: siteIdError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'webflow_site_id' }
-    );
-
-    if (tokenError || siteIdError || !tokenData || !siteIdData) {
+    if (!tokenData || !siteIdData) {
       console.warn(
-        'Webflow API credentials not found, using fallback form name'
+        'Webflow API credentials not found in environment variables, using fallback form name'
       );
       return `Form ${formId}`;
     }
@@ -626,6 +619,9 @@ async function getFormName(
     const formsData = await formsResponse.json();
     const forms = formsData.forms || [];
 
+    console.log(`🔍 Looking for form ID: ${formId}`);
+    console.log(`📋 Available forms:`, forms.map((f: any) => ({ id: f.id, displayName: f.displayName })));
+
     // Find the form with matching ID
     const form = forms.find(
       (f: { id: string; displayName?: string; name?: string }) =>
@@ -633,9 +629,12 @@ async function getFormName(
     );
 
     if (form) {
-      return form.displayName || form.name || `Form ${formId}`;
+      const formName = form.displayName || form.name || `Form ${formId}`;
+      console.log(`✅ Found form: ${formId} → ${formName}`);
+      return formName;
     }
 
+    console.warn(`❌ Form not found for ID: ${formId}`);
     return `Form ${formId}`;
   } catch (error) {
     console.error('Error fetching form name:', error);
@@ -802,29 +801,19 @@ async function syncEnquiryToMerito(enquiry: any): Promise<void> {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if Merito integration is enabled
-    const { data: meritoEnabled, error: enabledError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'MERITO_ENABLED' }
-    );
+    const meritoEnabled = Deno.env.get('MERITO_ENABLED');
     
-    if (enabledError || meritoEnabled !== 'true') {
+    if (meritoEnabled !== 'true') {
       console.log('Merito integration is disabled, skipping sync');
       return;
     }
 
-    // Get Merito API credentials from Supabase secrets
-    const { data: secretKey, error: secretError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'MERITO_SECRET_KEY' }
-    );
-    
-    const { data: accessKey, error: accessError } = await supabase.rpc(
-      'get_secret',
-      { secret_key: 'MERITO_ACCESS_KEY' }
-    );
+    // Get Merito API credentials from Supabase Secrets
+    const secretKey = Deno.env.get('MERITO_SECRET_KEY');
+    const accessKey = Deno.env.get('MERITO_ACCESS_KEY');
 
-    if (secretError || accessError || !secretKey || !accessKey) {
-      console.error('Merito API credentials not found:', { secretError, accessError });
+    if (!secretKey || !accessKey) {
+      console.error('Merito API credentials not found in environment variables');
       return;
     }
 

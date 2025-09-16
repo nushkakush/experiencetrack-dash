@@ -64,18 +64,13 @@ Deno.serve(async (req: Request) => {
     console.log('🔌 Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Merito credentials from secrets
-    console.log('🔑 Fetching Merito credentials...');
-    const { data: secretKey, error: secretError } = await supabase.rpc('get_secret', {
-      secret_key: 'MERITO_SECRET_KEY'
-    });
+    // Get Merito credentials from Supabase Secrets
+    console.log('🔑 Getting Merito credentials from environment...');
+    const secretKey = Deno.env.get('MERITO_SECRET_KEY');
+    const accessKey = Deno.env.get('MERITO_ACCESS_KEY');
 
-    const { data: accessKey, error: accessError } = await supabase.rpc('get_secret', {
-      secret_key: 'MERITO_ACCESS_KEY'
-    });
-
-    if (secretError || accessError || !secretKey || !accessKey) {
-      console.error('❌ Merito credentials not found:', { secretError, accessError });
+    if (!secretKey || !accessKey) {
+      console.error('❌ Merito credentials not found in environment variables');
       return new Response(
         JSON.stringify({ error: 'Merito API credentials not found' }),
         {
@@ -251,10 +246,10 @@ Deno.serve(async (req: Request) => {
     };
 
     // Add extended profile fields only if they exist and have values
-    // For realtime sync, be more selective to avoid validation errors
-    if (extendedProfile && syncType !== 'realtime') {
-      // TEMPORARY: Only send basic fields to test
-      addFieldIfExists(leadData, 'cf_date_of_birth', formatDateOfBirth(profile.date_of_birth));
+    if (extendedProfile) {
+      // Basic profile fields (always include these)
+      // Temporarily disabled due to MERITTO API validation error
+      // addFieldIfExists(leadData, 'cf_date_of_birth', formatDateOfBirth(profile.date_of_birth));
       addFieldIfExists(leadData, 'cf_specify_your_gender', mapGender(extendedProfile.gender || profile.gender));
       addFieldIfExists(leadData, 'cf_where_do_you_live', cleanAlphanumeric(extendedProfile.current_city || profile.location));
       addFieldIfExists(leadData, 'cf_state', cleanAlphanumeric(extendedProfile.state || profile.state));
