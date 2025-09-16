@@ -137,15 +137,35 @@ Deno.serve(async (req: Request) => {
     // Clean mobile number
     const cleanMobile = (phone: string | null | undefined): string | undefined => {
       if (!phone) return undefined;
+      // Remove all non-digit characters
       const digits = phone.replace(/\D/g, '');
-      return digits.length >= 10 ? digits : undefined;
+      // Remove leading country code if present (91 for India)
+      const cleaned = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
+      return cleaned.length >= 10 ? cleaned : undefined;
     };
 
     // Clean alphanumeric text (remove special characters)
     const cleanAlphanumeric = (text: string | null | undefined): string | undefined => {
       if (!text) return undefined;
       // Remove special characters, keep only alphanumeric and spaces
-      return text.replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim() || undefined;
+      const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      return cleaned || undefined;
+    };
+
+    // Clean address specifically for Meritto API
+    const cleanAddress = (text: string | null | undefined): string | undefined => {
+      if (!text) return undefined;
+      // Remove all special characters except spaces, keep only alphanumeric and spaces
+      const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      return cleaned || undefined;
+    };
+
+    // Clean email (basic validation)
+    const cleanEmail = (email: string | null | undefined): string | undefined => {
+      if (!email) return undefined;
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email) ? email : undefined;
     };
 
     // Helper functions for mapping
@@ -231,76 +251,78 @@ Deno.serve(async (req: Request) => {
     };
 
     // Add extended profile fields only if they exist and have values
-    if (extendedProfile) {
+    // For realtime sync, be more selective to avoid validation errors
+    if (extendedProfile && syncType !== 'realtime') {
+      // TEMPORARY: Only send basic fields to test
       addFieldIfExists(leadData, 'cf_date_of_birth', formatDateOfBirth(profile.date_of_birth));
-      addFieldIfExists(leadData, 'cf_specify_your_gender', mapGender(extendedProfile?.gender || profile?.gender));
-      addFieldIfExists(leadData, 'cf_where_do_you_live', cleanAlphanumeric(extendedProfile?.current_city || profile?.location));
-      addFieldIfExists(leadData, 'cf_state', cleanAlphanumeric(extendedProfile?.state || profile?.state));
-      addFieldIfExists(leadData, 'cf_city', cleanAlphanumeric(extendedProfile?.city || profile?.city));
-      addFieldIfExists(leadData, 'cf_current_address', cleanAlphanumeric(extendedProfile?.current_address || profile?.address));
-      addFieldIfExists(leadData, 'cf_postal_zip_code', extendedProfile?.postal_zip_code || profile?.pincode);
-      
-      // Professional info
-      addFieldIfExists(leadData, 'cf_i_am', extendedProfile?.professional_status === 'Student' ? 'A Student' : 'Working Professional');
-      addFieldIfExists(leadData, 'cf_can_you_relocate_to_bangalore_for_this_program', extendedProfile?.relocation_possible ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_do_you_have_1_or_2_years_of_your_time_for_your_future', extendedProfile?.investment_willing ? 'Yes' : 'No');
-      
-      // Social profiles
-      addFieldIfExists(leadData, 'cf_linkedin_profile', extendedProfile?.linkedin_profile);
-      addFieldIfExists(leadData, 'cf_instagram_id', extendedProfile?.instagram_id);
+      addFieldIfExists(leadData, 'cf_specify_your_gender', mapGender(extendedProfile.gender || profile.gender));
+      addFieldIfExists(leadData, 'cf_where_do_you_live', cleanAlphanumeric(extendedProfile.current_city || profile.location));
+      addFieldIfExists(leadData, 'cf_state', cleanAlphanumeric(extendedProfile.state || profile.state));
+      addFieldIfExists(leadData, 'cf_city', cleanAlphanumeric(extendedProfile.city || profile.city));
+      addFieldIfExists(leadData, 'cf_current_address', cleanAddress(extendedProfile.current_address || profile.address));
+      addFieldIfExists(leadData, 'cf_postal_zip_code', extendedProfile.postal_zip_code || profile.pincode);
       
       // Education info
-      addFieldIfExists(leadData, 'cf_highest_education_level', cleanAlphanumeric(extendedProfile?.highest_qualification || profile?.qualification));
-      addFieldIfExists(leadData, 'cf_field_of_study', cleanAlphanumeric(extendedProfile?.field_of_study || application?.course_of_interest || profile?.course_of_interest));
-      addFieldIfExists(leadData, 'cf_institution_name', cleanAlphanumeric(extendedProfile?.institution_name));
-      addFieldIfExists(leadData, 'cf_graduation_month_new', mapMonth(extendedProfile?.graduation_month));
-      addFieldIfExists(leadData, 'cf_graduation_year', extendedProfile?.graduation_year);
+      addFieldIfExists(leadData, 'cf_highest_education_level', extendedProfile.qualification);
+      addFieldIfExists(leadData, 'cf_field_of_study', extendedProfile.field_of_study);
+      addFieldIfExists(leadData, 'cf_institution_name', extendedProfile.institution_name);
+      addFieldIfExists(leadData, 'cf_graduation_year', extendedProfile.graduation_year?.toString());
+      addFieldIfExists(leadData, 'cf_graduation_month', mapMonth(extendedProfile.graduation_month));
       
       // Work experience
-      addFieldIfExists(leadData, 'cf_do_you_have_work_experience', extendedProfile?.has_work_experience ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_work_experience_type', extendedProfile?.work_experience_type);
-      addFieldIfExists(leadData, 'cf_job_description', extendedProfile?.job_title || extendedProfile?.job_description);
-      addFieldIfExists(leadData, 'cf_company_name', extendedProfile?.company_name);
-      addFieldIfExists(leadData, 'cf_work_start_year', extendedProfile?.work_start_year);
-      addFieldIfExists(leadData, 'cf_work_end_month_new', mapMonth(extendedProfile?.work_end_month));
+      addFieldIfExists(leadData, 'cf_do_you_have_work_experience', extendedProfile.has_work_experience ? 'Yes' : 'No');
+      addFieldIfExists(leadData, 'cf_work_experience_type', extendedProfile.work_experience_type);
+      addFieldIfExists(leadData, 'cf_company_name', extendedProfile.company_name);
+      addFieldIfExists(leadData, 'cf_job_description', extendedProfile.job_description);
       
       // Family information
-      addFieldIfExists(leadData, 'cf_fathers_first_name', extendedProfile?.father_first_name);
-      addFieldIfExists(leadData, 'cf_fathers_last_name', extendedProfile?.father_last_name);
-      addFieldIfExists(leadData, 'cf_fathers_contact_number', cleanMobile(extendedProfile?.father_contact_no));
-      addFieldIfExists(leadData, 'cf_fathers_occupation', extendedProfile?.father_occupation);
-      addFieldIfExists(leadData, 'cf_fathers_email', extendedProfile?.father_email);
+      addFieldIfExists(leadData, 'cf_fathers_first_name', extendedProfile.father_first_name);
+      addFieldIfExists(leadData, 'cf_fathers_last_name', extendedProfile.father_last_name);
+      addFieldIfExists(leadData, 'cf_fathers_contact_number', cleanMobile(extendedProfile.father_contact_no));
+      addFieldIfExists(leadData, 'cf_fathers_occupation', extendedProfile.father_occupation);
       
-      addFieldIfExists(leadData, 'cf_mothers_first_name', extendedProfile?.mother_first_name);
-      addFieldIfExists(leadData, 'cf_mothers_last_name', extendedProfile?.mother_last_name);
-      addFieldIfExists(leadData, 'cf_mothers_contact_number', cleanMobile(extendedProfile?.mother_contact_no));
-      addFieldIfExists(leadData, 'cf_mothers_occupation', extendedProfile?.mother_occupation);
-      addFieldIfExists(leadData, 'cf_mothers_email', extendedProfile?.mother_email);
+      addFieldIfExists(leadData, 'cf_mothers_first_name', extendedProfile.mother_first_name);
+      addFieldIfExists(leadData, 'cf_mothers_last_name', extendedProfile.mother_last_name);
+      addFieldIfExists(leadData, 'cf_mothers_contact_number', cleanMobile(extendedProfile.mother_contact_no));
+      addFieldIfExists(leadData, 'cf_mothers_occupation', extendedProfile.mother_occupation);
+      
+      // Social profiles
+      addFieldIfExists(leadData, 'cf_linkedin_profile', extendedProfile.linkedin_profile);
+      addFieldIfExists(leadData, 'cf_instagram_id', extendedProfile.instagram_id);
       
       // Financial aid information
-      addFieldIfExists(leadData, 'cf_have_you_applied_for_financial_aid', extendedProfile?.applied_financial_aid ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_who_applied_for_this_loan', extendedProfile?.loan_applicant);
-      addFieldIfExists(leadData, 'cf_type_of_loan', extendedProfile?.loan_type);
-      addFieldIfExists(leadData, 'cf_loan_amount', extendedProfile?.loan_amount);
-      addFieldIfExists(leadData, 'cf_cibil_score', extendedProfile?.cibil_score);
-      addFieldIfExists(leadData, 'cf_family_income', extendedProfile?.family_income);
+      addFieldIfExists(leadData, 'cf_have_you_applied_for_financial_aid', extendedProfile.applied_financial_aid ? 'Yes' : 'No');
+      addFieldIfExists(leadData, 'cf_who_applied_for_this_loan', extendedProfile.loan_applicant);
+      addFieldIfExists(leadData, 'cf_type_of_loan', extendedProfile.loan_type);
+      addFieldIfExists(leadData, 'cf_loan_amount', extendedProfile.loan_amount);
+      addFieldIfExists(leadData, 'cf_cibil_score', extendedProfile.cibil_score);
+      addFieldIfExists(leadData, 'cf_family_income', cleanAlphanumeric(extendedProfile.family_income));
       
-      // Emergency contact
-      addFieldIfExists(leadData, 'cf_emergency_contact_first_name', extendedProfile?.emergency_first_name);
-      addFieldIfExists(leadData, 'cf_emergency_contact_last_name', extendedProfile?.emergency_last_name);
-      addFieldIfExists(leadData, 'cf_emergency_contact_number', cleanMobile(extendedProfile?.emergency_contact_no));
-      addFieldIfExists(leadData, 'cf_relationship', extendedProfile?.emergency_relationship);
+      // Professional info - map from profile if not in extended profile
+      const professionalStatus = extendedProfile.professional_status || profile.professional_status;
+      if (professionalStatus) {
+        const mappedStatus = professionalStatus === 'student' ? 'A Student' : 'Working Professional';
+        addFieldIfExists(leadData, 'cf_i_am', mappedStatus);
+      }
+      addFieldIfExists(leadData, 'cf_can_you_relocate_to_bangalore_for_this_program', extendedProfile.relocation_possible ? 'Yes' : 'No');
+      addFieldIfExists(leadData, 'cf_do_you_have_1_or_2_years_of_your_time_for_your_future', extendedProfile.investment_willing ? 'Yes' : 'No');
+      
+      // Emergency contact - temporarily disabled due to field mapping issues
+      // addFieldIfExists(leadData, 'cf_emergency_contact_first_name', extendedProfile.emergency_first_name);
+      // addFieldIfExists(leadData, 'cf_emergency_contact_last_name', extendedProfile.emergency_last_name);
+      // addFieldIfExists(leadData, 'cf_emergency_contact_number', cleanMobile(extendedProfile.emergency_contact_no));
+      // addFieldIfExists(leadData, 'cf_relationship', extendedProfile.emergency_relationship);
     }
 
     // Add UTM tracking (if available)
-    addFieldIfExists(leadData, 'source', application?.utm_source);
-    addFieldIfExists(leadData, 'medium', application?.utm_medium);
-    addFieldIfExists(leadData, 'campaign', application?.utm_campaign);
+    addFieldIfExists(leadData, 'source', application.utm_source);
+    addFieldIfExists(leadData, 'medium', application.utm_medium);
+    addFieldIfExists(leadData, 'campaign', application.utm_campaign);
     
     // Add application status and metadata
-    addFieldIfExists(leadData, 'application_status', syncType === 'extended' ? 'registration_completed' : application?.status);
-    addFieldIfExists(leadData, 'notes', `${syncType === 'extended' ? 'Extended ' : ''}Registration for cohort ${application?.cohort_id} - Status: ${application?.status}`);
-    addFieldIfExists(leadData, 'phone', profile?.phone);
+    addFieldIfExists(leadData, 'application_status', syncType === 'extended' ? 'registration_completed' : application.status);
+    addFieldIfExists(leadData, 'notes', `${syncType === 'extended' ? 'Extended ' : ''}Registration for cohort ${application.cohort_id} - Status: ${application.status}`);
+    addFieldIfExists(leadData, 'phone', profile.phone);
     
     // Add lead quality and conversion stage
     leadData.lead_quality = determineLeadQuality();
@@ -310,13 +332,31 @@ Deno.serve(async (req: Request) => {
       email: leadData.email,
       name: leadData.name,
       mobile: leadData.mobile,
-      status: application?.status,
+      status: application.status,
       hasExtendedProfile: !!extendedProfile,
       leadQuality: leadData.lead_quality,
       conversionStage: leadData.conversion_stage
     });
     
     console.log('📋 Full leadData payload:', JSON.stringify(leadData, null, 2));
+    console.log(`🔍 Sync type: ${syncType}, Application status: ${application.status}, Profile data:`, {
+      profileId: profile.id,
+      email: profile.email,
+      extendedProfileExists: !!extendedProfile,
+      applicationId: application.id
+    });
+    
+    // Debug: Log the cleaned address specifically
+    console.log('🏠 Address cleaning debug:', {
+      original: extendedProfile?.current_address,
+      cleaned: cleanAddress(extendedProfile?.current_address),
+      profileAddress: profile?.address
+    });
+
+    // Remove duplicate phone field - mobile is already set
+    if (leadData.phone && leadData.mobile && leadData.phone === leadData.mobile) {
+      delete leadData.phone;
+    }
 
     // Make API call to Merito
     const response = await fetch('https://api.nopaperforms.io/lead/v1/createOrUpdate', {

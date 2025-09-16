@@ -16,7 +16,6 @@ import ApplicationStep from './application-steps/ApplicationStep';
 import InterviewStep from './application-steps/InterviewStep';
 import LitmusTestStep from './application-steps/LitmusTestStep';
 import DynamicApplicationForm from '@/components/experiences/DynamicApplicationForm';
-import { RegistrationDebugComponent } from '@/components/debug/RegistrationDebugComponent';
 
 export interface ApplicationData {
   // Step 1: Registration
@@ -597,11 +596,6 @@ const ApplicationProcess = () => {
                 </CardContent>
               </Card>
             </div>
-          </div>
-          
-          {/* Debug Component - Remove this after fixing the issue */}
-          <div className="mt-8">
-            <RegistrationDebugComponent />
           </div>
         </div>
       </div>

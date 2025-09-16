@@ -247,6 +247,28 @@ export class ProfileExtendedService {
 
       if (syncResult?.success) {
         console.log('✅ Real-time sync to Merito completed');
+        
+        // Also trigger a full sync to ensure all extended profile data is updated
+        try {
+          const { data: fullSyncResult, error: fullSyncError } = await supabase.functions.invoke(
+            'merito-registration-sync',
+            {
+              body: {
+                profileId: profileId,
+                applicationId: applicationData.id,
+                syncType: 'registration'
+              }
+            }
+          );
+          
+          if (fullSyncError) {
+            console.warn('Full sync after real-time failed:', fullSyncError.message);
+          } else if (fullSyncResult?.success) {
+            console.log('✅ Full sync to Merito completed after real-time sync');
+          }
+        } catch (fullSyncError) {
+          console.warn('Full sync error (non-blocking):', fullSyncError);
+        }
       }
 
     } catch (error) {
