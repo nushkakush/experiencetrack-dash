@@ -303,7 +303,7 @@ Great news! Your payment of ₹${transaction.amount} has been approved.
 
 Payment Details:
 - Amount: ₹${transaction.amount}
-- Method: ${transaction.payment_method}
+- Method: ${transaction.payment_method === 'cash' ? 'Bank Transfer' : transaction.payment_method.replace('_', ' ').toUpperCase()}
 - Reference: ${transaction.reference_number || 'N/A'}
 - Approval Date: ${new Date().toISOString()}
 - Installment: Payment
@@ -316,7 +316,7 @@ Payments Team,
 LIT School`,
           context: {
             amount: transaction.amount,
-            paymentMethod: transaction.payment_method,
+            paymentMethod: transaction.payment_method === 'cash' ? 'bank_transfer' : transaction.payment_method,
             referenceNumber: transaction.reference_number || '',
             approvalDate: new Date().toISOString(),
             installmentDescription: 'Payment',

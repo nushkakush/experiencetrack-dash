@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, Mail, Download } from 'lucide-react';
+import { formatPaymentMethodSimple } from '@/utils/paymentMethodFormatter';
 
 interface PaymentSubmissionSuccessProps {
   paymentAmount: number;
@@ -44,7 +45,7 @@ export const PaymentSubmissionSuccess: React.FC<
               Payment Method:
             </span>
             <span className='capitalize'>
-              {paymentMethod.replace('_', ' ')}
+              {formatPaymentMethodSimple(paymentMethod)}
             </span>
           </div>
           <div className='flex justify-between'>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { formatPaymentMethodSimple } from '@/utils/paymentMethodFormatter';
 import {
   Dialog,
   DialogContent,
@@ -207,7 +208,7 @@ const getPaymentLabel = (
       'getPaymentLabel: allTransactions is not a valid array:',
       allTransactions
     );
-    return 'Payment';
+    return transaction.payment_method ? formatPaymentMethodSimple(transaction.payment_method) : 'Payment';
   }
 
   const isPartial = isPaymentPartial(
@@ -216,10 +217,13 @@ const getPaymentLabel = (
     totalExpected
   );
 
+  // Get the payment method (with masking for students)
+  const paymentMethod = transaction.payment_method ? formatPaymentMethodSimple(transaction.payment_method) : 'Payment';
+
   if (isPartial) {
-    return `Partial Payment ${transaction.partial_payment_sequence || 'N/A'}`;
+    return `Partial ${paymentMethod} ${transaction.partial_payment_sequence || 'N/A'}`;
   } else {
-    return 'Payment';
+    return paymentMethod;
   }
 };
 
@@ -388,14 +392,6 @@ const TransactionItem: React.FC<{
           <span className='text-muted-foreground'>Date:</span>
           <span className='ml-1'>{formatDate(transaction.created_at)}</span>
         </div>
-        {transaction.payment_method && (
-          <div>
-            <span className='text-muted-foreground'>Method:</span>
-            <span className='ml-1 capitalize'>
-              {transaction.payment_method.replace('_', ' ')}
-            </span>
-          </div>
-        )}
         {transaction.reference_number && (
           <div>
             <span className='text-muted-foreground'>Reference:</span>
@@ -541,6 +537,7 @@ export const PartialPaymentHistory: React.FC<PartialPaymentHistoryProps> = ({
       id: t.id,
       amount: t.amount,
       status: t.verification_status,
+      payment_method: t.payment_method,
       partial_sequence: t.partial_payment_sequence,
     })),
   });

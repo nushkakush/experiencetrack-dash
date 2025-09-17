@@ -1,6 +1,7 @@
 import { emailService } from './email.service';
 import { CommunicationPreferencesService } from './communicationPreferences.service';
 import { ApiResponse } from '@/types/common';
+import { formatPaymentMethodForEmail } from '@/utils/paymentMethodFormatter';
 
 export interface PaymentCommunicationContext {
   studentId: string;
@@ -72,7 +73,7 @@ Your payment of ₹${context.amount} for ${context.installmentDescription} has b
 
 Payment Details:
 - Amount: ₹${context.amount}
-- Method: ${context.paymentMethod}
+- Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 - Reference: ${context.referenceNumber}
 - Date: ${context.submissionDate}
 
@@ -130,7 +131,7 @@ Your payment of ₹${context.amount} for ${context.installmentDescription} has b
 
 Payment Details:
 - Amount: ₹${context.amount}
-- Method: ${context.paymentMethod}
+- Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 - Reference: ${context.referenceNumber}
 - Approval Date: ${context.approvalDate}
 
@@ -242,7 +243,7 @@ Your payment of ₹${context.amount} for ${context.installmentDescription} has b
 
 Payment Details:
 - Amount: ₹${context.amount}
-- Method: ${context.paymentMethod}
+- Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 - Reference: ${context.referenceNumber}
 - Rejection Date: ${context.rejectionDate}
 
@@ -302,7 +303,7 @@ Your partial payment of ₹${context.amount} has been submitted successfully and
 Payment Details:
 - Partial Amount: ₹${context.amount}
 - Installment: ${context.installmentDescription}
-- Method: ${context.paymentMethod}
+- Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 - Reference: ${context.referenceNumber}
 - Date: ${context.submissionDate}
 
@@ -360,7 +361,7 @@ Congratulations! Your ${context.installmentDescription} has been completed succe
 
 Payment Summary:
 - Total Amount: ₹${context.amount}
-- Payment Method: ${context.paymentMethod}
+- Payment Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 - Completion Date: ${context.approvalDate}
 
 All payments for this installment have been verified and approved. You can view your receipt in your student portal.
@@ -417,7 +418,7 @@ Receipt Details:
 - Amount: ₹${context.amount}
 - Installment: ${context.installmentDescription}
 - Payment Date: ${context.paymentDate}
-- Method: ${context.paymentMethod}
+- Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 
 You can download your receipt from your student portal.
 

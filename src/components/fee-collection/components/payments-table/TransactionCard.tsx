@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { formatPaymentMethodUppercase } from '@/utils/paymentMethodFormatter';
 import {
   CheckCircle2,
   XCircle,
@@ -58,7 +59,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       <div className='flex items-start justify-between mb-4'>
         <div className='flex items-center gap-2 flex-wrap'>
           <Badge variant='secondary' className='font-medium text-xs'>
-            {transaction.payment_method?.replace('_', ' ').toUpperCase()}
+            {formatPaymentMethodUppercase(transaction.payment_method)}
           </Badge>
           <Badge variant='outline' className='font-semibold text-sm'>
             ₹{Number(transaction.amount).toLocaleString('en-IN')}

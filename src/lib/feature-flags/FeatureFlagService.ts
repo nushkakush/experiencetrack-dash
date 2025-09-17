@@ -120,7 +120,7 @@ export class FeatureFlagService {
         id: 'student-payment-dashboard',
         name: 'Student Payment Dashboard',
         description: 'Enable payment dashboard navigation for students',
-        enabled: false,
+        enabled: true,
         rolloutPercentage: 100,
         targetRoles: ['student'],
       },
@@ -149,10 +149,10 @@ export class FeatureFlagService {
         id: 'cash-payment-disabled',
         name: 'Cash Payment Disabled',
         description:
-          'Temporarily disable cash payment method for both students and admins',
+          'Disable cash payment method for students only (admins can use cash)',
         enabled: true,
         rolloutPercentage: 100,
-        targetRoles: ['student', 'admin', 'super_admin', 'fee_collector'],
+        targetRoles: ['student'],
       },
       {
         id: 'equipment-create-super-admin-only',

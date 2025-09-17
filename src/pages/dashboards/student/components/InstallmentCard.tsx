@@ -9,6 +9,7 @@ import { PaymentStatusBadge } from '@/components/fee-collection/PaymentStatusBad
 import { CohortStudent, Cohort } from '@/types/cohort';
 import { PaymentTransactionRow } from '@/types/payments/DatabaseAlignedTypes';
 import { PartialPaymentHistory } from '@/components/common/payments/PartialPaymentHistory';
+import { formatPaymentMethodForStudent } from '@/utils/paymentMethodFormatter';
 
 // Define the installment type that includes scholarship amounts
 interface DatabaseInstallment {
@@ -177,6 +178,7 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
           id: t.id,
           amount: t.amount,
           status: t.verification_status,
+          payment_method: t.payment_method,
           lit_invoice_id: t.lit_invoice_id,
           installment_id: paymentTransactions?.find(pt => pt.id === t.id)
             ?.installment_id,
@@ -201,26 +203,10 @@ export const InstallmentCard: React.FC<InstallmentCardProps> = ({
 
   const relevantTransactions = getRelevantTransactions();
 
-  // Helper function to format payment method names
+  // Helper function to format payment method names for students
+  // This masks 'cash' payments as 'bank_transfer' for students
   const formatPaymentMethod = (method: string) => {
-    switch (method?.toLowerCase()) {
-      case 'razorpay':
-        return 'Online Payment';
-      case 'bank_transfer':
-        return 'Bank Transfer';
-      case 'cash':
-        return 'Cash';
-      case 'cheque':
-        return 'Cheque';
-      case 'upi':
-        return 'UPI';
-      case 'credit_card':
-        return 'Credit Card';
-      case 'debit_card':
-        return 'Debit Card';
-      default:
-        return method ? method.replace('_', ' ').toUpperCase() : 'Unknown';
-    }
+    return formatPaymentMethodForStudent(method);
   };
 
   const currentKey = `${semesterNumber}-${installmentIndex}`;

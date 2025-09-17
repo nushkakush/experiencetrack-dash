@@ -1,5 +1,6 @@
 import { CommunicationPreferencesService } from './communicationPreferences.service';
 import { ApiResponse } from '@/types/common';
+import { formatPaymentMethodForEmail } from '@/utils/paymentMethodFormatter';
 
 export interface WhatsAppMessageContext {
   studentId: string;
@@ -60,7 +61,7 @@ Your payment of ₹${context.amount} for ${context.installmentDescription} has b
 
 Payment Details:
 • Amount: ₹${context.amount}
-• Method: ${context.paymentMethod}
+• Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 • Reference: ${context.referenceNumber}
 • Date: ${context.submissionDate}
 
@@ -103,7 +104,7 @@ Great news! Your payment of ₹${context.amount} has been approved.
 
 Payment Details:
 • Amount: ₹${context.amount}
-• Method: ${context.paymentMethod}
+• Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 • Reference: ${context.referenceNumber}
 • Approval Date: ${context.approvalDate}
 • Installment: ${context.installmentDescription}
@@ -240,7 +241,7 @@ Your partial payment of ₹${context.amount} has been submitted successfully and
 Payment Details:
 • Partial Amount: ₹${context.amount}
 • Installment: ${context.installmentDescription}
-• Method: ${context.paymentMethod}
+• Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 • Reference: ${context.referenceNumber}
 • Date: ${context.submissionDate}
 
@@ -329,7 +330,7 @@ Receipt Details:
 • Amount: ₹${context.amount}
 • Installment: ${context.installmentDescription}
 • Payment Date: ${context.paymentDate}
-• Method: ${context.paymentMethod}
+• Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 
 You can download your receipt from your student portal.
 
@@ -371,7 +372,7 @@ Your payment submission was unsuccessful.
 
 Error Details:
 • Attempted Amount: ₹${context.amount}
-• Method: ${context.paymentMethod}
+• Method: ${formatPaymentMethodForEmail(context.paymentMethod)}
 • Error: ${context.errorMessage}
 • Date: ${context.attemptDate}
 
