@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RegistrationService } from '@/services/registration.service';
+import { DuplicateEmailCheckService, DuplicateEmailStatus } from '@/services/duplicateEmailCheck.service';
 import { toast } from 'sonner';
 import { ValidationUtils } from '@/utils/validation';
 
@@ -21,6 +22,8 @@ export const useRegistrationState = () => {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateStatus, setDuplicateStatus] = useState<DuplicateEmailStatus | null>(null);
 
   const navigate = useNavigate();
 
@@ -126,8 +129,6 @@ export const useRegistrationState = () => {
     }
 
     setErrors(newErrors);
-    console.log('Validation errors:', newErrors);
-    console.log('Form data:', formData);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -145,16 +146,6 @@ export const useRegistrationState = () => {
       // Format date of birth as YYYY-MM-DD
       const dateOfBirth = `${formData.dateOfBirth.year}-${formData.dateOfBirth.month.padStart(2, '0')}-${formData.dateOfBirth.day.padStart(2, '0')}`;
 
-      console.log('Submitting registration with data:', {
-        email: formData.email.trim(),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        phone: formData.phone.trim(),
-        dateOfBirth,
-        qualification: formData.qualification,
-        cohortId: formData.cohortId,
-      });
-
       const result = await RegistrationService.registerUser({
         email: formData.email.trim(),
         firstName: formData.firstName.trim(),
@@ -165,13 +156,15 @@ export const useRegistrationState = () => {
         cohortId: formData.cohortId,
       });
 
-      console.log('Registration result:', result);
-
       if (result.success) {
         toast.success(
           'Registration successful! Please check your email for an invitation link to complete your account setup.'
         );
         navigate('/auth/login?message=registration-success');
+      } else if (result.duplicateStatus) {
+        // Handle duplicate email case
+        setDuplicateStatus(result.duplicateStatus);
+        setShowDuplicateModal(true);
       } else {
         toast.error(result.error || 'Registration failed');
       }
@@ -187,13 +180,64 @@ export const useRegistrationState = () => {
     navigate('/auth/login');
   };
 
+  const handleCloseDuplicateModal = () => {
+    setShowDuplicateModal(false);
+    setDuplicateStatus(null);
+  };
+
+  const handleResendConfirmation = () => {
+    // This will be handled by the modal component
+    setShowDuplicateModal(false);
+  };
+
+  const handleRedirectToPasswordReset = () => {
+    navigate('/auth/login?showForgotPassword=true');
+  };
+
+  const handleStartFresh = async () => {
+    if (!duplicateStatus?.profileId || !duplicateStatus?.applicationId) {
+      toast.error('Unable to start fresh. Please try registering again.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await DuplicateEmailCheckService.deleteExistingRecords(
+        duplicateStatus.profileId,
+        duplicateStatus.applicationId
+      );
+
+      if (result.success) {
+        toast.success('Previous application deleted. You can now apply fresh!');
+        // Clear the duplicate status and close modal
+        setDuplicateStatus(null);
+        setShowDuplicateModal(false);
+        // Clear the email field so user can re-enter it
+        setFormData(prev => ({ ...prev, email: '' }));
+      } else {
+        toast.error(result.error || 'Failed to delete previous application. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error starting fresh:', error);
+      toast.error('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     formData,
     loading,
     errors,
+    showDuplicateModal,
+    duplicateStatus,
     updateFormData,
     updateDateOfBirth,
     handleSubmit,
     handleLoginClick,
+    handleCloseDuplicateModal,
+    handleResendConfirmation,
+    handleRedirectToPasswordReset,
+    handleStartFresh,
   };
 };

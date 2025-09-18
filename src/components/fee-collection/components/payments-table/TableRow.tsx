@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { TableRow as UITableRow, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StudentPaymentSummary } from '@/types/fee';
@@ -8,7 +8,7 @@ import { PaymentPlanCell } from './PaymentPlanCell';
 import { ProgressCell } from './ProgressCell';
 import { NextDueCell } from './NextDueCell';
 import { StatusCell } from './StatusCell';
-import { ActionsCell } from './ActionsCell';
+import { ActionsCell, ActionsCellRef } from './ActionsCell';
 
 interface FeeStructureData {
   id: string;
@@ -43,8 +43,18 @@ export const TableRow: React.FC<TableRowProps> = ({
   onVerificationUpdate,
   onPendingCountUpdate,
 }) => {
+  const actionsCellRef = useRef<ActionsCellRef>(null);
+
+  const handleRowClick = () => {
+    console.log('TableRow: Row clicked, opening student details modal');
+    actionsCellRef.current?.openStudentDetails();
+  };
+
   return (
-    <UITableRow className='hover:bg-muted/50'>
+    <UITableRow 
+      className='hover:bg-muted/50 cursor-pointer' 
+      onClick={handleRowClick}
+    >
       <TableCell className='w-12'>
         {onRowSelection && (
           <Checkbox
@@ -65,6 +75,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       <NextDueCell student={student} feeStructure={feeStructure} />
       <StatusCell student={student} />
       <ActionsCell
+        ref={actionsCellRef}
         student={student}
         onStudentSelect={onStudentSelect}
         onVerificationUpdate={onVerificationUpdate}

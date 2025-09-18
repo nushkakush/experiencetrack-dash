@@ -4,6 +4,13 @@ export interface MeritoLeadData {
   mobile?: string;
   search_criteria: 'email' | 'mobile';
   name?: string;
+  
+  // Required fields from metadata
+  enquiry?: string;
+  question?: string;
+  specialization?: string;
+  campus?: string;
+  user_date?: string;
 
   // Personal details (using correct Merito field keys)
   cf_date_of_birth?: string;
@@ -59,7 +66,7 @@ export interface MeritoLeadData {
   cf_family_income?: string;
 
   // Emergency contact
-  cf_emergency_contact_first_name?: string;
+  cf_emergency_contact_first_name_new?: string;
   cf_emergency_contact_last_name?: string;
   cf_emergency_contact_number?: string;
   cf_relationship?: string;
@@ -75,6 +82,19 @@ export interface MeritoLeadData {
   application_status?: string;
   lead_quality?: 'cold' | 'warm' | 'hot';
   conversion_stage?: 'awareness' | 'consideration' | 'decision' | 'enrolled';
+  
+  // Standard Meritto fields
+  cf_cohort?: string;
+  cf_preferred_course?: string;
+  cf_country_names?: string;
+  cf_created_on?: string;
+  cf_created_by?: string;
+  
+  // Additional fields from metadata
+  cf_lead_name?: string;
+  cf_form_name?: string;
+  cf_career_goals?: string;
+  cf_please_tell_us_what_youd_like_to_enquire_about?: string;
 
   // Additional custom fields can be added here
   [key: string]: any;

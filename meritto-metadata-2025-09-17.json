@@ -1,0 +1,1311 @@
+{
+  "code": 200,
+  "status": true,
+  "message": "Showing Lead Fields.",
+  "data": {
+    "list": [
+      {
+        "field_key": "city",
+        "field_label": "City",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "country",
+        "field_label": "Country",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "course",
+        "field_label": "Course",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "email",
+        "field_label": "Email Address",
+        "is_hidden": false,
+        "is_unique": true,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "email"
+        }
+      },
+      {
+        "field_key": "enquiry",
+        "field_label": "Enquiry",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "textarea"
+        }
+      },
+      {
+        "field_key": "mobile",
+        "field_label": "Mobile Number",
+        "is_hidden": false,
+        "is_unique": true,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "mobile"
+        }
+      },
+      {
+        "field_key": "name",
+        "field_label": "First Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "question",
+        "field_label": "Questions",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "textarea"
+        }
+      },
+      {
+        "field_key": "specialization",
+        "field_label": "Specialization",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "state",
+        "field_label": "State",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 12183
+        }
+      },
+      {
+        "field_key": "campus",
+        "field_label": "Institute / Applying For",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "user_date",
+        "field_label": "Date",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": true,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_ad_tag",
+        "field_label": "Ad Tag",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_application_status",
+        "field_label": "Application Status",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500046
+        }
+      },
+      {
+        "field_key": "cf_can_you_relocate_to_bangalore_for_this_program",
+        "field_label": "Relocate Intent",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500010
+        }
+      },
+      {
+        "field_key": "cf_career_goals",
+        "field_label": "Career Goals",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_cibil_score",
+        "field_label": "CIBIL Score",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_city",
+        "field_label": "City",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_cohort",
+        "field_label": "Cohort",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500052
+        }
+      },
+      {
+        "field_key": "cf_company_name",
+        "field_label": "Company Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_country_names",
+        "field_label": "Country",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 36863
+        }
+      },
+      {
+        "field_key": "cf_created_by",
+        "field_label": "Created By",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_created_on",
+        "field_label": "Created On",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_current_address",
+        "field_label": "Current Address",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_date_of_birth",
+        "field_label": "Date of Birth",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_do_you_have_1_or_2_years_of_your_time_for_your_future",
+        "field_label": "Time Intent",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500010
+        }
+      },
+      {
+        "field_key": "cf_do_you_have_work_experience",
+        "field_label": "Do you have work experience?",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500014
+        }
+      },
+      {
+        "field_key": "cf_emergency_contact_first_name",
+        "field_label": "Emergency Contact First Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "mobile"
+        }
+      },
+      {
+        "field_key": "cf_emergency_contact_first_name_new",
+        "field_label": "Emergency Contact First Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_emergency_contact_last_name",
+        "field_label": "Emergency Contact Last Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_emergency_contact_number",
+        "field_label": "Emergency Phone Number",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "mobile"
+        }
+      },
+      {
+        "field_key": "cf_family_income",
+        "field_label": "Family Income",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_fathers_contact_number",
+        "field_label": "Father’s Contact Number",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "mobile"
+        }
+      },
+      {
+        "field_key": "cf_fathers_email",
+        "field_label": "Father’s Email",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "email"
+        }
+      },
+      {
+        "field_key": "cf_fathers_first_name",
+        "field_label": "Father’s First Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_fathers_last_name",
+        "field_label": "Father’s Last Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_fathers_occupation",
+        "field_label": "Father’s Occupation",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_field_of_study",
+        "field_label": "Field of Study",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_form_name",
+        "field_label": "Form Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_graduation_month",
+        "field_label": "Graduation Month",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_graduation_month_new",
+        "field_label": "Graduation Month",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500017
+        }
+      },
+      {
+        "field_key": "cf_graduation_year",
+        "field_label": "Graduation Year",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_have_you_applied_for_financial_aid",
+        "field_label": "Have you applied for financial aid?",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500003
+        }
+      },
+      {
+        "field_key": "cf_highest_education_level",
+        "field_label": "Highest Education Level",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_i_am",
+        "field_label": "I am…",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500006
+        }
+      },
+      {
+        "field_key": "cf_instagram_id",
+        "field_label": "Instagram ID",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_institute_name",
+        "field_label": "Institute Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_institution_name",
+        "field_label": "Institution Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_job_description",
+        "field_label": "Job Description",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_last_name",
+        "field_label": "Last Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_lead_name",
+        "field_label": "Lead Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_lead_number",
+        "field_label": "Lead Number",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_linkedin_profile",
+        "field_label": "LinkedIn Profile",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_litmus_test_link",
+        "field_label": "Litmus Test Link",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_loan_amount",
+        "field_label": "Loan Amount",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_mothers_contact_number",
+        "field_label": "Mother’s Contact Number",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "mobile"
+        }
+      },
+      {
+        "field_key": "cf_mothers_email",
+        "field_label": "Mother’s Email",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "email"
+        }
+      },
+      {
+        "field_key": "cf_mothers_first_name",
+        "field_label": "Mother’s First Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_mothers_last_name",
+        "field_label": "Mother’s Last Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_mothers_occupation",
+        "field_label": "Mother’s Occupation",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_please_tell_us_what_youd_like_to_enquire_about",
+        "field_label": "Please tell us what youd like to enquire about",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_postal_zip_code",
+        "field_label": "Postal/ZIP Code",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_preferred_course",
+        "field_label": "Course",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500063
+        }
+      },
+      {
+        "field_key": "cf_previous_lead_owner",
+        "field_label": "Previous Lead Owner",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_previous_owner_email_id",
+        "field_label": "Previous Owner Email ID",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "email"
+        }
+      },
+      {
+        "field_key": "cf_prospect_id",
+        "field_label": "Prospect ID",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_qualification",
+        "field_label": "Qualification",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500075
+        }
+      },
+      {
+        "field_key": "cf_recent_call_disposition",
+        "field_label": "Recent Call Disposition",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_relationship",
+        "field_label": "Relationship",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_specify_your_gender",
+        "field_label": "Gender",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 12841
+        }
+      },
+      {
+        "field_key": "cf_state",
+        "field_label": "State",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_type_of_loan",
+        "field_label": "Type of Loan",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_where_do_you_live",
+        "field_label": "Where Do You Live?",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_who_applied_for_this_loan",
+        "field_label": "Who applied for this loan?",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_work_end_month",
+        "field_label": "Work End Month",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_work_end_month_new",
+        "field_label": "Work End Month",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": 1500017
+        }
+      },
+      {
+        "field_key": "cf_work_end_year",
+        "field_label": "Work End Year",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "cf_work_experience_type",
+        "field_label": "Work Experience Type",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_work_start_month",
+        "field_label": "Not In Use",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "cf_work_start_year",
+        "field_label": "Work Start Year",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "field_fb_lead_id",
+        "field_label": "Fb Lead Id",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_fbclid",
+        "field_label": "Fbclid",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_gclid",
+        "field_label": "Gclid",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_adgroupid",
+        "field_label": "Utm Adgroupid",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_campaignid",
+        "field_label": "Utm Campaignid",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_creativeid",
+        "field_label": "Utm Creativeid",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_device",
+        "field_label": "Utm Device",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_keyword",
+        "field_label": "Utm Keyword",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_matchtype",
+        "field_label": "Utm Matchtype",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_network",
+        "field_label": "Utm Network",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "field_utm_placement",
+        "field_label": "Utm Placement",
+        "is_hidden": true,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "lead_stage",
+        "field_label": "Lead Stage",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown",
+          "masterdata_id": "lead_stages_20150"
+        }
+      },
+      {
+        "field_key": "lead_sub_stage",
+        "field_label": "Lead Sub Stage",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "user_registration_date",
+        "field_label": "User Registration Date",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "date"
+        }
+      },
+      {
+        "field_key": "publisher_name",
+        "field_label": "Publisher Name",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "traffic_channel",
+        "field_label": "Traffic Channel",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "country_dial_code",
+        "field_label": "Country Dial Code",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "dropdown"
+        }
+      },
+      {
+        "field_key": "owner",
+        "field_label": "Owner",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "mobile_verification_status",
+        "field_label": "Mobile Verification Status",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "boolean"
+        }
+      },
+      {
+        "field_key": "email_verification_status",
+        "field_label": "Email Verification Status",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "boolean"
+        }
+      },
+      {
+        "field_key": "previous_lead_stage",
+        "field_label": "Previous Lead Stage",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "source",
+        "field_label": "source",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "medium",
+        "field_label": "Medium",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "campaign",
+        "field_label": "Campaign",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": false,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "registration_attempts",
+        "field_label": "Registration Attempts",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "stage_change_count",
+        "field_label": "Stage Change Count",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "notes_count",
+        "field_label": "Notes Count",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "followup_count",
+        "field_label": "Followup Count",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "outbound_success",
+        "field_label": "Outbound Success",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "outbound_missed",
+        "field_label": "Outbound Missed",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "total_outbound",
+        "field_label": "Total Outbound",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "inbound_success",
+        "field_label": "Inbound Success",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "inbound_missed",
+        "field_label": "Inbound Missed",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "total_inbound",
+        "field_label": "Total Inbound",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "campaign_success",
+        "field_label": "Campaign Success",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "campaign_missed",
+        "field_label": "Campaign Missed",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      },
+      {
+        "field_key": "total_campaign",
+        "field_label": "Total Campaign",
+        "is_hidden": false,
+        "is_unique": false,
+        "is_readonly": true,
+        "is_required": false,
+        "field_details": {
+          "type": "text"
+        }
+      }
+    ]
+  }
+}

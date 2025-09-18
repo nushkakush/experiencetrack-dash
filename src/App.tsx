@@ -46,6 +46,7 @@ import EpicsManagementPage from './pages/EpicsManagementPage';
 import EpicLearningPathsManagementPage from './pages/EpicLearningPathsManagementPage';
 import EnquiriesPage from './pages/EnquiriesPage';
 import WebflowTestComponent from './components/debug/WebflowTestComponent';
+import RealtimeSyncDemo from './components/debug/RealtimeSyncDemo';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import {
@@ -201,7 +202,7 @@ const App = () => {
                         />
                         <Route path='/auth' element={<Login />} />
                         <Route path='/auth/login' element={<Login />} />
-                        <Route path='/auth/register' element={<Register />} />
+                        <Route path='/auth/apply' element={<Register />} />
                         <Route
                           path='/auth/verify-email'
                           element={<VerifyEmail />}
@@ -506,6 +507,16 @@ const App = () => {
                             <ProtectedRoute allowedRoles={['super_admin']}>
                               <DashboardAccessControl>
                                 <WebflowTestComponent />
+                              </DashboardAccessControl>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path='/debug/realtime-sync'
+                          element={
+                            <ProtectedRoute allowedRoles={['super_admin']}>
+                              <DashboardAccessControl>
+                                <RealtimeSyncDemo />
                               </DashboardAccessControl>
                             </ProtectedRoute>
                           }

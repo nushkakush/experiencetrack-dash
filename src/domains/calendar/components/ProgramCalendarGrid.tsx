@@ -71,17 +71,6 @@ export const ProgramCalendarGrid: React.FC<ProgramCalendarGridProps> = ({
   // Render calendar grid with provided days and configuration
   return (
     <div className='space-y-4 h-full flex flex-col'>
-      {/* Week Day Headers */}
-      <div className='grid grid-cols-7 gap-1'>
-        {weekDayLabels.map(day => (
-          <div
-            key={day}
-            className='text-center text-sm font-medium text-muted-foreground py-2'
-          >
-            {day}
-          </div>
-        ))}
-      </div>
 
       {/* Calendar Days Grid */}
       <div

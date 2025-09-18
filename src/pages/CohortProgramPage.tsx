@@ -27,7 +27,7 @@ import { cohortSettingsService } from '@/services/cohortSettingsService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import type { Experience, ExperienceType } from '@/types/experience';
+import type { Experience, ExperienceType, CreateExperienceRequest } from '@/types/experience';
 
 const CohortProgramPage: React.FC = () => {
   const { cohortId } = useParams<{ cohortId: string }>();
@@ -360,6 +360,46 @@ const CohortProgramPage: React.FC = () => {
     } catch (error) {
       console.error('🚨 Outer error in handleExperienceSelect:', error);
       toast.error('Failed to add experience to timetable');
+    }
+  };
+
+  const handleCustomExperienceCreate = async (
+    type: ExperienceType,
+    date: Date,
+    sessionNumber: number
+  ) => {
+    try {
+      console.log('🎯 handleCustomExperienceCreate called with:', {
+        type,
+        date: date.toISOString(),
+        sessionNumber,
+      });
+
+      if (!user || !cohortId || !selectedEpic) {
+        toast.error('Missing required information');
+        return;
+      }
+
+      // Create a minimal custom experience
+      const customExperience: CreateExperienceRequest = {
+        title: `New ${type} Experience`,
+        learning_outcomes: [`Learn ${type.toLowerCase()} skills`],
+        type,
+        epic_id: selectedEpic,
+        is_custom: true,
+      };
+
+      // Create the experience in the database
+      const createdExperience = await ExperiencesService.upsertExperience(customExperience);
+      
+      console.log('✅ Custom experience created:', createdExperience);
+
+      // Now add it to the timetable using the same logic as regular experiences
+      await handleExperienceSelect(createdExperience, date, sessionNumber);
+
+    } catch (error) {
+      console.error('🚨 Error in handleCustomExperienceCreate:', error);
+      toast.error('Failed to create custom experience');
     }
   };
 
@@ -983,6 +1023,7 @@ const CohortProgramPage: React.FC = () => {
             open={isExperienceSelectorOpen}
             onOpenChange={setIsExperienceSelectorOpen}
             onExperienceSelect={handleExperienceSelect}
+            onCustomExperienceCreate={handleCustomExperienceCreate}
             selectedDate={experienceSelectorSession.date}
             selectedSessionNumber={experienceSelectorSession.sessionNumber}
             epicId={

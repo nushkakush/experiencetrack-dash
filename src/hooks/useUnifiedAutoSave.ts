@@ -3,11 +3,14 @@ import { ProfileExtendedService } from '@/services/profileExtended.service';
 import { ProfileExtendedUpdate } from '@/types/profileExtended';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useRealtimeMerittoSync } from './useRealtimeMerittoSync';
 
 interface UseUnifiedAutoSaveProps {
   profileId: string;
   debounceMs?: number;
   showToast?: boolean;
+  enableRealtimeSync?: boolean;
+  applicationId?: string;
 }
 
 interface PendingChanges {
@@ -19,6 +22,8 @@ export const useUnifiedAutoSave = ({
   profileId,
   debounceMs = 1000,
   showToast = false,
+  enableRealtimeSync = true,
+  applicationId,
 }: UseUnifiedAutoSaveProps) => {
   const service = ProfileExtendedService.getInstance();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -26,6 +31,12 @@ export const useUnifiedAutoSave = ({
   const pendingChangesRef = useRef<PendingChanges>({
     profiles: {},
     profileExtended: {},
+  });
+
+  // Initialize real-time Meritto sync
+  const { syncProfileData, syncExtendedProfile } = useRealtimeMerittoSync({
+    enabled: enableRealtimeSync,
+    debounceMs: 3000, // Longer debounce for Meritto sync
   });
 
   const saveData = useCallback(
@@ -131,6 +142,37 @@ export const useUnifiedAutoSave = ({
           profileExtendedChanges,
           true
         );
+      }
+
+      // Trigger real-time Meritto sync after successful save
+      if (enableRealtimeSync) {
+        try {
+          if (Object.keys(profilesChanges).length > 0) {
+            console.log('🔄 [AUTO-SAVE] Triggering real-time sync for profile changes:', {
+              profileId,
+              applicationId,
+              changes: profilesChanges
+            });
+            await syncProfileData(profileId, applicationId, profilesChanges);
+          }
+          if (Object.keys(profileExtendedChanges).length > 0) {
+            console.log('🔄 [AUTO-SAVE] Triggering real-time sync for extended profile changes:', {
+              profileId,
+              applicationId,
+              changes: profileExtendedChanges
+            });
+            await syncExtendedProfile(profileId, applicationId, profileExtendedChanges);
+          }
+        } catch (syncError) {
+          console.error('❌ [AUTO-SAVE] Real-time Meritto sync failed (non-blocking):', {
+            error: syncError,
+            profileId,
+            applicationId,
+            profileChanges: Object.keys(profilesChanges),
+            extendedChanges: Object.keys(profileExtendedChanges)
+          });
+          // Don't block the save process for sync failures
+        }
       }
 
       if (showToast) {

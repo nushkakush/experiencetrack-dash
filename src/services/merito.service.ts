@@ -252,7 +252,7 @@ export class MeritoService {
       cf_family_income: extendedProfile.family_income,
       
       // Emergency contact
-      cf_emergency_contact_first_name: extendedProfile.emergency_first_name,
+      cf_emergency_contact_first_name_new: extendedProfile.emergency_first_name,
       cf_emergency_contact_last_name: extendedProfile.emergency_last_name,
       cf_emergency_contact_number: cleanMobile(extendedProfile.emergency_phone),
       cf_relationship: extendedProfile.emergency_relationship,
@@ -268,6 +268,14 @@ export class MeritoService {
       application_status: application.status,
       lead_quality: this.determineApplicationLeadQuality(application, extendedProfile),
       conversion_stage: this.mapApplicationStatusToConversionStage(application.status),
+      
+      // Standard Meritto fields for cohort and course information
+      // Use cohort ID for dropdown field, not name
+      cf_cohort: application.cohort_id,
+      cf_preferred_course: application.cohort?.description || application.cohort?.name || `Cohort ${application.cohort_id}`,
+      cf_country_names: 'India', // Default to India for now
+      cf_created_on: new Date(application.created_at).toLocaleDateString('en-GB'),
+      cf_created_by: 'System Registration',
     };
 
     // Remove undefined values to keep the payload clean

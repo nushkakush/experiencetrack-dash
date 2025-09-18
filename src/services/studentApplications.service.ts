@@ -90,7 +90,7 @@ export class StudentApplicationsService {
         .in('status', [
           'registration_initiated',
           'registration_complete',
-          'registration_completed',
+          'registration_paid',
           'application_initiated',
           'application_accepted',
           'interview_scheduled',
@@ -141,7 +141,7 @@ export class StudentApplicationsService {
           route: '/auth/self-registration-verification',
         };
       case 'registration_complete':
-      case 'registration_completed':
+      case 'registration_paid':
         return {
           step: 'Start Application',
           description:
@@ -215,7 +215,7 @@ export class StudentApplicationsService {
           description: 'Complete your account setup',
         };
       case 'registration_complete':
-      case 'registration_completed':
+      case 'registration_paid':
         return {
           label: 'Registration Complete',
           color: 'green',

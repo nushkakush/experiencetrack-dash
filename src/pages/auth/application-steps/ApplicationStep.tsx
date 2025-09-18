@@ -28,7 +28,11 @@ const ApplicationStep = ({
     handleFieldBlur,
     handleDateOfBirthChange: unifiedHandleDateOfBirthChange,
     forceSave,
-  } = useUnifiedAutoSave({ profileId });
+  } = useUnifiedAutoSave({ 
+    profileId,
+    enableRealtimeSync: true,
+    applicationId: data.id,
+  });
   const {
     feeInfo,
     loading: feeLoading,

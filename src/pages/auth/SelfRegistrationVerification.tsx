@@ -432,7 +432,7 @@ const SelfRegistrationVerification = () => {
             </CardHeader>
             <CardContent>
               <Button
-                onClick={() => navigate('/auth/register')}
+                onClick={() => navigate('/auth/apply')}
                 className='w-full h-10'
                 variant='outline'
               >

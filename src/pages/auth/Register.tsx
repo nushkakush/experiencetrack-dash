@@ -14,10 +14,16 @@ const Register = () => {
     formData,
     loading,
     errors,
+    showDuplicateModal,
+    duplicateStatus,
     updateFormData,
     updateDateOfBirth,
     handleSubmit,
     handleLoginClick,
+    handleCloseDuplicateModal,
+    handleResendConfirmation,
+    handleRedirectToPasswordReset,
+    handleStartFresh,
   } = useRegistrationState();
 
   // Auto-redirect if user is already logged in
@@ -55,10 +61,16 @@ const Register = () => {
           formData={formData}
           loading={loading}
           errors={errors}
+          showDuplicateModal={showDuplicateModal}
+          duplicateStatus={duplicateStatus}
           onFormDataChange={updateFormData}
           onDateOfBirthChange={updateDateOfBirth}
           onSubmit={handleSubmit}
           onLoginClick={handleLoginClick}
+          onCloseDuplicateModal={handleCloseDuplicateModal}
+          onResendConfirmation={handleResendConfirmation}
+          onRedirectToPasswordReset={handleRedirectToPasswordReset}
+          onStartFresh={handleStartFresh}
         />
       </div>
     </>

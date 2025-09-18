@@ -28,6 +28,7 @@ import {
   CheckCircle,
   User,
   AlertTriangle,
+  Plus,
 } from 'lucide-react';
 import { ExperiencesService } from '@/services/experiences.service';
 import { sessionPlanningService } from '@/services/sessionPlanningService';
@@ -41,6 +42,11 @@ interface ExperienceLibrarySelectorProps {
   onOpenChange: (open: boolean) => void;
   onExperienceSelect: (
     experience: Experience,
+    date: Date,
+    sessionNumber: number
+  ) => void;
+  onCustomExperienceCreate: (
+    type: ExperienceType,
     date: Date,
     sessionNumber: number
   ) => void;
@@ -75,6 +81,7 @@ export const ExperienceLibrarySelector: React.FC<
   open,
   onOpenChange,
   onExperienceSelect,
+  onCustomExperienceCreate,
   selectedDate,
   selectedSessionNumber,
   epicId,
@@ -92,8 +99,8 @@ export const ExperienceLibrarySelector: React.FC<
   );
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<ExperienceType | 'all'>(
-    'all'
+  const [selectedType, setSelectedType] = useState<ExperienceType>(
+    'CBL'
   );
 
   // Fetch experiences when dialog opens
@@ -128,9 +135,7 @@ export const ExperienceLibrarySelector: React.FC<
     }
 
     // Filter by type
-    if (selectedType !== 'all') {
       filtered = filtered.filter(exp => exp.type === selectedType);
-    }
 
     setFilteredExperiences(filtered);
   }, [experiences, searchQuery, selectedType]);
@@ -246,6 +251,12 @@ export const ExperienceLibrarySelector: React.FC<
       );
       toast.error('Failed to select experience');
     }
+  };
+
+  const handleCustomExperienceCreate = (type: ExperienceType) => {
+    console.log('🔷 Creating custom experience of type:', type);
+    onCustomExperienceCreate(type, selectedDate, selectedSessionNumber);
+    onOpenChange(false);
   };
 
   const getExperienceTypeInfo = (type: ExperienceType) => {
@@ -464,14 +475,6 @@ export const ExperienceLibrarySelector: React.FC<
                 Filter by Type:
               </div>
               <div className='flex gap-2 flex-wrap'>
-                <Button
-                  variant={selectedType === 'all' ? 'default' : 'outline'}
-                  size='default'
-                  onClick={() => setSelectedType('all')}
-                  className='h-10 px-4'
-                >
-                  All Types
-                </Button>
                 {EXPERIENCE_TYPES.map(type => {
                   const Icon = experienceTypeIcons[type.value];
                   return (
@@ -510,28 +513,158 @@ export const ExperienceLibrarySelector: React.FC<
                 ))}
               </div>
             ) : filteredExperiences.length === 0 ? (
+              <div className='space-y-6'>
+                {(() => {
+                  // Show only the selected type
+                  const typesToShow = EXPERIENCE_TYPES.filter(type => type.value === selectedType);
+
+                  // If there are no experiences but we have a search query, show empty state
+                  if (searchQuery) {
+                    return (
               <div className='flex flex-col items-center justify-center py-12 text-center'>
                 <BookOpen className='h-12 w-12 text-muted-foreground mb-4' />
                 <h3 className='text-lg font-semibold mb-2'>
                   No experiences found
                 </h3>
                 <p className='text-muted-foreground mb-4'>
-                  {searchQuery || selectedType !== 'all'
-                    ? 'Try adjusting your search or filter criteria'
-                    : 'No experiences are available for this epic yet'}
+                          Try adjusting your search criteria
                 </p>
-                {!searchQuery && selectedType === 'all' && (
                   <Button onClick={() => onOpenChange(false)} variant='outline'>
                     Close
                   </Button>
-                )}
+                      </div>
+                    );
+                  }
+
+                  // If no search query and showing all types, show create new options
+                  return typesToShow.map(type => {
+                    const Icon = experienceTypeIcons[type.value];
+                    const colorClass = experienceTypeColors[type.value];
+                    
+                    return (
+                      <div key={type.value}>
+                        <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
+                          <Icon className='h-5 w-5' />
+                          {type.label}
+                        </h3>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                          {/* Create New Card for this type - Always show this first */}
+                          <Card
+                            className='cursor-pointer hover:shadow-lg border-2 border-dashed border-primary/30 hover:border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-all duration-200 group'
+                            onClick={() => handleCustomExperienceCreate(type.value)}
+                          >
+                            <CardHeader className='pb-3'>
+                              <div className='flex items-start justify-between gap-2'>
+                                <div className='flex-1 min-w-0'>
+                                  <CardTitle className='text-base line-clamp-2 mb-2 flex items-center gap-2 text-primary group-hover:text-primary/80'>
+                                    <div className='p-1 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors'>
+                                      <Plus className='h-4 w-4' />
+                                    </div>
+                                    Create New {type.label}
+                                  </CardTitle>
+                                  <div className='flex items-center gap-2 flex-wrap'>
+                                    <Badge className={`${colorClass} group-hover:opacity-90`}>
+                                      <Icon className='h-3 w-3 mr-1' />
+                                      {type.label}
+                                    </Badge>
+                                    <Badge
+                                      variant='outline'
+                                      className='bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-300 group-hover:from-green-100 group-hover:to-emerald-100'
+                                    >
+                                      <Plus className='h-3 w-3 mr-1' />
+                                      Custom
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className='pt-0'>
+                              <CardDescription className='text-sm mb-3 group-hover:text-foreground/80'>
+                                {type.description}
+                              </CardDescription>
+                              <div className='text-xs text-muted-foreground group-hover:text-foreground/70'>
+                                ✨ Start with basic details and build your experience step by step
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             ) : (
+              <div className='space-y-6'>
+                {(() => {
+                  // Group experiences by type
+                  const experiencesByType: Record<string, Experience[]> = {};
+                  filteredExperiences.forEach(experience => {
+                    if (!experiencesByType[experience.type]) {
+                      experiencesByType[experience.type] = [];
+                    }
+                    experiencesByType[experience.type].push(experience);
+                  });
+
+                  // Show only the selected type
+                  const typesToShow = EXPERIENCE_TYPES.filter(type => type.value === selectedType);
+
+                  return typesToShow.map(type => {
+                    const experiences = experiencesByType[type.value] || [];
+                    const Icon = experienceTypeIcons[type.value];
+                    const colorClass = experienceTypeColors[type.value];
+                    
+                    return (
+                      <div key={type.value}>
+                        <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
+                          <Icon className='h-5 w-5' />
+                          {type.label}
+                        </h3>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {filteredExperiences.map(experience => {
+                          {/* Create New Card for this type - Always show this first */}
+                          <Card
+                            className='cursor-pointer hover:shadow-lg border-2 border-dashed border-primary/30 hover:border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-all duration-200 group'
+                            onClick={() => handleCustomExperienceCreate(type.value)}
+                          >
+                            <CardHeader className='pb-3'>
+                              <div className='flex items-start justify-between gap-2'>
+                                <div className='flex-1 min-w-0'>
+                                  <CardTitle className='text-base line-clamp-2 mb-2 flex items-center gap-2 text-primary group-hover:text-primary/80'>
+                                    <div className='p-1 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors'>
+                                      <Plus className='h-4 w-4' />
+                                    </div>
+                                    Create New {type.label}
+                                  </CardTitle>
+                                  <div className='flex items-center gap-2 flex-wrap'>
+                                    <Badge className={`${colorClass} group-hover:opacity-90`}>
+                                      <Icon className='h-3 w-3 mr-1' />
+                                      {type.label}
+                                    </Badge>
+                                    <Badge
+                                      variant='outline'
+                                      className='bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-300 group-hover:from-green-100 group-hover:to-emerald-100'
+                                    >
+                                      <Plus className='h-3 w-3 mr-1' />
+                                      Custom
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className='pt-0'>
+                              <CardDescription className='text-sm mb-3 group-hover:text-foreground/80'>
+                                {type.description}
+                              </CardDescription>
+                              <div className='text-xs text-muted-foreground group-hover:text-foreground/70'>
+                                ✨ Start with basic details and build your experience step by step
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Existing experiences for this type */}
+                          {experiences.map(experience => {
                   const typeInfo = getExperienceTypeInfo(experience.type);
-                  const Icon = experienceTypeIcons[experience.type];
-                  const colorClass = experienceTypeColors[experience.type];
+                            const experienceIcon = experienceTypeIcons[experience.type];
+                            const experienceColorClass = experienceTypeColors[experience.type];
                   const isUsed = usedExperienceIds.has(experience.id);
                   const hasInsufficientSpace = insufficientSpaceIds.has(
                     experience.id
@@ -556,8 +689,8 @@ export const ExperienceLibrarySelector: React.FC<
                               {experience.title}
                             </CardTitle>
                             <div className='flex items-center gap-2 flex-wrap'>
-                              <Badge className={colorClass}>
-                                <Icon className='h-3 w-3 mr-1' />
+                                        <Badge className={experienceColorClass}>
+                                          <experienceIcon className='h-3 w-3 mr-1' />
                                 {typeInfo.label}
                               </Badge>
                               {(() => {
@@ -625,6 +758,11 @@ export const ExperienceLibrarySelector: React.FC<
                     </Card>
                   );
                 })}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>

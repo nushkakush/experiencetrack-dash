@@ -9,6 +9,7 @@ interface MeritoLeadData {
   mobile?: string;
   search_criteria: string;
   name: string;
+  course?: string;
   [key: string]: any;
 }
 
@@ -99,10 +100,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch application data
+    // Fetch application data with cohort information
     const { data: application, error: applicationError } = await supabase
       .from('student_applications')
-      .select('*')
+      .select(`
+        *,
+        cohort:cohorts(
+          id,
+          name,
+          description,
+          start_date,
+          end_date,
+          created_at
+        )
+      `)
       .eq('id', applicationId)
       .single();
 
@@ -236,6 +247,13 @@ Deno.serve(async (req: Request) => {
       }
     };
 
+    // Add created date information
+    const createdDate = new Date(application.created_at).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric'
+    });
+
     // Map application data to Merito lead format
     const leadData: MeritoLeadData = {
       // Core required fields
@@ -243,6 +261,14 @@ Deno.serve(async (req: Request) => {
       mobile: cleanMobile(profile.phone),
       search_criteria: 'email',
       name: `${profile.first_name || ''} ${profile.last_name || ''}`.replace(/[^a-zA-Z\s]/g, '').trim() || 'Unknown User',
+      
+      // Required fields from metadata
+      enquiry: application.enquiry || 'Registration enquiry',
+      question: application.question || 'No specific questions',
+      specialization: 'Software Development', // Default specialization
+      campus: 'Bangalore', // Default campus
+      course: 'Software Development', // Required course field
+      user_date: createdDate,
     };
 
     // Add extended profile fields only if they exist and have values
@@ -262,13 +288,15 @@ Deno.serve(async (req: Request) => {
       addFieldIfExists(leadData, 'cf_field_of_study', extendedProfile.field_of_study);
       addFieldIfExists(leadData, 'cf_institution_name', extendedProfile.institution_name);
       addFieldIfExists(leadData, 'cf_graduation_year', extendedProfile.graduation_year?.toString());
-      addFieldIfExists(leadData, 'cf_graduation_month', mapMonth(extendedProfile.graduation_month));
+      addFieldIfExists(leadData, 'cf_graduation_month_new', mapMonth(extendedProfile.graduation_month));
       
       // Work experience
       addFieldIfExists(leadData, 'cf_do_you_have_work_experience', extendedProfile.has_work_experience ? 'Yes' : 'No');
       addFieldIfExists(leadData, 'cf_work_experience_type', extendedProfile.work_experience_type);
       addFieldIfExists(leadData, 'cf_company_name', extendedProfile.company_name);
       addFieldIfExists(leadData, 'cf_job_description', extendedProfile.job_description);
+      addFieldIfExists(leadData, 'cf_work_start_year', extendedProfile.work_start_year?.toString());
+      addFieldIfExists(leadData, 'cf_work_end_month_new', mapMonth(extendedProfile.work_end_month));
       
       // Family information
       addFieldIfExists(leadData, 'cf_fathers_first_name', extendedProfile.father_first_name);
@@ -302,11 +330,11 @@ Deno.serve(async (req: Request) => {
       addFieldIfExists(leadData, 'cf_can_you_relocate_to_bangalore_for_this_program', extendedProfile.relocation_possible ? 'Yes' : 'No');
       addFieldIfExists(leadData, 'cf_do_you_have_1_or_2_years_of_your_time_for_your_future', extendedProfile.investment_willing ? 'Yes' : 'No');
       
-      // Emergency contact - temporarily disabled due to field mapping issues
-      // addFieldIfExists(leadData, 'cf_emergency_contact_first_name', extendedProfile.emergency_first_name);
-      // addFieldIfExists(leadData, 'cf_emergency_contact_last_name', extendedProfile.emergency_last_name);
-      // addFieldIfExists(leadData, 'cf_emergency_contact_number', cleanMobile(extendedProfile.emergency_contact_no));
-      // addFieldIfExists(leadData, 'cf_relationship', extendedProfile.emergency_relationship);
+      // Emergency contact - using correct field names from metadata
+      addFieldIfExists(leadData, 'cf_emergency_contact_first_name_new', extendedProfile.emergency_first_name);
+      addFieldIfExists(leadData, 'cf_emergency_contact_last_name', extendedProfile.emergency_last_name);
+      addFieldIfExists(leadData, 'cf_emergency_contact_number', cleanMobile(extendedProfile.emergency_contact_no));
+      addFieldIfExists(leadData, 'cf_relationship', extendedProfile.emergency_relationship);
     }
 
     // Add UTM tracking (if available)
@@ -316,18 +344,60 @@ Deno.serve(async (req: Request) => {
     
     // Add application status and metadata
     addFieldIfExists(leadData, 'application_status', syncType === 'extended' ? 'registration_completed' : application.status);
-    addFieldIfExists(leadData, 'notes', `${syncType === 'extended' ? 'Extended ' : ''}Registration for cohort ${application.cohort_id} - Status: ${application.status}`);
+    
+    // Add cohort information
+    const cohortName = application.cohort?.name || `Cohort ${application.cohort_id}`;
+    const cohortDescription = application.cohort?.description || '';
+    const cohortStartDate = application.cohort?.start_date || '';
+    
+    // Enhanced notes with cohort and date information
+    const notes = [
+      `${syncType === 'extended' ? 'Extended ' : ''}Registration for ${cohortName}`,
+      `Status: ${application.status}`,
+      `Applied: ${createdDate}`,
+      cohortDescription ? `Cohort: ${cohortDescription}` : '',
+      cohortStartDate ? `Start Date: ${new Date(cohortStartDate).toLocaleDateString('en-GB')}` : ''
+    ].filter(Boolean).join(' - ');
+    
+    addFieldIfExists(leadData, 'notes', notes);
     addFieldIfExists(leadData, 'phone', profile.phone);
+    
+    // Add standard Meritto fields for cohort information only
+    // Use cohort ID for dropdown field, not name
+    addFieldIfExists(leadData, 'cf_cohort', application.cohort_id);
+    // Use correct course field from metadata
+    addFieldIfExists(leadData, 'cf_preferred_course', 'Full Stack Marketer');
+    addFieldIfExists(leadData, 'cf_created_on', createdDate);
+    addFieldIfExists(leadData, 'cf_created_by', 'System Registration');
+    
+    // Add country using correct field name from metadata
+    const country = profile.country || (extendedProfile?.state ? 'India' : 'India');
+    addFieldIfExists(leadData, 'cf_country_names', country);
     
     // Add lead quality and conversion stage
     leadData.lead_quality = determineLeadQuality();
     leadData.conversion_stage = determineConversionStage();
+
+    // Add required specialization field - try different common names
+    addFieldIfExists(leadData, 'specialization', 'Software Development');
+
+    // Add other potentially required fields with sensible defaults
+    addFieldIfExists(leadData, 'cf_lead_name', leadData.name);
+    addFieldIfExists(leadData, 'cf_form_name', 'Registration Form');
+    addFieldIfExists(leadData, 'cf_career_goals', extendedProfile?.career_goals || 'Career advancement in technology');
+    addFieldIfExists(leadData, 'cf_please_tell_us_what_youd_like_to_enquire_about', application.enquiry || 'Registration enquiry');
 
     console.log(`🚀 Syncing to Merito (${syncType}):`, {
       email: leadData.email,
       name: leadData.name,
       mobile: leadData.mobile,
       status: application.status,
+      cohortId: application.cohort_id,
+      cohortName: cohortName,
+      course: leadData.cf_preferred_course,
+      country: leadData.cf_country_names,
+      created_on: leadData.cf_created_on,
+      created_by: leadData.cf_created_by,
       hasExtendedProfile: !!extendedProfile,
       leadQuality: leadData.lead_quality,
       conversionStage: leadData.conversion_stage

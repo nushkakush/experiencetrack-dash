@@ -3,6 +3,7 @@ import { Cohort } from '@/types/cohort';
 import { ApplicationConfiguration } from '@/types/applications';
 import { Logger } from '@/lib/logging/Logger';
 import { MeritoService } from './merito.service';
+import { DuplicateEmailCheckService, DuplicateEmailStatus } from './duplicateEmailCheck.service';
 
 export interface CohortWithOpenApplications extends Cohort {
   application_fee?: number;
@@ -221,8 +222,28 @@ export class RegistrationService {
     success: boolean;
     error: string | null;
     userId?: string;
+    duplicateStatus?: DuplicateEmailStatus;
   }> {
     try {
+      // First check if email already exists
+      const duplicateCheck = await DuplicateEmailCheckService.checkEmailStatus(data.email);
+      
+      if (!duplicateCheck.success) {
+        return {
+          success: false,
+          error: duplicateCheck.error || 'Failed to check email status. Please try again.',
+        };
+      }
+
+      if (duplicateCheck.data?.exists) {
+        // Email already exists, return duplicate status for UI handling
+        return {
+          success: false,
+          error: 'Email already exists',
+          duplicateStatus: duplicateCheck.data,
+        };
+      }
+
       // Generate invitation token for email verification (not cohort invitation)
       const invitationToken = crypto.randomUUID();
       const expiresAt = new Date();
@@ -283,7 +304,33 @@ export class RegistrationService {
         };
       }
 
-      // Note: Merito sync is now handled after email verification to ensure user identity is confirmed
+      // Create initial lead in Merito for direct applications (before email verification)
+      // This ensures we capture all leads, even if email verification fails
+      try {
+        if (MeritoService.isEnabled()) {
+          console.log('🚀 Creating initial lead in Merito for direct application');
+          
+          const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+            'merito-registration-sync',
+            {
+              body: {
+                profileId: profileData.id,
+                applicationId: applicationData.id,
+                syncType: 'initial_registration'
+              }
+            }
+          );
+
+          if (syncError) {
+            console.warn('Failed to create initial lead in Merito:', syncError.message);
+          } else if (syncResult?.success) {
+            console.log('✅ Initial lead created in Merito successfully');
+          }
+        }
+      } catch (meritoError) {
+        console.warn('Merito initial lead creation error (non-blocking):', meritoError);
+        // Don't block user flow for Merito sync failures
+      }
 
       // Send verification email via Edge Function with retry mechanism
       const emailSent = await this.sendVerificationEmailWithRetry({

@@ -73,12 +73,12 @@ export const SignInForm: React.FC<SignInFormProps> = ({
       </Button>
 
       <div className='text-center text-sm text-muted-foreground'>
-        Don't have an account?{' '}
+        Wanna join LIT?{' '}
         <Link
-          to='/auth/register'
+          to='/auth/apply'
           className='text-primary hover:underline font-medium'
         >
-          Sign up here
+          Apply Here
         </Link>
       </div>
     </form>

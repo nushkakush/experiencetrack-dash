@@ -31,13 +31,6 @@ export interface UserActivityLog {
   created_at: string;
 }
 
-export interface UserFilters {
-  search?: string;
-  role?: UserRole;
-  status?: UserStatus;
-  dateFrom?: string;
-  dateTo?: string;
-}
 
 export interface UserTableState {
   users: UserProfile[];
@@ -48,7 +41,6 @@ export interface UserTableState {
     pageSize: number;
     total: number;
   };
-  filters: UserFilters;
   selectedUsers: string[];
   sortBy: string;
   sortOrder: 'asc' | 'desc';
@@ -90,13 +82,13 @@ export interface BulkUserAction {
 export interface UserSearchParams {
   page?: number;
   pageSize?: number;
-  search?: string;
-  role?: UserRole;
-  status?: UserStatus;
-  dateFrom?: string;
-  dateTo?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  searchTerm?: string;
+  roles?: UserRole[];
+  statuses?: UserStatus[];
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface UserSearchResponse {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -7,13 +7,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, Download, RefreshCw, Users, Mail } from 'lucide-react';
+import { Download, RefreshCw, Users, Mail } from 'lucide-react';
 import { useUserManagement } from '@/hooks/useUserManagement';
-import { UserTable, UserFilters, UserActions } from './components';
+import { UserTable, UserActions, SearchAndFilter } from './components';
 import AddUserDialog from './components/AddUserDialog';
 import { UserRole } from '@/types/auth';
 import { UserStatus } from '@/types/userManagement';
@@ -33,11 +32,33 @@ const UserManagementPage: React.FC = () => {
     loadUsers,
     forceRefreshUsers,
     loadStats,
-    setFilters,
     hasSelection,
     clearSelection,
     exportUsers,
+    searchTerm,
+    selectedRoles,
+    selectedStatuses,
+    dateRange,
+    setSearchTerm,
+    setSelectedRoles,
+    setSelectedStatuses,
+    setDateRange,
+    clearFilters,
+    toggleUserSelection,
+    selectAllUsers,
+    isAllSelected,
+    deleteUser,
   } = useUserManagement();
+
+  // Debug filter state changes
+  useEffect(() => {
+    console.log('🔍 [PAGE] Filter state changed:', {
+      searchTerm,
+      selectedRoles,
+      selectedStatuses,
+      dateRange
+    });
+  }, [searchTerm, selectedRoles, selectedStatuses, dateRange]);
 
   // Debug state changes
   console.log('🔄 [DEBUG] UserManagementPage render - state:', {
@@ -48,9 +69,6 @@ const UserManagementPage: React.FC = () => {
     activeTab,
   });
 
-  const handleSearch = (searchTerm: string) => {
-    setFilters({ search: searchTerm });
-  };
 
   const handleRefresh = async () => {
     console.log('🔄 [DEBUG] handleRefresh called - refreshing users and stats');
@@ -151,6 +169,30 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
+      {/* Search and Filter */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search & Filter</CardTitle>
+          <CardDescription>
+            Find users by name, email, role, status, or creation date
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SearchAndFilter
+            onSearchChange={setSearchTerm}
+            onRoleFilterChange={setSelectedRoles}
+            onStatusFilterChange={setSelectedStatuses}
+            onDateRangeChange={setDateRange}
+            onClearFilters={clearFilters}
+            searchTerm={searchTerm}
+            selectedRoles={selectedRoles}
+            selectedStatuses={selectedStatuses}
+            dateRange={dateRange}
+            isLoading={state.loading}
+          />
+        </CardContent>
+      </Card>
+
       {/* Bulk Actions */}
       {hasSelection && <UserActions />}
 
@@ -219,19 +261,6 @@ const UserManagementPage: React.FC = () => {
             </TabsList>
 
             <TabsContent value='registered' className='space-y-4'>
-              {/* Search and Filters */}
-              <div className='flex items-center gap-4'>
-                <div className='relative flex-1'>
-                  <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                  <Input
-                    placeholder='Search by name, email, or role...'
-                    className='pl-10'
-                    onChange={e => handleSearch(e.target.value)}
-                  />
-                </div>
-                <UserFilters />
-              </div>
-
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-muted-foreground'>
                   Showing{' '}
@@ -242,23 +271,15 @@ const UserManagementPage: React.FC = () => {
               <UserTable
                 key={`registered-${refreshKey}`}
                 showOnlyRegistered={true}
+                state={state}
+                toggleUserSelection={toggleUserSelection}
+                selectAllUsers={selectAllUsers}
+                isAllSelected={isAllSelected}
+                deleteUser={deleteUser}
               />
             </TabsContent>
 
             <TabsContent value='invited' className='space-y-4'>
-              {/* Search and Filters */}
-              <div className='flex items-center gap-4'>
-                <div className='relative flex-1'>
-                  <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                  <Input
-                    placeholder='Search by name, email, or role...'
-                    className='pl-10'
-                    onChange={e => handleSearch(e.target.value)}
-                  />
-                </div>
-                <UserFilters />
-              </div>
-
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-muted-foreground'>
                   Showing{' '}
@@ -266,7 +287,15 @@ const UserManagementPage: React.FC = () => {
                   invited users
                 </div>
               </div>
-              <UserTable key={`invited-${refreshKey}`} showOnlyInvited={true} />
+              <UserTable 
+                key={`invited-${refreshKey}`} 
+                showOnlyInvited={true}
+                state={state}
+                toggleUserSelection={toggleUserSelection}
+                selectAllUsers={selectAllUsers}
+                isAllSelected={isAllSelected}
+                deleteUser={deleteUser}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>

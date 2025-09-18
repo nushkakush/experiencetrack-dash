@@ -5,11 +5,12 @@ import { exportUserData } from '@/utils/exportUtils';
 import {
   UserProfile,
   UserTableState,
-  UserFilters,
   UserStats,
   UpdateUserData,
   BulkUserAction,
   UserSearchParams,
+  UserRole,
+  UserStatus,
 } from '@/types/userManagement';
 
 interface UseUserManagementReturn {
@@ -30,11 +31,21 @@ interface UseUserManagementReturn {
   // Table state management
   setPage: (page: number) => void;
   setPageSize: (pageSize: number) => void;
-  setFilters: (filters: Partial<UserFilters>) => void;
   setSorting: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
   toggleUserSelection: (userId: string) => void;
   selectAllUsers: () => void;
   clearSelection: () => void;
+
+  // Search and filter state
+  searchTerm: string;
+  selectedRoles: UserRole[];
+  selectedStatuses: UserStatus[];
+  dateRange: { from?: Date; to?: Date };
+  setSearchTerm: (term: string) => void;
+  setSelectedRoles: (roles: UserRole[]) => void;
+  setSelectedStatuses: (statuses: UserStatus[]) => void;
+  setDateRange: (range: { from?: Date; to?: Date }) => void;
+  clearFilters: () => void;
 
   // Computed values
   selectedUsers: UserProfile[];
@@ -51,7 +62,6 @@ const initialState: UserTableState = {
     pageSize: 10,
     total: 0,
   },
-  filters: {},
   selectedUsers: [],
   sortBy: 'created_at',
   sortOrder: 'desc',
@@ -63,10 +73,24 @@ export const useUserManagement = (): UseUserManagementReturn => {
   const [statsLoading, setStatsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<UserStatus[]>([]);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+
   // Load users with current state
   const loadUsers = useCallback(
     async (params?: Partial<UserSearchParams>) => {
       console.log('🔄 [DEBUG] loadUsers called');
+      console.log('🔄 [DEBUG] Current filter state:', {
+        searchTerm,
+        selectedRoles,
+        selectedStatuses,
+        dateRange,
+        pagination: state.pagination
+      });
+      
       setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -75,11 +99,15 @@ export const useUserManagement = (): UseUserManagementReturn => {
           pageSize: state.pagination.pageSize,
           sortBy: state.sortBy,
           sortOrder: state.sortOrder,
-          ...state.filters,
+          searchTerm: searchTerm.trim() || undefined,
+          roles: selectedRoles.length > 0 ? selectedRoles : undefined,
+          statuses: selectedStatuses.length > 0 ? selectedStatuses : undefined,
+          dateFrom: dateRange.from?.toISOString(),
+          dateTo: dateRange.to?.toISOString(),
           ...params,
         };
 
-        console.log('🔄 [DEBUG] Search params:', searchParams);
+        console.log('🔄 [DEBUG] Final search params being sent to service:', searchParams);
 
         const response = await UserManagementService.searchUsers(searchParams);
         console.log('🔄 [DEBUG] loadUsers response:', {
@@ -105,12 +133,13 @@ export const useUserManagement = (): UseUserManagementReturn => {
             loading: false,
             error: null,
           };
-          console.log('🔄 [DEBUG] New state:', {
+          console.log('🔄 [DEBUG] New state being set:', {
             totalUsers: newState.users.length,
             invitedUsers: newState.users.filter(u => u.status === 'invited')
               .length,
             registeredUsers: newState.users.filter(u => u.status !== 'invited')
               .length,
+            users: newState.users.map(u => ({ id: u.user_id, name: `${u.first_name} ${u.last_name}`, role: u.role }))
           });
           return newState;
         });
@@ -134,7 +163,10 @@ export const useUserManagement = (): UseUserManagementReturn => {
       state.pagination.pageSize,
       state.sortBy,
       state.sortOrder,
-      state.filters,
+      searchTerm,
+      selectedRoles,
+      selectedStatuses,
+      dateRange,
       toast,
     ]
   );
@@ -163,7 +195,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
     async (format: 'csv' | 'json' | 'excel' = 'csv') => {
       try {
         // Get all users for export (not just current page)
-        const allUsers = await UserManagementService.exportUsers(state.filters);
+        const allUsers = await UserManagementService.exportUsers();
 
         if (!allUsers || allUsers.length === 0) {
           toast({
@@ -189,7 +221,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
         });
       }
     },
-    [state.filters, toast]
+    [toast]
   );
 
   // Force refresh users (for manual refresh)
@@ -203,7 +235,6 @@ export const useUserManagement = (): UseUserManagementReturn => {
         pageSize: state.pagination.pageSize,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
-        ...state.filters,
       };
 
       const response = await UserManagementService.searchUsers(searchParams);
@@ -231,7 +262,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
       }));
       throw error;
     }
-  }, [state.pagination.pageSize, state.sortBy, state.sortOrder, state.filters]);
+  }, [state.pagination.pageSize, state.sortBy, state.sortOrder]);
 
   // Update user
   const updateUser = useCallback(
@@ -337,13 +368,6 @@ export const useUserManagement = (): UseUserManagementReturn => {
     }));
   }, []);
 
-  const setFilters = useCallback((filters: Partial<UserFilters>) => {
-    setState(prev => ({
-      ...prev,
-      filters: { ...prev.filters, ...filters },
-      pagination: { ...prev.pagination, page: 1 }, // Reset to first page
-    }));
-  }, []);
 
   const setSorting = useCallback(
     (sortBy: string, sortOrder: 'asc' | 'desc') => {
@@ -370,6 +394,14 @@ export const useUserManagement = (): UseUserManagementReturn => {
 
   const clearSelection = useCallback(() => {
     setState(prev => ({ ...prev, selectedUsers: [] }));
+  }, []);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setSearchTerm('');
+    setSelectedRoles([]);
+    setSelectedStatuses([]);
+    setDateRange({});
   }, []);
 
   // Computed values
@@ -416,11 +448,21 @@ export const useUserManagement = (): UseUserManagementReturn => {
     // Table state management
     setPage,
     setPageSize,
-    setFilters,
     setSorting,
     toggleUserSelection,
     selectAllUsers,
     clearSelection,
+
+    // Search and filter state
+    searchTerm,
+    selectedRoles,
+    selectedStatuses,
+    dateRange,
+    setSearchTerm,
+    setSelectedRoles,
+    setSelectedStatuses,
+    setDateRange,
+    clearFilters,
 
     // Computed values
     selectedUsers,

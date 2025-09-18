@@ -29,12 +29,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeaturePermissions } from '@/hooks/useFeaturePermissions';
 import { useCohortAssignments } from '@/hooks/useCohortAssignments';
 import { CohortAssignmentService } from '@/services/cohortAssignment.service';
-import { UserProfile } from '@/types/userManagement';
+import { UserProfile, UserTableState } from '@/types/userManagement';
 import { UserRole } from '@/types/auth';
 import { UserDetailsDialog, UserDeleteDialog } from './';
 import CohortAssignmentDialog from '@/components/cohorts/CohortAssignmentDialog';
@@ -44,21 +43,32 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 interface UserTableProps {
   showOnlyRegistered?: boolean;
   showOnlyInvited?: boolean;
+  state: UserTableState;
+  toggleUserSelection: (userId: string) => void;
+  selectAllUsers: () => void;
+  isAllSelected: boolean;
+  deleteUser: (userId: string) => Promise<void>;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
   showOnlyRegistered,
   showOnlyInvited,
+  state,
+  toggleUserSelection,
+  selectAllUsers,
+  isAllSelected,
+  deleteUser,
 }) => {
   const { profile } = useAuth();
   const { hasPermission } = useFeaturePermissions();
-  const {
-    state,
-    toggleUserSelection,
-    selectAllUsers,
-    isAllSelected,
-    deleteUser,
-  } = useUserManagement();
+
+  // Debug logging
+  console.log('🔍 [USERTABLE] Rendering with state:', {
+    totalUsers: state.users.length,
+    users: state.users,
+    showOnlyRegistered,
+    showOnlyInvited
+  });
 
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
@@ -84,6 +94,14 @@ export const UserTable: React.FC<UserTableProps> = ({
       }
     }
   }, [state.users, selectedUser]);
+
+  // Debug: Log when state.users changes
+  useEffect(() => {
+    console.log('🔍 [USERTABLE] state.users changed:', {
+      totalUsers: state.users.length,
+      users: state.users.map(u => ({ id: u.user_id, name: `${u.first_name} ${u.last_name}`, role: u.role }))
+    });
+  }, [state.users]);
 
   const handleSort = (column: string) => {
     const newOrder =
@@ -336,6 +354,12 @@ export const UserTable: React.FC<UserTableProps> = ({
             {(() => {
               // Filter users based on props
               let filteredUsers = state.users;
+              console.log('🔍 [USERTABLE] Before tab filtering:', {
+                originalCount: state.users.length,
+                showOnlyRegistered,
+                showOnlyInvited
+              });
+              
               if (showOnlyRegistered) {
                 filteredUsers = state.users.filter(
                   user => user.status !== 'invited'
@@ -345,6 +369,12 @@ export const UserTable: React.FC<UserTableProps> = ({
                   user => user.status === 'invited'
                 );
               }
+              
+              console.log('🔍 [USERTABLE] After tab filtering:', {
+                originalCount: state.users.length,
+                filteredCount: filteredUsers.length,
+                filteredUsers: filteredUsers
+              });
 
               if (filteredUsers.length === 0) {
                 return (

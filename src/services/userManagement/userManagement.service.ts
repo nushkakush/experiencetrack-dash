@@ -13,54 +13,41 @@ import { UserRole } from '@/types/auth';
 
 export class UserManagementService {
   /**
-   * Search and fetch users with pagination and filters
+   * Fetch users with pagination
    * Excludes students and includes both existing users and invited users
    */
   static async searchUsers(
     params: UserSearchParams
   ): Promise<UserSearchResponse> {
+    console.log('🔍 [SERVICE] searchUsers called with params:', params);
+    
     const {
       page = 1,
       pageSize = 10,
-      search,
-      role,
-      status,
-      dateFrom,
-      dateTo,
       sortBy = 'created_at',
       sortOrder = 'desc',
+      searchTerm,
+      roles,
+      statuses,
+      dateFrom,
+      dateTo,
     } = params;
+
+    console.log('🔍 [SERVICE] Extracted filter params:', {
+      searchTerm,
+      roles,
+      statuses,
+      dateFrom,
+      dateTo,
+      page,
+      pageSize
+    });
 
     // Get existing users from profiles table (excluding students)
     let profilesQuery = supabase
       .from('profiles')
       .select('*', { count: 'exact' })
       .neq('role', 'student'); // Exclude students
-
-    // Apply search filter
-    if (search) {
-      profilesQuery = profilesQuery.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
-      );
-    }
-
-    // Apply role filter
-    if (role) {
-      profilesQuery = profilesQuery.eq('role', role);
-    }
-
-    // Apply status filter (only for existing users, not invitations)
-    if (status && status !== 'invited') {
-      profilesQuery = profilesQuery.eq('status', status);
-    }
-
-    // Apply date range filter
-    if (dateFrom) {
-      profilesQuery = profilesQuery.gte('created_at', dateFrom);
-    }
-    if (dateTo) {
-      profilesQuery = profilesQuery.lte('created_at', dateTo);
-    }
 
     const {
       data: users,
@@ -72,51 +59,42 @@ export class UserManagementService {
       throw new Error(`Failed to fetch users: ${usersError.message}`);
     }
 
-    // Get invitations (only if status is 'invited' or no status filter)
+    console.log('🔍 [SERVICE] Fetched users from database:', {
+      count: users?.length || 0,
+      users: users?.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, role: u.role, status: u.status, created_at: u.created_at })) || []
+    });
+    
+    // Log all unique roles in the database
+    const uniqueRoles = [...new Set(users?.map(u => u.role) || [])];
+    console.log('🔍 [SERVICE] Available roles in database:', uniqueRoles);
+
+    // Get invitations
     let invitations: unknown[] = [];
     let invitationsCount = 0;
+    let invitationsQuery = supabase
+      .from('user_invitations')
+      .select('*', { count: 'exact' })
+      .in('invite_status', ['pending', 'sent']); // Include both pending and sent invitations
 
-    if (!status || status === 'invited') {
-      let invitationsQuery = supabase
-        .from('user_invitations')
-        .select('*', { count: 'exact' })
-        .in('invite_status', ['pending', 'sent']); // Include both pending and sent invitations
+    const {
+      data: invitationsData,
+      error: invitationsError,
+      count: count,
+    } = await invitationsQuery;
 
-      // Apply search filter to invitations
-      if (search) {
-        invitationsQuery = invitationsQuery.or(
-          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
-        );
-      }
-
-      // Apply role filter to invitations
-      if (role) {
-        invitationsQuery = invitationsQuery.eq('role', role);
-      }
-
-      // Apply date range filter to invitations
-      if (dateFrom) {
-        invitationsQuery = invitationsQuery.gte('created_at', dateFrom);
-      }
-      if (dateTo) {
-        invitationsQuery = invitationsQuery.lte('created_at', dateTo);
-      }
-
-      const {
-        data: invitationsData,
-        error: invitationsError,
-        count: count,
-      } = await invitationsQuery;
-
-      if (invitationsError) {
-        throw new Error(
-          `Failed to fetch invitations: ${invitationsError.message}`
-        );
-      }
-
-      invitations = invitationsData || [];
-      invitationsCount = count || 0;
+    if (invitationsError) {
+      throw new Error(
+        `Failed to fetch invitations: ${invitationsError.message}`
+      );
     }
+
+    invitations = invitationsData || [];
+    invitationsCount = count || 0;
+
+    console.log('🔍 [SERVICE] Fetched invitations from database:', {
+      count: invitations?.length || 0,
+      invitations: invitations?.map(i => ({ id: i.id, name: `${i.first_name} ${i.last_name}`, role: i.role, status: 'invited', created_at: i.created_at })) || []
+    });
 
     // Convert invitations to user-like format for display
     console.log('Processing invitations:', invitations.length, invitations);
@@ -146,7 +124,55 @@ export class UserManagementService {
       'and invitations:',
       invitationUsers.length
     );
-    const allUsers = [...(users || []), ...invitationUsers];
+    let allUsers = [...(users || []), ...invitationUsers];
+
+    // Apply client-side filtering to combined results
+    console.log('🔍 [DEBUG] Applying filters:', {
+      searchTerm,
+      roles,
+      statuses,
+      dateFrom,
+      dateTo,
+      totalUsersBeforeFilter: allUsers.length
+    });
+
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const beforeCount = allUsers.length;
+      allUsers = allUsers.filter(user => 
+        (user.first_name?.toLowerCase().includes(searchLower)) ||
+        (user.last_name?.toLowerCase().includes(searchLower)) ||
+        (user.email?.toLowerCase().includes(searchLower)) ||
+        (user.role?.toLowerCase().includes(searchLower))
+      );
+      console.log('🔍 [DEBUG] Search filter applied:', { beforeCount, afterCount: allUsers.length });
+    }
+
+    if (roles && roles.length > 0) {
+      const beforeCount = allUsers.length;
+      allUsers = allUsers.filter(user => roles.includes(user.role));
+      console.log('🔍 [DEBUG] Role filter applied:', { roles, beforeCount, afterCount: allUsers.length });
+    }
+
+    if (statuses && statuses.length > 0) {
+      const beforeCount = allUsers.length;
+      allUsers = allUsers.filter(user => statuses.includes(user.status));
+      console.log('🔍 [DEBUG] Status filter applied:', { statuses, beforeCount, afterCount: allUsers.length });
+    }
+
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      const beforeCount = allUsers.length;
+      allUsers = allUsers.filter(user => new Date(user.created_at) >= fromDate);
+      console.log('🔍 [DEBUG] Date from filter applied:', { dateFrom, fromDate, beforeCount, afterCount: allUsers.length });
+    }
+
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      const beforeCount = allUsers.length;
+      allUsers = allUsers.filter(user => new Date(user.created_at) <= toDate);
+      console.log('🔍 [DEBUG] Date to filter applied:', { dateTo, toDate, beforeCount, afterCount: allUsers.length });
+    }
 
     // Sort combined results
     allUsers.sort((a, b) => {
@@ -165,14 +191,21 @@ export class UserManagementService {
     const to = from + pageSize - 1;
     const paginatedUsers = allUsers.slice(from, to + 1);
 
-    const total = (usersCount || 0) + invitationsCount;
+    const total = allUsers.length;
     const totalPages = Math.ceil(total / pageSize);
 
-    console.log('Final result:', {
+    console.log('🔍 [SERVICE] Final result after filtering and pagination:', {
       totalUsers: allUsers.length,
       paginatedUsers: paginatedUsers.length,
       total,
       hasInvitedUsers: paginatedUsers.some(u => u.status === 'invited'),
+      finalUsers: paginatedUsers.map(u => ({ 
+        id: u.user_id, 
+        name: `${u.first_name} ${u.last_name}`, 
+        role: u.role, 
+        status: u.status, 
+        created_at: u.created_at 
+      }))
     });
 
     return {
@@ -536,35 +569,11 @@ export class UserManagementService {
   /**
    * Export users data
    */
-  static async exportUsers(
-    filters: Omit<UserSearchParams, 'page' | 'pageSize'>
-  ): Promise<UserProfile[]> {
-    let query = supabase.from('profiles').select('*');
-
-    // Apply filters (same as searchUsers but without pagination)
-    if (filters.search) {
-      query = query.or(
-        `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
-      );
-    }
-
-    if (filters.role) {
-      query = query.eq('role', filters.role);
-    }
-
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters.dateFrom) {
-      query = query.gte('created_at', filters.dateFrom);
-    }
-
-    if (filters.dateTo) {
-      query = query.lte('created_at', filters.dateTo);
-    }
-
-    const { data: users, error } = await query;
+  static async exportUsers(): Promise<UserProfile[]> {
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('role', 'student'); // Exclude students
 
     if (error) {
       throw new Error(`Failed to export users: ${error.message}`);

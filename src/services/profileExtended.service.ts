@@ -226,7 +226,7 @@ export class ProfileExtendedService {
   /**
    * Real-time sync to Meritto (called during form changes)
    */
-  async realtimeSyncToMerito(profileId: string): Promise<void> {
+  async realtimeSyncToMerito(profileId: string, additionalData?: any): Promise<void> {
     try {
       console.log('🚀 Starting real-time MERITTO sync for profileId:', profileId);
       
@@ -239,7 +239,8 @@ export class ProfileExtendedService {
 
       console.log('🔄 Real-time Merito sync via Edge Function:', {
         profileId,
-        applicationId: applicationData.id
+        applicationId: applicationData.id,
+        additionalData
       });
 
       // Call the Edge Function for real-time sync
@@ -249,18 +250,33 @@ export class ProfileExtendedService {
           body: {
             profileId: profileId,
             applicationId: applicationData.id,
-            syncType: 'realtime'
+            syncType: 'realtime',
+            ...additionalData
           }
         }
       );
 
       if (syncError) {
-        console.warn('Real-time Meritto sync failed:', syncError.message);
+        console.error('❌ [PROFILE EXTENDED] Real-time Meritto sync failed:', {
+          error: syncError,
+          message: syncError.message,
+          details: syncError.details,
+          hint: syncError.hint,
+          code: syncError.code,
+          profileId,
+          applicationId: applicationData.id,
+          additionalData
+        });
         return; // Don't throw error for real-time sync failures
       }
 
       if (syncResult?.success) {
-        console.log('✅ Real-time sync to Merito completed');
+        console.log('✅ [PROFILE EXTENDED] Real-time sync to Merito completed', {
+          leadId: syncResult.leadId,
+          profileId,
+          applicationId: applicationData.id,
+          message: syncResult.message
+        });
         
         // Also trigger a full sync to ensure all extended profile data is updated
         try {
@@ -276,17 +292,36 @@ export class ProfileExtendedService {
           );
           
           if (fullSyncError) {
-            console.warn('Full sync after real-time failed:', fullSyncError.message);
+            console.error('❌ [PROFILE EXTENDED] Full sync after real-time failed:', {
+              error: fullSyncError,
+              message: fullSyncError.message,
+              details: fullSyncError.details,
+              profileId,
+              applicationId: applicationData.id
+            });
           } else if (fullSyncResult?.success) {
-            console.log('✅ Full sync to Merito completed after real-time sync');
+            console.log('✅ [PROFILE EXTENDED] Full sync to Merito completed after real-time sync', {
+              leadId: fullSyncResult.leadId,
+              profileId,
+              applicationId: applicationData.id
+            });
           }
         } catch (fullSyncError) {
-          console.warn('Full sync error (non-blocking):', fullSyncError);
+          console.error('❌ [PROFILE EXTENDED] Full sync error (non-blocking):', {
+            error: fullSyncError,
+            profileId,
+            applicationId: applicationData.id
+          });
         }
       }
 
     } catch (error) {
-      console.warn('Real-time Meritto sync error (non-blocking):', error);
+      console.error('❌ [PROFILE EXTENDED] Real-time Meritto sync error (non-blocking):', {
+        error,
+        profileId,
+        applicationId: applicationData?.id,
+        additionalData
+      });
       // Don't throw error for real-time sync failures
     }
   }

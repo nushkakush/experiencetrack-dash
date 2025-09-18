@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { TableCell } from '@/components/ui/table';
 import { StudentPaymentSummary } from '@/types/fee';
 import { StudentDetailsModal } from '@/components/fee-collection/StudentDetailsModal';
@@ -26,13 +26,17 @@ interface ActionsCellProps {
   };
 }
 
-export const ActionsCell: React.FC<ActionsCellProps> = ({
+export interface ActionsCellRef {
+  openStudentDetails: () => void;
+}
+
+export const ActionsCell = forwardRef<ActionsCellRef, ActionsCellProps>(({
   student,
   onStudentSelect,
   onVerificationUpdate,
   onPendingCountUpdate,
   feeStructure,
-}) => {
+}, ref) => {
   const {
     // State
     studentDetailsOpen,
@@ -75,6 +79,30 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
     onVerificationUpdate, // Pass onVerificationUpdate to the hook
     feeStructure,
   });
+
+  // Expose the openStudentDetails function to parent components
+  useImperativeHandle(ref, () => ({
+    openStudentDetails: () => {
+      console.log('ActionsCell: Opening student details modal, current state:', studentDetailsOpen);
+      if (!studentDetailsOpen) {
+        setStudentDetailsOpen(true);
+      } else {
+        console.log('ActionsCell: Modal is already open, ignoring request');
+      }
+    },
+  }));
+
+  // Debug logging for modal state changes
+  React.useEffect(() => {
+    console.log('ActionsCell: studentDetailsOpen changed to:', studentDetailsOpen);
+  }, [studentDetailsOpen]);
+
+  // Debug logging for when the modal is opened via ref
+  React.useEffect(() => {
+    if (studentDetailsOpen) {
+      console.log('ActionsCell: Modal opened, student:', student.student?.first_name, student.student?.last_name);
+    }
+  }, [studentDetailsOpen, student.student?.first_name, student.student?.last_name]);
 
   const handleViewStudentDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -171,4 +199,4 @@ export const ActionsCell: React.FC<ActionsCellProps> = ({
       />
     </TableCell>
   );
-};
+});

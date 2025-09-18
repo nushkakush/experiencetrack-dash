@@ -42,6 +42,13 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
 }) => {
   const { loading } = useStudentDetails({ student });
 
+  // Debug logging
+  console.log('StudentDetailsModal render:', { 
+    open, 
+    studentId: student?.student_id,
+    onOpenChangeType: typeof onOpenChange 
+  });
+
   if (!student || !student.student) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,25 +65,18 @@ export const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      console.log('Dialog onOpenChange called with:', newOpen, 'Current open state:', open);
+      onOpenChange(newOpen);
+    }}>
       <DialogContent
         className='max-w-4xl max-h-[90vh] overflow-y-auto'
         aria-describedby='student-details-description'
       >
         <DialogHeader className='pb-6 border-b'>
-          <div className='flex items-center justify-between'>
-            <DialogTitle className='text-xl font-semibold'>
-              Student Details
-            </DialogTitle>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => onOpenChange(false)}
-              className='text-muted-foreground hover:text-foreground'
-            >
-              <X className='h-4 w-4' />
-            </Button>
-          </div>
+          <DialogTitle className='text-xl font-semibold'>
+            Student Details
+          </DialogTitle>
         </DialogHeader>
 
         <div className='space-y-6 px-6 pb-6'>

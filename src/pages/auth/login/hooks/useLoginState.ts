@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Logger } from '@/lib/logging/Logger';
@@ -14,6 +14,15 @@ export const useLoginState = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check URL parameters on mount
+  useEffect(() => {
+    const showForgotPasswordParam = searchParams.get('showForgotPassword');
+    if (showForgotPasswordParam === 'true') {
+      setShowForgotPassword(true);
+    }
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
