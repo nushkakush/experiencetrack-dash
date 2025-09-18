@@ -78,8 +78,34 @@ const CohortAttendancePage = () => {
   ]);
 
   // Event handlers
-  const handleEpicChange = (epicId: string) => {
+  const handleEpicChange = async (epicId: string) => {
+    console.log('🔄 CohortAttendancePage: Epic changed:', {
+      from: attendanceData.selectedEpic,
+      to: epicId,
+      currentEpic: attendanceData.currentEpic?.id,
+    });
+
     attendanceData.setSelectedEpic(epicId);
+
+    // Refresh data when epic changes
+    console.log(
+      '🔄 CohortAttendancePage: Refreshing data after epic change...'
+    );
+    try {
+      await Promise.all([
+        attendanceData.refetchSessions(),
+        attendanceData.refetchAttendance(),
+        epicAttendanceData.refetchEpicAttendance(),
+      ]);
+      console.log(
+        '✅ CohortAttendancePage: Data refreshed successfully after epic change'
+      );
+    } catch (error) {
+      console.error(
+        '❌ CohortAttendancePage: Error refreshing data after epic change:',
+        error
+      );
+    }
   };
 
   const handleMarkAttendance = (

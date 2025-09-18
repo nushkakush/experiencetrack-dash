@@ -9,6 +9,7 @@ export interface Cohort {
   sessions_per_day: number;
   max_students: number;
   max_leave?: number | null; // Maximum allowed leave days (default: 6)
+  epic_learning_path_id?: string | null; // Reference to epic learning path
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -44,6 +45,7 @@ export interface NewCohortInput {
   sessions_per_day: number;
   max_students: number;
   max_leave?: number;
+  epic_learning_path_id?: string;
 }
 
 export interface NewEpicInput {

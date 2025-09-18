@@ -341,4 +341,21 @@ export class EpicLearningPathsService {
 
     return data;
   }
+
+  /**
+   * Convert Epic Learning Path epics to NewEpicInput format for cohort creation
+   */
+  static async getEpicsForCohortCreation(
+    learningPathId: string,
+    defaultDurationMonths: number = 1
+  ): Promise<{ epic_id: string; duration_months: number }[]> {
+    const learningPath = await this.getEpicLearningPath(learningPathId);
+
+    return learningPath.epics
+      .sort((a, b) => a.order - b.order)
+      .map(epic => ({
+        epic_id: epic.id,
+        duration_months: defaultDurationMonths,
+      }));
+  }
 }

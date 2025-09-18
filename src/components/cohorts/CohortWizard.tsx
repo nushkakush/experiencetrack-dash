@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cohortsService } from '@/services/cohorts.service';
 import { NewCohortInput, NewEpicInput } from '@/types/cohort';
-import EpicsInput from './EpicsInput';
+import EpicLearningPathInput from './EpicLearningPathInput';
 import { cn } from '@/lib/utils';
 
 function toISODate(date: Date) {
@@ -48,9 +48,10 @@ export default function CohortWizard({
   const [description, setDescription] = useState('');
   const [sessionsPerDay, setSessionsPerDay] = useState(1);
   const [maxStudents, setMaxStudents] = useState(50);
-  const [epics, setEpics] = useState<NewEpicInput[]>([
-    { name: '', duration_months: 1 },
-  ]);
+  const [epicLearningData, setEpicLearningData] = useState<{
+    epicLearningPathId?: string;
+    epics?: NewEpicInput[];
+  }>({});
 
   // Track if end date has been manually edited
   const [isEndDateManuallyEdited, setIsEndDateManuallyEdited] = useState(false);
@@ -148,9 +149,10 @@ export default function CohortWizard({
       description: description.trim(),
       sessions_per_day: Number(sessionsPerDay) || 1,
       max_students: Number(maxStudents) || 50,
+      epic_learning_path_id: epicLearningData.epicLearningPathId,
     };
 
-    const filteredEpics = (epics || []).filter(
+    const filteredEpics = (epicLearningData.epics || []).filter(
       e =>
         (e.epic_id || (e.name && e.name.trim())) &&
         (Number(e.duration_months) || 0) > 0
@@ -326,7 +328,10 @@ export default function CohortWizard({
 
       {step === 2 && (
         <div className='space-y-6'>
-          <EpicsInput value={epics} onChange={setEpics} />
+          <EpicLearningPathInput
+            value={epicLearningData}
+            onChange={setEpicLearningData}
+          />
           <div className='flex items-center justify-between'>
             <Button variant='ghost' onClick={() => setStep(1)}>
               Back

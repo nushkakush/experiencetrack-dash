@@ -36,6 +36,10 @@ export const useAttendanceData = (
 
     const loadInitialData = async () => {
       try {
+        // Debug database connection first
+        console.log('🔍 useAttendanceData: Testing database connection...');
+        await AttendanceService.debugDatabaseConnection();
+
         // Load cohort data directly from database
         const { data: cohortData, error: cohortError } = await supabase
           .from('cohorts')
@@ -46,7 +50,19 @@ export const useAttendanceData = (
         if (cohortError) throw cohortError;
 
         // Load epics
+        console.log(
+          '🔄 useAttendanceData: Loading epics for cohort:',
+          cohortId
+        );
         const epicsData = await AttendanceService.getCohortEpics(cohortId);
+        console.log('✅ useAttendanceData: Epics loaded successfully:', {
+          count: epicsData.length,
+          epics: epicsData.map(epic => ({
+            id: epic.id,
+            name: epic.epic?.name || 'Unknown',
+            is_active: epic.is_active,
+          })),
+        });
 
         // Load students
         const { data: studentsData, error: studentsError } = await supabase
@@ -57,6 +73,10 @@ export const useAttendanceData = (
 
         if (studentsError) throw studentsError;
 
+        console.log(
+          '🔄 useAttendanceData: Setting data state with epics:',
+          epicsData.length
+        );
         setData(prev => ({
           ...prev,
           cohort: cohortData,
@@ -68,7 +88,21 @@ export const useAttendanceData = (
         // Set the active epic as selected if available, otherwise the first epic
         if (epicsData.length > 0 && !selectedEpic) {
           const activeEpic = epicsData.find(epic => epic.is_active);
-          setSelectedEpic(activeEpic ? activeEpic.id : epicsData[0].id);
+          const epicToSelect = activeEpic ? activeEpic.id : epicsData[0].id;
+          console.log('🎯 useAttendanceData: Setting selected epic:', {
+            activeEpic: activeEpic?.id,
+            selectedEpic: epicToSelect,
+            epicName: activeEpic?.epic?.name || epicsData[0]?.epic?.name,
+          });
+          setSelectedEpic(epicToSelect);
+        } else {
+          console.log(
+            '⚠️ useAttendanceData: No epics to select or epic already selected:',
+            {
+              epicsCount: epicsData.length,
+              selectedEpic: selectedEpic,
+            }
+          );
         }
       } catch (error) {
         Logger.getInstance().error('Error loading initial data', {
@@ -204,10 +238,13 @@ export const useAttendanceData = (
         {
           event: '*',
           schema: 'public',
-          table: 'attendance_records',
+          table: 'daily_attendance_records',
           filter: `cohort_id=eq.${cohortId} and epic_id=eq.${selectedEpic}`,
         },
         payload => {
+          console.log(
+            '🔄 useAttendanceData: Real-time update received for daily attendance records'
+          );
           // Reload attendance records when they change
           if (context.selectedSession) {
             const loadAttendance = async () => {
@@ -284,16 +321,39 @@ export const useAttendanceData = (
   }, [cohortId, selectedEpic, context.selectedDate, context.selectedSession]);
 
   const refetchAttendance = async () => {
+    console.log(
+      '🔄 useAttendanceData.refetchAttendance: Starting attendance refetch...',
+      {
+        selectedSession: context.selectedSession,
+        selectedEpic: selectedEpic,
+        cohortId: cohortId,
+        selectedDate: context.selectedDate,
+      }
+    );
+
     if (
       !context.selectedSession ||
       !selectedEpic ||
       !cohortId ||
       !context.selectedDate
     ) {
+      console.warn(
+        '⚠️ useAttendanceData.refetchAttendance: Missing required parameters, skipping refetch'
+      );
       return;
     }
 
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
+    console.log(
+      '🔄 useAttendanceData.refetchAttendance: Fetching attendance for:',
+      {
+        cohortId,
+        selectedEpic,
+        contextSelectedSession: context.selectedSession,
+        sessionDate,
+      }
+    );
+
     try {
       const attendanceData = await AttendanceService.getSessionAttendance(
         cohortId,
@@ -302,11 +362,29 @@ export const useAttendanceData = (
         sessionDate
       );
 
+      console.log(
+        '✅ useAttendanceData.refetchAttendance: Attendance data fetched successfully:',
+        {
+          recordsCount: attendanceData?.length || 0,
+          sampleRecord: attendanceData?.[0]
+            ? {
+                studentId: attendanceData[0].student_id,
+                status: attendanceData[0].status,
+                sessionNumber: attendanceData[0].session_number,
+              }
+            : null,
+        }
+      );
+
       setData(prev => ({
         ...prev,
         attendanceRecords: attendanceData,
       }));
     } catch (error) {
+      console.error(
+        '❌ useAttendanceData.refetchAttendance: Error fetching attendance:',
+        error
+      );
       Logger.getInstance().error('Error refetching attendance', {
         error,
         cohortId,
@@ -317,11 +395,32 @@ export const useAttendanceData = (
   };
 
   const refetchSessions = async () => {
+    console.log(
+      '🔄 useAttendanceData.refetchSessions: Starting sessions refetch...',
+      {
+        selectedEpic: selectedEpic,
+        cohortId: cohortId,
+        selectedDate: context.selectedDate,
+      }
+    );
+
     if (!selectedEpic || !cohortId || !context.selectedDate) {
+      console.warn(
+        '⚠️ useAttendanceData.refetchSessions: Missing required parameters, skipping refetch'
+      );
       return;
     }
 
     const sessionDate = format(context.selectedDate, 'yyyy-MM-dd');
+    console.log(
+      '🔄 useAttendanceData.refetchSessions: Fetching sessions for:',
+      {
+        cohortId,
+        selectedEpic,
+        sessionDate,
+      }
+    );
+
     try {
       const sessionInfos = await AttendanceService.getSessionsForDate(
         cohortId,
@@ -329,11 +428,29 @@ export const useAttendanceData = (
         sessionDate
       );
 
+      console.log(
+        '✅ useAttendanceData.refetchSessions: Sessions fetched successfully:',
+        {
+          sessionsCount: sessionInfos?.length || 0,
+          sessions:
+            sessionInfos?.map(session => ({
+              sessionNumber: session.sessionNumber,
+              isCancelled: session.isCancelled,
+              startTime: session.startTime,
+              endTime: session.endTime,
+            })) || [],
+        }
+      );
+
       setData(prev => ({
         ...prev,
         sessions: sessionInfos,
       }));
     } catch (error) {
+      console.error(
+        '❌ useAttendanceData.refetchSessions: Error fetching sessions:',
+        error
+      );
       Logger.getInstance().error('Error refetching sessions', {
         error,
         cohortId,
@@ -344,10 +461,29 @@ export const useAttendanceData = (
   };
 
   const refetchEpics = async () => {
-    if (!cohortId) return;
+    if (!cohortId) {
+      console.log('⚠️ useAttendanceData.refetchEpics: No cohortId provided');
+      return;
+    }
 
+    console.log(
+      '🔄 useAttendanceData.refetchEpics: Refetching epics for cohort:',
+      cohortId
+    );
     try {
       const epicsData = await AttendanceService.getCohortEpics(cohortId);
+      console.log(
+        '✅ useAttendanceData.refetchEpics: Epics refetched successfully:',
+        {
+          count: epicsData.length,
+          epics: epicsData.map(epic => ({
+            id: epic.id,
+            name: epic.epic?.name || 'Unknown',
+            is_active: epic.is_active,
+          })),
+        }
+      );
+
       setData(prev => ({
         ...prev,
         epics: epicsData,
@@ -359,15 +495,55 @@ export const useAttendanceData = (
       );
       if (!currentEpicExists) {
         const activeEpic = epicsData.find(epic => epic.is_active);
-        setSelectedEpic(activeEpic ? activeEpic.id : epicsData[0]?.id || '');
+        const newSelectedEpic = activeEpic
+          ? activeEpic.id
+          : epicsData[0]?.id || '';
+        console.log(
+          '🔄 useAttendanceData.refetchEpics: Updating selected epic:',
+          {
+            oldSelectedEpic: selectedEpic,
+            newSelectedEpic: newSelectedEpic,
+            reason: 'current selection no longer valid',
+          }
+        );
+        setSelectedEpic(newSelectedEpic);
+      } else {
+        console.log(
+          '✅ useAttendanceData.refetchEpics: Current selected epic still valid:',
+          selectedEpic
+        );
       }
     } catch (error) {
+      console.error(
+        '❌ useAttendanceData.refetchEpics: Error refetching epics:',
+        error
+      );
       Logger.getInstance().error('Error refetching epics', { error, cohortId });
     }
   };
 
   const getCurrentEpic = () => {
-    return data.epics.find(epic => epic.id === selectedEpic) || null;
+    const currentEpic =
+      data.epics.find(epic => epic.id === selectedEpic) || null;
+    console.log(
+      '🔍 useAttendanceData.getCurrentEpic: Calculating current epic:',
+      {
+        selectedEpic: selectedEpic,
+        epicsCount: data.epics.length,
+        epics: data.epics.map(epic => ({
+          id: epic.id,
+          name: epic.epic?.name || epic.name,
+        })),
+        currentEpic: currentEpic
+          ? {
+              id: currentEpic.id,
+              name: currentEpic.epic?.name || currentEpic.name,
+              is_active: currentEpic.is_active,
+            }
+          : null,
+      }
+    );
+    return currentEpic;
   };
 
   return {

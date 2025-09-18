@@ -161,30 +161,70 @@ export class AttendanceCalculator {
     return streak;
   }
 
-  // Get session statistics
+  // Get session statistics from new daily structure
   async getSessionStats(params: SessionStatsParams): Promise<SessionStats> {
     const { cohortId, epicId, sessionDate, sessionNumber } = params;
 
-    // Get attendance records for this session
-    console.log('Debug - Query parameters:', {
-      cohortId,
-      epicId,
-      sessionDate,
-      sessionNumber,
-    });
+    console.log(
+      '🔍 AttendanceCalculator.getSessionStats: Getting session stats from daily structure:',
+      {
+        cohortId,
+        epicId,
+        sessionDate,
+        sessionNumber,
+      }
+    );
 
-    const { data: records, error } = await this.supabase
-      .from('attendance_records')
+    // Get daily attendance record for this session
+    const { data: dailyRecord, error: dailyError } = await this.supabase
+      .from('daily_attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
       .eq('epic_id', epicId)
       .eq('session_date', sessionDate)
-      .eq('session_number', sessionNumber);
+      .single();
 
-    console.log('Debug - Query returned records:', records?.length || 0);
-    console.log('Debug - Query error:', error);
+    if (dailyError && dailyError.code !== 'PGRST116') {
+      console.error('Error fetching daily record:', dailyError);
+      throw dailyError;
+    }
 
-    if (error) throw error;
+    let records: any[] = [];
+
+    if (dailyRecord) {
+      // Extract session data from daily record
+      const session = dailyRecord.attendance_data?.sessions?.find(
+        (s: any) => s.session_number === sessionNumber
+      );
+
+      if (session && session.students) {
+        // Convert to individual records format for compatibility
+        records = Object.entries(session.students).map(
+          ([studentId, studentData]: [string, any]) => ({
+            id: `${dailyRecord.id}-${sessionNumber}-${studentId}`,
+            student_id: studentId,
+            cohort_id: cohortId,
+            epic_id: epicId,
+            session_number: sessionNumber,
+            session_date: sessionDate,
+            status: studentData.status,
+            absence_type: studentData.absence_type,
+            reason: studentData.reason,
+            marked_by: session.marked_by,
+            created_at: dailyRecord.created_at,
+            updated_at: studentData.marked_at,
+          })
+        );
+      }
+    }
+
+    console.log(
+      '✅ AttendanceCalculator.getSessionStats: Converted daily record to individual records:',
+      {
+        dailyRecordFound: !!dailyRecord,
+        individualRecords: records.length,
+      }
+    );
 
     // Get total students in cohort
     const { data: students, error: studentsError } = await this.supabase
@@ -221,14 +261,17 @@ export class AttendanceCalculator {
     };
   }
 
-  // Get epic statistics
+  // Get epic statistics from new daily structure
   async getEpicStats(params: EpicStatsParams): Promise<EpicStats> {
-    console.log('🔄 getEpicStats called with params:', params);
+    console.log(
+      '🔄 getEpicStats called with params (using daily structure):',
+      params
+    );
     const { cohortId, epicId, dateFrom, dateTo } = params;
 
-    // Build query
+    // Build query for daily attendance records
     let query = this.supabase
-      .from('attendance_records')
+      .from('daily_attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
       .eq('epic_id', epicId);
@@ -240,8 +283,45 @@ export class AttendanceCalculator {
       query = query.lte('session_date', dateTo);
     }
 
-    const { data: records, error } = await query;
+    const { data: dailyRecords, error } = await query;
     if (error) throw error;
+
+    // Convert daily records to individual attendance records for compatibility
+    const records: any[] = [];
+    (dailyRecords || []).forEach(dailyRecord => {
+      const sessions = dailyRecord.attendance_data?.sessions || [];
+
+      sessions.forEach(session => {
+        const students = session.students || {};
+
+        Object.entries(students).forEach(
+          ([studentId, studentData]: [string, any]) => {
+            records.push({
+              id: `${dailyRecord.id}-${session.session_number}-${studentId}`,
+              student_id: studentId,
+              cohort_id: cohortId,
+              epic_id: epicId,
+              session_number: session.session_number,
+              session_date: dailyRecord.session_date,
+              status: studentData.status,
+              absence_type: studentData.absence_type,
+              reason: studentData.reason,
+              marked_by: session.marked_by,
+              created_at: dailyRecord.created_at,
+              updated_at: studentData.marked_at,
+            });
+          }
+        );
+      });
+    });
+
+    console.log(
+      '✅ getEpicStats: Converted daily records to individual records:',
+      {
+        dailyRecords: dailyRecords?.length || 0,
+        individualRecords: records.length,
+      }
+    );
 
     // Get total students
     const { data: students, error: studentsError } = await this.supabase
@@ -319,27 +399,39 @@ export class AttendanceCalculator {
     };
   }
 
-  // Get calendar data for a month using optimized database function
+  // Get calendar data for a month using optimized database function (updated for daily structure)
   async getCalendarData(params: CalendarDataParams): Promise<CalendarData> {
     const { cohortId, epicId, month } = params;
 
-    console.log('🔍 getCalendarData called with:', { cohortId, epicId, month });
+    console.log('🔍 getCalendarData called with (using daily structure):', {
+      cohortId,
+      epicId,
+      month,
+    });
 
     try {
-      // Use the optimized database function instead of fetching all records
-      const { data: records, error: recordsError } = await this.supabase
-        .rpc('get_attendance_calendar_data', {
+      // Use the new optimized database function for daily records
+      const { data: records, error: recordsError } = await this.supabase.rpc(
+        'get_daily_attendance_calendar_data',
+        {
           p_cohort_id: cohortId,
           p_epic_id: epicId,
-          p_month: month
-        });
+          p_month: month,
+        }
+      );
 
       if (recordsError) {
-        console.error('❌ Error fetching calendar data:', recordsError);
+        console.error(
+          '❌ Error fetching calendar data from daily structure:',
+          recordsError
+        );
         throw recordsError;
       }
 
-      console.log('🔍 Calendar data fetched from database function:', records?.length || 0);
+      console.log(
+        '🔍 Calendar data fetched from daily database function:',
+        records?.length || 0
+      );
 
       console.log('📊 Found attendance sessions:', records?.length || 0);
       if (records && records.length > 0) {
@@ -374,8 +466,10 @@ export class AttendanceCalculator {
         const presentCount = Number(sessionSummary.present_count);
         const lateCount = Number(sessionSummary.late_count);
         const absentCount = Number(sessionSummary.absent_count);
-        const attendancePercentage = Number(sessionSummary.attendance_percentage);
-        
+        const attendancePercentage = Number(
+          sessionSummary.attendance_percentage
+        );
+
         sessionsByDate.get(date)!.push({
           sessionNumber: sessionSummary.session_number,
           sessionDate: sessionSummary.session_date,
@@ -455,7 +549,10 @@ export class AttendanceCalculator {
 
       // Calculate monthly stats
       const daysWithAttendance = days.filter(d => d.totalSessions > 0).length;
-      const totalSessions = days.reduce((sum, day) => sum + day.totalSessions, 0);
+      const totalSessions = days.reduce(
+        (sum, day) => sum + day.totalSessions,
+        0
+      );
       const averageAttendance =
         days.length > 0
           ? days.reduce((sum, day) => sum + day.overallAttendance, 0) /
@@ -582,23 +679,48 @@ export class AttendanceCalculator {
 
     if (studentError) throw studentError;
 
-    // Get student's attendance records
-    let query = this.supabase
-      .from('attendance_records')
+    // Get student's attendance records from daily structure
+    let dailyQuery = this.supabase
+      .from('daily_attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
-      .eq('epic_id', epicId)
-      .eq('student_id', studentId);
+      .eq('epic_id', epicId);
 
     if (dateFrom) {
-      query = query.gte('session_date', dateFrom);
+      dailyQuery = dailyQuery.gte('session_date', dateFrom);
     }
     if (dateTo) {
-      query = query.lte('session_date', dateTo);
+      dailyQuery = dailyQuery.lte('session_date', dateTo);
     }
 
-    const { data: records, error } = await query;
-    if (error) throw error;
+    const { data: dailyRecords, error: dailyError } = await dailyQuery;
+    if (dailyError) throw dailyError;
+
+    // Convert to individual records and filter for this student
+    const records: any[] = [];
+    (dailyRecords || []).forEach(dailyRecord => {
+      const sessions = dailyRecord.attendance_data?.sessions || [];
+
+      sessions.forEach(session => {
+        const studentData = session.students?.[studentId];
+        if (studentData) {
+          records.push({
+            id: `${dailyRecord.id}-${session.session_number}-${studentId}`,
+            student_id: studentId,
+            cohort_id: cohortId,
+            epic_id: epicId,
+            session_number: session.session_number,
+            session_date: dailyRecord.session_date,
+            status: studentData.status,
+            absence_type: studentData.absence_type,
+            reason: studentData.reason,
+            marked_by: session.marked_by,
+            created_at: dailyRecord.created_at,
+            updated_at: studentData.marked_at,
+          });
+        }
+      });
+    });
 
     // Get total students for accurate percentage calculation
     const { data: allStudents, error: studentsError } = await this.supabase
@@ -805,9 +927,9 @@ export class AttendanceCalculator {
 
     console.log('✅ Students found:', students?.length || 0);
 
-    // Get all attendance records for the epic
+    // Get all daily attendance records for the epic
     let query = this.supabase
-      .from('attendance_records')
+      .from('daily_attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
       .eq('epic_id', epicId);
@@ -819,8 +941,37 @@ export class AttendanceCalculator {
       query = query.lte('session_date', dateTo);
     }
 
-    const { data: records, error } = await query;
+    const { data: dailyRecords, error } = await query;
     if (error) throw error;
+
+    // Convert daily records to individual attendance records
+    const records: any[] = [];
+    (dailyRecords || []).forEach(dailyRecord => {
+      const sessions = dailyRecord.attendance_data?.sessions || [];
+
+      sessions.forEach(session => {
+        const students = session.students || {};
+
+        Object.entries(students).forEach(
+          ([studentId, studentData]: [string, any]) => {
+            records.push({
+              id: `${dailyRecord.id}-${session.session_number}-${studentId}`,
+              student_id: studentId,
+              cohort_id: cohortId,
+              epic_id: epicId,
+              session_number: session.session_number,
+              session_date: dailyRecord.session_date,
+              status: studentData.status,
+              absence_type: studentData.absence_type,
+              reason: studentData.reason,
+              marked_by: session.marked_by,
+              created_at: dailyRecord.created_at,
+              updated_at: studentData.marked_at,
+            });
+          }
+        );
+      });
+    });
 
     console.log('✅ Attendance records found:', records?.length || 0);
     console.log(
@@ -876,16 +1027,47 @@ export class AttendanceCalculator {
 
     if (studentError) throw studentError;
 
-    // Get student's attendance records
-    const { data: records, error } = await this.supabase
-      .from('attendance_records')
+    // Get student's attendance records from daily structure
+    const { data: dailyRecords, error } = await this.supabase
+      .from('daily_attendance_records')
       .select('*')
       .eq('cohort_id', cohortId)
       .eq('epic_id', epicId)
-      .eq('student_id', studentId)
       .order('session_date', { ascending: false });
 
     if (error) throw error;
+
+    // Convert to individual records and filter for this student
+    const records: any[] = [];
+    (dailyRecords || []).forEach(dailyRecord => {
+      const sessions = dailyRecord.attendance_data?.sessions || [];
+
+      sessions.forEach(session => {
+        const studentData = session.students?.[studentId];
+        if (studentData) {
+          records.push({
+            id: `${dailyRecord.id}-${session.session_number}-${studentId}`,
+            student_id: studentId,
+            cohort_id: cohortId,
+            epic_id: epicId,
+            session_number: session.session_number,
+            session_date: dailyRecord.session_date,
+            status: studentData.status,
+            absence_type: studentData.absence_type,
+            reason: studentData.reason,
+            marked_by: session.marked_by,
+            created_at: dailyRecord.created_at,
+            updated_at: studentData.marked_at,
+          });
+        }
+      });
+    });
+
+    // Sort by session_date descending for streak calculation
+    records.sort(
+      (a, b) =>
+        new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
+    );
 
     const currentStreak = this.calculateCurrentStreak(records || []);
     const longestStreak = this.calculateLongestStreak(records || []);

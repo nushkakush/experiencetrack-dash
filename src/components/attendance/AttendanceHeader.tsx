@@ -71,6 +71,19 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
   onAttendanceImported,
   onAttendanceDataChanged,
 }) => {
+  // Debug logging for epic selector
+  console.log('🔍 AttendanceHeader: Component rendered with props:', {
+    cohort: cohort ? { id: cohort.id, name: cohort.name } : null,
+    epicsCount: epics?.length || 0,
+    epics:
+      epics?.map(epic => ({
+        id: epic.id,
+        name: epic.epic?.name || epic.name || 'Unknown',
+        is_active: epic.is_active,
+      })) || [],
+    selectedEpic: selectedEpic,
+    hasOnEpicChange: !!onEpicChange,
+  });
   const navigate = useNavigate();
   const [settingActiveEpic, setSettingActiveEpic] = useState(false);
   const [leaveManagementOpen, setLeaveManagementOpen] = useState(false);
@@ -319,16 +332,58 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
             </BulkAttendanceUploadDialog>
           )} */}
           <div className='flex items-center gap-2'>
-            <Select value={selectedEpic} onValueChange={onEpicChange}>
+            <Select
+              value={selectedEpic}
+              onValueChange={value => {
+                console.log('🔄 AttendanceHeader: Epic selection changed:', {
+                  from: selectedEpic,
+                  to: value,
+                  availableEpics: epics?.map(epic => epic.id) || [],
+                });
+                onEpicChange(value);
+              }}
+            >
               <SelectTrigger className='w-[250px]'>
                 <SelectValue placeholder='Select epic' />
               </SelectTrigger>
               <SelectContent>
-                {epics.map(epic => (
-                  <SelectItem key={epic.id} value={epic.id}>
-                    {epic.name}
-                  </SelectItem>
-                ))}
+                {(() => {
+                  console.log('🔍 AttendanceHeader: Rendering epic options:', {
+                    epicsCount: epics?.length || 0,
+                    epics:
+                      epics?.map(epic => ({
+                        id: epic.id,
+                        name: epic.epic?.name || epic.name || 'Unknown',
+                        displayName: epic.epic?.name || epic.name || 'Unknown',
+                      })) || [],
+                  });
+
+                  if (!epics || epics.length === 0) {
+                    console.warn(
+                      '⚠️ AttendanceHeader: No epics available for rendering'
+                    );
+                    return (
+                      <SelectItem value='no-epics' disabled>
+                        No epics available
+                      </SelectItem>
+                    );
+                  }
+
+                  return epics.map(epic => {
+                    const displayName =
+                      epic.epic?.name || epic.name || 'Unknown';
+                    console.log('🔍 AttendanceHeader: Rendering epic option:', {
+                      id: epic.id,
+                      displayName: displayName,
+                      is_active: epic.is_active,
+                    });
+                    return (
+                      <SelectItem key={epic.id} value={epic.id}>
+                        {displayName}
+                      </SelectItem>
+                    );
+                  });
+                })()}
               </SelectContent>
             </Select>
 

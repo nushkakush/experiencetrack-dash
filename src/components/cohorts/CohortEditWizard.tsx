@@ -14,7 +14,7 @@ import {
   NewEpicInput,
   CohortEpic,
 } from '@/types/cohort';
-import EpicsInput from './EpicsInput';
+import EpicLearningPathInput from './EpicLearningPathInput';
 import { cn } from '@/lib/utils';
 
 function toISODate(date: Date) {
@@ -53,7 +53,12 @@ export default function CohortEditWizard({
   const [description, setDescription] = useState(cohort.description || '');
   const [sessionsPerDay, setSessionsPerDay] = useState(cohort.sessions_per_day);
   const [maxStudents, setMaxStudents] = useState(cohort.max_students || 50);
-  const [epics, setEpics] = useState<NewEpicInput[]>([]);
+  const [epicLearningData, setEpicLearningData] = useState<{
+    epicLearningPathId?: string;
+    epics?: NewEpicInput[];
+  }>({
+    epicLearningPathId: cohort.epic_learning_path_id || undefined,
+  });
 
   // Track if end date has been manually edited
   const [isEndDateManuallyEdited, setIsEndDateManuallyEdited] = useState(false);
@@ -69,11 +74,17 @@ export default function CohortEditWizard({
             name: epic.epic?.name,
             duration_months: epic.duration_months,
           }));
-          setEpics(existingEpics);
+          setEpicLearningData(prev => ({
+            ...prev,
+            epics: existingEpics,
+          }));
         }
       } catch (error) {
         console.error('Error loading epics:', error);
-        setEpics([{ name: '', duration_months: 1 }]);
+        setEpicLearningData(prev => ({
+          ...prev,
+          epics: [{ name: '', duration_months: 1 }],
+        }));
       }
     };
     loadEpics();
@@ -165,9 +176,10 @@ export default function CohortEditWizard({
         description: description.trim(),
         sessions_per_day: Number(sessionsPerDay) || 1,
         max_students: Number(maxStudents) || 50,
+        epic_learning_path_id: epicLearningData.epicLearningPathId,
       };
 
-      const filteredEpics = (epics || []).filter(
+      const filteredEpics = (epicLearningData.epics || []).filter(
         e =>
           (e.epic_id || e.name?.trim()) && (Number(e.duration_months) || 0) > 0
       );
@@ -383,7 +395,10 @@ export default function CohortEditWizard({
 
       {step === 2 && (
         <div className='space-y-6'>
-          <EpicsInput value={epics} onChange={setEpics} />
+          <EpicLearningPathInput
+            value={epicLearningData}
+            onChange={setEpicLearningData}
+          />
           <div className='flex items-center justify-between'>
             <Button variant='ghost' onClick={() => setStep(1)}>
               Back
