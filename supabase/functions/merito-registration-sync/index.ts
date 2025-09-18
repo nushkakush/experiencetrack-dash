@@ -28,7 +28,7 @@ interface MeritoResponse {
  */
 Deno.serve(async (req: Request) => {
   console.log(`🔍 Edge Function called with method: ${req.method}`);
-  
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('✅ Handling CORS preflight request');
@@ -47,7 +47,11 @@ Deno.serve(async (req: Request) => {
 
     // Parse request body
     console.log('📦 Parsing request body...');
-    const { profileId, applicationId, syncType = 'registration' } = await req.json();
+    const {
+      profileId,
+      applicationId,
+      syncType = 'registration',
+    } = await req.json();
     console.log(`📋 Request params:`, { profileId, applicationId, syncType });
 
     if (!profileId || !applicationId) {
@@ -91,19 +95,17 @@ Deno.serve(async (req: Request) => {
 
     if (profileError || !profile) {
       console.error('Profile not found:', profileError);
-      return new Response(
-        JSON.stringify({ error: 'Profile not found' }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Profile not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Fetch application data with cohort information
+    // Fetch application data with cohort and epic learning path information
     const { data: application, error: applicationError } = await supabase
       .from('student_applications')
-      .select(`
+      .select(
+        `
         *,
         cohort:cohorts(
           id,
@@ -111,21 +113,24 @@ Deno.serve(async (req: Request) => {
           description,
           start_date,
           end_date,
-          created_at
+          created_at,
+          epic_learning_path_id,
+          epic_learning_path:epic_learning_paths(
+            id,
+            title
+          )
         )
-      `)
+      `
+      )
       .eq('id', applicationId)
       .single();
 
     if (applicationError || !application) {
       console.error('Application not found:', applicationError);
-      return new Response(
-        JSON.stringify({ error: 'Application not found' }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Application not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Fetch extended profile data (if exists)
@@ -136,38 +141,55 @@ Deno.serve(async (req: Request) => {
         .select('*')
         .eq('profile_id', profileId)
         .single();
-      
+
       extendedProfile = extendedData;
     }
 
     // Clean mobile number
-    const cleanMobile = (phone: string | null | undefined): string | undefined => {
+    const cleanMobile = (
+      phone: string | null | undefined
+    ): string | undefined => {
       if (!phone) return undefined;
       // Remove all non-digit characters
       const digits = phone.replace(/\D/g, '');
       // Remove leading country code if present (91 for India)
-      const cleaned = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
+      const cleaned =
+        digits.startsWith('91') && digits.length === 12
+          ? digits.slice(2)
+          : digits;
       return cleaned.length >= 10 ? cleaned : undefined;
     };
 
     // Clean alphanumeric text (remove special characters)
-    const cleanAlphanumeric = (text: string | null | undefined): string | undefined => {
+    const cleanAlphanumeric = (
+      text: string | null | undefined
+    ): string | undefined => {
       if (!text) return undefined;
       // Remove special characters, keep only alphanumeric and spaces
-      const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      const cleaned = text
+        .replace(/[^a-zA-Z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
       return cleaned || undefined;
     };
 
     // Clean address specifically for Meritto API
-    const cleanAddress = (text: string | null | undefined): string | undefined => {
+    const cleanAddress = (
+      text: string | null | undefined
+    ): string | undefined => {
       if (!text) return undefined;
       // Remove all special characters except spaces, keep only alphanumeric and spaces
-      const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      const cleaned = text
+        .replace(/[^a-zA-Z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
       return cleaned || undefined;
     };
 
     // Clean email (basic validation)
-    const cleanEmail = (email: string | null | undefined): string | undefined => {
+    const cleanEmail = (
+      email: string | null | undefined
+    ): string | undefined => {
       if (!email) return undefined;
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -191,28 +213,55 @@ Deno.serve(async (req: Request) => {
     const mapGender = (gender: string): string | undefined => {
       if (!gender) return undefined;
       switch (gender.toLowerCase()) {
-        case 'male': return 'Male';
-        case 'female': return 'Female';
-        case 'other': return 'Other';
-        default: return undefined;
+        case 'male':
+          return 'Male';
+        case 'female':
+          return 'Female';
+        case 'other':
+          return 'Other';
+        default:
+          return undefined;
       }
     };
 
     const mapMonth = (month: string | number): string | undefined => {
       if (!month) return undefined;
       const monthMap: { [key: string]: string } = {
-        '1': 'January', 'january': 'January', 'jan': 'January',
-        '2': 'February', 'february': 'February', 'feb': 'February',
-        '3': 'March', 'march': 'March', 'mar': 'March',
-        '4': 'April', 'april': 'April', 'apr': 'April',
-        '5': 'May', 'may': 'May',
-        '6': 'June', 'june': 'June', 'jun': 'June',
-        '7': 'July', 'july': 'July', 'jul': 'July',
-        '8': 'August', 'august': 'August', 'aug': 'August',
-        '9': 'September', 'september': 'September', 'sep': 'September',
-        '10': 'October', 'october': 'October', 'oct': 'October',
-        '11': 'November', 'november': 'November', 'nov': 'November',
-        '12': 'December', 'december': 'December', 'dec': 'December',
+        '1': 'January',
+        january: 'January',
+        jan: 'January',
+        '2': 'February',
+        february: 'February',
+        feb: 'February',
+        '3': 'March',
+        march: 'March',
+        mar: 'March',
+        '4': 'April',
+        april: 'April',
+        apr: 'April',
+        '5': 'May',
+        may: 'May',
+        '6': 'June',
+        june: 'June',
+        jun: 'June',
+        '7': 'July',
+        july: 'July',
+        jul: 'July',
+        '8': 'August',
+        august: 'August',
+        aug: 'August',
+        '9': 'September',
+        september: 'September',
+        sep: 'September',
+        '10': 'October',
+        october: 'October',
+        oct: 'October',
+        '11': 'November',
+        november: 'November',
+        nov: 'November',
+        '12': 'December',
+        december: 'December',
+        dec: 'December',
       };
       return monthMap[month.toString().toLowerCase()] || undefined;
     };
@@ -220,14 +269,19 @@ Deno.serve(async (req: Request) => {
     // Determine lead quality based on data completeness
     const determineLeadQuality = (): string => {
       if (!extendedProfile) return 'Medium';
-      
+
       let score = 0;
       if (extendedProfile.current_address) score += 1;
       if (extendedProfile.institution_name) score += 1;
       if (extendedProfile.linkedin_profile) score += 1;
-      if (extendedProfile.has_work_experience && extendedProfile.company_name) score += 2;
-      if (extendedProfile.father_first_name || extendedProfile.mother_first_name) score += 1;
-      
+      if (extendedProfile.has_work_experience && extendedProfile.company_name)
+        score += 2;
+      if (
+        extendedProfile.father_first_name ||
+        extendedProfile.mother_first_name
+      )
+        score += 1;
+
       if (score >= 4) return 'High';
       if (score >= 2) return 'Medium';
       return 'Low';
@@ -236,7 +290,8 @@ Deno.serve(async (req: Request) => {
     // Determine conversion stage
     const determineConversionStage = (): string => {
       if (syncType === 'extended' || extendedProfile) return 'consideration';
-      if (application.status === 'registration_complete') return 'consideration';
+      if (application.status === 'registration_complete')
+        return 'consideration';
       return 'enquiry';
     };
 
@@ -247,12 +302,9 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Add created date information
-    const createdDate = new Date(application.created_at).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric'
-    });
+    // Add created date information - format for Meritto API
+    const applicationDate = new Date(application.created_at);
+    const createdDate = `${applicationDate.getDate().toString().padStart(2, '0')}/${(applicationDate.getMonth() + 1).toString().padStart(2, '0')}/${applicationDate.getFullYear()}`;
 
     // Map application data to Merito lead format
     const leadData: MeritoLeadData = {
@@ -260,14 +312,11 @@ Deno.serve(async (req: Request) => {
       email: profile.email,
       mobile: cleanMobile(profile.phone),
       search_criteria: 'email',
-      name: `${profile.first_name || ''} ${profile.last_name || ''}`.replace(/[^a-zA-Z\s]/g, '').trim() || 'Unknown User',
-      
-      // Required fields from metadata
-      enquiry: application.enquiry || 'Registration enquiry',
-      question: application.question || 'No specific questions',
-      specialization: 'Software Development', // Default specialization
-      campus: 'Bangalore', // Default campus
-      course: 'Software Development', // Required course field
+      name:
+        `${profile.first_name || ''} ${profile.last_name || ''}`
+          .replace(/[^a-zA-Z\s]/g, '')
+          .trim() || 'Unknown User',
+      course: 'Creator Marketer', // Fixed course value for Meritto API
       user_date: createdDate,
     };
 
@@ -276,116 +325,235 @@ Deno.serve(async (req: Request) => {
       // Basic profile fields (always include these)
       // Temporarily disabled due to MERITTO API validation error
       // addFieldIfExists(leadData, 'cf_date_of_birth', formatDateOfBirth(profile.date_of_birth));
-      addFieldIfExists(leadData, 'cf_specify_your_gender', mapGender(extendedProfile.gender || profile.gender));
-      addFieldIfExists(leadData, 'cf_where_do_you_live', cleanAlphanumeric(extendedProfile.current_city || profile.location));
-      addFieldIfExists(leadData, 'cf_state', cleanAlphanumeric(extendedProfile.state || profile.state));
-      addFieldIfExists(leadData, 'cf_city', cleanAlphanumeric(extendedProfile.city || profile.city));
-      addFieldIfExists(leadData, 'cf_current_address', cleanAddress(extendedProfile.current_address || profile.address));
-      addFieldIfExists(leadData, 'cf_postal_zip_code', extendedProfile.postal_zip_code || profile.pincode);
-      
+      addFieldIfExists(
+        leadData,
+        'cf_specify_your_gender',
+        mapGender(extendedProfile.gender || profile.gender)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_where_do_you_live',
+        cleanAlphanumeric(extendedProfile.current_city || profile.location)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_state',
+        cleanAlphanumeric(extendedProfile.state || profile.state)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_city',
+        cleanAlphanumeric(extendedProfile.city || profile.city)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_current_address',
+        cleanAddress(extendedProfile.current_address || profile.address)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_postal_zip_code',
+        extendedProfile.postal_zip_code || profile.pincode
+      );
+
       // Education info
-      addFieldIfExists(leadData, 'cf_highest_education_level', extendedProfile.qualification);
-      addFieldIfExists(leadData, 'cf_field_of_study', extendedProfile.field_of_study);
-      addFieldIfExists(leadData, 'cf_institution_name', extendedProfile.institution_name);
-      addFieldIfExists(leadData, 'cf_graduation_year', extendedProfile.graduation_year?.toString());
-      addFieldIfExists(leadData, 'cf_graduation_month_new', mapMonth(extendedProfile.graduation_month));
-      
+      addFieldIfExists(
+        leadData,
+        'cf_highest_education_level',
+        extendedProfile.qualification
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_field_of_study',
+        extendedProfile.field_of_study
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_institution_name',
+        extendedProfile.institution_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_graduation_year',
+        extendedProfile.graduation_year?.toString()
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_graduation_month_new',
+        mapMonth(extendedProfile.graduation_month)
+      );
+
       // Work experience
-      addFieldIfExists(leadData, 'cf_do_you_have_work_experience', extendedProfile.has_work_experience ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_work_experience_type', extendedProfile.work_experience_type);
-      addFieldIfExists(leadData, 'cf_company_name', extendedProfile.company_name);
-      addFieldIfExists(leadData, 'cf_job_description', extendedProfile.job_description);
-      addFieldIfExists(leadData, 'cf_work_start_year', extendedProfile.work_start_year?.toString());
-      addFieldIfExists(leadData, 'cf_work_end_month_new', mapMonth(extendedProfile.work_end_month));
-      
+      addFieldIfExists(
+        leadData,
+        'cf_do_you_have_work_experience',
+        extendedProfile.has_work_experience ? 'Yes' : 'No'
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_work_experience_type',
+        extendedProfile.work_experience_type
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_company_name',
+        extendedProfile.company_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_job_description',
+        extendedProfile.job_description
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_work_start_year',
+        extendedProfile.work_start_year?.toString()
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_work_end_month_new',
+        mapMonth(extendedProfile.work_end_month)
+      );
+
       // Family information
-      addFieldIfExists(leadData, 'cf_fathers_first_name', extendedProfile.father_first_name);
-      addFieldIfExists(leadData, 'cf_fathers_last_name', extendedProfile.father_last_name);
-      addFieldIfExists(leadData, 'cf_fathers_contact_number', cleanMobile(extendedProfile.father_contact_no));
-      addFieldIfExists(leadData, 'cf_fathers_occupation', extendedProfile.father_occupation);
-      
-      addFieldIfExists(leadData, 'cf_mothers_first_name', extendedProfile.mother_first_name);
-      addFieldIfExists(leadData, 'cf_mothers_last_name', extendedProfile.mother_last_name);
-      addFieldIfExists(leadData, 'cf_mothers_contact_number', cleanMobile(extendedProfile.mother_contact_no));
-      addFieldIfExists(leadData, 'cf_mothers_occupation', extendedProfile.mother_occupation);
-      
+      addFieldIfExists(
+        leadData,
+        'cf_fathers_first_name',
+        extendedProfile.father_first_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_fathers_last_name',
+        extendedProfile.father_last_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_fathers_contact_number',
+        cleanMobile(extendedProfile.father_contact_no)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_fathers_occupation',
+        extendedProfile.father_occupation
+      );
+
+      addFieldIfExists(
+        leadData,
+        'cf_mothers_first_name',
+        extendedProfile.mother_first_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_mothers_last_name',
+        extendedProfile.mother_last_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_mothers_contact_number',
+        cleanMobile(extendedProfile.mother_contact_no)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_mothers_occupation',
+        extendedProfile.mother_occupation
+      );
+
       // Social profiles
-      addFieldIfExists(leadData, 'cf_linkedin_profile', extendedProfile.linkedin_profile);
-      addFieldIfExists(leadData, 'cf_instagram_id', extendedProfile.instagram_id);
-      
+      addFieldIfExists(
+        leadData,
+        'cf_linkedin_profile',
+        extendedProfile.linkedin_profile
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_instagram_id',
+        extendedProfile.instagram_id
+      );
+
       // Financial aid information
-      addFieldIfExists(leadData, 'cf_have_you_applied_for_financial_aid', extendedProfile.applied_financial_aid ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_who_applied_for_this_loan', extendedProfile.loan_applicant);
+      addFieldIfExists(
+        leadData,
+        'cf_have_you_applied_for_financial_aid',
+        extendedProfile.applied_financial_aid ? 'Yes' : 'No'
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_who_applied_for_this_loan',
+        extendedProfile.loan_applicant
+      );
       addFieldIfExists(leadData, 'cf_type_of_loan', extendedProfile.loan_type);
       addFieldIfExists(leadData, 'cf_loan_amount', extendedProfile.loan_amount);
       addFieldIfExists(leadData, 'cf_cibil_score', extendedProfile.cibil_score);
-      addFieldIfExists(leadData, 'cf_family_income', cleanAlphanumeric(extendedProfile.family_income));
-      
+      addFieldIfExists(
+        leadData,
+        'cf_family_income',
+        cleanAlphanumeric(extendedProfile.family_income)
+      );
+
       // Professional info - map from profile if not in extended profile
-      const professionalStatus = extendedProfile.professional_status || profile.professional_status;
+      const professionalStatus =
+        extendedProfile.professional_status || profile.professional_status;
       if (professionalStatus) {
-        const mappedStatus = professionalStatus === 'student' ? 'A Student' : 'Working Professional';
+        const mappedStatus =
+          professionalStatus === 'student'
+            ? 'A Student'
+            : 'Working Professional';
         addFieldIfExists(leadData, 'cf_i_am', mappedStatus);
       }
-      addFieldIfExists(leadData, 'cf_can_you_relocate_to_bangalore_for_this_program', extendedProfile.relocation_possible ? 'Yes' : 'No');
-      addFieldIfExists(leadData, 'cf_do_you_have_1_or_2_years_of_your_time_for_your_future', extendedProfile.investment_willing ? 'Yes' : 'No');
-      
+      addFieldIfExists(
+        leadData,
+        'cf_can_you_relocate_to_bangalore_for_this_program',
+        extendedProfile.relocation_possible ? 'Yes' : 'No'
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_do_you_have_1_or_2_years_of_your_time_for_your_future',
+        extendedProfile.investment_willing ? 'Yes' : 'No'
+      );
+
       // Emergency contact - using correct field names from metadata
-      addFieldIfExists(leadData, 'cf_emergency_contact_first_name_new', extendedProfile.emergency_first_name);
-      addFieldIfExists(leadData, 'cf_emergency_contact_last_name', extendedProfile.emergency_last_name);
-      addFieldIfExists(leadData, 'cf_emergency_contact_number', cleanMobile(extendedProfile.emergency_contact_no));
-      addFieldIfExists(leadData, 'cf_relationship', extendedProfile.emergency_relationship);
+      addFieldIfExists(
+        leadData,
+        'cf_emergency_contact_first_name_new',
+        extendedProfile.emergency_first_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_emergency_contact_last_name',
+        extendedProfile.emergency_last_name
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_emergency_contact_number',
+        cleanMobile(extendedProfile.emergency_contact_no)
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_relationship',
+        extendedProfile.emergency_relationship
+      );
     }
 
     // Add UTM tracking (if available)
     addFieldIfExists(leadData, 'source', application.utm_source);
     addFieldIfExists(leadData, 'medium', application.utm_medium);
     addFieldIfExists(leadData, 'campaign', application.utm_campaign);
-    
+
     // Add application status and metadata
-    addFieldIfExists(leadData, 'application_status', syncType === 'extended' ? 'registration_completed' : application.status);
-    
-    // Add cohort information
-    const cohortName = application.cohort?.name || `Cohort ${application.cohort_id}`;
-    const cohortDescription = application.cohort?.description || '';
-    const cohortStartDate = application.cohort?.start_date || '';
-    
-    // Enhanced notes with cohort and date information
-    const notes = [
-      `${syncType === 'extended' ? 'Extended ' : ''}Registration for ${cohortName}`,
-      `Status: ${application.status}`,
-      `Applied: ${createdDate}`,
-      cohortDescription ? `Cohort: ${cohortDescription}` : '',
-      cohortStartDate ? `Start Date: ${new Date(cohortStartDate).toLocaleDateString('en-GB')}` : ''
-    ].filter(Boolean).join(' - ');
-    
-    addFieldIfExists(leadData, 'notes', notes);
-    addFieldIfExists(leadData, 'phone', profile.phone);
-    
-    // Add standard Meritto fields for cohort information only
-    // Use cohort ID for dropdown field, not name
+    addFieldIfExists(
+      leadData,
+      'application_status',
+      syncType === 'extended' ? 'registration_completed' : application.status
+    );
+
+    // Add cohort information - use cohort ID for cf_cohort
     addFieldIfExists(leadData, 'cf_cohort', application.cohort_id);
-    // Use correct course field from metadata
-    addFieldIfExists(leadData, 'cf_preferred_course', 'Full Stack Marketer');
     addFieldIfExists(leadData, 'cf_created_on', createdDate);
     addFieldIfExists(leadData, 'cf_created_by', 'System Registration');
-    
-    // Add country using correct field name from metadata
-    const country = profile.country || (extendedProfile?.state ? 'India' : 'India');
-    addFieldIfExists(leadData, 'cf_country_names', country);
-    
+
     // Add lead quality and conversion stage
     leadData.lead_quality = determineLeadQuality();
     leadData.conversion_stage = determineConversionStage();
-
-    // Add required specialization field - try different common names
-    addFieldIfExists(leadData, 'specialization', 'Software Development');
-
-    // Add other potentially required fields with sensible defaults
-    addFieldIfExists(leadData, 'cf_lead_name', leadData.name);
-    addFieldIfExists(leadData, 'cf_form_name', 'Registration Form');
-    addFieldIfExists(leadData, 'cf_career_goals', extendedProfile?.career_goals || 'Career advancement in technology');
-    addFieldIfExists(leadData, 'cf_please_tell_us_what_youd_like_to_enquire_about', application.enquiry || 'Registration enquiry');
 
     console.log(`🚀 Syncing to Merito (${syncType}):`, {
       email: leadData.email,
@@ -394,85 +562,102 @@ Deno.serve(async (req: Request) => {
       status: application.status,
       cohortId: application.cohort_id,
       cohortName: cohortName,
-      course: leadData.cf_preferred_course,
+      course: leadData.course,
+      epicLearningPathTitle: application.cohort?.epic_learning_path?.title,
       country: leadData.cf_country_names,
       created_on: leadData.cf_created_on,
       created_by: leadData.cf_created_by,
       hasExtendedProfile: !!extendedProfile,
       leadQuality: leadData.lead_quality,
-      conversionStage: leadData.conversion_stage
+      conversionStage: leadData.conversion_stage,
     });
-    
+
     console.log('📋 Full leadData payload:', JSON.stringify(leadData, null, 2));
-    console.log(`🔍 Sync type: ${syncType}, Application status: ${application.status}, Profile data:`, {
-      profileId: profile.id,
-      email: profile.email,
-      extendedProfileExists: !!extendedProfile,
-      applicationId: application.id
-    });
-    
+    console.log(
+      `🔍 Sync type: ${syncType}, Application status: ${application.status}, Profile data:`,
+      {
+        profileId: profile.id,
+        email: profile.email,
+        extendedProfileExists: !!extendedProfile,
+        applicationId: application.id,
+      }
+    );
+
     // Debug: Log the cleaned address specifically
     console.log('🏠 Address cleaning debug:', {
       original: extendedProfile?.current_address,
       cleaned: cleanAddress(extendedProfile?.current_address),
-      profileAddress: profile?.address
+      profileAddress: profile?.address,
     });
 
     // Remove duplicate phone field - mobile is already set
-    if (leadData.phone && leadData.mobile && leadData.phone === leadData.mobile) {
+    if (
+      leadData.phone &&
+      leadData.mobile &&
+      leadData.phone === leadData.mobile
+    ) {
       delete leadData.phone;
     }
 
     // Make API call to Merito
-    const response = await fetch('https://api.nopaperforms.io/lead/v1/createOrUpdate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'secret-key': secretKey,
-        'access-key': accessKey,
-      },
-      body: JSON.stringify(leadData),
-    });
+    const response = await fetch(
+      'https://api.nopaperforms.io/lead/v1/createOrUpdate',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'secret-key': secretKey,
+          'access-key': accessKey,
+        },
+        body: JSON.stringify(leadData),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Merito API error response (${response.status}):`, errorText);
-      throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
+      console.error(
+        `❌ Merito API error response (${response.status}):`,
+        errorText
+      );
+      throw new Error(
+        `HTTP error! status: ${response.status}, response: ${errorText}`
+      );
     }
 
     const result: MeritoResponse = await response.json();
-    
+
     if (!result.status) {
       throw new Error(`Merito API error: ${result.message}`);
     }
 
-    console.log(`✅ Registration synced to Merito CRM. Lead ID: ${result.data.lead_id}`);
+    console.log(
+      `✅ Registration synced to Merito CRM. Lead ID: ${result.data.lead_id}`
+    );
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         leadId: result.data.lead_id,
-        message: 'Registration synced to Merito successfully'
+        message: 'Registration synced to Merito successfully',
       }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-
   } catch (error) {
     console.error('❌ Failed to sync registration to Merito:', error);
     console.error('❌ Error details:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
     });
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Failed to sync to Merito',
         details: error.message,
-        type: error.name
+        type: error.name,
       }),
       {
         status: 500,

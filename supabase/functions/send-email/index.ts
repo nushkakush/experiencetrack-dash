@@ -323,13 +323,24 @@ LIT OS Team`;
       `;
     }
 
-    // SendGrid configuration
-    const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY');
+    // SendGrid configuration - try multiple possible environment variable names
+    const sendgridApiKey =
+      Deno.env.get('SENDGRID_API_KEY') ||
+      Deno.env.get('SENDGRID_KEY') ||
+      Deno.env.get('SENDGRID_TOKEN');
     const emailSender = getEmailSender(requestData.type, requestData.context);
 
+    console.log('SendGrid API Key check:', {
+      hasKey: !!sendgridApiKey,
+      keyLength: sendgridApiKey?.length || 0,
+      keyPrefix: sendgridApiKey?.substring(0, 10) || 'not found',
+    });
+
     if (!sendgridApiKey) {
-      console.error('SendGrid API key not configured');
-      
+      console.error(
+        'SendGrid API key not configured. Checked: SENDGRID_API_KEY, SENDGRID_KEY, SENDGRID_TOKEN'
+      );
+
       // Log the failed email attempt
       try {
         await supabase.from('email_logs').insert({
@@ -341,35 +352,17 @@ LIT OS Team`;
           recipient_name: recipientName,
           context: requestData.context,
           status: 'failed',
-          error_message: 'SendGrid not configured',
+          error_message: 'SendGrid API key not found in environment variables',
           ai_enhanced: requestData.enhanceWithAI || false,
         });
       } catch (logError) {
         console.error('Failed to log email failure:', logError);
       }
 
-      // If SendGrid is not configured, just return the invitation URL for invitations
-      if (
-        requestData.type === 'invitation' ||
-        requestData.type === 'user_invitation' ||
-        requestData.type === 'verification'
-      ) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'Email service not configured - invitation URL provided',
-            invitationUrl,
-            emailSent: false,
-            note: 'SendGrid not configured - email not sent',
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      } else {
-        throw new Error('SendGrid not configured - cannot send custom emails');
-      }
+      // Always throw an error for missing SendGrid configuration to ensure we know when emails aren't being sent
+      throw new Error(
+        'SendGrid API key not configured. Please add SENDGRID_API_KEY to environment variables.'
+      );
     }
 
     // Debug logging
@@ -425,10 +418,18 @@ LIT OS Team`;
 
     if (!sendgridResponse.ok) {
       const errorText = await sendgridResponse.text();
-      console.error('SendGrid error:', errorText);
-      console.error('SendGrid status:', sendgridResponse.status);
-      console.error('Email data:', JSON.stringify(emailData, null, 2));
-      
+      console.error('SendGrid error details:', {
+        status: sendgridResponse.status,
+        statusText: sendgridResponse.statusText,
+        error: errorText,
+        recipient: email,
+        subject: emailSubject,
+      });
+      console.error(
+        'Email data sent to SendGrid:',
+        JSON.stringify(emailData, null, 2)
+      );
+
       // Log the failed email attempt
       try {
         await supabase.from('email_logs').insert({
@@ -446,7 +447,7 @@ LIT OS Team`;
       } catch (logError) {
         console.error('Failed to log email failure:', logError);
       }
-      
+
       throw new Error(
         `Failed to send email: ${sendgridResponse.status} - ${errorText}`
       );

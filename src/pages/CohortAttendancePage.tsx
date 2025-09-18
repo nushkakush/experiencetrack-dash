@@ -124,17 +124,51 @@ const CohortAttendancePage = () => {
     try {
       const sessionDate = format(pageState.selectedDate, 'yyyy-MM-dd');
 
-      // Delete the attendance record for this student, session, and date
-      const { error } = await supabase
-        .from('attendance_records')
-        .delete()
+      // Get the current daily attendance record
+      const { data: dailyRecord, error: fetchError } = await supabase
+        .from('daily_attendance_records')
+        .select('*')
         .eq('cohort_id', cohortId)
         .eq('epic_id', attendanceData.selectedEpic)
-        .eq('session_number', pageState.selectedSession)
         .eq('session_date', sessionDate)
-        .eq('student_id', studentId);
+        .single();
 
-      if (error) throw error;
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          // No record found, nothing to reset
+          return;
+        }
+        throw fetchError;
+      }
+
+      // Update the attendance data to remove the student from the session
+      const updatedData = { ...dailyRecord.attendance_data };
+      const sessionIndex = updatedData.sessions.findIndex(
+        s => s.session_number === pageState.selectedSession
+      );
+
+      if (
+        sessionIndex !== -1 &&
+        updatedData.sessions[sessionIndex].students[studentId]
+      ) {
+        // Remove the student from the session
+        delete updatedData.sessions[sessionIndex].students[studentId];
+
+        // Update the session data
+        updatedData.sessions[sessionIndex].marked_at = new Date().toISOString();
+        updatedData.sessions[sessionIndex].marked_by = dailyRecord.marked_by;
+
+        // Update the daily record
+        const { error: updateError } = await supabase
+          .from('daily_attendance_records')
+          .update({
+            attendance_data: updatedData,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', dailyRecord.id);
+
+        if (updateError) throw updateError;
+      }
 
       // Refresh all data immediately
       await Promise.all([

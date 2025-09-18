@@ -201,10 +201,44 @@ export class AttendanceService {
     const currentUser = (await supabase.auth.getUser()).data.user;
     const userId = currentUser?.id;
 
+    // Get profile ID from profiles table using auth user ID
+    let profileId = null;
+    if (userId) {
+      console.log(
+        '🔍 AttendanceService.markAttendance: Looking up profile for user ID:',
+        userId
+      );
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (profileError) {
+        console.error(
+          '❌ AttendanceService.markAttendance: Error fetching profile:',
+          profileError
+        );
+      } else {
+        console.log(
+          '✅ AttendanceService.markAttendance: Found profile:',
+          profile
+        );
+        profileId = profile?.id;
+      }
+    } else {
+      console.warn('⚠️ AttendanceService.markAttendance: No user ID available');
+    }
+
     if (!dailyRecord) {
       // Create new daily record
       console.log(
         '📝 AttendanceService.markAttendance: Creating new daily record'
+      );
+
+      console.log(
+        '🔍 AttendanceService.markAttendance: Using profileId for marked_by:',
+        profileId
       );
 
       const newRecord: Partial<DailyAttendanceRecord> = {
@@ -229,7 +263,7 @@ export class AttendanceService {
             },
           ],
         },
-        marked_by: userId || '',
+        marked_by: profileId || null,
       };
 
       const { data: insertedRecord, error: insertError } = await supabase
@@ -295,11 +329,16 @@ export class AttendanceService {
       // Sort sessions by session_number
       updatedData.sessions.sort((a, b) => a.session_number - b.session_number);
 
+      console.log(
+        '🔍 AttendanceService.markAttendance: Using profileId for marked_by (update):',
+        profileId
+      );
+
       const { data: updatedRecord, error: updateError } = await supabase
         .from('daily_attendance_records')
         .update({
           attendance_data: updatedData,
-          marked_by: userId || '',
+          marked_by: profileId || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', dailyRecord.id)
