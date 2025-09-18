@@ -20,8 +20,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useCohorts } from '@/hooks/useCohorts';
-import { useStudents } from '@/hooks/useStudents';
+import { usePublicCohorts } from '@/hooks/usePublicCohorts';
+import { usePublicStudents } from '@/hooks/usePublicStudents';
 import { useBlacklistedStudents } from '@/hooks/equipment/useEquipment';
 import { IssuanceFormData } from '../schemas/issuanceFormSchema';
 
@@ -33,11 +33,11 @@ export const CohortStudentSelection: React.FC<CohortStudentSelectionProps> = ({
   form,
 }) => {
   const {
-    cohorts,
+    data: cohorts,
     isLoading: cohortsLoading,
     error: cohortsError,
-  } = useCohorts();
-  const { data: students } = useStudents(form.watch('cohort_id'));
+  } = usePublicCohorts();
+  const { data: students } = usePublicStudents(form.watch('cohort_id'));
   const { data: blacklistedStudents = [] } = useBlacklistedStudents();
   const [searchTerm, setSearchTerm] = useState('');
 
