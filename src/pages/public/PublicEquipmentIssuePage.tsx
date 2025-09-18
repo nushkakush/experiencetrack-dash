@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCohorts } from '@/hooks/useCohorts';
-import { useStudents } from '@/hooks/useStudents';
+import { usePublicCohorts } from '@/hooks/usePublicCohorts';
+import { usePublicStudents } from '@/hooks/usePublicStudents';
 import { useEquipment } from '@/hooks/equipment/useEquipment';
 import { useCreateBorrowing } from '@/hooks/equipment/useEquipment';
 import { CreateBorrowingFormData } from '@/types/equipment';
@@ -42,8 +42,8 @@ const PublicEquipmentIssuePage = () => {
   });
 
   const formData = form.watch();
-  const { cohorts } = useCohorts();
-  const { data: students } = useStudents(formData.cohort_id);
+  const { data: cohorts } = usePublicCohorts();
+  const { data: students } = usePublicStudents(formData.cohort_id);
   const { data: equipmentData } = useEquipment(1, 100, {
     availability_status: 'available',
   });
