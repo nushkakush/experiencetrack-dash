@@ -170,7 +170,7 @@ export const EquipmentSelection: React.FC<EquipmentSelectionProps> = ({
                       return (
                         <div
                           key={equipment.id}
-                          className={`flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${
+                          className={`flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${
                             isSelected
                               ? 'border-primary bg-primary/5'
                               : 'border-border hover:border-primary/50'
@@ -178,7 +178,7 @@ export const EquipmentSelection: React.FC<EquipmentSelectionProps> = ({
                           onClick={() => handleEquipmentToggle(equipment.id)}
                         >
                           {/* Equipment Image */}
-                          <div className='flex-shrink-0'>
+                          <div className='flex-shrink-0 self-start'>
                             {equipment.images && equipment.images.length > 0 ? (
                               <img
                                 src={equipment.images[0]}
@@ -193,13 +193,13 @@ export const EquipmentSelection: React.FC<EquipmentSelectionProps> = ({
                           </div>
 
                           {/* Equipment Details */}
-                          <div className='flex-1 min-w-0'>
-                            <div className='flex justify-between items-start'>
+                          <div className='flex-1 min-w-0 w-full'>
+                            <div className='flex flex-col space-y-2'>
                               <div className='flex-1 min-w-0'>
-                                <div className='font-medium truncate'>
+                                <div className='font-medium text-sm sm:text-base break-words'>
                                   {equipment.name}
                                 </div>
-                                <p className='text-sm text-muted-foreground truncate'>
+                                <p className='text-sm text-muted-foreground break-words'>
                                   {equipment.description}
                                 </p>
                                 {equipment.serial_number && (
@@ -208,7 +208,7 @@ export const EquipmentSelection: React.FC<EquipmentSelectionProps> = ({
                                   </p>
                                 )}
                               </div>
-                              <div className='flex gap-2 ml-4 flex-shrink-0'>
+                              <div className='flex flex-wrap gap-1 sm:gap-2'>
                                 {equipment.category?.name && (
                                   <Badge variant='outline' className='text-xs'>
                                     {equipment.category.name}

@@ -130,7 +130,7 @@ const PublicEquipmentIssuePage = () => {
   };
 
   return (
-    <div className='min-h-screen bg-background py-8 px-4'>
+    <div className='min-h-screen bg-background py-4 sm:py-8 px-2 sm:px-4'>
       <div className='max-w-4xl mx-auto'>
         {/* Header */}
         <div className='text-center mb-8'>
@@ -147,11 +147,11 @@ const PublicEquipmentIssuePage = () => {
 
         {/* Progress Steps */}
         <div className='flex justify-center mb-8'>
-          <div className='flex items-center space-x-4'>
+          <div className='flex items-center space-x-2 sm:space-x-4'>
             {[1, 2, 3, 4].map(step => (
               <div key={step} className='flex items-center'>
                 <div
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 ${
                     getStepStatus(step) === 'completed'
                       ? 'bg-green-500 border-green-500 text-white'
                       : getStepStatus(step) === 'current'
@@ -160,14 +160,14 @@ const PublicEquipmentIssuePage = () => {
                   }`}
                 >
                   {getStepStatus(step) === 'completed' ? (
-                    <CheckCircle className='h-5 w-5' />
+                    <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5' />
                   ) : (
-                    <span className='font-semibold'>{step}</span>
+                    <span className='font-semibold text-sm sm:text-base'>{step}</span>
                   )}
                 </div>
                 {step < 4 && (
                   <div
-                    className={`w-16 h-0.5 mx-2 ${
+                    className={`w-8 sm:w-16 h-0.5 mx-1 sm:mx-2 ${
                       getStepStatus(step) === 'completed'
                         ? 'bg-green-500'
                         : 'bg-border'
@@ -181,9 +181,9 @@ const PublicEquipmentIssuePage = () => {
 
         {/* Step Labels */}
         <div className='flex justify-center mb-8'>
-          <div className='flex space-x-16'>
+          <div className='flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-x-8 md:gap-x-16'>
             <span
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium text-center ${
                 getStepStatus(1) === 'current'
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -192,7 +192,7 @@ const PublicEquipmentIssuePage = () => {
               Select Student
             </span>
             <span
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium text-center ${
                 getStepStatus(2) === 'current'
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -201,7 +201,7 @@ const PublicEquipmentIssuePage = () => {
               Select Equipment
             </span>
             <span
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium text-center ${
                 getStepStatus(3) === 'current'
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -210,7 +210,7 @@ const PublicEquipmentIssuePage = () => {
               Borrowing Details
             </span>
             <span
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium text-center ${
                 getStepStatus(4) === 'current'
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -256,7 +256,7 @@ const PublicEquipmentIssuePage = () => {
           </Card>
         ) : (
           <Card className='shadow-lg'>
-            <CardContent className='p-6'>
+            <CardContent className='p-4 sm:p-6'>
               <FormProvider {...form}>
                 {currentStep === 1 && (
                   <div className='space-y-6'>
