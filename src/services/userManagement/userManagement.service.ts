@@ -20,7 +20,7 @@ export class UserManagementService {
     params: UserSearchParams
   ): Promise<UserSearchResponse> {
     console.log('🔍 [SERVICE] searchUsers called with params:', params);
-    
+
     const {
       page = 1,
       pageSize = 10,
@@ -40,11 +40,11 @@ export class UserManagementService {
       dateFrom,
       dateTo,
       page,
-      pageSize
+      pageSize,
     });
 
     // Get existing users from profiles table (excluding students)
-    let profilesQuery = supabase
+    const profilesQuery = supabase
       .from('profiles')
       .select('*', { count: 'exact' })
       .neq('role', 'student'); // Exclude students
@@ -61,9 +61,16 @@ export class UserManagementService {
 
     console.log('🔍 [SERVICE] Fetched users from database:', {
       count: users?.length || 0,
-      users: users?.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, role: u.role, status: u.status, created_at: u.created_at })) || []
+      users:
+        users?.map(u => ({
+          id: u.id,
+          name: `${u.first_name} ${u.last_name}`,
+          role: u.role,
+          status: u.status,
+          created_at: u.created_at,
+        })) || [],
     });
-    
+
     // Log all unique roles in the database
     const uniqueRoles = [...new Set(users?.map(u => u.role) || [])];
     console.log('🔍 [SERVICE] Available roles in database:', uniqueRoles);
@@ -71,7 +78,7 @@ export class UserManagementService {
     // Get invitations
     let invitations: unknown[] = [];
     let invitationsCount = 0;
-    let invitationsQuery = supabase
+    const invitationsQuery = supabase
       .from('user_invitations')
       .select('*', { count: 'exact' })
       .in('invite_status', ['pending', 'sent']); // Include both pending and sent invitations
@@ -93,7 +100,14 @@ export class UserManagementService {
 
     console.log('🔍 [SERVICE] Fetched invitations from database:', {
       count: invitations?.length || 0,
-      invitations: invitations?.map(i => ({ id: i.id, name: `${i.first_name} ${i.last_name}`, role: i.role, status: 'invited', created_at: i.created_at })) || []
+      invitations:
+        invitations?.map(i => ({
+          id: i.id,
+          name: `${i.first_name} ${i.last_name}`,
+          role: i.role,
+          status: 'invited',
+          created_at: i.created_at,
+        })) || [],
     });
 
     // Convert invitations to user-like format for display
@@ -133,45 +147,67 @@ export class UserManagementService {
       statuses,
       dateFrom,
       dateTo,
-      totalUsersBeforeFilter: allUsers.length
+      totalUsersBeforeFilter: allUsers.length,
     });
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const beforeCount = allUsers.length;
-      allUsers = allUsers.filter(user => 
-        (user.first_name?.toLowerCase().includes(searchLower)) ||
-        (user.last_name?.toLowerCase().includes(searchLower)) ||
-        (user.email?.toLowerCase().includes(searchLower)) ||
-        (user.role?.toLowerCase().includes(searchLower))
+      allUsers = allUsers.filter(
+        user =>
+          user.first_name?.toLowerCase().includes(searchLower) ||
+          user.last_name?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower) ||
+          user.role?.toLowerCase().includes(searchLower)
       );
-      console.log('🔍 [DEBUG] Search filter applied:', { beforeCount, afterCount: allUsers.length });
+      console.log('🔍 [DEBUG] Search filter applied:', {
+        beforeCount,
+        afterCount: allUsers.length,
+      });
     }
 
     if (roles && roles.length > 0) {
       const beforeCount = allUsers.length;
       allUsers = allUsers.filter(user => roles.includes(user.role));
-      console.log('🔍 [DEBUG] Role filter applied:', { roles, beforeCount, afterCount: allUsers.length });
+      console.log('🔍 [DEBUG] Role filter applied:', {
+        roles,
+        beforeCount,
+        afterCount: allUsers.length,
+      });
     }
 
     if (statuses && statuses.length > 0) {
       const beforeCount = allUsers.length;
       allUsers = allUsers.filter(user => statuses.includes(user.status));
-      console.log('🔍 [DEBUG] Status filter applied:', { statuses, beforeCount, afterCount: allUsers.length });
+      console.log('🔍 [DEBUG] Status filter applied:', {
+        statuses,
+        beforeCount,
+        afterCount: allUsers.length,
+      });
     }
 
     if (dateFrom) {
       const fromDate = new Date(dateFrom);
       const beforeCount = allUsers.length;
       allUsers = allUsers.filter(user => new Date(user.created_at) >= fromDate);
-      console.log('🔍 [DEBUG] Date from filter applied:', { dateFrom, fromDate, beforeCount, afterCount: allUsers.length });
+      console.log('🔍 [DEBUG] Date from filter applied:', {
+        dateFrom,
+        fromDate,
+        beforeCount,
+        afterCount: allUsers.length,
+      });
     }
 
     if (dateTo) {
       const toDate = new Date(dateTo);
       const beforeCount = allUsers.length;
       allUsers = allUsers.filter(user => new Date(user.created_at) <= toDate);
-      console.log('🔍 [DEBUG] Date to filter applied:', { dateTo, toDate, beforeCount, afterCount: allUsers.length });
+      console.log('🔍 [DEBUG] Date to filter applied:', {
+        dateTo,
+        toDate,
+        beforeCount,
+        afterCount: allUsers.length,
+      });
     }
 
     // Sort combined results
@@ -199,13 +235,13 @@ export class UserManagementService {
       paginatedUsers: paginatedUsers.length,
       total,
       hasInvitedUsers: paginatedUsers.some(u => u.status === 'invited'),
-      finalUsers: paginatedUsers.map(u => ({ 
-        id: u.user_id, 
-        name: `${u.first_name} ${u.last_name}`, 
-        role: u.role, 
-        status: u.status, 
-        created_at: u.created_at 
-      }))
+      finalUsers: paginatedUsers.map(u => ({
+        id: u.user_id,
+        name: `${u.first_name} ${u.last_name}`,
+        role: u.role,
+        status: u.status,
+        created_at: u.created_at,
+      })),
     });
 
     return {

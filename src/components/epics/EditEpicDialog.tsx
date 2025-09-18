@@ -40,8 +40,12 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>(epic.avatar_url || '');
-  const [bannerPreview, setBannerPreview] = useState<string>(epic.banner_url || '');
+  const [avatarPreview, setAvatarPreview] = useState<string>(
+    epic.avatar_url || ''
+  );
+  const [bannerPreview, setBannerPreview] = useState<string>(
+    epic.banner_url || ''
+  );
 
   const { toast } = useToast();
 
@@ -59,26 +63,26 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
     setBannerFile(null);
   }, [epic]);
 
-  const handleInputChange = (field: keyof UpdateEpicRequest, value: string | string[]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof UpdateEpicRequest,
+    value: string | string[]
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (
-    file: File | null,
-    type: 'avatar' | 'banner'
-  ) => {
+  const handleFileChange = (file: File | null, type: 'avatar' | 'banner') => {
     if (type === 'avatar') {
       setAvatarFile(file);
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => setAvatarPreview(e.target?.result as string);
+        reader.onload = e => setAvatarPreview(e.target?.result as string);
         reader.readAsDataURL(file);
       }
     } else {
       setBannerFile(file);
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => setBannerPreview(e.target?.result as string);
+        reader.onload = e => setBannerPreview(e.target?.result as string);
         reader.readAsDataURL(file);
       }
     }
@@ -96,7 +100,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name?.trim()) {
       toast({
         title: 'Error',
@@ -109,7 +113,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
     try {
       setLoading(true);
 
-      let updateData: UpdateEpicRequest = { ...formData };
+      const updateData: UpdateEpicRequest = { ...formData };
 
       // Upload new images if provided
       if (avatarFile) {
@@ -184,7 +188,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
                       type='file'
                       accept='image/*'
                       className='hidden'
-                      onChange={(e) =>
+                      onChange={e =>
                         handleFileChange(e.target.files?.[0] || null, 'avatar')
                       }
                     />
@@ -204,7 +208,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
               <Input
                 id='name'
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={e => handleInputChange('name', e.target.value)}
                 placeholder='Enter epic name'
                 required
               />
@@ -215,7 +219,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
               <Input
                 id='subject'
                 value={formData.subject}
-                onChange={(e) => handleInputChange('subject', e.target.value)}
+                onChange={e => handleInputChange('subject', e.target.value)}
                 placeholder='Enter subject (e.g., Mathematics, Science, Programming)'
               />
             </div>
@@ -225,7 +229,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
               <Textarea
                 id='description'
                 value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                onChange={e => handleInputChange('description', e.target.value)}
                 placeholder='Describe the epic...'
                 rows={3}
               />
@@ -233,7 +237,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
 
             <BulletedInput
               value={formData.outcomes}
-              onChange={(value) => handleInputChange('outcomes', value)}
+              onChange={value => handleInputChange('outcomes', value)}
               placeholder='What will learners achieve from this epic?'
               label='Learning Outcomes'
             />
@@ -279,7 +283,7 @@ export const EditEpicDialog: React.FC<EditEpicDialogProps> = ({
                       type='file'
                       accept='image/*'
                       className='hidden'
-                      onChange={(e) =>
+                      onChange={e =>
                         handleFileChange(e.target.files?.[0] || null, 'banner')
                       }
                     />
