@@ -54,10 +54,21 @@ Deno.serve(async (req: Request) => {
     } = await req.json();
     console.log(`📋 Request params:`, { profileId, applicationId, syncType });
 
-    if (!profileId || !applicationId) {
-      console.log('❌ Missing required parameters');
+    if (!profileId) {
+      console.log('❌ Missing required parameter: profileId');
+      return new Response(JSON.stringify({ error: 'profileId is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // For realtime sync, applicationId might be missing - we'll find it later
+    if (!applicationId && syncType !== 'realtime') {
+      console.log('❌ Missing required parameter: applicationId');
       return new Response(
-        JSON.stringify({ error: 'profileId and applicationId are required' }),
+        JSON.stringify({
+          error: 'applicationId is required for non-realtime sync',
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -102,28 +113,75 @@ Deno.serve(async (req: Request) => {
     }
 
     // Fetch application data with cohort and epic learning path information
-    const { data: application, error: applicationError } = await supabase
-      .from('student_applications')
-      .select(
-        `
-        *,
-        cohort:cohorts(
-          id,
-          name,
-          description,
-          start_date,
-          end_date,
-          created_at,
-          epic_learning_path_id,
-          epic_learning_path:epic_learning_paths(
+    let application;
+    let applicationError;
+
+    if (applicationId) {
+      // If applicationId is provided, fetch by ID
+      const result = await supabase
+        .from('student_applications')
+        .select(
+          `
+          *,
+          cohort:cohorts(
             id,
-            title
+            cohort_id,
+            name,
+            description,
+            start_date,
+            end_date,
+            created_at,
+            epic_learning_path_id,
+            epic_learning_path:epic_learning_paths(
+              id,
+              title
+            )
           )
+        `
         )
-      `
-      )
-      .eq('id', applicationId)
-      .single();
+        .eq('id', applicationId)
+        .single();
+
+      application = result.data;
+      applicationError = result.error;
+    } else if (syncType === 'realtime') {
+      // For realtime sync without applicationId, find the most recent application for this profile
+      console.log('🔍 Finding most recent application for profile...');
+      const result = await supabase
+        .from('student_applications')
+        .select(
+          `
+          *,
+          cohort:cohorts(
+            id,
+            cohort_id,
+            name,
+            description,
+            start_date,
+            end_date,
+            created_at,
+            epic_learning_path_id,
+            epic_learning_path:epic_learning_paths(
+              id,
+              title
+            )
+          )
+        `
+        )
+        .eq('profile_id', profileId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      application = result.data;
+      applicationError = result.error;
+
+      if (application) {
+        console.log(
+          `✅ Found application for realtime sync: ${application.id}`
+        );
+      }
+    }
 
     if (applicationError || !application) {
       console.error('Application not found:', applicationError);
@@ -287,8 +345,11 @@ Deno.serve(async (req: Request) => {
       return 'Low';
     };
 
-    // Determine conversion stage
+    // Determine conversion stage based on sync type
     const determineConversionStage = (): string => {
+      if (syncType === 'initial_registration') {
+        return 'enquiry'; // Initial registration is just an enquiry
+      }
       if (syncType === 'extended' || extendedProfile) return 'consideration';
       if (application.status === 'registration_complete')
         return 'consideration';
@@ -316,7 +377,7 @@ Deno.serve(async (req: Request) => {
         `${profile.first_name || ''} ${profile.last_name || ''}`
           .replace(/[^a-zA-Z\s]/g, '')
           .trim() || 'Unknown User',
-      course: 'Creator Marketer', // Fixed course value for Meritto API
+      // course: 'Creator Marketer', // Commented out until Meritto fixes course validation
       user_date: createdDate,
     };
 
@@ -361,6 +422,11 @@ Deno.serve(async (req: Request) => {
         leadData,
         'cf_highest_education_level',
         extendedProfile.qualification
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_qualification',
+        extendedProfile.qualification || profile.qualification
       );
       addFieldIfExists(
         leadData,
@@ -539,17 +605,22 @@ Deno.serve(async (req: Request) => {
     addFieldIfExists(leadData, 'medium', application.utm_medium);
     addFieldIfExists(leadData, 'campaign', application.utm_campaign);
 
-    // Add application status and metadata
-    addFieldIfExists(
-      leadData,
-      'application_status',
-      syncType === 'extended' ? 'registration_completed' : application.status
-    );
+    // Add application status and metadata based on sync type
+    let applicationStatus = application.status;
+    if (syncType === 'initial_registration') {
+      applicationStatus = 'registration_initiated'; // Initial registration status
+    } else if (syncType === 'extended') {
+      applicationStatus = 'registration_completed';
+    }
+    addFieldIfExists(leadData, 'application_status', applicationStatus);
 
-    // Add cohort information - use cohort ID for cf_cohort
-    addFieldIfExists(leadData, 'cf_cohort', application.cohort_id);
+    // Add cohort information - use cohort_id from cohorts table
+    addFieldIfExists(leadData, 'cf_cohort', application.cohort?.cohort_id);
     addFieldIfExists(leadData, 'cf_created_on', createdDate);
     addFieldIfExists(leadData, 'cf_created_by', 'System Registration');
+
+    // Add qualification from basic profile (available in registration form)
+    addFieldIfExists(leadData, 'cf_qualification', profile.qualification);
 
     // Add lead quality and conversion stage
     leadData.lead_quality = determineLeadQuality();
@@ -597,6 +668,19 @@ Deno.serve(async (req: Request) => {
       leadData.phone === leadData.mobile
     ) {
       delete leadData.phone;
+    }
+
+    // Determine sync behavior based on syncType
+    if (syncType === 'initial_registration') {
+      // For initial registration, always create the lead
+      // This happens when user first registers (before email confirmation)
+      console.log('🚀 Initial registration - creating lead in Meritto');
+    } else {
+      // For other sync types (registration completion, extended, etc.)
+      // This happens after email confirmation + password setup
+      console.log(
+        '🔄 Registration completion - updating existing lead in Meritto'
+      );
     }
 
     // Make API call to Merito
