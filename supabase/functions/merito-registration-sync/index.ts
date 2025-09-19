@@ -29,6 +29,14 @@ interface MeritoResponse {
 Deno.serve(async (req: Request) => {
   console.log(`🔍 Edge Function called with method: ${req.method}`);
 
+  // Handle test endpoint for debugging all fields
+  if (
+    req.method === 'GET' &&
+    new URL(req.url).pathname.includes('/test-all-fields')
+  ) {
+    return handleTestAllFields();
+  }
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('✅ Handling CORS preflight request');
@@ -62,12 +70,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // For realtime sync, applicationId might be missing - we'll find it later
-    if (!applicationId && syncType !== 'realtime') {
+    // For realtime and extended sync, applicationId might be missing - we'll find it later
+    if (!applicationId && syncType !== 'realtime' && syncType !== 'extended') {
       console.log('❌ Missing required parameter: applicationId');
       return new Response(
         JSON.stringify({
-          error: 'applicationId is required for non-realtime sync',
+          error: 'applicationId is required for non-realtime/non-extended sync',
         }),
         {
           status: 400,
@@ -144,9 +152,11 @@ Deno.serve(async (req: Request) => {
 
       application = result.data;
       applicationError = result.error;
-    } else if (syncType === 'realtime') {
-      // For realtime sync without applicationId, find the most recent application for this profile
-      console.log('🔍 Finding most recent application for profile...');
+    } else if (syncType === 'realtime' || syncType === 'extended') {
+      // For realtime/extended sync without applicationId, find the most recent application for this profile
+      console.log(
+        `🔍 Finding most recent application for profile (${syncType} sync)...`
+      );
       const result = await supabase
         .from('student_applications')
         .select(
@@ -178,7 +188,7 @@ Deno.serve(async (req: Request) => {
 
       if (application) {
         console.log(
-          `✅ Found application for realtime sync: ${application.id}`
+          `✅ Found application for ${syncType} sync: ${application.id}`
         );
       }
     }
@@ -229,6 +239,50 @@ Deno.serve(async (req: Request) => {
         .replace(/\s+/g, ' ')
         .trim();
       return cleaned || undefined;
+    };
+
+    // Format family income for Meritto (alphanumeric only constraint)
+    const formatFamilyIncome = (
+      income: string | null | undefined
+    ): string | undefined => {
+      if (!income) return undefined;
+
+      // Handle common dropdown formats and convert to alphanumeric format
+      const incomeMap: { [key: string]: string } = {
+        '5 00 000 10 00 000': '500000to1000000',
+        '10 00 000 20 00 000': '1000000to2000000',
+        '20 00 000 30 00 000': '2000000to3000000',
+        '30 00 000 50 00 000': '3000000to5000000',
+        '50 00 000 1 00 00 000': '5000000to10000000',
+        'above 1 00 00 000': 'above10000000',
+        'below 5 00 000': 'below500000',
+        // Handle variations with different spacing/formatting
+        '500000 1000000': '500000to1000000',
+        '1000000 2000000': '1000000to2000000',
+        '2000000 3000000': '2000000to3000000',
+        '3000000 5000000': '3000000to5000000',
+        '5000000 10000000': '5000000to10000000',
+        // Handle comma-separated formats
+        '5,00,000-10,00,000': '500000to1000000',
+        '10,00,000-20,00,000': '1000000to2000000',
+        '20,00,000-30,00,000': '2000000to3000000',
+        '30,00,000-50,00,000': '3000000to5000000',
+        '50,00,000-1,00,00,000': '5000000to10000000',
+      };
+
+      // Normalize the input by removing extra spaces and converting to lowercase
+      const normalized = income.toLowerCase().replace(/\s+/g, ' ').trim();
+
+      // Check if we have a direct mapping
+      if (incomeMap[normalized]) {
+        return incomeMap[normalized];
+      }
+
+      // If no direct mapping found, clean to alphanumeric only
+      // Remove all non-alphanumeric characters and convert to a readable format
+      const cleaned = income.replace(/[^a-zA-Z0-9]/g, '');
+
+      return cleaned || 'notspecified'; // Return cleaned or default if cleaning fails
     };
 
     // Clean address specifically for Meritto API
@@ -284,31 +338,45 @@ Deno.serve(async (req: Request) => {
 
     const mapMonth = (month: string | number): string | undefined => {
       if (!month) return undefined;
+
+      // Convert to string and handle both padded (01, 02) and unpadded (1, 2) formats
+      const monthStr = month.toString().toLowerCase();
+      const monthNum = parseInt(monthStr, 10);
+
       const monthMap: { [key: string]: string } = {
         '1': 'January',
+        '01': 'January',
         january: 'January',
         jan: 'January',
         '2': 'February',
+        '02': 'February',
         february: 'February',
         feb: 'February',
         '3': 'March',
+        '03': 'March',
         march: 'March',
         mar: 'March',
         '4': 'April',
+        '04': 'April',
         april: 'April',
         apr: 'April',
         '5': 'May',
+        '05': 'May',
         may: 'May',
         '6': 'June',
+        '06': 'June',
         june: 'June',
         jun: 'June',
         '7': 'July',
+        '07': 'July',
         july: 'July',
         jul: 'July',
         '8': 'August',
+        '08': 'August',
         august: 'August',
         aug: 'August',
         '9': 'September',
+        '09': 'September',
         september: 'September',
         sep: 'September',
         '10': 'October',
@@ -321,7 +389,18 @@ Deno.serve(async (req: Request) => {
         december: 'December',
         dec: 'December',
       };
-      return monthMap[month.toString().toLowerCase()] || undefined;
+
+      // First try direct mapping
+      if (monthMap[monthStr]) {
+        return monthMap[monthStr];
+      }
+
+      // If direct mapping fails, try using the parsed number
+      if (monthNum >= 1 && monthNum <= 12) {
+        return monthMap[monthNum.toString()];
+      }
+
+      return undefined;
     };
 
     // Determine lead quality based on data completeness
@@ -377,15 +456,19 @@ Deno.serve(async (req: Request) => {
         `${profile.first_name || ''} ${profile.last_name || ''}`
           .replace(/[^a-zA-Z\s]/g, '')
           .trim() || 'Unknown User',
-      // course: 'Creator Marketer', // Commented out until Meritto fixes course validation
       user_date: createdDate,
     };
 
     // Add extended profile fields only if they exist and have values
     if (extendedProfile) {
       // Basic profile fields (always include these)
-      // Temporarily disabled due to MERITTO API validation error
-      // addFieldIfExists(leadData, 'cf_date_of_birth', formatDateOfBirth(profile.date_of_birth));
+      addFieldIfExists(
+        leadData,
+        'cf_date_of_birth',
+        formatDateOfBirth(
+          extendedProfile.date_of_birth || profile.date_of_birth
+        )
+      );
       addFieldIfExists(
         leadData,
         'cf_specify_your_gender',
@@ -477,6 +560,11 @@ Deno.serve(async (req: Request) => {
       );
       addFieldIfExists(
         leadData,
+        'cf_work_end_year',
+        extendedProfile.work_end_year?.toString()
+      );
+      addFieldIfExists(
+        leadData,
         'cf_work_end_month_new',
         mapMonth(extendedProfile.work_end_month)
       );
@@ -502,6 +590,11 @@ Deno.serve(async (req: Request) => {
         'cf_fathers_occupation',
         extendedProfile.father_occupation
       );
+      addFieldIfExists(
+        leadData,
+        'cf_fathers_email',
+        extendedProfile.father_email
+      );
 
       addFieldIfExists(
         leadData,
@@ -522,6 +615,11 @@ Deno.serve(async (req: Request) => {
         leadData,
         'cf_mothers_occupation',
         extendedProfile.mother_occupation
+      );
+      addFieldIfExists(
+        leadData,
+        'cf_mothers_email',
+        extendedProfile.mother_email
       );
 
       // Social profiles
@@ -553,7 +651,7 @@ Deno.serve(async (req: Request) => {
       addFieldIfExists(
         leadData,
         'cf_family_income',
-        cleanAlphanumeric(extendedProfile.family_income)
+        formatFamilyIncome(extendedProfile.family_income)
       );
 
       // Professional info - map from profile if not in extended profile
@@ -619,6 +717,13 @@ Deno.serve(async (req: Request) => {
     addFieldIfExists(leadData, 'cf_created_on', createdDate);
     addFieldIfExists(leadData, 'cf_created_by', 'System Registration');
 
+    // Add course information from epic learning path
+    addFieldIfExists(
+      leadData,
+      'cf_preferred_course',
+      application.cohort?.epic_learning_path?.title
+    );
+
     // Add qualification from basic profile (available in registration form)
     addFieldIfExists(leadData, 'cf_qualification', profile.qualification);
 
@@ -632,8 +737,8 @@ Deno.serve(async (req: Request) => {
       mobile: leadData.mobile,
       status: application.status,
       cohortId: application.cohort_id,
-      cohortName: cohortName,
-      course: leadData.course,
+      cohortName: application.cohort?.name,
+      preferredCourse: leadData.cf_preferred_course,
       epicLearningPathTitle: application.cohort?.epic_learning_path?.title,
       country: leadData.cf_country_names,
       created_on: leadData.cf_created_on,
@@ -683,25 +788,53 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Enhanced logging for debugging
+    const apiUrl = 'https://api.nopaperforms.io/lead/v1/createOrUpdate';
+    const headers = {
+      'Content-Type': 'application/json',
+      'secret-key': secretKey,
+      'access-key': accessKey,
+    };
+
+    // Log the exact curl command that will be sent
+    const curlCommand = `curl -X POST "${apiUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "secret-key: ${secretKey}" \\
+  -H "access-key: ${accessKey}" \\
+  -d '${JSON.stringify(leadData, null, 2)}'`;
+
+    console.log('🔧 EXACT CURL COMMAND TO MERITTO:');
+    console.log(curlCommand);
+    console.log('📤 SENDING TO MERITTO:');
+    console.log('URL:', apiUrl);
+    console.log('Headers:', JSON.stringify(headers, null, 2));
+    console.log('Payload:', JSON.stringify(leadData, null, 2));
+
     // Make API call to Merito
-    const response = await fetch(
-      'https://api.nopaperforms.io/lead/v1/createOrUpdate',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'secret-key': secretKey,
-          'access-key': accessKey,
-        },
-        body: JSON.stringify(leadData),
-      }
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(leadData),
+    });
+
+    // Log response details
+    console.log('📥 MERITTO RESPONSE:');
+    console.log('Status:', response.status);
+    console.log('Status Text:', response.statusText);
+    console.log(
+      'Headers:',
+      JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)
     );
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('❌ MERITTO API ERROR RESPONSE:');
+      console.error('Status:', response.status);
+      console.error('Status Text:', response.statusText);
+      console.error('Response Body:', errorText);
       console.error(
-        `❌ Merito API error response (${response.status}):`,
-        errorText
+        'Full Response Headers:',
+        JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)
       );
       throw new Error(
         `HTTP error! status: ${response.status}, response: ${errorText}`
@@ -710,7 +843,12 @@ Deno.serve(async (req: Request) => {
 
     const result: MeritoResponse = await response.json();
 
+    console.log('📋 MERITTO API SUCCESS RESPONSE:');
+    console.log('Full Response:', JSON.stringify(result, null, 2));
+
     if (!result.status) {
+      console.error('❌ MERITTO API BUSINESS LOGIC ERROR:');
+      console.error('Response:', JSON.stringify(result, null, 2));
       throw new Error(`Merito API error: ${result.message}`);
     }
 
@@ -750,3 +888,158 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+/**
+ * Test function to send sample data with all fields to Meritto
+ * This helps debug field mapping and API responses
+ */
+async function handleTestAllFields() {
+  try {
+    console.log(
+      '🧪 TESTING ALL FIELDS - Creating sample data with all the fixed fields'
+    );
+
+    // Get Merito API credentials
+    const secretKey = Deno.env.get('MERITO_SECRET_KEY');
+    const accessKey = Deno.env.get('MERITO_ACCESS_KEY');
+
+    if (!secretKey || !accessKey) {
+      throw new Error('Merito API credentials not found');
+    }
+
+    // Create comprehensive test data with all the fields we just fixed
+    const testLeadData: MeritoLeadData = {
+      // Core required fields
+      email: 'kundan9595@gmail.com',
+      mobile: '+919876543211',
+      search_criteria: 'email',
+      name: 'Kundan Test User',
+
+      // Basic profile fields
+      cf_date_of_birth: '15/03/1995', // DOB - Fixed field
+      cf_specify_your_gender: 'Male',
+      cf_where_do_you_live: 'Bangalore',
+      cf_state: 'Karnataka',
+      cf_city: 'Bangalore',
+      cf_current_address: '123 Test Street Test Area',
+      cf_postal_zip_code: '560001',
+
+      // Education info
+      cf_highest_education_level: "Bachelor's Degree",
+      cf_qualification: 'B.Tech',
+      cf_field_of_study: 'Computer Science',
+      cf_institution_name: 'Test University',
+      cf_graduation_year: '2017',
+      cf_graduation_month_new: 'May', // Graduation month
+
+      // Work experience - Fixed fields
+      cf_do_you_have_work_experience: 'Yes',
+      cf_work_experience_type: 'Full time',
+      cf_job_description: 'Software Engineer',
+      cf_company_name: 'Test Company',
+      cf_work_start_year: '2017',
+      cf_work_end_year: '2020', // Work end year - Fixed field
+      cf_work_end_month_new: 'December', // Work end month - Fixed field
+
+      // Family information - Fixed fields
+      cf_fathers_first_name: 'John',
+      cf_fathers_last_name: 'Doe',
+      // cf_fathers_contact_number: '+919876543210', // Temporarily disabled due to validation
+      cf_fathers_occupation: 'Engineer',
+      cf_fathers_email: 'john.doe@example.com', // Father email - Fixed field
+
+      cf_mothers_first_name: 'Jane',
+      cf_mothers_last_name: 'Doe',
+      // cf_mothers_contact_number: '+919876543212', // Temporarily disabled due to validation
+      cf_mothers_occupation: 'Teacher',
+      cf_mothers_email: 'jane.doe@example.com', // Mother email - Fixed field
+
+      // Additional fields
+      cf_career_goals: 'Become a senior software engineer',
+      cf_linkedin_profile: 'https://linkedin.com/in/testuser',
+      cf_instagram_id: '@testuser',
+
+      // UTM tracking
+      source: 'test',
+      medium: 'test',
+      campaign: 'all-fields-test',
+
+      // Lead quality and stage
+      lead_quality: 'High',
+      conversion_stage: 'registration_completed',
+    };
+
+    const apiUrl = 'https://api.nopaperforms.io/lead/v1/createOrUpdate';
+    const headers = {
+      'Content-Type': 'application/json',
+      'secret-key': secretKey,
+      'access-key': accessKey,
+    };
+
+    // Log the exact curl command
+    const curlCommand = `curl -X POST "${apiUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "secret-key: ${secretKey}" \\
+  -H "access-key: ${accessKey}" \\
+  -d '${JSON.stringify(testLeadData, null, 2)}'`;
+
+    console.log('🔧 TEST CURL COMMAND TO MERITTO:');
+    console.log(curlCommand);
+    console.log('📤 TEST PAYLOAD:');
+    console.log(JSON.stringify(testLeadData, null, 2));
+
+    // Make API call
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(testLeadData),
+    });
+
+    // Log response details
+    console.log('📥 MERITTO TEST RESPONSE:');
+    console.log('Status:', response.status);
+    console.log('Status Text:', response.statusText);
+    console.log(
+      'Headers:',
+      JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)
+    );
+
+    const responseText = await response.text();
+    console.log('Response Body:', responseText);
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      result = { raw_response: responseText };
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: response.ok,
+        status: response.status,
+        curlCommand,
+        requestPayload: testLeadData,
+        response: result,
+        message: response.ok ? 'Test completed successfully' : 'Test failed',
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        message: 'Test failed',
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
