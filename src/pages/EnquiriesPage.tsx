@@ -196,20 +196,7 @@ export default function EnquiriesPage() {
 
   // Helper function to get age display
   const getAgeDisplay = (enquiry: Enquiry): string | null => {
-    // For Program Files form, use the age field directly from Webflow
-    if (enquiry.form_name === 'Program files-Brochure') {
-      if (
-        enquiry.age !== undefined &&
-        enquiry.age !== null &&
-        enquiry.age > 0
-      ) {
-        return `${enquiry.age} years old`;
-      } else {
-        return null; // Don't show age if it doesn't exist
-      }
-    }
-
-    // For other forms, calculate from date of birth
+    // For all forms, calculate from date of birth (including brochure forms)
     try {
       // Return null if date_of_birth is null or undefined
       if (!enquiry.date_of_birth) {

@@ -107,8 +107,21 @@ export default function AddUserDialog({
   });
 
   const handleSubmit = async () => {
-    if (!form.email.trim() || !form.role) {
-      toast.error('Please fill in all required fields');
+    const errors: string[] = [];
+
+    if (!form.email.trim()) {
+      errors.push('Email is required');
+    }
+    if (!form.role) {
+      errors.push('Role is required');
+    }
+
+    if (errors.length > 0) {
+      if (errors.length === 1) {
+        toast.error(errors[0]);
+      } else {
+        toast.error(`Please fix the following: ${errors.join(', ')}`);
+      }
       return;
     }
 

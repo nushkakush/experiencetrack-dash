@@ -62,11 +62,13 @@ export class WebflowService {
       // For frontend services, we'll use environment variables or make API calls through Edge Functions
       // Since Webflow credentials are sensitive, we should use the webflow-api Edge Function instead
       // This approach is more secure as it keeps credentials on the server side
-      
+
       // For now, we'll mark as initialized and use the Edge Function for API calls
       this.initialized = true;
-      
-      console.log('WebflowService initialized - will use Edge Functions for API calls');
+
+      console.log(
+        'WebflowService initialized - will use Edge Functions for API calls'
+      );
     } catch (error) {
       console.error('Failed to initialize WebflowService:', error);
       throw new Error(`Webflow API initialization failed: ${error.message}`);
@@ -227,14 +229,26 @@ export class WebflowService {
 
       if (isProgramBrochureForm) {
         // Special mapping for Program files-Brochure form
+        const dateOfBirth =
+          data['Date of Birth'] ||
+          data['date-of-birth'] ||
+          data['dateOfBirth'] ||
+          data['DoB'] ||
+          data['dob'] ||
+          data['birthday'] ||
+          data['birth-date'] ||
+          data['birthDate'] ||
+          data['Date-of-Birth'] ||
+          null;
+
         enquiryData = {
           full_name: data['First Name'] || '',
           email: data['Email'] || '',
           phone: data['Phone'] || '',
-          // For Program files-Brochure, we don't have date_of_birth, so use a default
-          date_of_birth: new Date().toISOString().split('T')[0], // fallback to today
-          // Age is directly available from Webflow
-          age: this.parseAge(data['Age']),
+          // For Program files-Brochure, use date of birth field instead of age
+          date_of_birth: dateOfBirth,
+          // Calculate age from date of birth
+          age: this.calculateAgeFromDateOfBirth(dateOfBirth),
           // Professional status mapping
           professional_status: this.mapProfessionalStatus(
             data['You are currently a'] || ''
@@ -704,6 +718,42 @@ export class WebflowService {
 
     const parsed = parseInt(ageValue);
     return isNaN(parsed) || parsed <= 0 ? undefined : parsed;
+  }
+
+  /**
+   * Calculate age from date of birth string
+   */
+  private calculateAgeFromDateOfBirth(
+    dateOfBirth: string | null
+  ): number | undefined {
+    if (!dateOfBirth) {
+      return undefined;
+    }
+
+    try {
+      const today = new Date();
+      const birthDate = new Date(dateOfBirth);
+
+      if (isNaN(birthDate.getTime())) {
+        console.warn('Invalid date of birth format:', dateOfBirth);
+        return undefined;
+      }
+
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        age--;
+      }
+
+      return age > 0 ? age : undefined;
+    } catch (error) {
+      console.error('Error calculating age from date of birth:', error);
+      return undefined;
+    }
   }
 
   /**

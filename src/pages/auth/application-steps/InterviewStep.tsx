@@ -140,7 +140,18 @@ const InterviewStep = ({
         interview: formData,
       });
     } else {
-      toast.error('Please fill in all required fields');
+      // Show the first validation error or a summary if multiple errors
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length === 1) {
+        toast.error(errors[errorKeys[0]]);
+      } else {
+        toast.error(
+          `Please fix the following errors: ${errorKeys
+            .slice(0, 3)
+            .map(key => errors[key])
+            .join(', ')}${errorKeys.length > 3 ? '...' : ''}`
+        );
+      }
     }
   };
 

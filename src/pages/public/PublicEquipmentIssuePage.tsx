@@ -92,15 +92,32 @@ const PublicEquipmentIssuePage = () => {
   };
 
   const handleSubmit = async () => {
-    if (
-      !formData.cohort_id ||
-      !formData.student_id ||
-      !formData.equipment_ids ||
-      formData.equipment_ids.length === 0 ||
-      !formData.expected_return_date ||
-      !formData.reason
-    ) {
-      toast.error('Please fill in all required fields');
+    const errors: string[] = [];
+
+    if (!formData.cohort_id) {
+      errors.push('Please select a cohort');
+    }
+    if (!formData.student_id) {
+      errors.push('Please enter your student ID');
+    }
+    if (!formData.equipment_ids || formData.equipment_ids.length === 0) {
+      errors.push('Please select at least one equipment item');
+    }
+    if (!formData.expected_return_date) {
+      errors.push('Please select an expected return date');
+    }
+    if (!formData.reason) {
+      errors.push('Please provide a reason for borrowing');
+    }
+
+    if (errors.length > 0) {
+      if (errors.length === 1) {
+        toast.error(errors[0]);
+      } else {
+        toast.error(
+          `Please fix the following: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`
+        );
+      }
       return;
     }
 
@@ -162,7 +179,9 @@ const PublicEquipmentIssuePage = () => {
                   {getStepStatus(step) === 'completed' ? (
                     <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5' />
                   ) : (
-                    <span className='font-semibold text-sm sm:text-base'>{step}</span>
+                    <span className='font-semibold text-sm sm:text-base'>
+                      {step}
+                    </span>
                   )}
                 </div>
                 {step < 4 && (

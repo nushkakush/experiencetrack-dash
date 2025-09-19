@@ -28,7 +28,7 @@ const ApplicationStep = ({
     handleFieldBlur,
     handleDateOfBirthChange: unifiedHandleDateOfBirthChange,
     forceSave,
-  } = useUnifiedAutoSave({ 
+  } = useUnifiedAutoSave({
     profileId,
     enableRealtimeSync: true,
     applicationId: data.id,
@@ -130,20 +130,14 @@ const ApplicationStep = ({
       '🔍 [DEBUG] ApplicationStep useEffect triggered with profileId:',
       profileId
     );
-    console.log(
-      '🔍 [DEBUG] profileId type:',
-      typeof profileId
-    );
-    console.log(
-      '🔍 [DEBUG] profileId truthy:',
-      !!profileId
-    );
-    
+    console.log('🔍 [DEBUG] profileId type:', typeof profileId);
+    console.log('🔍 [DEBUG] profileId truthy:', !!profileId);
+
     if (!profileId) {
       console.log('❌ [DEBUG] No profileId available, skipping data load');
       return;
     }
-    
+
     const loadProfileData = async () => {
       console.log('🔍 [DEBUG] Starting loadProfileData...');
       try {
@@ -255,7 +249,7 @@ const ApplicationStep = ({
           mother_first_name: !!newFormData.mother_first_name,
           emergency_first_name: !!newFormData.emergency_first_name,
         });
-        
+
         setFormData(newFormData);
         console.log('✅ [DEBUG] Form data has been set');
 
@@ -564,7 +558,9 @@ const ApplicationStep = ({
     } else if (!ValidationUtils.isValidPhone(formData.contact_no)) {
       newErrors['contact_no'] =
         'Please enter a valid Indian phone number (10 digits starting with 6-9)';
-      console.log('❌ [DEBUG] Contact number validation failed: invalid format');
+      console.log(
+        '❌ [DEBUG] Contact number validation failed: invalid format'
+      );
     } else {
       console.log('✅ [DEBUG] Contact number validation passed');
     }
@@ -579,7 +575,7 @@ const ApplicationStep = ({
       console.log('❌ [DEBUG] Date of birth validation failed: missing parts', {
         day: formData.date_of_birth.day,
         month: formData.date_of_birth.month,
-        year: formData.date_of_birth.year
+        year: formData.date_of_birth.year,
       });
     } else if (
       !ValidationUtils.isValidAge(
@@ -590,7 +586,9 @@ const ApplicationStep = ({
       )
     ) {
       newErrors['date_of_birth'] = 'You must be at least 16 years old to apply';
-      console.log('❌ [DEBUG] Date of birth validation failed: age requirement');
+      console.log(
+        '❌ [DEBUG] Date of birth validation failed: age requirement'
+      );
     } else {
       console.log('✅ [DEBUG] Date of birth validation passed');
     }
@@ -772,12 +770,18 @@ const ApplicationStep = ({
     }
 
     console.log('🔍 [DEBUG] Validation complete. Errors found:', newErrors);
-    console.log('🔍 [DEBUG] Total errors count:', Object.keys(newErrors).length);
-    
+    console.log(
+      '🔍 [DEBUG] Total errors count:',
+      Object.keys(newErrors).length
+    );
+
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
-    console.log('🔍 [DEBUG] Form validation result:', isValid ? 'VALID' : 'INVALID');
-    
+    console.log(
+      '🔍 [DEBUG] Form validation result:',
+      isValid ? 'VALID' : 'INVALID'
+    );
+
     return isValid;
   };
 
@@ -797,10 +801,13 @@ const ApplicationStep = ({
     console.log('🔍 [DEBUG] handleSubmit called');
     console.log('🔍 [DEBUG] feeInfo:', feeInfo);
     console.log('🔍 [DEBUG] isPaymentCompleted:', isPaymentCompleted);
-    
+
     const isFormValid = validateForm();
-    console.log('🔍 [DEBUG] Form validation result in handleSubmit:', isFormValid);
-    
+    console.log(
+      '🔍 [DEBUG] Form validation result in handleSubmit:',
+      isFormValid
+    );
+
     if (isFormValid) {
       // Check if payment is required and not already completed
       if (feeInfo && feeInfo.amount > 0 && !isPaymentCompleted) {
@@ -808,20 +815,33 @@ const ApplicationStep = ({
         // First, save all pending data before initiating payment
         await submitAllDataAndProceedToPayment();
       } else {
-        console.log('🔍 [DEBUG] No payment required or already completed, proceeding to next step');
+        console.log(
+          '🔍 [DEBUG] No payment required or already completed, proceeding to next step'
+        );
         // No payment required or payment already completed, proceed directly
         proceedToNextStep();
       }
     } else {
       console.log('❌ [DEBUG] Form validation failed, showing error toast');
-      toast.error('Please fill in all required fields');
+      // Show the first validation error or a summary if multiple errors
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length === 1) {
+        toast.error(errors[errorKeys[0]]);
+      } else {
+        toast.error(
+          `Please fix the following errors: ${errorKeys
+            .slice(0, 3)
+            .map(key => errors[key])
+            .join(', ')}${errorKeys.length > 3 ? '...' : ''}`
+        );
+      }
     }
   };
 
   const submitAllDataAndProceedToPayment = async () => {
     try {
       console.log('🔍 [DEBUG] submitAllDataAndProceedToPayment called');
-      
+
       // Notify parent that payment process is starting
       onPaymentInitiated?.();
 
@@ -855,47 +875,49 @@ const ApplicationStep = ({
     try {
       // Force save all pending changes and sync to Meritto before proceeding
       await forceSave();
-      
+
       const service = ProfileExtendedService.getInstance();
       await service.forceSaveAndSyncToMerito(profileId);
-      
+
       // Convert formData to ApplicationData format for compatibility
       const applicationData = {
         personalInfo: {
-        firstName: formData.full_name.split(' ')[0] || '',
-        lastName: formData.full_name.split(' ').slice(1).join(' ') || '',
-        email: formData.email,
-        phone: formData.contact_no,
-        dateOfBirth: `${formData.date_of_birth.year}-${formData.date_of_birth.month.padStart(2, '0')}-${formData.date_of_birth.day.padStart(2, '0')}`,
-        address: formData.current_address,
-        city: formData.city,
-        state: formData.state,
-        pincode: formData.postal_zip_code,
-      },
-      education: {
-        qualification: formData.highest_education_level,
-        institution: formData.institution_name,
-        yearOfPassing: formData.graduation_year?.toString() || '',
-        percentage: '', // Not in new structure
-      },
-      experience: {
-        hasExperience: formData.has_work_experience,
-        yearsOfExperience: '', // Not in new structure
-        currentCompany: formData.company_name,
-        currentRole: formData.job_description,
-        previousExperience: '', // Not in new structure
-      },
-      motivation: {
-        whyJoin: '', // Not in new structure
-        careerGoals: '', // Not in new structure
-        expectations: '', // Not in new structure
-      },
-    };
+          firstName: formData.full_name.split(' ')[0] || '',
+          lastName: formData.full_name.split(' ').slice(1).join(' ') || '',
+          email: formData.email,
+          phone: formData.contact_no,
+          dateOfBirth: `${formData.date_of_birth.year}-${formData.date_of_birth.month.padStart(2, '0')}-${formData.date_of_birth.day.padStart(2, '0')}`,
+          address: formData.current_address,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.postal_zip_code,
+        },
+        education: {
+          qualification: formData.highest_education_level,
+          institution: formData.institution_name,
+          yearOfPassing: formData.graduation_year?.toString() || '',
+          percentage: '', // Not in new structure
+        },
+        experience: {
+          hasExperience: formData.has_work_experience,
+          yearsOfExperience: '', // Not in new structure
+          currentCompany: formData.company_name,
+          currentRole: formData.job_description,
+          previousExperience: '', // Not in new structure
+        },
+        motivation: {
+          whyJoin: '', // Not in new structure
+          careerGoals: '', // Not in new structure
+          expectations: '', // Not in new structure
+        },
+      };
 
       onComplete(applicationData);
     } catch (error) {
       console.error('Error completing extended registration:', error);
-      toast.error('Failed to save extended registration data. Please try again.');
+      toast.error(
+        'Failed to save extended registration data. Please try again.'
+      );
     }
   };
 

@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RegistrationService } from '@/services/registration.service';
-import { DuplicateEmailCheckService, DuplicateEmailStatus } from '@/services/duplicateEmailCheck.service';
+import {
+  DuplicateEmailCheckService,
+  DuplicateEmailStatus,
+} from '@/services/duplicateEmailCheck.service';
 import { toast } from 'sonner';
 import { ValidationUtils } from '@/utils/validation';
 
@@ -23,7 +26,8 @@ export const useRegistrationState = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [duplicateStatus, setDuplicateStatus] = useState<DuplicateEmailStatus | null>(null);
+  const [duplicateStatus, setDuplicateStatus] =
+    useState<DuplicateEmailStatus | null>(null);
 
   const navigate = useNavigate();
 
@@ -136,7 +140,18 @@ export const useRegistrationState = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Please fix the errors in the form');
+      // Show the first validation error or a summary if multiple errors
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length === 1) {
+        toast.error(errors[errorKeys[0]]);
+      } else {
+        toast.error(
+          `Please fix the following errors: ${errorKeys
+            .slice(0, 3)
+            .map(key => errors[key])
+            .join(', ')}${errorKeys.length > 3 ? '...' : ''}`
+        );
+      }
       return;
     }
 
@@ -215,7 +230,10 @@ export const useRegistrationState = () => {
         // Clear the email field so user can re-enter it
         setFormData(prev => ({ ...prev, email: '' }));
       } else {
-        toast.error(result.error || 'Failed to delete previous application. Please try again.');
+        toast.error(
+          result.error ||
+            'Failed to delete previous application. Please try again.'
+        );
       }
     } catch (error) {
       console.error('Error starting fresh:', error);
