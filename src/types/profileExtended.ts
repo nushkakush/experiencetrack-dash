@@ -4,14 +4,13 @@ export interface ProfileExtended {
 
   // Extended Personal Information (not in basic profiles table)
   contact_no_verified?: boolean;
-  currently_a?:
-    | 'Student'
-    | 'Working Professional';
+  currently_a?: 'Student' | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;
   instagram_id?: string;
   gender?: 'Male' | 'Female' | 'Other';
+  date_of_birth?: string;
   current_address?: string;
   city?: string;
   state?: string;
@@ -72,14 +71,13 @@ export interface ProfileExtendedInsert {
 
   // Extended Personal Information (not in basic profiles table)
   contact_no_verified?: boolean;
-  currently_a?:
-    | 'Student'
-    | 'Working Professional';
+  currently_a?: 'Student' | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;
   instagram_id?: string;
   gender?: 'Male' | 'Female' | 'Other';
+  date_of_birth?: string;
   current_address?: string;
   city?: string;
   state?: string;
@@ -134,14 +132,13 @@ export interface ProfileExtendedInsert {
 export interface ProfileExtendedUpdate {
   // Extended Personal Information (not in basic profiles table)
   contact_no_verified?: boolean;
-  currently_a?:
-    | 'Student'
-    | 'Working Professional';
+  currently_a?: 'Student' | 'Working Professional';
   course_of_interest?: string;
   cohort_id?: string;
   linkedin_profile?: string;
   instagram_id?: string;
   gender?: 'Male' | 'Female' | 'Other';
+  date_of_birth?: string;
   current_address?: string;
   city?: string;
   state?: string;

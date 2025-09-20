@@ -148,29 +148,42 @@ export const useUnifiedAutoSave = ({
       if (enableRealtimeSync) {
         try {
           if (Object.keys(profilesChanges).length > 0) {
-            console.log('🔄 [AUTO-SAVE] Triggering real-time sync for profile changes:', {
-              profileId,
-              applicationId,
-              changes: profilesChanges
-            });
+            console.log(
+              '🔄 [AUTO-SAVE] Triggering real-time sync for profile changes:',
+              {
+                profileId,
+                applicationId,
+                changes: profilesChanges,
+              }
+            );
             await syncProfileData(profileId, applicationId, profilesChanges);
           }
           if (Object.keys(profileExtendedChanges).length > 0) {
-            console.log('🔄 [AUTO-SAVE] Triggering real-time sync for extended profile changes:', {
+            console.log(
+              '🔄 [AUTO-SAVE] Triggering real-time sync for extended profile changes:',
+              {
+                profileId,
+                applicationId,
+                changes: profileExtendedChanges,
+              }
+            );
+            await syncExtendedProfile(
               profileId,
               applicationId,
-              changes: profileExtendedChanges
-            });
-            await syncExtendedProfile(profileId, applicationId, profileExtendedChanges);
+              profileExtendedChanges
+            );
           }
         } catch (syncError) {
-          console.error('❌ [AUTO-SAVE] Real-time Meritto sync failed (non-blocking):', {
-            error: syncError,
-            profileId,
-            applicationId,
-            profileChanges: Object.keys(profilesChanges),
-            extendedChanges: Object.keys(profileExtendedChanges)
-          });
+          console.error(
+            '❌ [AUTO-SAVE] Real-time Meritto sync failed (non-blocking):',
+            {
+              error: syncError,
+              profileId,
+              applicationId,
+              profileChanges: Object.keys(profilesChanges),
+              extendedChanges: Object.keys(profileExtendedChanges),
+            }
+          );
           // Don't block the save process for sync failures
         }
       }
@@ -229,7 +242,11 @@ export const useUnifiedAutoSave = ({
     (dateOfBirth: { day: string; month: string; year: string }) => {
       if (dateOfBirth.day && dateOfBirth.month && dateOfBirth.year) {
         const dateOfBirthString = `${dateOfBirth.year}-${dateOfBirth.month.padStart(2, '0')}-${dateOfBirth.day.padStart(2, '0')}`;
-        saveData({ profiles: { date_of_birth: dateOfBirthString } });
+        // Save to both profiles and profile_extended tables to ensure Meritto sync works
+        saveData({
+          profiles: { date_of_birth: dateOfBirthString },
+          profileExtended: { date_of_birth: dateOfBirthString },
+        });
       }
     },
     [saveData]

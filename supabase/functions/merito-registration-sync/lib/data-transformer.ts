@@ -47,6 +47,9 @@ export class DataTransformer {
       user_date: formatApplicationDate(application.created_at),
     };
 
+    // Add basic profile fields that should always be included
+    this.addBasicProfileFields(leadData, profile);
+
     // Add extended profile fields only if they exist and have values
     if (extendedProfile) {
       this.addExtendedProfileFields(leadData, profile, extendedProfile);
@@ -75,6 +78,27 @@ export class DataTransformer {
   }
 
   /**
+   * Add basic profile fields that should always be included
+   */
+  private static addBasicProfileFields(
+    leadData: MeritoLeadData,
+    profile: ProfileData
+  ): void {
+    // Only add fields that are actually collected in initial registration form
+    // Initial registration only collects: first_name, last_name, email, phone, date_of_birth, qualification, cohort_id
+
+    // Add date of birth from basic profile (only field from initial registration that maps to Meritto)
+    this.addFieldIfExists(
+      leadData,
+      'cf_date_of_birth',
+      formatDateOfBirth(profile.date_of_birth)
+    );
+
+    // Note: Other fields like gender, location, etc. are not collected in initial registration
+    // so they won't be included in the basic profile sync
+  }
+
+  /**
    * Add extended profile fields to lead data
    */
   private static addExtendedProfileFields(
@@ -82,7 +106,7 @@ export class DataTransformer {
     profile: ProfileData,
     extendedProfile: ExtendedProfileData
   ): void {
-    // Basic profile fields
+    // Override basic profile fields with extended profile data if available
     this.addFieldIfExists(
       leadData,
       'cf_date_of_birth',
